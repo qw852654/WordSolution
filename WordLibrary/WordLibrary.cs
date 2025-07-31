@@ -368,6 +368,8 @@ namespace WordLibrary
             string filePath = Path.Combine(desktopPath, $"{文件名}.pdf");
             // 将选定内容复制给新文档的range
             Document newDoc = doc.Application.Documents.Add();
+            //删除文档全部内容
+            newDoc.Content.Delete();
             Range newRange = newDoc.Range();
             newRange.FormattedText = rng.FormattedText;
             文档 临时文档 = new 文档(newDoc);
