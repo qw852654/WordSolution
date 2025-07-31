@@ -101,7 +101,7 @@ namespace WordLibrary
                 }
             }
         }
-        
+
         //创建一个方法,删除当前活动文档中的所有样式为答案的段落
         public void 删除答案(string[] 待删除的样式列表)
         {
@@ -121,7 +121,7 @@ namespace WordLibrary
             }
         }
 
-        public void 导出pdf到文档目录(string 保存的文件路径)
+        public void 导出当前文档为pdf(string 保存的文件路径, bool 完成的提示 = true)
         {
             Document doc = _document;
             string pdfPath = 保存的文件路径;
@@ -139,6 +139,12 @@ namespace WordLibrary
                 BitmapMissingFonts: true,
                 UseISO19005_1: true
             );
+
+            if (完成的提示)
+            {
+                //导出之后弹出提示
+                System.Windows.Forms.MessageBox.Show($"导出完成，文件路径：{pdfPath}");
+            }
         }
 
         public void 导出原始文档()
@@ -168,12 +174,9 @@ namespace WordLibrary
             string 文件路径 = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(originalPath), System.IO.Path.GetFileNameWithoutExtension(originalPath) + ".pdf");
 
             //导出文档
-            this.导出pdf到文档目录(文件路径);
+            this.导出当前文档为pdf(文件路径, false);
 
-            
 
-            //导出之后弹出提示
-            System.Windows.Forms.MessageBox.Show($"导出完成");
 
             // 删除临时文件
             if (System.IO.File.Exists(tempFilePath))
@@ -188,7 +191,7 @@ namespace WordLibrary
             // 获取当前文档路径
             string originalPath = doc.FullName;
 
-            
+
 
             if (originalPath.StartsWith("http", StringComparison.OrdinalIgnoreCase))
             {
@@ -219,7 +222,7 @@ namespace WordLibrary
 
 
             // 导出为PDF
-            temp文档.导出pdf到文档目录(文件路径);
+            temp文档.导出当前文档为pdf(文件路径, true);
 
 
 
@@ -269,8 +272,8 @@ namespace WordLibrary
                 }
 
 
-               
-                
+
+
             }
 
             //用msgbox提示完成
@@ -338,7 +341,7 @@ namespace WordLibrary
                 _document.PageSetup.TopMargin = _document.Application.CentimetersToPoints(1.5f);
                 _document.PageSetup.LeftMargin = _document.Application.CentimetersToPoints(1.5f);
 
-                if (弹出提示==true)
+                if (弹出提示 == true)
                 {
                     MessageBox.Show("样式更新完成！推荐操作：\n1. 按Ctrl+A全选检查样式格式\n2. 更新目录（若存在）", "信息", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
@@ -350,11 +353,31 @@ namespace WordLibrary
             }
         }
 
-        //将选中内容复制到新文档中,然后删除答案,最后到处,导出的目录是桌面,格式是pdf,文件名弹出对话框要求用户输入
+        public void 导出当前文档为pdf(string 导出目录, string 文件名)
+        {
+            //导出文档为pdf，
+        }
 
-
-
-
+        public void 导出部分内容到桌面(Range rng, string 文件名)
+        {
+            // 获取当前文档
+            Document doc = _document;
+            // 获取桌面路径
+            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            // 构建完整的文件路径
+            string filePath = Path.Combine(desktopPath, $"{文件名}.pdf");
+            // 将选定内容复制给新文档的range
+            Document newDoc = doc.Application.Documents.Add();
+            Range newRange = newDoc.Range();
+            newRange.FormattedText = rng.FormattedText;
+            文档 临时文档 = new 文档(newDoc);
+            临时文档.导出当前文档为pdf(filePath, false);
+            //删除newDoc的所有答案
+            临时文档.删除答案(new string[] { "答案", "教学讲解内容" });
+            filePath = Path.Combine(desktopPath, $"{文件名}_无答案.pdf");
+            临时文档.导出当前文档为pdf(filePath, false);
+            newDoc.Close(false);
+        }
     }
 }
 

@@ -48,9 +48,6 @@
             this.button5 = this.Factory.CreateRibbonButton();
             this.group4 = this.Factory.CreateRibbonGroup();
             this.button6 = this.Factory.CreateRibbonButton();
-            this.delete_start = this.Factory.CreateRibbonEditBox();
-            this.delete_end = this.Factory.CreateRibbonEditBox();
-            this.editBox1 = this.Factory.CreateRibbonEditBox();
             this.tab1 = this.Factory.CreateRibbonTab();
             this.group5 = this.Factory.CreateRibbonGroup();
             this.光标处插入文档 = this.Factory.CreateRibbonButton();
@@ -148,34 +145,14 @@
             // group4
             // 
             this.group4.Items.Add(this.button6);
-            this.group4.Items.Add(this.delete_start);
-            this.group4.Items.Add(this.delete_end);
-            this.group4.Items.Add(this.editBox1);
             this.group4.Label = "group4";
             this.group4.Name = "group4";
             // 
             // button6
             // 
-            this.button6.Label = "开始删除内容";
+            this.button6.Label = "导出选中内容到桌面";
             this.button6.Name = "button6";
-            // 
-            // delete_start
-            // 
-            this.delete_start.Label = "开始文本";
-            this.delete_start.Name = "delete_start";
-            this.delete_start.Text = null;
-            // 
-            // delete_end
-            // 
-            this.delete_end.Label = "结束文本";
-            this.delete_end.Name = "delete_end";
-            this.delete_end.Text = null;
-            // 
-            // editBox1
-            // 
-            this.editBox1.Label = "待设定样式";
-            this.editBox1.Name = "editBox1";
-            this.editBox1.Text = null;
+            this.button6.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.button6_Click);
             // 
             // tab1
             // 
@@ -236,15 +213,12 @@
         internal Microsoft.Office.Tools.Ribbon.RibbonGroup group3;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton button4;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton button5;
-        internal Microsoft.Office.Tools.Ribbon.RibbonButton button6;
-        internal Microsoft.Office.Tools.Ribbon.RibbonGroup group4;
-        internal Microsoft.Office.Tools.Ribbon.RibbonEditBox delete_start;
-        internal Microsoft.Office.Tools.Ribbon.RibbonEditBox delete_end;
-        internal Microsoft.Office.Tools.Ribbon.RibbonEditBox editBox1;
         private Microsoft.Office.Tools.Ribbon.RibbonTab tab1;
         internal Microsoft.Office.Tools.Ribbon.RibbonGroup group5;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton 光标处插入文档;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton 根据字体颜色设置答案;
+        internal Microsoft.Office.Tools.Ribbon.RibbonGroup group4;
+        internal Microsoft.Office.Tools.Ribbon.RibbonButton button6;
     }
 
     partial class ThisRibbonCollection

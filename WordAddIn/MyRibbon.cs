@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using WordLibrary;
+using Microsoft.VisualBasic;
 
 namespace WordAddIn
 {
@@ -172,6 +173,34 @@ namespace WordAddIn
                 // 捕获并显示错误信息
                 System.Windows.Forms.MessageBox.Show($"根据字体颜色设置答案操作失败: {ex.Message}");
             }
+        }
+
+        private void button6_Click(object sender, RibbonControlEventArgs e)
+        {
+            //弹出对话框询问用户文件名然后存储到变量“文件名”中
+            string 文件名 = "";
+            using (Form inputForm = new Form())
+            {
+                inputForm.Width = 300;
+                inputForm.Height = 150;
+                inputForm.Text = "保存文件";
+                Label label = new Label() { Left = 10, Top = 20, Text = "请输入文件名", AutoSize = true };
+                TextBox textBox = new TextBox() { Left = 10, Top = 50, Width = 260, Text = "无答案文档" };
+                Button confirmation = new Button() { Text = "确定", Left = 200, Width = 70, Top = 80, DialogResult = DialogResult.OK };
+                inputForm.Controls.Add(label);
+                inputForm.Controls.Add(textBox);
+                inputForm.Controls.Add(confirmation);
+                inputForm.AcceptButton = confirmation;
+
+                if (inputForm.ShowDialog() == DialogResult.OK)
+                {
+                    文件名 = textBox.Text;
+                }
+            }
+            文档 文档对象 = new 文档(Globals.ThisAddIn.Application.ActiveDocument);
+            //导出选择部分的内容
+            Range rng= Globals.ThisAddIn.Application.Selection.Range;
+            文档对象.导出部分内容到桌面 (rng, 文件名);
         }
     }
 }

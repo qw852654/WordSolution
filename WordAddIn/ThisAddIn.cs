@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,6 +12,34 @@ using System.IO;
 
 namespace WordAddIn
 {
+    public static class 获取用户下载目录
+    {
+        private static readonly Guid DownloadsFolderGuid = new Guid("374DE290-123F-4565-9164-39C4925E467B");
+
+        [DllImport("shell32.dll")]
+        private static extern int SHGetKnownFolderPath(
+            [MarshalAs(UnmanagedType.LPStruct)] Guid rfid,
+            uint dwFlags,
+            IntPtr hToken,
+            out IntPtr ppszPath);
+
+        public static string GetDownloadsPath()
+        {
+            IntPtr outPath;
+            int result = SHGetKnownFolderPath(DownloadsFolderGuid, 0, IntPtr.Zero, out outPath);
+            if (result == 0)
+            {
+                string path = Marshal.PtrToStringUni(outPath);
+                Marshal.FreeCoTaskMem(outPath);
+                return path;
+            }
+            else
+            {
+                throw new ExternalException("无法获取下载文件夹路径，错误码: " + result);
+            }
+        }
+    }
+
     public partial class ThisAddIn
     {
         private FileSystemWatcher watcher;
@@ -20,9 +49,10 @@ namespace WordAddIn
             // 订阅文档打开事件
             //处理下载文件夹重命名文件的操作
             watcher = new FileSystemWatcher();
-            watcher.Path = @"E:\下载";
+            string downloadsPath = 获取用户下载目录.GetDownloadsPath();
+            watcher.Path = downloadsPath;
             watcher.Filter = "*.docx";
-            watcher.Renamed+= 重命名文件时的操作;
+            watcher.Renamed += 重命名文件时的操作;
             watcher.EnableRaisingEvents = true;
 
             // 自动隐藏页间空白
