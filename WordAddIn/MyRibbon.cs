@@ -202,5 +202,55 @@ namespace WordAddIn
             Range rng= Globals.ThisAddIn.Application.Selection.Range;
             文档对象.导出部分内容到桌面 (rng, 文件名);
         }
+
+        private void button7_Click(object sender, RibbonControlEventArgs e)
+        {
+            //将活动文档选中的内容复制到新文档中，在新文档中，将每个带下划线的字符都替换成中文空格
+            try
+            {
+                var app = Globals.ThisAddIn.Application;
+                var selection = app.Selection;
+                var rng = selection.Range;
+                var doc = app.ActiveDocument; // 修复：定义 doc 变量
+
+                string docDir = System.IO.Path.GetDirectoryName(doc.FullName);
+
+                // 获取 selection 第一个段落的内容，并去除首尾空白及非法字符
+                string paraText = selection.Range.Paragraphs[1].Range.Text.Trim();
+                foreach (char c in System.IO.Path.GetInvalidFileNameChars())
+                {
+                    paraText = paraText.Replace(c, '_');
+                }
+
+                // 拼接完整路径
+                string pdfPath = System.IO.Path.Combine(docDir, paraText + ".pdf");
+
+                // 新建文档
+                var newDoc = app.Documents.Add();
+
+                // 复制选中内容到新文档
+                newDoc.Content.Delete(); // 清空新文档内容
+                newDoc.Content.FormattedText = rng.FormattedText;
+
+                // 替换新文档中所有带下划线的字符为中文空格
+                var newRange = newDoc.Content;
+                for (int i = 1; i <= newRange.Characters.Count; i++)
+                {
+                    var ch = newRange.Characters[i];
+                    if (ch.Font.Underline != Microsoft.Office.Interop.Word.WdUnderline.wdUnderlineNone)
+                    {
+                        ch.Text = "　"; // 中文全角空格
+                    }
+                }
+
+                // 导出文档
+                文档 新文档对象 = new 文档(newDoc);
+                新文档对象.导出当前文档为pdf(保存的文件路径: pdfPath);
+            }
+            catch (Exception ex)
+            {
+                System.Windows.Forms.MessageBox.Show($"操作失败: {ex.Message}");
+            }
+        }
     }
 }

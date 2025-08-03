@@ -121,9 +121,14 @@ namespace WordLibrary
             }
         }
 
-        public void 导出当前文档为pdf(string 保存的文件路径, bool 完成的提示 = true)
+        public void 导出当前文档为pdf(string 保存的文件路径="源目录", bool 完成的提示 = true)
         {
             Document doc = _document;
+            if (保存的文件路径 == "源目录")
+            {
+                // 如果没有指定保存路径，则使用当前文档所在目录
+                保存的文件路径 = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(doc.FullName), System.IO.Path.GetFileNameWithoutExtension(doc.FullName) + ".pdf");
+            }
             string pdfPath = 保存的文件路径;
 
             doc.ExportAsFixedFormat(
@@ -286,7 +291,9 @@ namespace WordLibrary
         {
             try
             {
-                string templatePath = @"C:\Users\BOX\AppData\Roaming\Microsoft\Templates\Normal.dotm";
+                // 获取当前用户目录
+                string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                string templatePath = Path.Combine(userProfile, @"AppData\Roaming\Microsoft\Templates\Normal.dotm");
 
                 // 安全验证
                 if (!File.Exists(templatePath))

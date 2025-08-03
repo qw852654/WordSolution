@@ -46,8 +46,9 @@
             this.group2 = this.Factory.CreateRibbonGroup();
             this.button3 = this.Factory.CreateRibbonButton();
             this.button5 = this.Factory.CreateRibbonButton();
-            this.group4 = this.Factory.CreateRibbonGroup();
+            this.导出选中内容 = this.Factory.CreateRibbonGroup();
             this.button6 = this.Factory.CreateRibbonButton();
+            this.button7 = this.Factory.CreateRibbonButton();
             this.tab1 = this.Factory.CreateRibbonTab();
             this.group5 = this.Factory.CreateRibbonGroup();
             this.光标处插入文档 = this.Factory.CreateRibbonButton();
@@ -56,7 +57,7 @@
             this.tab2.SuspendLayout();
             this.group3.SuspendLayout();
             this.group2.SuspendLayout();
-            this.group4.SuspendLayout();
+            this.导出选中内容.SuspendLayout();
             this.tab1.SuspendLayout();
             this.group5.SuspendLayout();
             this.SuspendLayout();
@@ -100,7 +101,7 @@
             this.tab2.Groups.Add(this.group1);
             this.tab2.Groups.Add(this.group3);
             this.tab2.Groups.Add(this.group2);
-            this.tab2.Groups.Add(this.group4);
+            this.tab2.Groups.Add(this.导出选中内容);
             this.tab2.Label = "处理当前文档";
             this.tab2.Name = "tab2";
             // 
@@ -142,17 +143,24 @@
             this.button5.Name = "button5";
             this.button5.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.button5_Click);
             // 
-            // group4
+            // 导出选中内容
             // 
-            this.group4.Items.Add(this.button6);
-            this.group4.Label = "group4";
-            this.group4.Name = "group4";
+            this.导出选中内容.Items.Add(this.button6);
+            this.导出选中内容.Items.Add(this.button7);
+            this.导出选中内容.Label = "导出选中内容";
+            this.导出选中内容.Name = "导出选中内容";
             // 
             // button6
             // 
             this.button6.Label = "导出选中内容到桌面";
             this.button6.Name = "button6";
             this.button6.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.button6_Click);
+            // 
+            // button7
+            // 
+            this.button7.Label = "去下划线";
+            this.button7.Name = "button7";
+            this.button7.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.button7_Click);
             // 
             // tab1
             // 
@@ -190,8 +198,8 @@
             this.group3.PerformLayout();
             this.group2.ResumeLayout(false);
             this.group2.PerformLayout();
-            this.group4.ResumeLayout(false);
-            this.group4.PerformLayout();
+            this.导出选中内容.ResumeLayout(false);
+            this.导出选中内容.PerformLayout();
             this.tab1.ResumeLayout(false);
             this.tab1.PerformLayout();
             this.group5.ResumeLayout(false);
@@ -217,8 +225,9 @@
         internal Microsoft.Office.Tools.Ribbon.RibbonGroup group5;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton 光标处插入文档;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton 根据字体颜色设置答案;
-        internal Microsoft.Office.Tools.Ribbon.RibbonGroup group4;
+        internal Microsoft.Office.Tools.Ribbon.RibbonGroup 导出选中内容;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton button6;
+        internal Microsoft.Office.Tools.Ribbon.RibbonButton button7;
     }
 
     partial class ThisRibbonCollection
