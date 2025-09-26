@@ -13,6 +13,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UIControls", "UI\UIControls
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WPF应用程序", "WPF应用程序\WPF应用程序.csproj", "{6E2FCBB5-911A-4D66-A2B0-368C6C5E4D3C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaggingCore", "TaggingCore\TaggingCore.csproj", "{7C05B052-3EC9-41DF-94C1-B4D64E4C50CA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaggingRunner", "TaggingRunner\TaggingRunner.csproj", "{AA05D2D8-C715-4AED-8187-C1948726D9F0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +43,14 @@ Global
 		{6E2FCBB5-911A-4D66-A2B0-368C6C5E4D3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6E2FCBB5-911A-4D66-A2B0-368C6C5E4D3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6E2FCBB5-911A-4D66-A2B0-368C6C5E4D3C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7C05B052-3EC9-41DF-94C1-B4D64E4C50CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7C05B052-3EC9-41DF-94C1-B4D64E4C50CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7C05B052-3EC9-41DF-94C1-B4D64E4C50CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7C05B052-3EC9-41DF-94C1-B4D64E4C50CA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AA05D2D8-C715-4AED-8187-C1948726D9F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AA05D2D8-C715-4AED-8187-C1948726D9F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AA05D2D8-C715-4AED-8187-C1948726D9F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AA05D2D8-C715-4AED-8187-C1948726D9F0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

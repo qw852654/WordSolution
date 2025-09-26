@@ -1,10 +1,10 @@
-using System;
 using Microsoft.Office.Interop.Word;
-using Word = Microsoft.Office.Interop.Word;
-using Application = Microsoft.Office.Interop.Word.Application;
-using System.Windows.Forms;
+using System;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Windows.Forms;
+using Application = Microsoft.Office.Interop.Word.Application;
+using Word = Microsoft.Office.Interop.Word;
 
 namespace WordLibrary
 {
@@ -121,7 +121,7 @@ namespace WordLibrary
             }
         }
 
-        public void 导出当前文档为pdf(string 保存的文件路径="源目录", bool 完成的提示 = true)
+        public void 导出当前文档为pdf(string 保存的文件路径 = "源目录", bool 完成的提示 = true)
         {
             Document doc = _document;
             if (保存的文件路径 == "源目录")

@@ -251,6 +251,10 @@
     <None Include="WordAddIn_TemporaryKey.pfx" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\TaggingCore\TaggingCore.csproj">
+      <Project>{7c05b052-3ec9-41df-94c1-b4d64e4c50ca}</Project>
+      <Name>TaggingCore</Name>
+    </ProjectReference>
     <ProjectReference Include="..\WordLibrary\WordLibrary.csproj">
       <Project>{19968e34-78e6-4732-b2eb-dd56c88166be}</Project>
       <Name>WordLibrary</Name>

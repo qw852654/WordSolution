@@ -182,6 +182,13 @@ namespace WordAddIn
                 object replaceAll = Word.WdReplace.wdReplaceAll;
                 boldFind.Execute(Replace: ref replaceAll);
 
+                //删除最后一个段落的内容
+                if (doc.Paragraphs.Count > 0)
+                {
+                    Word.Paragraph lastPara = doc.Paragraphs[doc.Paragraphs.Count];
+                    lastPara.Range.Delete();
+                }
+
                 文档 文档对象 = new 文档(doc);
                 文档对象.导入模板样式并更新文档(false); // 更新文档样式
                 文档对象.根据底纹设置答案(); // 根据底纹设置答案
