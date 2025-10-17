@@ -55,11 +55,5 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\TaggingCore\TaggingCore.csproj">
-      <Project>{7c05b052-3ec9-41df-94c1-b4d64e4c50ca}</Project>
-      <Name>TaggingCore</Name>
-    </ProjectReference>
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
