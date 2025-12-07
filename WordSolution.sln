@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 18
-VisualStudioVersion = 18.0.11111.16 d18.0
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36017.23
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WordAddIn", "WordAddIn\WordAddIn.csproj", "{9E4B5A1F-B1E7-42BF-B060-EEF7E3313021}"
 EndProject
@@ -12,8 +12,6 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UIControls", "UI\UIControls.csproj", "{3C57544E-3ED8-49D4-B282-5658D64BD0A8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WPF应用程序", "WPF应用程序\WPF应用程序.csproj", "{6E2FCBB5-911A-4D66-A2B0-368C6C5E4D3C}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaggingRunner", "TaggingRunner\TaggingRunner.csproj", "{AA05D2D8-C715-4AED-8187-C1948726D9F0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -41,10 +39,6 @@ Global
 		{6E2FCBB5-911A-4D66-A2B0-368C6C5E4D3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6E2FCBB5-911A-4D66-A2B0-368C6C5E4D3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6E2FCBB5-911A-4D66-A2B0-368C6C5E4D3C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{AA05D2D8-C715-4AED-8187-C1948726D9F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{AA05D2D8-C715-4AED-8187-C1948726D9F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{AA05D2D8-C715-4AED-8187-C1948726D9F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{AA05D2D8-C715-4AED-8187-C1948726D9F0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
