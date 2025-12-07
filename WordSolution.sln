@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WordAddIn", "WordAddIn\Word
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WordLibrary", "WordLibrary\WordLibrary.csproj", "{19968E34-78E6-4732-B2EB-DD56C88166BE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "实验", "实验\实验.csproj", "{5CECD849-F27F-4B1D-9F53-3D158FFEE0B6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "测试", "实验\测试.csproj", "{5CECD849-F27F-4B1D-9F53-3D158FFEE0B6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UIControls", "UI\UIControls.csproj", "{3C57544E-3ED8-49D4-B282-5658D64BD0A8}"
 EndProject
