@@ -9,8 +9,10 @@ namespace TagRunner
         public int? ParentId { get; set; }       // null 表示根
         public List<标签> Children { get; set; } = new List<标签>();
 
-        // 新增：题目类型与难度归属到标签
-        public string Type { get; set; }         // 如 "选择题"/"计算题"；可为空意味着未指定
-        public int? Difficulty { get; set; }     // 1..5；null 表示未指定
+        // 类别：如 "题型"、"难度"、"知识点" 等
+        public string Category { get; set; } 
+
+        // 数值语义（用于类别=难度 等场景），其它类别保持为 null
+        public int? NumericValue { get; set; }
     }
 }

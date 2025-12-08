@@ -88,32 +88,51 @@ namespace TagRunner
             return count;
         }
 
+        // 基于标签类别的查询：父标签展开 + 题型/难度/状态筛选
         public List<题目> QueryQuestions(
-            标签管理器 tagManager,
+            标签查询服务 tagManager,
             IEnumerable<int> selectedParentTagIds = null,
-            int? minDifficulty = null,
-            int? maxDifficulty = null,
-            IEnumerable<string> types = null,
+            IEnumerable<string> typeNames = null,      // 目标题型名称集合（如 "选择题","计算题"），匹配 Category="题型" 的标签
+            int? minDifficulty = null,                 // 难度下限（匹配 Category="难度" 的 NumericValue）
+            int? maxDifficulty = null,                 // 难度上限
             string status = null)
         {
-            var typeSet = types != null ? new HashSet<string>(types) : null;
             HashSet<int> targetLeafTagIds = null;
-
             if (selectedParentTagIds != null)
-            {
                 targetLeafTagIds = tagManager.ExpandToLeafIds(selectedParentTagIds);
-            }
+
+            var typeSet = typeNames != null ? new HashSet<string>(typeNames) : null;
 
             var result = Questions.Values.Where(q =>
             {
-                if (minDifficulty.HasValue && q.Difficulty < minDifficulty.Value) return false;
-                if (maxDifficulty.HasValue && q.Difficulty > maxDifficulty.Value) return false;
-                if (typeSet != null && !typeSet.Contains(q.Type)) return false;
-                if (!string.IsNullOrEmpty(status) && !string.Equals(q.Status, status, StringComparison.OrdinalIgnoreCase)) return false;
-
+                // 父标签展开匹配（题目只保存叶子标签）
                 if (targetLeafTagIds != null && targetLeafTagIds.Count > 0)
                 {
                     if (!q.TagIds.Any(t => targetLeafTagIds.Contains(t))) return false;
+                }
+
+                // 状态筛选
+                if (!string.IsNullOrEmpty(status) && !string.Equals(q.Status, status, StringComparison.OrdinalIgnoreCase))
+                    return false;
+
+                // 题型筛选：题目的叶子标签中存在 Category="题型" 且 Name 命中
+                if (typeSet != null)
+                {
+                    var typeTags = tagManager.GetLeafTagsByCategory(q.TagIds, "题型").ToList();
+                    if (typeTags.Count == 0) return false; // 没有题型标签则不通过
+                    if (!typeTags.Any(t => typeSet.Contains(t.Name))) return false;
+                }
+
+                // 难度筛选：取 Category="难度" 的 NumericValue
+                if (minDifficulty.HasValue || maxDifficulty.HasValue)
+                {
+                    var diffTags = tagManager.GetLeafTagsByCategory(q.TagIds, "难度").ToList();
+                    if (diffTags.Count == 0) return false; // 没有难度标签则不通过（可按业务改为跳过过滤）
+                    // 如果存在多个难度标签，定义一个聚合规则。这里取“最大值”作为代表。
+                    int? diff = diffTags.Where(t => t.NumericValue.HasValue).Select(t => t.NumericValue.Value).DefaultIfEmpty().Max();
+                    if (!diff.HasValue) return false;
+                    if (minDifficulty.HasValue && diff.Value < minDifficulty.Value) return false;
+                    if (maxDifficulty.HasValue && diff.Value > maxDifficulty.Value) return false;
                 }
 
                 return true;

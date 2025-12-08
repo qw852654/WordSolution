@@ -39,6 +39,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -51,7 +52,8 @@
     <Compile Include="文件路径助手.cs" />
     <Compile Include="文档转换器.cs" />
     <Compile Include="标签.cs" />
-    <Compile Include="标签管理器.cs" />
+    <Compile Include="标签管理\标签查询服务.cs" />
+    <Compile Include="标签管理\标签维护器.cs" />
     <Compile Include="题目.cs" />
     <Compile Include="题目管理器.cs" />
   </ItemGroup>
