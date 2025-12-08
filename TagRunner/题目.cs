@@ -2,14 +2,17 @@
 
 namespace TagRunner
 {
+    // 题目状态枚举
+    public enum 题目状态
+    {
+        待审核 = 0,
+        已标注 = 1
+    }
+
     public class 题目
     {
-        public string Id { get; set; }                 // "00001"
-        public string Title { get; set; }
-        public List<int> TagIds { get; set; } = new List<int>(); // 叶子标签ID
-        public string SourcePath { get; set; }         // source/00001.docx
-        public string HtmlPath { get; set; }           // html/00001.html
-        public string PdfPath { get; set; }            // pdf/00001.pdf
-        public string Status { get; set; }             // "已标注"/"待审核"
+        public string Id { get; set; }                         // 唯一标识，如 "00001"
+        public List<int> TagIds { get; set; } = new List<int>(); // 关联的叶子标签ID
+        public 题目状态 Status { get; set; } = 题目状态.待审核;   // 默认待审核
     }
 }

@@ -48,8 +48,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Aspose许可授权.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="文件路径助手.cs" />
+    <Compile Include="文件库助手.cs" />
     <Compile Include="文档转换器.cs" />
     <Compile Include="标签.cs" />
     <Compile Include="标签管理\标签查询服务.cs" />
