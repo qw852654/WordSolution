@@ -88,7 +88,7 @@ namespace TagUI
             var tag =e.Node.Tag as 标签;
             if (tag != null) {
                 this.flowLayoutPanel1.Controls.Clear();
-                var questions = _题目服务.按标签查找(tag.Id,_标签服务);
+                var questions = _题目服务.标签ID找题(tag.Id);
                 foreach (var q in questions)
                 {
                     var htmlPath = Path.Combine(_rootDir, "html", $"{q.Id}.html");

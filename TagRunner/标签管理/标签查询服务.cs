@@ -191,11 +191,12 @@ namespace TagRunner
         /// 返回某父标签的所有子孙标签 Id（不包含父标签本身），
         /// 用于在选择父节点时获取其覆盖范围。
         /// </summary>
-        public List<int> GetAllChildTagIds(int parentId)
+        public List<int> 根据ID获取当前标签及其子孙标签列表(int parentId)
         {
             var result = new List<int>();
             var parent = GetById(parentId);
-            if (parent == null) return result;
+            
+            result.Add(parentId); // 包含父标签本身
 
             void Walk(标签 node)
             {
@@ -208,6 +209,7 @@ namespace TagRunner
             }
 
             Walk(parent);
+
             return result;
         }
 

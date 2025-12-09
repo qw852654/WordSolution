@@ -35,10 +35,10 @@
             this.toolStripButton1 = new System.Windows.Forms.ToolStripButton();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.TagsTreeView = new System.Windows.Forms.TreeView();
+            this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
+            this.toolStrip2 = new System.Windows.Forms.ToolStrip();
             this.QuestionCount = new System.Windows.Forms.ToolStripLabel();
             this.toolStripLabel1 = new System.Windows.Forms.ToolStripLabel();
-            this.toolStrip2 = new System.Windows.Forms.ToolStrip();
-            this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.toolStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -107,6 +107,7 @@
             // 
             // TagsTreeView
             // 
+            this.TagsTreeView.CheckBoxes = true;
             this.TagsTreeView.Dock = System.Windows.Forms.DockStyle.Fill;
             this.TagsTreeView.Location = new System.Drawing.Point(0, 0);
             this.TagsTreeView.Name = "TagsTreeView";
@@ -114,17 +115,16 @@
             this.TagsTreeView.TabIndex = 0;
             this.TagsTreeView.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.选中标签后加载题目);
             // 
-            // QuestionCount
+            // flowLayoutPanel1
             // 
-            this.QuestionCount.Name = "QuestionCount";
-            this.QuestionCount.Size = new System.Drawing.Size(69, 22);
-            this.QuestionCount.Text = "题目总数";
-            // 
-            // toolStripLabel1
-            // 
-            this.toolStripLabel1.Name = "toolStripLabel1";
-            this.toolStripLabel1.Size = new System.Drawing.Size(122, 22);
-            this.toolStripLabel1.Text = "toolStripLabel1";
+            this.flowLayoutPanel1.AutoScroll = true;
+            this.flowLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanel1.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
+            this.flowLayoutPanel1.Location = new System.Drawing.Point(0, 25);
+            this.flowLayoutPanel1.Name = "flowLayoutPanel1";
+            this.flowLayoutPanel1.Size = new System.Drawing.Size(876, 813);
+            this.flowLayoutPanel1.TabIndex = 1;
+            this.flowLayoutPanel1.WrapContents = false;
             // 
             // toolStrip2
             // 
@@ -138,16 +138,17 @@
             this.toolStrip2.TabIndex = 0;
             this.toolStrip2.Text = "toolStrip2";
             // 
-            // flowLayoutPanel1
+            // QuestionCount
             // 
-            this.flowLayoutPanel1.AutoScroll = true;
-            this.flowLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.flowLayoutPanel1.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
-            this.flowLayoutPanel1.Location = new System.Drawing.Point(0, 25);
-            this.flowLayoutPanel1.Name = "flowLayoutPanel1";
-            this.flowLayoutPanel1.Size = new System.Drawing.Size(876, 813);
-            this.flowLayoutPanel1.TabIndex = 1;
-            this.flowLayoutPanel1.WrapContents = false;
+            this.QuestionCount.Name = "QuestionCount";
+            this.QuestionCount.Size = new System.Drawing.Size(69, 22);
+            this.QuestionCount.Text = "题目总数";
+            // 
+            // toolStripLabel1
+            // 
+            this.toolStripLabel1.Name = "toolStripLabel1";
+            this.toolStripLabel1.Size = new System.Drawing.Size(122, 22);
+            this.toolStripLabel1.Text = "toolStripLabel1";
             // 
             // MainForm
             // 

@@ -6,6 +6,9 @@ using Aspose.Words.Saving;
 
 namespace TagRunner
 {
+    //<summary>
+    //由项目根目录初始化，主要功能：转换文档格式
+    //</summary>
     public class 文档转换器
     {
         public string RootDirectory { get; }

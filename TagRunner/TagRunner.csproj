@@ -58,7 +58,6 @@
     <Compile Include="标签管理\标签维护器.cs" />
     <Compile Include="题目管理\题目.cs" />
     <Compile Include="题目管理\题目查询服务.cs" />
-    <Compile Include="题目管理\题目维护器.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

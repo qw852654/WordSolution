@@ -6,15 +6,24 @@ using Newtonsoft.Json;
 
 namespace TagRunner
 {
+    //<summary>
+    //使用Question.json初始化，表示一个题库的查询器。主要功能：
+    //- 维护内存的题目列表和标签索引
+    //- 实现本地题目信息、文件的储存与读取
+    //- 提供题目的查询、新增、删除等核心功能
+    //- 提供题目文档的格式转换
+    //</summary>
     public class 题目查询服务
     {
         private readonly 文档转换器 _文档转换器;
         private readonly string _题目Json;
         private List<题目> _题目列表 = new List<题目>();
-        private Dictionary<int, List<题目>> 标签_题目的索引字典 = new Dictionary<int, List<题目>>();
+        private Dictionary<int, List<题目>> 标签id_题目的索引 = new Dictionary<int, List<题目>>();
+        private readonly string 题库根目录;
 
         public 题目查询服务(string rootDirectory)
         {
+            题库根目录 = rootDirectory;
             _文档转换器 = new 文档转换器(rootDirectory);
             _题目Json = Path.Combine(rootDirectory, "Questions.json");
             Load题目列表();
@@ -36,7 +45,7 @@ namespace TagRunner
         }
 
         // 保存题目列表到 JSON 文件
-        public void Save题目列表()
+        public void Store题目列表()
         {
             var json = JsonConvert.SerializeObject(_题目列表, Formatting.Indented);
             File.WriteAllText(_题目Json, json);
@@ -45,39 +54,93 @@ namespace TagRunner
         // 构建标签索引
         public void Build标签题目索引()
         {
-            标签_题目的索引字典.Clear();
+            标签id_题目的索引.Clear();
             foreach (var q in _题目列表)
             {
                 if (q.TagIds == null) continue;
                 foreach (var tagId in q.TagIds)
                 {
-                    if (!标签_题目的索引字典.ContainsKey(tagId))
-                        标签_题目的索引字典[tagId] = new List<题目>();
-                    标签_题目的索引字典[tagId].Add(q);
+                    if (!标签id_题目的索引.ContainsKey(tagId))
+                        标签id_题目的索引[tagId] = new List<题目>();
+                    标签id_题目的索引[tagId].Add(q);
                 }
             }
         }
 
-        // 按标签查找题目
-        public List<题目> 按标签查找(int tagId,标签查询服务 标签服务)
+        // 按标签查找标签及其子标签的题目
+        public List<题目> 标签ID找题(int tagId)
         {
-            var targetIDs=new List<int>();
-            foreach (var childId in 标签服务.GetAllChildTagIds(tagId))
-            {
-                targetIDs.Add(childId);
-            }
+            标签查询服务 标签服务 = new 标签查询服务(Path.Combine(题库根目录,"tags.json"));
+            标签服务.LoadTagsTree();
+            var targetIDs= 标签服务.根据ID获取当前标签及其子孙标签列表(tagId);
             var merged=new List<题目>();
-            foreach (var id in targetIDs)
+            foreach(var id in targetIDs)
             {
-                if (标签_题目的索引字典.ContainsKey(id))
+                if (标签id_题目的索引.ContainsKey(id))
                 {
-                    merged.AddRange(标签_题目的索引字典[id]);
+                    merged.AddRange(标签id_题目的索引[id]);
                 }
             }
+
             return merged
                 .GroupBy(q => q.Id)
                 .Select(g => g.First())
                 .ToList();
+
+        }
+
+        public List<题目> 多标签ID找题(IEnumerable<int> TagIds)
+        {
+            if (TagIds==null) return new List<题目>();
+            var 标签服务=new 标签查询服务(Path.Combine(题库根目录,"tags.json"));
+            标签服务.LoadTagsTree();
+
+            var expeadedTagIdSets=new List<HashSet<int>>();
+            foreach(var tagId in TagIds)
+            {
+                var expanded=标签服务.根据ID获取当前标签及其子孙标签列表(tagId);
+                expeadedTagIdSets.Add( new HashSet<int>(expanded));
+            }
+            if(expeadedTagIdSets.Count==0) return new List<题目>();
+
+            var allQuestionSets=new List<HashSet<int>>();
+            foreach(var set in expeadedTagIdSets)
+            {
+                var questionSet=new HashSet<int>();
+                foreach(var tagId in set)
+                {
+                    if(标签id_题目的索引.TryGetValue(tagId,out var qlist))
+                    {
+                        foreach(var q in qlist)
+                        {
+                            questionSet.Add(q.Id);
+                        }
+                    }
+                }
+                if(questionSet.Count==0)
+                    return new List<题目>();//某个选择没有题目，则交集是空
+                
+                allQuestionSets.Add(questionSet);
+            }
+
+            // 计算交集
+            var 题目交集=new HashSet<int>(allQuestionSets[0]);
+            for(int i=1;i<allQuestionSets.Count;i++)
+            {
+                题目交集.IntersectWith(allQuestionSets[i]);
+                if(题目交集.Count==0)
+                    break;
+            }
+            if(题目交集.Count==0)
+                return new List<题目>();
+
+            var result=_题目列表
+                .Where(q=>题目交集.Contains(q.Id))
+                .GroupBy(q=>q.Id)
+                .Select(g=>g.First())
+                .ToList();
+            return result;
+
         }
 
         // 新增题目
@@ -107,9 +170,9 @@ namespace TagRunner
             {
                 foreach (var tagId in newQ.TagIds)
                 {
-                    if (!标签_题目的索引字典.ContainsKey(tagId))
-                        标签_题目的索引字典[tagId] = new List<题目>();
-                    标签_题目的索引字典[tagId].Add(newQ);
+                    if (!标签id_题目的索引.ContainsKey(tagId))
+                        标签id_题目的索引[tagId] = new List<题目>();
+                    标签id_题目的索引[tagId].Add(newQ);
                 }
             }
 
@@ -134,8 +197,8 @@ namespace TagRunner
                 {
                     foreach (var tagId in newQ.TagIds)
                     {
-                        if (标签_题目的索引字典.ContainsKey(tagId))
-                            标签_题目的索引字典[tagId].Remove(newQ);
+                        if (标签id_题目的索引.ContainsKey(tagId))
+                            标签id_题目的索引[tagId].Remove(newQ);
                     }
                 }
                 return false;
@@ -164,8 +227,8 @@ namespace TagRunner
             {
                 foreach (var tagId in q.TagIds)
                 {
-                    if (标签_题目的索引字典.ContainsKey(tagId))
-                        标签_题目的索引字典[tagId].Remove(q);
+                    if (标签id_题目的索引.ContainsKey(tagId))
+                        标签id_题目的索引[tagId].Remove(q);
                 }
             }
 
@@ -190,10 +253,10 @@ namespace TagRunner
                 {
                     foreach (var tagId in q.TagIds)
                     {
-                        if (!标签_题目的索引字典.ContainsKey(tagId))
-                            标签_题目的索引字典[tagId] = new List<题目>();
-                        if (!标签_题目的索引字典[tagId].Contains(q))
-                            标签_题目的索引字典[tagId].Add(q);
+                        if (!标签id_题目的索引.ContainsKey(tagId))
+                            标签id_题目的索引[tagId] = new List<题目>();
+                        if (!标签id_题目的索引[tagId].Contains(q))
+                            标签id_题目的索引[tagId].Add(q);
                     }
                 }
                 return false;
