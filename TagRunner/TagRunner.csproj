@@ -51,12 +51,14 @@
     <Compile Include="Aspose许可授权.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="文件库助手.cs" />
-    <Compile Include="文档转换器.cs" />
-    <Compile Include="标签.cs" />
+    <Compile Include="通用类.cs" />
+    <Compile Include="题目管理\文档转换器.cs" />
+    <Compile Include="标签管理\标签.cs" />
     <Compile Include="标签管理\标签查询服务.cs" />
     <Compile Include="标签管理\标签维护器.cs" />
-    <Compile Include="题目.cs" />
-    <Compile Include="题目管理器.cs" />
+    <Compile Include="题目管理\题目.cs" />
+    <Compile Include="题目管理\题目查询服务.cs" />
+    <Compile Include="题目管理\题目维护器.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

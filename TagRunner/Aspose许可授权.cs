@@ -6,8 +6,11 @@ using System.Threading.Tasks;
 
 namespace TagRunner
 {
-    internal class Aspose许可授权
+    public class Aspose许可授权
     {
-
+        public static void Authorize()
+        {
+            new Aspose.Words.License().SetLicense(@"C:\Users\BOX\source\repos\qw852654\WordSolution\lib\Aspose.Total.NET.lic");
+        }
     }
 }
