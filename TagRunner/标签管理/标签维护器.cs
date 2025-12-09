@@ -81,7 +81,7 @@ namespace TagRunner
 
             // 持久化并重载，保证索引与树一致
             _query.SaveFlat();
-            _query.Load();
+            _query.LoadTagsTree();
 
             return newId;
         }

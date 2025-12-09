@@ -34,7 +34,7 @@ namespace TestProject
         public void AddTag_创建题型根与子标签_文件保留()
         {
             var query = new 标签查询服务(_tagsPath);
-            query.Load();
+            query.LoadTagsTree();
 
             var maint = new 标签维护器(query);
 
@@ -64,7 +64,7 @@ namespace TestProject
         public void AddTag_难度叶子带数值_文件保留()
         {
             var query = new 标签查询服务(_tagsPath);
-            query.Load();
+            query.LoadTagsTree();
 
             var maint = new 标签维护器(query);
 
@@ -87,7 +87,7 @@ namespace TestProject
         public void Reload_再次加载结构一致_文件保留()
         {
             var query = new 标签查询服务(_tagsPath);
-            query.Load();
+            query.LoadTagsTree();
 
             var maint = new 标签维护器(query);
 
@@ -97,7 +97,7 @@ namespace TestProject
 
             // 新建查询服务重新加载，验证持久化一致
             var query2 = new 标签查询服务(_tagsPath);
-            query2.Load();
+            query2.LoadTagsTree();
 
             var root2 = query2.TagsTree.Single(t => t.Id == rootId);
             Assert.AreEqual(1, root2.Children.Count);

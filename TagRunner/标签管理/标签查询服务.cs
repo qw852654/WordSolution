@@ -23,7 +23,7 @@ namespace TagRunner
         /// 并建立按 Id 的索引字典以便快速查找。
         /// 若文件不存在则初始化为空的树与索引。
         /// </summary>
-        public void Load()
+        public void LoadTagsTree()
         {
             if (!File.Exists(TagsJsonPath))
             {

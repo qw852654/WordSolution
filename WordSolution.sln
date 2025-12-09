@@ -7,8 +7,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WordAddIn", "WordAddIn\Word
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WordLibrary", "WordLibrary\WordLibrary.csproj", "{19968E34-78E6-4732-B2EB-DD56C88166BE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "测试", "实验\测试.csproj", "{5CECD849-F27F-4B1D-9F53-3D158FFEE0B6}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UIControls", "UI\UIControls.csproj", "{3C57544E-3ED8-49D4-B282-5658D64BD0A8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WPF应用程序", "WPF应用程序\WPF应用程序.csproj", "{6E2FCBB5-911A-4D66-A2B0-368C6C5E4D3C}"
@@ -16,6 +14,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TagRunner", "TagRunner\TagRunner.csproj", "{B414CFE2-F5BD-4292-A841-DB5FCD0C718B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestProject", "TestProject\TestProject.csproj", "{E1E981A7-3830-4C42-BE0D-9AF64542296E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TagUI", "TagUI\TagUI.csproj", "{DEBB87D3-13E2-4F42-BB48-4B09DA071BBF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -31,10 +31,6 @@ Global
 		{19968E34-78E6-4732-B2EB-DD56C88166BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{19968E34-78E6-4732-B2EB-DD56C88166BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{19968E34-78E6-4732-B2EB-DD56C88166BE}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5CECD849-F27F-4B1D-9F53-3D158FFEE0B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{5CECD849-F27F-4B1D-9F53-3D158FFEE0B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{5CECD849-F27F-4B1D-9F53-3D158FFEE0B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{5CECD849-F27F-4B1D-9F53-3D158FFEE0B6}.Release|Any CPU.Build.0 = Release|Any CPU
 		{3C57544E-3ED8-49D4-B282-5658D64BD0A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{3C57544E-3ED8-49D4-B282-5658D64BD0A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3C57544E-3ED8-49D4-B282-5658D64BD0A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -51,6 +47,10 @@ Global
 		{E1E981A7-3830-4C42-BE0D-9AF64542296E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E1E981A7-3830-4C42-BE0D-9AF64542296E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E1E981A7-3830-4C42-BE0D-9AF64542296E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DEBB87D3-13E2-4F42-BB48-4B09DA071BBF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DEBB87D3-13E2-4F42-BB48-4B09DA071BBF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DEBB87D3-13E2-4F42-BB48-4B09DA071BBF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DEBB87D3-13E2-4F42-BB48-4B09DA071BBF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
