@@ -3,16 +3,17 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using TagRunner;
+using Microsoft.VisualBasic;
 
 namespace TagUI
 {
-    public partial class MainForm : Form
+    public partial class 选题窗口 : Form
     {
         private string _rootDir;
         private 标签查询服务 _标签服务;
         private 题目查询服务 _题目服务;
 
-        public MainForm()
+        public 选题窗口()
         {
             InitializeComponent();
 
@@ -99,6 +100,95 @@ namespace TagUI
                 }
             }
             
+        }
+
+        private void TagsTreeView_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                TagsTreeView.SelectedNode = e.Node;
+            }
+        }
+
+        private void addChildTag_Click(object sender, EventArgs e)
+        {
+            var selectedNode = TagsTreeView.SelectedNode;
+            int? parentTagId;
+            if(selectedNode.Tag==null)
+            {
+                parentTagId = null;
+            }
+            else
+            {
+                var parentTag = (标签)selectedNode.Tag;
+                parentTagId = parentTag.Id;
+            }
+
+
+
+
+            var inputTagName = Interaction.InputBox("请输入新标签名称：", "添加子标签");
+            
+            if(string.IsNullOrWhiteSpace(inputTagName))
+                return;
+
+            var maintainer = new 标签维护器(_标签服务);
+            int newTagId;
+            try
+            {
+                newTagId=maintainer.新增标签(inputTagName.Trim(), parentTagId);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"添加标签失败：{ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            
+            LoadTagsTree();
+        }
+
+        private void 多标签筛选_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void 新增题目(object sender, EventArgs e)
+        {
+
+        }
+
+        private void removeTag_Click(object sender, EventArgs e)
+        {
+            var selectedNode = TagsTreeView.SelectedNode;
+            if (selectedNode.Tag == null)
+            {
+                MessageBox.Show("无法删除根节点“全部标签”。", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            if(selectedNode.Tag is 标签 selectedTag)
+            {
+                if (selectedTag.ParentId == null)
+                {
+                    MessageBox.Show("无法删除根标签。", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                else
+                {
+                    var maintainer = new 标签维护器(_标签服务);
+                    try
+                    {
+                        maintainer.RemoveTagById(selectedTag.Id);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"删除标签失败：{ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    LoadTagsTree();
+                }
+            }
         }
     }
 }

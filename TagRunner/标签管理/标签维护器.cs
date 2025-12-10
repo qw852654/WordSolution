@@ -25,7 +25,7 @@ namespace TagRunner
         /// 增加后会更新树结构与索引，并持久化到 tags.json。
         /// 当提供了不存在的父标签 Id 时，会弹出确认提示，询问是否作为根标签创建。
         /// </summary>
-        public int AddTag(string name, int? parentId = null, string category = null, int? numericValue = null)
+        public int 新增标签(string name, int? parentId = null, string category = null, int? numericValue = null)
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("标签名称不能为空", nameof(name));
@@ -86,6 +86,7 @@ namespace TagRunner
             return newId;
         }
 
+        
         
 
         /// <summary>

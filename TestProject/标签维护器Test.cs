@@ -39,10 +39,10 @@ namespace TestProject
             var maint = new 标签维护器(query);
 
             // 弹窗：确认将“题型”作为根标签创建，点击“是”
-            var rootId = maint.AddTag(name: "题型", parentId: null, category: "题型");
+            var rootId = maint.新增标签(name: "题型", parentId: null, category: "题型");
 
             // 添加子标签（不弹窗，因为父存在）
-            var childId = maint.AddTag(name: "填空题", parentId: rootId, category: "题型");
+            var childId = maint.新增标签(name: "填空题", parentId: rootId, category: "题型");
 
             // 基本结构断言
             var root = query.TagsTree.Single(t => t.Id == rootId);
@@ -69,10 +69,10 @@ namespace TestProject
             var maint = new 标签维护器(query);
 
             // 弹窗：确认将“难度”作为根标签创建，点击“是”
-            var diffRootId = maint.AddTag(name: "难度", parentId: null, category: "难度");
+            var diffRootId = maint.新增标签(name: "难度", parentId: null, category: "难度");
 
-            var s1 = maint.AddTag(name: "一星", parentId: diffRootId, category: "难度", numericValue: 1);
-            var s3 = maint.AddTag(name: "三星", parentId: diffRootId, category: "难度", numericValue: 3);
+            var s1 = maint.新增标签(name: "一星", parentId: diffRootId, category: "难度", numericValue: 1);
+            var s3 = maint.新增标签(name: "三星", parentId: diffRootId, category: "难度", numericValue: 3);
 
             var root = query.TagsTree.Single(t => t.Id == diffRootId);
             Assert.AreEqual(2, root.Children.Count);
@@ -92,8 +92,8 @@ namespace TestProject
             var maint = new 标签维护器(query);
 
             // 弹窗：确认将“知识点”作为根标签创建，点击“是”
-            var rootId = maint.AddTag(name: "知识点", parentId: null, category: "知识点");
-            var childId = maint.AddTag(name: "数学", parentId: rootId, category: "知识点");
+            var rootId = maint.新增标签(name: "知识点", parentId: null, category: "知识点");
+            var childId = maint.新增标签(name: "数学", parentId: rootId, category: "知识点");
 
             // 新建查询服务重新加载，验证持久化一致
             var query2 = new 标签查询服务(_tagsPath);

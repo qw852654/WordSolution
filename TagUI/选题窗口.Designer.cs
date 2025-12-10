@@ -1,6 +1,6 @@
 ﻿namespace TagUI
 {
-    partial class MainForm
+    partial class 选题窗口
     {
         /// <summary>
         /// Required designer variable.
@@ -28,13 +28,18 @@
         /// </summary>
         private void InitializeComponent()
         {
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
+            this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(选题窗口));
             this.toolStrip1 = new System.Windows.Forms.ToolStrip();
             this.toolStripButton3 = new System.Windows.Forms.ToolStripButton();
             this.toolStripButton2 = new System.Windows.Forms.ToolStripButton();
             this.toolStripButton1 = new System.Windows.Forms.ToolStripButton();
+            this.多标签筛选 = new System.Windows.Forms.ToolStripButton();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.TagsTreeView = new System.Windows.Forms.TreeView();
+            this.增删标签右键弹窗 = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.addChildTag = new System.Windows.Forms.ToolStripMenuItem();
+            this.removeTag = new System.Windows.Forms.ToolStripMenuItem();
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.toolStrip2 = new System.Windows.Forms.ToolStrip();
             this.QuestionCount = new System.Windows.Forms.ToolStripLabel();
@@ -44,6 +49,7 @@
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
+            this.增删标签右键弹窗.SuspendLayout();
             this.toolStrip2.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -53,7 +59,8 @@
             this.toolStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.toolStripButton3,
             this.toolStripButton2,
-            this.toolStripButton1});
+            this.toolStripButton1,
+            this.多标签筛选});
             this.toolStrip1.Location = new System.Drawing.Point(0, 0);
             this.toolStrip1.Name = "toolStrip1";
             this.toolStrip1.Size = new System.Drawing.Size(1076, 27);
@@ -68,6 +75,7 @@
             this.toolStripButton3.Name = "toolStripButton3";
             this.toolStripButton3.Size = new System.Drawing.Size(73, 24);
             this.toolStripButton3.Text = "新增题目";
+            this.toolStripButton3.Click += new System.EventHandler(this.新增题目);
             // 
             // toolStripButton2
             // 
@@ -86,6 +94,16 @@
             this.toolStripButton1.Name = "toolStripButton1";
             this.toolStripButton1.Size = new System.Drawing.Size(43, 24);
             this.toolStripButton1.Text = "刷新";
+            // 
+            // 多标签筛选
+            // 
+            this.多标签筛选.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.多标签筛选.Image = ((System.Drawing.Image)(resources.GetObject("多标签筛选.Image")));
+            this.多标签筛选.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.多标签筛选.Name = "多标签筛选";
+            this.多标签筛选.Size = new System.Drawing.Size(88, 24);
+            this.多标签筛选.Text = "多标签选题";
+            this.多标签筛选.Click += new System.EventHandler(this.多标签筛选_Click);
             // 
             // splitContainer1
             // 
@@ -108,12 +126,37 @@
             // TagsTreeView
             // 
             this.TagsTreeView.CheckBoxes = true;
+            this.TagsTreeView.ContextMenuStrip = this.增删标签右键弹窗;
             this.TagsTreeView.Dock = System.Windows.Forms.DockStyle.Fill;
             this.TagsTreeView.Location = new System.Drawing.Point(0, 0);
             this.TagsTreeView.Name = "TagsTreeView";
             this.TagsTreeView.Size = new System.Drawing.Size(196, 838);
             this.TagsTreeView.TabIndex = 0;
             this.TagsTreeView.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.选中标签后加载题目);
+            this.TagsTreeView.NodeMouseClick += new System.Windows.Forms.TreeNodeMouseClickEventHandler(this.TagsTreeView_NodeMouseClick);
+            // 
+            // 增删标签右键弹窗
+            // 
+            this.增删标签右键弹窗.ImageScalingSize = new System.Drawing.Size(20, 20);
+            this.增删标签右键弹窗.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.addChildTag,
+            this.removeTag});
+            this.增删标签右键弹窗.Name = "contextMenuStrip1";
+            this.增删标签右键弹窗.Size = new System.Drawing.Size(211, 80);
+            // 
+            // addChildTag
+            // 
+            this.addChildTag.Name = "addChildTag";
+            this.addChildTag.Size = new System.Drawing.Size(210, 24);
+            this.addChildTag.Text = "新增子标签";
+            this.addChildTag.Click += new System.EventHandler(this.addChildTag_Click);
+            // 
+            // removeTag
+            // 
+            this.removeTag.Name = "removeTag";
+            this.removeTag.Size = new System.Drawing.Size(210, 24);
+            this.removeTag.Text = "删除标签";
+            this.removeTag.Click += new System.EventHandler(this.removeTag_Click);
             // 
             // flowLayoutPanel1
             // 
@@ -150,15 +193,15 @@
             this.toolStripLabel1.Size = new System.Drawing.Size(122, 22);
             this.toolStripLabel1.Text = "toolStripLabel1";
             // 
-            // MainForm
+            // 选题窗口
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1076, 865);
             this.Controls.Add(this.splitContainer1);
             this.Controls.Add(this.toolStrip1);
-            this.Name = "MainForm";
-            this.Text = "MainForm";
+            this.Name = "选题窗口";
+            this.Text = "选题窗口";
             this.toolStrip1.ResumeLayout(false);
             this.toolStrip1.PerformLayout();
             this.splitContainer1.Panel1.ResumeLayout(false);
@@ -166,6 +209,7 @@
             this.splitContainer1.Panel2.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
             this.splitContainer1.ResumeLayout(false);
+            this.增删标签右键弹窗.ResumeLayout(false);
             this.toolStrip2.ResumeLayout(false);
             this.toolStrip2.PerformLayout();
             this.ResumeLayout(false);
@@ -185,5 +229,9 @@
         private System.Windows.Forms.ToolStrip toolStrip2;
         private System.Windows.Forms.ToolStripLabel QuestionCount;
         private System.Windows.Forms.ToolStripLabel toolStripLabel1;
+        private System.Windows.Forms.ContextMenuStrip 增删标签右键弹窗;
+        private System.Windows.Forms.ToolStripMenuItem addChildTag;
+        private System.Windows.Forms.ToolStripMenuItem removeTag;
+        private System.Windows.Forms.ToolStripButton 多标签筛选;
     }
 }

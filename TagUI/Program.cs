@@ -16,7 +16,7 @@ namespace TagUI
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MainForm());
+            Application.Run(new 选题窗口());
         }
     }
 }
