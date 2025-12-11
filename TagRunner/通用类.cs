@@ -21,7 +21,7 @@ namespace TagRunner
         /// - 创建 tags.json 与 Questions.json（示例数据，若不存在才写入）
         /// - 为示例题目生成占位 DOCX 与示例 HTML（若不存在才写入）
         /// </summary>
-        public static void 初始化(string rootDir)
+        public static void 初始化题库目录(string rootDir)
         {
             if (string.IsNullOrWhiteSpace(rootDir))
                 throw new ArgumentException("根目录不能为空", nameof(rootDir));

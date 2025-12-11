@@ -34,7 +34,7 @@ namespace TestProject
         public void AddTag_创建题型根与子标签_文件保留()
         {
             var query = new 标签查询服务(_tagsPath);
-            query.LoadTagsTree();
+            query.加载标签树();
 
             var maint = new 标签维护器(query);
 
@@ -45,7 +45,7 @@ namespace TestProject
             var childId = maint.新增标签(name: "填空题", parentId: rootId, category: "题型");
 
             // 基本结构断言
-            var root = query.TagsTree.Single(t => t.Id == rootId);
+            var root = query.标签树根.Single(t => t.Id == rootId);
             Assert.AreEqual("题型", root.Name);
             Assert.AreEqual(null, root.ParentId);
 
@@ -64,7 +64,7 @@ namespace TestProject
         public void AddTag_难度叶子带数值_文件保留()
         {
             var query = new 标签查询服务(_tagsPath);
-            query.LoadTagsTree();
+            query.加载标签树();
 
             var maint = new 标签维护器(query);
 
@@ -74,7 +74,7 @@ namespace TestProject
             var s1 = maint.新增标签(name: "一星", parentId: diffRootId, category: "难度", numericValue: 1);
             var s3 = maint.新增标签(name: "三星", parentId: diffRootId, category: "难度", numericValue: 3);
 
-            var root = query.TagsTree.Single(t => t.Id == diffRootId);
+            var root = query.标签树根.Single(t => t.Id == diffRootId);
             Assert.AreEqual(2, root.Children.Count);
             Assert.AreEqual(1, root.Children.Single(t => t.Id == s1).NumericValue);
             Assert.AreEqual(3, root.Children.Single(t => t.Id == s3).NumericValue);
@@ -87,7 +87,7 @@ namespace TestProject
         public void Reload_再次加载结构一致_文件保留()
         {
             var query = new 标签查询服务(_tagsPath);
-            query.LoadTagsTree();
+            query.加载标签树();
 
             var maint = new 标签维护器(query);
 
@@ -97,9 +97,9 @@ namespace TestProject
 
             // 新建查询服务重新加载，验证持久化一致
             var query2 = new 标签查询服务(_tagsPath);
-            query2.LoadTagsTree();
+            query2.加载标签树();
 
-            var root2 = query2.TagsTree.Single(t => t.Id == rootId);
+            var root2 = query2.标签树根.Single(t => t.Id == rootId);
             Assert.AreEqual(1, root2.Children.Count);
             Assert.AreEqual(childId, root2.Children[0].Id);
 

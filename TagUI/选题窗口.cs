@@ -23,7 +23,7 @@ namespace TagUI
 
         private void MainForm_Load(object sender, EventArgs e)
         {
-            初始化环境.初始化(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TestData_题目查询服务"));
+            初始化环境.初始化题库目录(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TestData_题目查询服务"));
             // 根目录按需调整为你的数据根目录（与题目查询服务一致）
             _rootDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TestData_题目查询服务");
 
@@ -35,7 +35,7 @@ namespace TagUI
 
             // 加载标签树
             _标签服务 = new 标签查询服务(tagsPath);
-            _标签服务.LoadTagsTree();
+            _标签服务.加载标签树();
 
             // 初始化题目服务
             _题目服务 = new 题目查询服务(_rootDir);
@@ -56,7 +56,7 @@ namespace TagUI
                 TagsTreeView.Nodes.Add(allNode);
 
                 // 加载根标签（ParentId == null）
-                foreach (var root in _标签服务.TagsTree.Where(t => t.ParentId == null))
+                foreach (var root in _标签服务.标签树根.Where(t => t.ParentId == null))
                 {
                     allNode.Nodes.Add(CreateTagNodeRecursive(root));
                 }
@@ -114,20 +114,25 @@ namespace TagUI
         {
             var selectedNode = TagsTreeView.SelectedNode;
             int? parentTagId;
-            if(selectedNode.Tag==null)
+            string category = null;
+            if (selectedNode.Tag==null)
             {
                 parentTagId = null;
+                category=Interaction.InputBox("请输入新增的类别名：题型、难度、章节、解题思维方法、来源、其他" ,"添加根标签");
             }
             else
             {
                 var parentTag = (标签)selectedNode.Tag;
                 parentTagId = parentTag.Id;
+                category = parentTag.Category;
             }
 
 
-
-
-            var inputTagName = Interaction.InputBox("请输入新标签名称：", "添加子标签");
+            string inputTagName;
+            if (parentTagId==null)
+                inputTagName=category;
+            else
+                inputTagName = Interaction.InputBox("请输入新标签名称：", "添加子标签");
             
             if(string.IsNullOrWhiteSpace(inputTagName))
                 return;
@@ -136,7 +141,7 @@ namespace TagUI
             int newTagId;
             try
             {
-                newTagId=maintainer.新增标签(inputTagName.Trim(), parentTagId);
+                newTagId=maintainer.新增标签(name:inputTagName.Trim(),category:category, parentId:parentTagId);
             }
             catch (Exception ex)
             {
@@ -179,7 +184,7 @@ namespace TagUI
                     var maintainer = new 标签维护器(_标签服务);
                     try
                     {
-                        maintainer.RemoveTagById(selectedTag.Id);
+                        maintainer.ID删除标签(selectedTag.Id);
                     }
                     catch (Exception ex)
                     {

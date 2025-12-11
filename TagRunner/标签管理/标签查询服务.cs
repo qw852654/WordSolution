@@ -3,19 +3,32 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
+using System.Windows.Forms;
+using TagRunner.标签管理;
 
 namespace TagRunner
 {
-    public class 标签查询服务
+
+
+    //<summary>
+    //主要根据标签json文件加载标签树、查询标签、索引标签等查询服务
+    //提供：
+    //- 加载标签树（从扁平化 JSON 文件，无层级，只有父子节点记录）
+    //- 标签Id查找标签名字
+    //- 标签Id查找子标签列表
+    //- 
+    //</summary>
+    public class 标签查询服务:I标签查询服务
     {
-        public List<标签> TagsTree { get; private set; } = new List<标签>();
+        public List<标签> 标签树根 { get; private set; } = new List<标签>();
         public string TagsJsonPath { get; }
 
-        private Dictionary<int, 标签> _byId = new Dictionary<int, 标签>();
+        private Dictionary<int, 标签> 标签ID字典 = new Dictionary<int, 标签>();
 
         public 标签查询服务(string tagsJsonPath)
         {
             TagsJsonPath = tagsJsonPath ?? throw new ArgumentNullException(nameof(tagsJsonPath));
+            加载标签树();
         }
 
         /// <summary>
@@ -23,20 +36,20 @@ namespace TagRunner
         /// 并建立按 Id 的索引字典以便快速查找。
         /// 若文件不存在则初始化为空的树与索引。
         /// </summary>
-        public void LoadTagsTree()
+        public void 加载标签树()
         {
             if (!File.Exists(TagsJsonPath))
             {
-                TagsTree = new List<标签>();
-                _byId = new Dictionary<int, 标签>();
+                //提示标签文件不存在
+                MessageBox.Show($"标签文件不存在：{TagsJsonPath}，初始化失败。", "标签文件缺失", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
             var json = File.ReadAllText(TagsJsonPath);
             var flat = JsonConvert.DeserializeObject<List<标签>>(json) ?? new List<标签>();
 
-            // 构建索引与节点（包含 Category、NumericValue）
-            _byId = flat.ToDictionary(t => t.Id, t => new 标签
+            // 构建标签ID字典
+            标签ID字典 = flat.ToDictionary(t => t.Id, t => new 标签
             {
                 Id = t.Id,
                 Name = t.Name,
@@ -54,31 +67,31 @@ namespace TagRunner
             //    - 若找不到父（数据缺失），则将其加入 orphans（不作为根，以免误分类）。
             // 4) 可选：orphans 留存（这里不加入到树），避免错误地成为根；后续可由调用方处理或告警。
 
-            TagsTree = new List<标签>();
-            var orphans = new List<标签>();
+            标签树根 = new List<标签>();
+            var 父节点丢失的标签 = new List<标签>();
 
             // 第一遍：仅根节点
-            foreach (var tag in _byId.Values)
+            foreach (var tag in 标签ID字典.Values)
             {
                 if (!tag.ParentId.HasValue)
                 {
-                    TagsTree.Add(tag);
+                    标签树根.Add(tag);
                 }
             }
 
             // 第二遍：连接子节点到父
-            foreach (var tag in _byId.Values)
+            foreach (var tag in 标签ID字典.Values)
             {
                 if (tag.ParentId.HasValue)
                 {
-                    if (_byId.TryGetValue(tag.ParentId.Value, out var parent))
+                    if (标签ID字典.TryGetValue(tag.ParentId.Value, out var parent))
                     {
                         parent.Children.Add(tag);
                     }
                     else
                     {
                         // 父缺失：收集为孤儿，避免错误加入根
-                        orphans.Add(tag);
+                        父节点丢失的标签.Add(tag);
                     }
                 }
             }
@@ -87,84 +100,67 @@ namespace TagRunner
             // 如果业务需要，也可以：TagsTree.AddRange(orphans);
         }
 
-        // 计划（伪代码）:
-        // - 目标：在保存扁平化 JSON 时保留 null 值（例如 ParentId、Category、NumericValue 的 null）。
-        // - 修改 SaveFlat：
-        //   1) 保留当前扁平化逻辑（Id/Name/ParentId/Category/NumericValue）。
-        //   2) 将 JsonSerializerSettings 的 NullValueHandling 改为 Include，DefaultValueHandling 改为 Include，或移除设置使其默认包含 null。
-        //   3) 继续采用临时文件写入与备份策略，确保写入安全。
-        // - 验证：生成的 JSON 中应出现属性值为 null 的键。
+        
 
-        public void SaveFlat()
-        {
-            var flat = Flatten().Select(t => new
-            {
-                Id = t.Id,
-                Name = t.Name,
-                ParentId = t.ParentId,
-                Category = t.Category,
-                NumericValue = t.NumericValue
-            }).ToList();
-
-            // 保留 null 值
-            var settings = new JsonSerializerSettings
-            {
-                NullValueHandling = NullValueHandling.Include,
-                DefaultValueHandling = DefaultValueHandling.Include
-            };
-            var json = JsonConvert.SerializeObject(flat, Formatting.Indented, settings);
-
-            var dir = Path.GetDirectoryName(TagsJsonPath);
-            Directory.CreateDirectory(dir ?? ".");
-
-            var tmpPath = Path.Combine(dir ?? ".", Path.GetFileName(TagsJsonPath) + ".tmp");
-            var bakPath = Path.Combine(dir ?? ".", Path.GetFileNameWithoutExtension(TagsJsonPath) +
-                                                 "_bak_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".json");
-
-            try
-            {
-                using (var fs = new FileStream(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None))
-                using (var sw = new StreamWriter(fs))
-                {
-                    sw.Write(json);
-                    sw.Flush();
-                    fs.Flush(true);
-                }
-
-                if (File.Exists(TagsJsonPath))
-                {
-                    File.Copy(TagsJsonPath, bakPath, overwrite: true);
-                }
-
-                if (File.Exists(TagsJsonPath))
-                {
-                    File.Delete(TagsJsonPath);
-                }
-                File.Move(tmpPath, TagsJsonPath);
-            }
-            catch
-            {
-                throw;
-            }
-            finally
-            {
-                if (File.Exists(tmpPath))
-                {
-                    try { File.Delete(tmpPath); } catch { /* ignore */ }
-                }
-            }
-        }
+        
 
         /// <summary>
         /// 深度优先遍历当前标签树，返回所有标签节点的序列（包含根与子孙节点）。
         /// </summary>
-        public IEnumerable<标签> Flatten()
+        public IEnumerable<标签> 遍历标签树获取标签()
         {
-            foreach (var root in TagsTree)
+            foreach (var root in 标签树根)
             {
                 foreach (var t in Traverse(root))
                     yield return t;
             }
+        }
+
+        /// <summary>
+        /// 判断在同一父节点下是否存在同名（且同类别）标签。
+        /// 若 parentId 为 null，则判断根集合；类别为 null 也参与匹配（严格比较）。
+        /// </summary>
+        public bool ExistsByName(string name, int? parentId, string category = null)
+        {
+            var targetName = (name ?? string.Empty).Trim();
+            // 根集合
+            if (!parentId.HasValue)
+            {
+                return 标签树根.Any(t =>
+                    string.Equals(t.Name, targetName, StringComparison.Ordinal) &&
+                    string.Equals(t.Category, category, StringComparison.Ordinal));
+            }
+
+            // 父节点存在性与其子集合
+            var parent = GetById(parentId.Value);
+            if (parent == null) return false;
+
+            var children = parent.Children ?? new List<标签>();
+            return children.Any(t =>
+                string.Equals(t.Name, targetName, StringComparison.Ordinal) &&
+                string.Equals(t.Category, category, StringComparison.Ordinal));
+        }
+
+        /// <summary>
+        /// 查找同一父节点下的指定名称（且类别）标签，找不到返回 null。
+        /// </summary>
+        public 标签 FindTagByName(string name, int? parentId, string category = null)
+        {
+            var targetName = (name ?? string.Empty).Trim();
+            if (!parentId.HasValue)
+            {
+                return 标签树根.FirstOrDefault(t =>
+                    string.Equals(t.Name, targetName, StringComparison.Ordinal) &&
+                    string.Equals(t.Category, category, StringComparison.Ordinal));
+            }
+
+            var parent = GetById(parentId.Value);
+            if (parent == null) return null;
+
+            var children = parent.Children ?? new List<标签>();
+            return children.FirstOrDefault(t =>
+                string.Equals(t.Name, targetName, StringComparison.Ordinal) &&
+                string.Equals(t.Category, category, StringComparison.Ordinal));
         }
 
         /// <summary>
@@ -185,7 +181,7 @@ namespace TagRunner
         /// 根据标签 Id 从内部字典中快速查找并返回标签对象。
         /// 若不存在则返回 null。
         /// </summary>
-        public 标签 GetById(int id) => _byId.TryGetValue(id, out var t) ? t : null;
+        public 标签 GetById(int id) => 标签ID字典.TryGetValue(id, out var t) ? t : null;
 
         /// <summary>
         /// 返回某父标签的所有子孙标签 Id（不包含父标签本身），

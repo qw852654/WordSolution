@@ -71,7 +71,7 @@ namespace TagRunner
         public List<题目> 标签ID找题(int tagId)
         {
             标签查询服务 标签服务 = new 标签查询服务(Path.Combine(题库根目录,"tags.json"));
-            标签服务.LoadTagsTree();
+            标签服务.加载标签树();
             var targetIDs= 标签服务.根据ID获取当前标签及其子孙标签列表(tagId);
             var merged=new List<题目>();
             foreach(var id in targetIDs)
@@ -93,7 +93,7 @@ namespace TagRunner
         {
             if (TagIds==null) return new List<题目>();
             var 标签服务=new 标签查询服务(Path.Combine(题库根目录,"tags.json"));
-            标签服务.LoadTagsTree();
+            标签服务.加载标签树();
 
             var expeadedTagIdSets=new List<HashSet<int>>();
             foreach(var tagId in TagIds)

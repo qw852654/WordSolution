@@ -1,37 +1,45 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 
 namespace TagRunner
 {
     /// <summary>
-    /// 标签维护器：基于标签查询服务执行写操作（新增标签），自动分配唯一 Id。
-    /// 使用前请确保查询服务已 Load。
+    /// 用标签查询服务初始化，负责标签的写入与持久化
+    /// 提供：
+    /// - 新增标签
+    /// - 删除标签
+    /// - 修改标签
+    /// 
+    /// 写入本地文件和持久化是私有方法，不对外暴露。
     /// </summary>
     public class 标签维护器
     {
         private readonly 标签查询服务 _query;
+        private string TagsJsonPath { get; }
 
         public 标签维护器(标签查询服务 queryService)
         {
             _query = queryService ?? throw new ArgumentNullException(nameof(queryService));
+            TagsJsonPath = _query.TagsJsonPath;
         }
 
         /// <summary>
-        /// 新增标签（自动生成唯一 Id）。必须提供非空名称。
-        /// 可选：父标签Id、类别（如“题型”“难度”“知识点”）、数值（用于“难度”等）。
-        /// 增加前会检查在同一父节点下是否已存在同名（且同类别）标签。
-        /// 增加后会更新树结构与索引，并持久化到 tags.json。
-        /// 当提供了不存在的父标签 Id 时，会弹出确认提示，询问是否作为根标签创建。
+        /// 新增标签（自动生成唯一 Id）。必须提供非空名称和类别。
         /// </summary>
-        public int 新增标签(string name, int? parentId = null, string category = null, int? numericValue = null)
+        public int 新增标签(string name, string category, int? parentId = null,  int? numericValue = null)
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("标签名称不能为空", nameof(name));
 
+            if (parentId == null)
+                category = name;
+
             // 先检查重复（同一父节点 + 同类别 + 同名）
-            if (ExistsByName(name.Trim(), parentId, category))
+            if (_query.ExistsByName(name.Trim(), parentId, category))
                 throw new InvalidOperationException($"已存在同名标签：'{name.Trim()}'（父Id={parentId?.ToString() ?? "null"}，类别={category ?? "null"}）");
 
 
@@ -72,7 +80,7 @@ namespace TagRunner
             // 更新树结构
             if (parent == null)
             {
-                _query.TagsTree.Add(newTag);
+                _query.标签树根.Add(newTag);
             }
             else
             {
@@ -80,61 +88,24 @@ namespace TagRunner
             }
 
             // 持久化并重载，保证索引与树一致
-            _query.SaveFlat();
-            _query.LoadTagsTree();
+            写入标签到Json();
+            _query.加载标签树();
 
             return newId;
         }
 
         
-        
-
-        /// <summary>
-        /// 判断在同一父节点下是否存在同名（且同类别）标签。
-        /// 若 parentId 为 null，则判断根集合；类别为 null 也参与匹配（严格比较）。
-        /// </summary>
-        public bool ExistsByName(string name, int? parentId, string category = null)
+        public bool ID删除标签(int tagId)
         {
-            var targetName = (name ?? string.Empty).Trim();
-            // 根集合
-            if (!parentId.HasValue)
-            {
-                return _query.TagsTree.Any(t =>
-                    string.Equals(t.Name, targetName, StringComparison.Ordinal) &&
-                    string.Equals(t.Category, category, StringComparison.Ordinal));
-            }
-
-            // 父节点存在性与其子集合
-            var parent = _query.GetById(parentId.Value);
-            if (parent == null) return false;
-
-            var children = parent.Children ?? new List<标签>();
-            return children.Any(t =>
-                string.Equals(t.Name, targetName, StringComparison.Ordinal) &&
-                string.Equals(t.Category, category, StringComparison.Ordinal));
+            throw new NotImplementedException();
         }
 
-        /// <summary>
-        /// 查找同一父节点下的指定名称（且类别）标签，找不到返回 null。
-        /// </summary>
-        public 标签 FindTagByName(string name, int? parentId, string category = null)
+        public bool ID修改标签(int tagId, string newName, string newCategory, int? newNumericValue = null)
         {
-            var targetName = (name ?? string.Empty).Trim();
-            if (!parentId.HasValue)
-            {
-                return _query.TagsTree.FirstOrDefault(t =>
-                    string.Equals(t.Name, targetName, StringComparison.Ordinal) &&
-                    string.Equals(t.Category, category, StringComparison.Ordinal));
-            }
-
-            var parent = _query.GetById(parentId.Value);
-            if (parent == null) return null;
-
-            var children = parent.Children ?? new List<标签>();
-            return children.FirstOrDefault(t =>
-                string.Equals(t.Name, targetName, StringComparison.Ordinal) &&
-                string.Equals(t.Category, category, StringComparison.Ordinal));
+            throw new NotImplementedException();
         }
+
+
 
         /// <summary>
         /// 通过遍历当前标签树（含所有子孙），生成新的唯一 Id：取现有最大 Id + 1。
@@ -143,12 +114,74 @@ namespace TagRunner
         private int GenerateNewId()
         {
             int maxId = 0;
-            foreach (var t in _query.Flatten())
+            foreach (var t in _query.遍历标签树获取标签())
             {
                 if (t.Id > maxId) maxId = t.Id;
             }
             // 若无标签则从 1 开始
             return checked(maxId + 1);
         }
+
+        private void 写入标签到Json()
+        {
+            var flat = _query.遍历标签树获取标签().Select(t => new
+            {
+                Id = t.Id,
+                Name = t.Name,
+                ParentId = t.ParentId,
+                Category = t.Category,
+                NumericValue = t.NumericValue
+            }).ToList();
+
+            // 保留 null 值
+            var settings = new JsonSerializerSettings
+            {
+                NullValueHandling = NullValueHandling.Include,
+                DefaultValueHandling = DefaultValueHandling.Include
+            };
+            var json = JsonConvert.SerializeObject(flat, Formatting.Indented, settings);
+
+            var dir = Path.GetDirectoryName(TagsJsonPath);
+            Directory.CreateDirectory(dir ?? ".");
+
+            var tmpPath = Path.Combine(dir ?? ".", Path.GetFileName(TagsJsonPath) + ".tmp");
+            var bakPath = Path.Combine(dir ?? ".", Path.GetFileNameWithoutExtension(TagsJsonPath) +
+                                                 "_bak_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".json");
+
+            try
+            {
+                using (var fs = new FileStream(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                using (var sw = new StreamWriter(fs))
+                {
+                    sw.Write(json);
+                    sw.Flush();
+                    fs.Flush(true);
+                }
+
+                if (File.Exists(TagsJsonPath))
+                {
+                    File.Copy(TagsJsonPath, bakPath, overwrite: true);
+                }
+
+                if (File.Exists(TagsJsonPath))
+                {
+                    File.Delete(TagsJsonPath);
+                }
+                File.Move(tmpPath, TagsJsonPath);
+            }
+            catch
+            {
+                throw;
+            }
+            finally
+            {
+                if (File.Exists(tmpPath))
+                {
+                    try { File.Delete(tmpPath); } catch { /* ignore */ }
+                }
+            }
+        }
     }
+
+
 }
