@@ -10,8 +10,8 @@ namespace TagUI
     public partial class 选题窗口 : Form
     {
         private string _rootDir;
-        private 标签查询服务 _标签服务;
-        private 题目查询服务 _题目服务;
+        private 标签查询服务 _标签查询器;
+        private 题目服务 _题目服务;
 
         public 选题窗口()
         {
@@ -19,32 +19,57 @@ namespace TagUI
 
             // 窗体加载事件：自动加载标签树
             this.Load += MainForm_Load;
+
+
+
         }
 
         private void MainForm_Load(object sender, EventArgs e)
         {
-            初始化环境.初始化题库目录(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TestData_题目查询服务"));
-            // 根目录按需调整为你的数据根目录（与题目查询服务一致）
-            _rootDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TestData_题目查询服务");
+            var rootDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TestData_题目查询服务");
+            重建环境并刷新界面(rootDir);
+        }
+
+        private void 重建环境并刷新界面(string rootDir)
+        {
+            _rootDir = rootDir;
+
+            var tagsPath = Path.Combine(_rootDir, "tags.json");
+
+            if (!File.Exists(tagsPath))
+            {
+                var result = MessageBox.Show($"指定的题库目录不存在，是否在该位置创建题库", "错误", MessageBoxButtons.YesNo);
+                if (result == DialogResult.Yes)
+                {
+                    初始化环境.初始化题库目录(_rootDir);
+                }
+                else
+                {
+                    return;
+                }
+            }
+            
 
             // 确保标签文件存在
-            var tagsPath = Path.Combine(_rootDir, "tags.json");
+            
             Directory.CreateDirectory(_rootDir);
             if (!File.Exists(tagsPath)) 
                 File.WriteAllText(tagsPath, "[]");
 
             // 加载标签树
-            _标签服务 = new 标签查询服务(tagsPath);
-            _标签服务.加载标签树();
+            _标签查询器 = new 标签查询服务(rootDir);
+            _标签查询器.加载标签树();
 
             // 初始化题目服务
-            _题目服务 = new 题目查询服务(_rootDir);
+            _题目服务 = new 题目服务(_rootDir);
 
-            LoadTagsTree();
+            加载treeView();
+
+            
         }
 
         // 将标签树加载到 TreeView（TagsTreeView）
-        private void LoadTagsTree()
+        private void 加载treeView()
         {
             TagsTreeView.BeginUpdate();
             try
@@ -56,7 +81,7 @@ namespace TagUI
                 TagsTreeView.Nodes.Add(allNode);
 
                 // 加载根标签（ParentId == null）
-                foreach (var root in _标签服务.标签树根.Where(t => t.ParentId == null))
+                foreach (var root in _标签查询器.标签树根.Where(t => t.ParentId == null))
                 {
                     allNode.Nodes.Add(CreateTagNodeRecursive(root));
                 }
@@ -137,7 +162,7 @@ namespace TagUI
             if(string.IsNullOrWhiteSpace(inputTagName))
                 return;
 
-            var maintainer = new 标签维护器(_标签服务);
+            var maintainer = new 标签维护器(_标签查询器);
             int newTagId;
             try
             {
@@ -150,7 +175,7 @@ namespace TagUI
             }
 
             
-            LoadTagsTree();
+            加载treeView();
         }
 
         private void 多标签筛选_Click(object sender, EventArgs e)
@@ -181,7 +206,7 @@ namespace TagUI
                 }
                 else
                 {
-                    var maintainer = new 标签维护器(_标签服务);
+                    var maintainer = new 标签维护器(_标签查询器);
                     try
                     {
                         maintainer.ID删除标签(selectedTag.Id);
@@ -191,9 +216,15 @@ namespace TagUI
                         MessageBox.Show($"删除标签失败：{ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
-                    LoadTagsTree();
+                    加载treeView();
                 }
             }
+        }
+
+        private void 切换个人题库(object sender, EventArgs e)
+        {
+            this._rootDir = @"E:\Desktop\个人题库";
+            重建环境并刷新界面(_rootDir);
         }
     }
 }

@@ -7,11 +7,15 @@ using System.Text;
 using System.Windows.Forms;
 using WordLibrary;
 using Microsoft.VisualBasic;
+using TagUI;
+using TagRunner;
 
 namespace WordAddIn
 {
     public partial class MyRibbon
     {
+        private string 题库路径= @"E:\Desktop\个人题库";
+
         private void Ribbon1_Load(object sender, RibbonUIEventArgs e)
         {
 
@@ -251,6 +255,54 @@ namespace WordAddIn
             {
                 System.Windows.Forms.MessageBox.Show($"操作失败: {ex.Message}");
             }
+        }
+
+        private void 插入选中题目(object sender, RibbonControlEventArgs e)
+        {
+            
+
+
+            var app = Globals.ThisAddIn.Application;
+            var quesRange = app.Selection.Range;
+
+            if(quesRange.StoryLength==0)
+            {
+                MessageBox.Show("请先选择题目内容");
+                return;
+            }
+
+
+            var quesDoc=app.Documents.Add();
+
+            quesDoc.Content.Delete();
+
+            quesDoc.Content.FormattedText = quesRange.FormattedText;
+
+            //激活标签窗口筛选标签
+            var 查询器=new 标签查询服务(题库路径);
+            List<标签> quesTags=null;
+
+            using(var dlg=new TagUI.标签选择窗口(查询器))
+            {
+                if (dlg.ShowDialog() == DialogResult.OK)
+                    quesTags = (List<标签>)dlg.标签列表;
+            }
+
+            if (quesTags==null || quesTags.Count==0)
+            {
+                MessageBox.Show("未选择标签，操作取消");
+                quesDoc.Close(SaveChanges:WdSaveOptions.wdDoNotSaveChanges);
+                return;
+            }
+
+            var 题目管理器=new TagRunner.题目服务(题库路径);
+            var quesTempPath=System.IO.Path.GetTempFileName()+ $"题目_{DateTime.Now:yyyyMMdd_HHmmssfff}.docx";
+            quesDoc.SaveAs2(quesTempPath, WdSaveFormat.wdFormatXMLDocument);
+
+
+            if(题目管理器.新增题目(quesTags, quesTempPath))
+                MessageBox.Show("题目添加成功");
+            
         }
     }
 }

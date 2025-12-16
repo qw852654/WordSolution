@@ -44,6 +44,7 @@
             this.toolStrip2 = new System.Windows.Forms.ToolStrip();
             this.QuestionCount = new System.Windows.Forms.ToolStripLabel();
             this.toolStripLabel1 = new System.Windows.Forms.ToolStripLabel();
+            this.toolStripButton4 = new System.Windows.Forms.ToolStripButton();
             this.toolStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -60,7 +61,8 @@
             this.toolStripButton3,
             this.toolStripButton2,
             this.toolStripButton1,
-            this.多标签筛选});
+            this.多标签筛选,
+            this.toolStripButton4});
             this.toolStrip1.Location = new System.Drawing.Point(0, 0);
             this.toolStrip1.Name = "toolStrip1";
             this.toolStrip1.Size = new System.Drawing.Size(1076, 27);
@@ -142,19 +144,19 @@
             this.addChildTag,
             this.removeTag});
             this.增删标签右键弹窗.Name = "contextMenuStrip1";
-            this.增删标签右键弹窗.Size = new System.Drawing.Size(211, 80);
+            this.增删标签右键弹窗.Size = new System.Drawing.Size(154, 52);
             // 
             // addChildTag
             // 
             this.addChildTag.Name = "addChildTag";
-            this.addChildTag.Size = new System.Drawing.Size(210, 24);
+            this.addChildTag.Size = new System.Drawing.Size(153, 24);
             this.addChildTag.Text = "新增子标签";
             this.addChildTag.Click += new System.EventHandler(this.addChildTag_Click);
             // 
             // removeTag
             // 
             this.removeTag.Name = "removeTag";
-            this.removeTag.Size = new System.Drawing.Size(210, 24);
+            this.removeTag.Size = new System.Drawing.Size(153, 24);
             this.removeTag.Text = "删除标签";
             this.removeTag.Click += new System.EventHandler(this.removeTag_Click);
             // 
@@ -192,6 +194,16 @@
             this.toolStripLabel1.Name = "toolStripLabel1";
             this.toolStripLabel1.Size = new System.Drawing.Size(122, 22);
             this.toolStripLabel1.Text = "toolStripLabel1";
+            // 
+            // toolStripButton4
+            // 
+            this.toolStripButton4.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.toolStripButton4.Image = ((System.Drawing.Image)(resources.GetObject("toolStripButton4.Image")));
+            this.toolStripButton4.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.toolStripButton4.Name = "toolStripButton4";
+            this.toolStripButton4.Size = new System.Drawing.Size(118, 24);
+            this.toolStripButton4.Text = "切换到个人题库";
+            this.toolStripButton4.Click += new System.EventHandler(this.切换个人题库);
             // 
             // 选题窗口
             // 
@@ -233,5 +245,6 @@
         private System.Windows.Forms.ToolStripMenuItem addChildTag;
         private System.Windows.Forms.ToolStripMenuItem removeTag;
         private System.Windows.Forms.ToolStripButton 多标签筛选;
+        private System.Windows.Forms.ToolStripButton toolStripButton4;
     }
 }

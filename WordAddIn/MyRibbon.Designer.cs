@@ -52,6 +52,9 @@
             this.tab1 = this.Factory.CreateRibbonTab();
             this.group5 = this.Factory.CreateRibbonGroup();
             this.光标处插入文档 = this.Factory.CreateRibbonButton();
+            this.tab3 = this.Factory.CreateRibbonTab();
+            this.group4 = this.Factory.CreateRibbonGroup();
+            this.button8 = this.Factory.CreateRibbonButton();
             this.处理当前文档.SuspendLayout();
             this.group1.SuspendLayout();
             this.tab2.SuspendLayout();
@@ -60,6 +63,8 @@
             this.导出选中内容.SuspendLayout();
             this.tab1.SuspendLayout();
             this.group5.SuspendLayout();
+            this.tab3.SuspendLayout();
+            this.group4.SuspendLayout();
             this.SuspendLayout();
             // 
             // 处理当前文档
@@ -180,6 +185,25 @@
             this.光标处插入文档.Name = "光标处插入文档";
             this.光标处插入文档.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.光标处插入文档_Click);
             // 
+            // tab3
+            // 
+            this.tab3.Groups.Add(this.group4);
+            this.tab3.Label = "题库";
+            this.tab3.Name = "tab3";
+            // 
+            // group4
+            // 
+            this.group4.Items.Add(this.button8);
+            this.group4.Label = "录入题目";
+            this.group4.Name = "group4";
+            // 
+            // button8
+            // 
+            this.button8.Label = "插入选中题目";
+            this.button8.Name = "button8";
+            this.button8.ShowImage = true;
+            this.button8.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.插入选中题目);
+            // 
             // MyRibbon
             // 
             this.Name = "MyRibbon";
@@ -187,6 +211,7 @@
             this.Tabs.Add(this.处理当前文档);
             this.Tabs.Add(this.tab2);
             this.Tabs.Add(this.tab1);
+            this.Tabs.Add(this.tab3);
             this.Load += new Microsoft.Office.Tools.Ribbon.RibbonUIEventHandler(this.Ribbon1_Load);
             this.处理当前文档.ResumeLayout(false);
             this.处理当前文档.PerformLayout();
@@ -204,6 +229,10 @@
             this.tab1.PerformLayout();
             this.group5.ResumeLayout(false);
             this.group5.PerformLayout();
+            this.tab3.ResumeLayout(false);
+            this.tab3.PerformLayout();
+            this.group4.ResumeLayout(false);
+            this.group4.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -228,6 +257,9 @@
         internal Microsoft.Office.Tools.Ribbon.RibbonGroup 导出选中内容;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton button6;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton button7;
+        private Microsoft.Office.Tools.Ribbon.RibbonTab tab3;
+        internal Microsoft.Office.Tools.Ribbon.RibbonGroup group4;
+        internal Microsoft.Office.Tools.Ribbon.RibbonButton button8;
     }
 
     partial class ThisRibbonCollection

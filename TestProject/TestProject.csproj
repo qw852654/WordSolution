@@ -54,6 +54,7 @@
     <Compile Include="题目查询服务Test.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>

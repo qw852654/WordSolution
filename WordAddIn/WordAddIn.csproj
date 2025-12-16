@@ -223,6 +223,7 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <None Include="app.config" />
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
@@ -251,6 +252,14 @@
     <None Include="WordAddIn_TemporaryKey.pfx" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\TagRunner\TagRunner.csproj">
+      <Project>{b414cfe2-f5bd-4292-a841-db5fcd0c718b}</Project>
+      <Name>TagRunner</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TagUI\TagUI.csproj">
+      <Project>{debb87d3-13e2-4f42-bb48-4b09da071bbf}</Project>
+      <Name>TagUI</Name>
+    </ProjectReference>
     <ProjectReference Include="..\WordLibrary\WordLibrary.csproj">
       <Project>{19968e34-78e6-4732-b2eb-dd56c88166be}</Project>
       <Name>WordLibrary</Name>

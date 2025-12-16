@@ -23,10 +23,12 @@ namespace TagRunner
         public List<标签> 标签树根 { get; private set; } = new List<标签>();
         public string TagsJsonPath { get; }
 
-        private Dictionary<int, 标签> 标签ID字典 = new Dictionary<int, 标签>();
+        private Dictionary<int, 标签> 标签ID字典_即标签树 = new Dictionary<int, 标签>();
 
-        public 标签查询服务(string tagsJsonPath)
+        public 标签查询服务(string 题库目录)
         {
+
+            var tagsJsonPath = Path.Combine(题库目录, "tags.json");
             TagsJsonPath = tagsJsonPath ?? throw new ArgumentNullException(nameof(tagsJsonPath));
             加载标签树();
         }
@@ -49,7 +51,7 @@ namespace TagRunner
             var flat = JsonConvert.DeserializeObject<List<标签>>(json) ?? new List<标签>();
 
             // 构建标签ID字典
-            标签ID字典 = flat.ToDictionary(t => t.Id, t => new 标签
+            标签ID字典_即标签树 = flat.ToDictionary(t => t.Id, t => new 标签
             {
                 Id = t.Id,
                 Name = t.Name,
@@ -71,7 +73,7 @@ namespace TagRunner
             var 父节点丢失的标签 = new List<标签>();
 
             // 第一遍：仅根节点
-            foreach (var tag in 标签ID字典.Values)
+            foreach (var tag in 标签ID字典_即标签树.Values)
             {
                 if (!tag.ParentId.HasValue)
                 {
@@ -80,11 +82,11 @@ namespace TagRunner
             }
 
             // 第二遍：连接子节点到父
-            foreach (var tag in 标签ID字典.Values)
+            foreach (var tag in 标签ID字典_即标签树.Values)
             {
                 if (tag.ParentId.HasValue)
                 {
-                    if (标签ID字典.TryGetValue(tag.ParentId.Value, out var parent))
+                    if (标签ID字典_即标签树.TryGetValue(tag.ParentId.Value, out var parent))
                     {
                         parent.Children.Add(tag);
                     }
@@ -181,7 +183,7 @@ namespace TagRunner
         /// 根据标签 Id 从内部字典中快速查找并返回标签对象。
         /// 若不存在则返回 null。
         /// </summary>
-        public 标签 GetById(int id) => 标签ID字典.TryGetValue(id, out var t) ? t : null;
+        public 标签 GetById(int id) => 标签ID字典_即标签树.TryGetValue(id, out var t) ? t : null;
 
         /// <summary>
         /// 返回某父标签的所有子孙标签 Id（不包含父标签本身），
