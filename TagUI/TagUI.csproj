@@ -73,7 +73,7 @@
     <Compile Include="用户控件\QuestionCard.Designer.cs">
       <DependentUpon>QuestionCard.cs</DependentUpon>
     </Compile>
-    <Compile Include="通用类.cs" />
+    <Compile Include="通用代码.cs" />
     <EmbeddedResource Include="标签选择窗口.resx">
       <DependentUpon>标签选择窗口.cs</DependentUpon>
     </EmbeddedResource>

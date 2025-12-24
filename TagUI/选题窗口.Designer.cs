@@ -31,10 +31,10 @@
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(选题窗口));
             this.toolStrip1 = new System.Windows.Forms.ToolStrip();
-            this.toolStripButton3 = new System.Windows.Forms.ToolStripButton();
             this.toolStripButton2 = new System.Windows.Forms.ToolStripButton();
             this.toolStripButton1 = new System.Windows.Forms.ToolStripButton();
             this.多标签筛选 = new System.Windows.Forms.ToolStripButton();
+            this.toolStripButton4 = new System.Windows.Forms.ToolStripButton();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.TagsTreeView = new System.Windows.Forms.TreeView();
             this.增删标签右键弹窗 = new System.Windows.Forms.ContextMenuStrip(this.components);
@@ -44,7 +44,7 @@
             this.toolStrip2 = new System.Windows.Forms.ToolStrip();
             this.QuestionCount = new System.Windows.Forms.ToolStripLabel();
             this.toolStripLabel1 = new System.Windows.Forms.ToolStripLabel();
-            this.toolStripButton4 = new System.Windows.Forms.ToolStripButton();
+            this.增加题目ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -58,7 +58,6 @@
             // 
             this.toolStrip1.ImageScalingSize = new System.Drawing.Size(20, 20);
             this.toolStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripButton3,
             this.toolStripButton2,
             this.toolStripButton1,
             this.多标签筛选,
@@ -68,16 +67,6 @@
             this.toolStrip1.Size = new System.Drawing.Size(1076, 27);
             this.toolStrip1.TabIndex = 0;
             this.toolStrip1.Text = "toolStrip1";
-            // 
-            // toolStripButton3
-            // 
-            this.toolStripButton3.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
-            this.toolStripButton3.Image = ((System.Drawing.Image)(resources.GetObject("toolStripButton3.Image")));
-            this.toolStripButton3.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.toolStripButton3.Name = "toolStripButton3";
-            this.toolStripButton3.Size = new System.Drawing.Size(73, 24);
-            this.toolStripButton3.Text = "新增题目";
-            this.toolStripButton3.Click += new System.EventHandler(this.新增题目);
             // 
             // toolStripButton2
             // 
@@ -107,6 +96,16 @@
             this.多标签筛选.Text = "多标签选题";
             this.多标签筛选.Click += new System.EventHandler(this.多标签筛选_Click);
             // 
+            // toolStripButton4
+            // 
+            this.toolStripButton4.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.toolStripButton4.Image = ((System.Drawing.Image)(resources.GetObject("toolStripButton4.Image")));
+            this.toolStripButton4.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.toolStripButton4.Name = "toolStripButton4";
+            this.toolStripButton4.Size = new System.Drawing.Size(118, 24);
+            this.toolStripButton4.Text = "切换到个人题库";
+            this.toolStripButton4.Click += new System.EventHandler(this.切换个人题库);
+            // 
             // splitContainer1
             // 
             this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -134,7 +133,7 @@
             this.TagsTreeView.Name = "TagsTreeView";
             this.TagsTreeView.Size = new System.Drawing.Size(196, 838);
             this.TagsTreeView.TabIndex = 0;
-            this.TagsTreeView.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.选中标签后加载题目);
+            this.TagsTreeView.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.加载结点题目);
             this.TagsTreeView.NodeMouseClick += new System.Windows.Forms.TreeNodeMouseClickEventHandler(this.TagsTreeView_NodeMouseClick);
             // 
             // 增删标签右键弹窗
@@ -142,9 +141,10 @@
             this.增删标签右键弹窗.ImageScalingSize = new System.Drawing.Size(20, 20);
             this.增删标签右键弹窗.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.addChildTag,
-            this.removeTag});
+            this.removeTag,
+            this.增加题目ToolStripMenuItem});
             this.增删标签右键弹窗.Name = "contextMenuStrip1";
-            this.增删标签右键弹窗.Size = new System.Drawing.Size(154, 52);
+            this.增删标签右键弹窗.Size = new System.Drawing.Size(154, 76);
             // 
             // addChildTag
             // 
@@ -195,15 +195,12 @@
             this.toolStripLabel1.Size = new System.Drawing.Size(122, 22);
             this.toolStripLabel1.Text = "toolStripLabel1";
             // 
-            // toolStripButton4
+            // 增加题目ToolStripMenuItem
             // 
-            this.toolStripButton4.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
-            this.toolStripButton4.Image = ((System.Drawing.Image)(resources.GetObject("toolStripButton4.Image")));
-            this.toolStripButton4.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.toolStripButton4.Name = "toolStripButton4";
-            this.toolStripButton4.Size = new System.Drawing.Size(118, 24);
-            this.toolStripButton4.Text = "切换到个人题库";
-            this.toolStripButton4.Click += new System.EventHandler(this.切换个人题库);
+            this.增加题目ToolStripMenuItem.Name = "增加题目ToolStripMenuItem";
+            this.增加题目ToolStripMenuItem.Size = new System.Drawing.Size(153, 24);
+            this.增加题目ToolStripMenuItem.Text = "增加题目";
+            this.增加题目ToolStripMenuItem.Click += new System.EventHandler(this.增加题目ToolStripMenuItem_Click);
             // 
             // 选题窗口
             // 
@@ -233,7 +230,6 @@
 
         private System.Windows.Forms.ToolStrip toolStrip1;
         private System.Windows.Forms.ToolStripButton toolStripButton1;
-        private System.Windows.Forms.ToolStripButton toolStripButton3;
         private System.Windows.Forms.ToolStripButton toolStripButton2;
         private System.Windows.Forms.SplitContainer splitContainer1;
         private System.Windows.Forms.TreeView TagsTreeView;
@@ -246,5 +242,6 @@
         private System.Windows.Forms.ToolStripMenuItem removeTag;
         private System.Windows.Forms.ToolStripButton 多标签筛选;
         private System.Windows.Forms.ToolStripButton toolStripButton4;
+        private System.Windows.Forms.ToolStripMenuItem 增加题目ToolStripMenuItem;
     }
 }

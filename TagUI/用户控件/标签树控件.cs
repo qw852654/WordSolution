@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.VisualBasic;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -69,6 +70,32 @@ namespace TagUI.用户控件
         private void 多选框状态切换(object sender, EventArgs e)
         {
             treeView1.CheckBoxes = 多选框.Checked == true;
+        }
+
+        
+
+        private void 新增子标签ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var selectedNode = treeView1.SelectedNode;
+            var parentTag = selectedNode?.Tag as 标签;
+
+            string tagName = Interaction.InputBox("请输入新标签名称：", "新增标签", "");
+                       
+            if(通用类.新增子标签(标签维护器.Instance, tagName, parentTag))
+            {
+                // 刷新树视图
+                treeView1.Nodes.Clear();
+                通用类.加载标签树(this.treeView1, _rootTag);
+            }
+
+        }
+
+        private void treeView1_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
+        {
+            if(e.Button == MouseButtons.Right)
+            {
+                treeView1.SelectedNode = e.Node;
+            }
         }
     }
 }

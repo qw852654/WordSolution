@@ -15,19 +15,49 @@ namespace TagRunner
     //</summary>
     public class 题目服务
     {
+        private static 题目服务 _instance;
+        private static readonly object _lock = new object();
+        private static bool _initialized = false;
+
         private readonly 文档转换器 _文档转换器;
         private readonly string _题目Json;
         private List<题目> _题目列表 = new List<题目>();
         private Dictionary<int, List<题目>> 标签id_题目字典 = new Dictionary<int, List<题目>>();
         private readonly string 题库根目录;
 
-        public 题目服务(string rootDirectory)
+        // 私有构造函数，防止外部直接 new
+        private 题目服务(string rootDirectory)
         {
             题库根目录 = rootDirectory;
             _文档转换器 = new 文档转换器(rootDirectory);
             _题目Json = Path.Combine(rootDirectory, "Questions.json");
             刷新题目列表();
             重建标签题目索引字典();
+        }
+
+        /// <summary>
+        /// 初始化单例实例，只能调用一次
+        /// </summary>
+        public static void Initialize(string rootDirectory)
+        {
+            lock (_lock)
+            {
+                _instance = new 题目服务(rootDirectory);
+                _initialized = true;
+            }
+        }
+
+        /// <summary>
+        /// 获取单例实例，未初始化时抛异常
+        /// </summary>
+        public static 题目服务 Instance
+        {
+            get
+            {
+                if (!_initialized)
+                    throw new InvalidOperationException("题目服务未初始化，请先调用 Initialize(rootDirectory)。");
+                return _instance;
+            }
         }
 
         // 加载题目列表
@@ -71,7 +101,7 @@ namespace TagRunner
         // 按标签查找标签及其子标签的题目
         public List<题目> 标签ID找题(int tagId)
         {
-            标签查询服务 标签服务 = new 标签查询服务(题库根目录);
+            标签查询服务 标签服务 = 标签查询服务.Instance;
             标签服务.加载标签树();
             var targetIDs= 标签服务.根据ID获取当前标签及其子孙标签列表(tagId);
             var merged=new List<题目>();
@@ -93,7 +123,7 @@ namespace TagRunner
         public List<题目> 多标签ID找题(IEnumerable<int> TagIds)
         {
             if (TagIds==null) return new List<题目>();
-            var 标签服务=new 标签查询服务(题库根目录);
+            var 标签服务=标签查询服务.Instance;
             标签服务.加载标签树();
 
             var expeadedTagIdSets=new List<HashSet<int>>();
@@ -215,6 +245,11 @@ namespace TagRunner
         }
 
         // 删除题目：同时处理关联文件（DOCX/HTML/PDF），并保证列表与索引一致
+        public bool 删除题目(题目 ques)
+        {
+            if (ques == null) throw new ArgumentNullException(nameof(ques));
+            return 删除题目(ques.Id);
+        }
         public bool 删除题目(int id)
         {
             var q = _题目列表.FirstOrDefault(x => x.Id == id);

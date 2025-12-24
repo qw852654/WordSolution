@@ -4,18 +4,20 @@ using System.Linq;
 using System.Windows.Forms;
 using TagRunner;
 using Microsoft.VisualBasic;
+using System.Collections.Generic;
 
 namespace TagUI
 {
     public partial class 选题窗口 : Form
     {
-        private string _rootDir;
         private 标签查询服务 _标签查询器;
         private 题目服务 _题目服务;
 
         public 选题窗口()
         {
             InitializeComponent();
+
+
 
             // 窗体加载事件：自动加载标签树
             this.Load += MainForm_Load;
@@ -26,22 +28,22 @@ namespace TagUI
 
         private void MainForm_Load(object sender, EventArgs e)
         {
-            var rootDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TestData_题目查询服务");
-            重建环境并刷新界面(rootDir);
+            重建环境并刷新界面();
         }
 
-        private void 重建环境并刷新界面(string rootDir)
+        private void 重建环境并刷新界面()
         {
-            _rootDir = rootDir;
+            //初始化服务
+            通用类.初始化三大类();
 
-            var tagsPath = Path.Combine(_rootDir, "tags.json");
+            var tagsPath = Path.Combine(静态参数.题库目录, "tags.json");
 
             if (!File.Exists(tagsPath))
             {
                 var result = MessageBox.Show($"指定的题库目录不存在，是否在该位置创建题库", "错误", MessageBoxButtons.YesNo);
                 if (result == DialogResult.Yes)
                 {
-                    初始化环境.初始化题库目录(_rootDir);
+                    初始化环境.初始化题库目录(静态参数.题库目录);
                 }
                 else
                 {
@@ -52,16 +54,16 @@ namespace TagUI
 
             // 确保标签文件存在
             
-            Directory.CreateDirectory(_rootDir);
+            Directory.CreateDirectory(静态参数.题库目录);
             if (!File.Exists(tagsPath)) 
                 File.WriteAllText(tagsPath, "[]");
 
             // 加载标签树
-            _标签查询器 = new 标签查询服务(rootDir);
+            _标签查询器 = 标签查询服务.Instance;
             _标签查询器.加载标签树();
 
             // 初始化题目服务
-            _题目服务 = new 题目服务(_rootDir);
+            _题目服务 = 题目服务.Instance;
 
             加载treeView();
 
@@ -109,7 +111,7 @@ namespace TagUI
             return node;
         }
 
-        private void 选中标签后加载题目(object sender, TreeViewEventArgs e)
+        private void 加载结点题目(object sender, TreeViewEventArgs e)
         {
             var tag =e.Node.Tag as 标签;
             if (tag != null) {
@@ -117,8 +119,7 @@ namespace TagUI
                 var questions = _题目服务.标签ID找题(tag.Id);
                 foreach (var q in questions)
                 {
-                    var htmlPath = Path.Combine(_rootDir, "html", $"{q.Id}.html");
-                    var card = new QuestionCard(htmlPath);
+                    var card = new QuestionCard(q);
                     card.Width = this.flowLayoutPanel1.Width - 10;
                     card.Height = 300;
                     this.flowLayoutPanel1.Controls.Add(card);
@@ -162,11 +163,11 @@ namespace TagUI
             if(string.IsNullOrWhiteSpace(inputTagName))
                 return;
 
-            var maintainer = new 标签维护器(_标签查询器);
+            var maintainer = 标签维护器.Instance;
             int newTagId;
             try
             {
-                newTagId=maintainer.新增标签(name:inputTagName.Trim(),category:category, parentId:parentTagId);
+                newTagId=maintainer.新增标签(tagName:inputTagName.Trim(),category:category, parentId:parentTagId);
             }
             catch (Exception ex)
             {
@@ -183,10 +184,7 @@ namespace TagUI
 
         }
 
-        private void 新增题目(object sender, EventArgs e)
-        {
-
-        }
+       
 
         private void removeTag_Click(object sender, EventArgs e)
         {
@@ -206,7 +204,7 @@ namespace TagUI
                 }
                 else
                 {
-                    var maintainer = new 标签维护器(_标签查询器);
+                    var maintainer = 标签维护器.Instance;
                     try
                     {
                         maintainer.ID删除标签(selectedTag.Id);
@@ -223,8 +221,45 @@ namespace TagUI
 
         private void 切换个人题库(object sender, EventArgs e)
         {
-            this._rootDir = @"E:\Desktop\个人题库";
-            重建环境并刷新界面(_rootDir);
+            静态参数.题库目录 = @"E:\Desktop\个人题库";
+            重建环境并刷新界面();
+        }
+
+        private void 增加题目ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
+            List<标签> selectedTags = new List<标签>();
+            var selectedNode = TagsTreeView.SelectedNode;
+            string quesPath = null;
+
+
+            if (selectedNode.Tag != null)
+            {
+                selectedTags.Add((标签)selectedNode.Tag);
+                OpenFileDialog openFileDialog = new OpenFileDialog
+                {
+                    Title = "选择题目文件",
+                    Filter = "Word 文档 (*.docx)|*.docx",
+
+                };
+
+                if (openFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    quesPath = openFileDialog.FileName;
+                }
+                else
+                {
+                    return;
+                }
+            }
+
+            bool success = 通用类.新增题目(selectedTags, quesPath);
+            if (success)
+            {
+                // 刷新题目列表
+                加载结点题目(this, new TreeViewEventArgs(selectedNode));
+
+            }
         }
     }
 }

@@ -18,39 +18,69 @@ namespace TagRunner
     /// </summary>
     public class 标签维护器
     {
+        private static 标签维护器 _instance;
+        private static readonly object _lock = new object();
+        private static bool _initialized = false;
+
         private readonly 标签查询服务 _query;
         private string TagsJsonPath { get; }
 
-        public 标签维护器(标签查询服务 queryService)
+        // 私有构造函数，防止外部直接 new
+        private 标签维护器(标签查询服务 queryService)
         {
             _query = queryService ?? throw new ArgumentNullException(nameof(queryService));
             TagsJsonPath = _query.TagsJsonPath;
         }
 
         /// <summary>
+        /// 初始化单例实例，只能调用一次
+        /// </summary>
+        public static void Initialize(标签查询服务 queryService)
+        {
+            lock (_lock)
+            {
+                _instance = new 标签维护器(queryService);
+                _initialized = true;
+            }
+        }
+
+        /// <summary>
+        /// 获取单例实例，未初始化时抛异常
+        /// </summary>
+        public static 标签维护器 Instance
+        {
+            get
+            {
+                if (!_initialized)
+                    throw new InvalidOperationException("标签维护器未初始化，请先调用 Initialize(标签查询服务)。");
+                return _instance;
+            }
+        }
+
+        /// <summary>
         /// 新增标签（自动生成唯一 Id）。必须提供非空名称和类别。
         /// </summary>
-        public int 新增标签(string name, string category, int? parentId = null,  int? numericValue = null)
+        public int 新增标签(string tagName, string category, int? parentId = null, int? numericValue = null)
         {
-            if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentException("标签名称不能为空", nameof(name));
+            if (string.IsNullOrWhiteSpace(tagName))
+                throw new ArgumentException("标签名称不能为空", nameof(tagName));
 
             if (parentId == null)
-                category = name;
+                category = tagName;
 
             // 先检查重复（同一父节点 + 同类别 + 同名）
-            if (_query.ExistsByName(name.Trim(), parentId, category))
-                throw new InvalidOperationException($"已存在同名标签：'{name.Trim()}'（父Id={parentId?.ToString() ?? "null"}，类别={category ?? "null"}）");
-
+            if (_query.ExistsByName(tagName.Trim(), parentId, category))
+                throw new InvalidOperationException($"已存在同名标签：'{tagName.Trim()}'（父Id={parentId?.ToString() ?? "null"}，类别={category ?? "null"}）");
 
             // 父存在性检查（当提供 parentId）
             标签 parent = null;
             if (!parentId.HasValue)
-            { var result = MessageBox.Show(
-                    $"指定的父标签 Id 不存在，是否作为根标签创建？\n\n标签名称：{name.Trim()}\n类别：{category ?? "null"}",
-                    "确认创建根标签",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question);
+            {
+                var result = MessageBox.Show(
+                        $"指定的父标签 Id 不存在，是否作为根标签创建？\n\n标签名称：{tagName.Trim()}\n类别：{category ?? "null"}",
+                        "确认创建根标签",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question);
                 if (result == DialogResult.No)
                     throw new InvalidOperationException("操作已取消，未创建标签。");
                 parentId = null; // 作为根标签
@@ -62,15 +92,13 @@ namespace TagRunner
                     throw new InvalidOperationException($"指定的父标签 Id 不存在，无法创建子标签（Id={parentId.Value}）。");
             }
 
-
-
             // 生成新 Id（最大 Id + 1）
             var newId = GenerateNewId();
 
             var newTag = new 标签
             {
                 Id = newId,
-                Name = name.Trim(),
+                Name = tagName.Trim(),
                 ParentId = parentId,
                 Category = category,
                 NumericValue = numericValue,
@@ -94,7 +122,6 @@ namespace TagRunner
             return newId;
         }
 
-        
         public bool ID删除标签(int tagId)
         {
             throw new NotImplementedException();
@@ -104,8 +131,6 @@ namespace TagRunner
         {
             throw new NotImplementedException();
         }
-
-
 
         /// <summary>
         /// 通过遍历当前标签树（含所有子孙），生成新的唯一 Id：取现有最大 Id + 1。

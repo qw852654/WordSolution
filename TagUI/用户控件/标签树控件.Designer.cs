@@ -28,14 +28,20 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.多选框 = new System.Windows.Forms.CheckBox();
             this.textBox1 = new System.Windows.Forms.TextBox();
             this.treeView1 = new System.Windows.Forms.TreeView();
+            this.contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.新增标签ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.删除标签ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.修改标签ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
+            this.contextMenuStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
             // splitContainer1
@@ -62,6 +68,8 @@
             // 多选框
             // 
             this.多选框.AutoSize = true;
+            this.多选框.Checked = true;
+            this.多选框.CheckState = System.Windows.Forms.CheckState.Checked;
             this.多选框.Dock = System.Windows.Forms.DockStyle.Right;
             this.多选框.Location = new System.Drawing.Point(240, 0);
             this.多选框.Name = "多选框";
@@ -81,12 +89,44 @@
             // 
             // treeView1
             // 
+            this.treeView1.CheckBoxes = true;
+            this.treeView1.ContextMenuStrip = this.contextMenuStrip1;
             this.treeView1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.treeView1.HideSelection = false;
             this.treeView1.Location = new System.Drawing.Point(0, 0);
             this.treeView1.Name = "treeView1";
             this.treeView1.Size = new System.Drawing.Size(299, 657);
             this.treeView1.TabIndex = 0;
+            this.treeView1.NodeMouseClick += new System.Windows.Forms.TreeNodeMouseClickEventHandler(this.treeView1_NodeMouseClick);
+            // 
+            // contextMenuStrip1
+            // 
+            this.contextMenuStrip1.ImageScalingSize = new System.Drawing.Size(20, 20);
+            this.contextMenuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.新增标签ToolStripMenuItem,
+            this.删除标签ToolStripMenuItem,
+            this.修改标签ToolStripMenuItem});
+            this.contextMenuStrip1.Name = "contextMenuStrip1";
+            this.contextMenuStrip1.Size = new System.Drawing.Size(211, 104);
+            // 
+            // 新增标签ToolStripMenuItem
+            // 
+            this.新增标签ToolStripMenuItem.Name = "新增标签ToolStripMenuItem";
+            this.新增标签ToolStripMenuItem.Size = new System.Drawing.Size(210, 24);
+            this.新增标签ToolStripMenuItem.Text = "新增子标签";
+            this.新增标签ToolStripMenuItem.Click += new System.EventHandler(this.新增子标签ToolStripMenuItem_Click);
+            // 
+            // 删除标签ToolStripMenuItem
+            // 
+            this.删除标签ToolStripMenuItem.Name = "删除标签ToolStripMenuItem";
+            this.删除标签ToolStripMenuItem.Size = new System.Drawing.Size(210, 24);
+            this.删除标签ToolStripMenuItem.Text = "删除标签";
+            // 
+            // 修改标签ToolStripMenuItem
+            // 
+            this.修改标签ToolStripMenuItem.Name = "修改标签ToolStripMenuItem";
+            this.修改标签ToolStripMenuItem.Size = new System.Drawing.Size(210, 24);
+            this.修改标签ToolStripMenuItem.Text = "修改标签";
             // 
             // 标签树控件
             // 
@@ -100,6 +140,7 @@
             this.splitContainer1.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
             this.splitContainer1.ResumeLayout(false);
+            this.contextMenuStrip1.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -110,5 +151,9 @@
         private System.Windows.Forms.TextBox textBox1;
         private System.Windows.Forms.TreeView treeView1;
         private System.Windows.Forms.CheckBox 多选框;
+        private System.Windows.Forms.ContextMenuStrip contextMenuStrip1;
+        private System.Windows.Forms.ToolStripMenuItem 新增标签ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 删除标签ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 修改标签ToolStripMenuItem;
     }
 }

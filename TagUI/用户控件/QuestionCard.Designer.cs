@@ -30,7 +30,9 @@
         {
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.QuestionContent = new System.Windows.Forms.WebBrowser();
+            this.button1 = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
+            this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
             this.SuspendLayout();
@@ -42,10 +44,14 @@
             this.splitContainer1.Name = "splitContainer1";
             this.splitContainer1.Orientation = System.Windows.Forms.Orientation.Horizontal;
             // 
+            // splitContainer1.Panel1
+            // 
+            this.splitContainer1.Panel1.Controls.Add(this.button1);
+            // 
             // splitContainer1.Panel2
             // 
             this.splitContainer1.Panel2.Controls.Add(this.QuestionContent);
-            this.splitContainer1.Size = new System.Drawing.Size(637, 380);
+            this.splitContainer1.Size = new System.Drawing.Size(635, 378);
             this.splitContainer1.SplitterDistance = 25;
             this.splitContainer1.TabIndex = 0;
             // 
@@ -55,17 +61,29 @@
             this.QuestionContent.Location = new System.Drawing.Point(0, 0);
             this.QuestionContent.MinimumSize = new System.Drawing.Size(20, 20);
             this.QuestionContent.Name = "QuestionContent";
-            this.QuestionContent.Size = new System.Drawing.Size(637, 351);
+            this.QuestionContent.Size = new System.Drawing.Size(635, 349);
             this.QuestionContent.TabIndex = 0;
             this.QuestionContent.Url = new System.Uri("", System.UriKind.Relative);
+            // 
+            // button1
+            // 
+            this.button1.Location = new System.Drawing.Point(4, 0);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(75, 23);
+            this.button1.TabIndex = 0;
+            this.button1.Text = "删除题目";
+            this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
             // QuestionCard
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.Controls.Add(this.splitContainer1);
             this.Name = "QuestionCard";
-            this.Size = new System.Drawing.Size(637, 380);
+            this.Size = new System.Drawing.Size(635, 378);
+            this.splitContainer1.Panel1.ResumeLayout(false);
             this.splitContainer1.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
             this.splitContainer1.ResumeLayout(false);
@@ -77,5 +95,6 @@
 
         private System.Windows.Forms.SplitContainer splitContainer1;
         private System.Windows.Forms.WebBrowser QuestionContent;
+        private System.Windows.Forms.Button button1;
     }
 }

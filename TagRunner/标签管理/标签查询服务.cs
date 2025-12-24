@@ -8,29 +8,55 @@ using TagRunner.标签管理;
 
 namespace TagRunner
 {
-
-
     //<summary>
     //主要根据标签json文件加载标签树、查询标签、索引标签等查询服务
     //提供：
     //- 加载标签树（从扁平化 JSON 文件，无层级，只有父子节点记录）
     //- 标签Id查找标签名字
     //- 标签Id查找子标签列表
-    //- 
     //</summary>
-    public class 标签查询服务:I标签查询服务
+    public class 标签查询服务 : I标签查询服务
     {
+        private static 标签查询服务 _instance;
+        private static readonly object _lock = new object();
+        private static bool _initialized = false;
+
         public List<标签> 标签树根 { get; private set; } = new List<标签>();
         public string TagsJsonPath { get; }
 
         private Dictionary<int, 标签> 标签ID字典_即标签树 = new Dictionary<int, 标签>();
 
-        public 标签查询服务(string 题库目录)
+        // 私有构造函数，防止外部直接 new
+        private 标签查询服务(string 题库目录)
         {
-
             var tagsJsonPath = Path.Combine(题库目录, "tags.json");
             TagsJsonPath = tagsJsonPath ?? throw new ArgumentNullException(nameof(tagsJsonPath));
             加载标签树();
+        }
+
+        /// <summary>
+        /// 初始化单例实例，只能调用一次
+        /// </summary>
+        public static void Initialize(string 题库目录)
+        {
+            lock (_lock)
+            {
+                _instance = new 标签查询服务(题库目录);
+                _initialized = true;
+            }
+        }
+
+        /// <summary>
+        /// 获取单例实例，未初始化时抛异常
+        /// </summary>
+        public static 标签查询服务 Instance
+        {
+            get
+            {
+                if (!_initialized)
+                    throw new InvalidOperationException("标签查询服务未初始化，请先调用 Initialize(题库目录)。");
+                return _instance;
+            }
         }
 
         /// <summary>
@@ -193,7 +219,7 @@ namespace TagRunner
         {
             var result = new List<int>();
             var parent = GetById(parentId);
-            
+
             result.Add(parentId); // 包含父标签本身
 
             void Walk(标签 node)
