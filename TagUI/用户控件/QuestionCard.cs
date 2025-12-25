@@ -27,7 +27,7 @@ namespace TagUI
             }
 
             _ques = ques;
-            var htmlPath = Path.Combine(静态参数.题库目录, "html", ques.Id.ToString() + ".html");
+            var htmlPath = Path.Combine(题库参数.题库目录, "html", ques.Id.ToString() + ".html");
 
             if (!string.IsNullOrEmpty(htmlPath) && File.Exists(htmlPath))
             {

@@ -36,14 +36,14 @@ namespace TagUI
             //初始化服务
             通用类.初始化三大类();
 
-            var tagsPath = Path.Combine(静态参数.题库目录, "tags.json");
+            var tagsPath = Path.Combine(题库参数.题库目录, "tags.json");
 
             if (!File.Exists(tagsPath))
             {
                 var result = MessageBox.Show($"指定的题库目录不存在，是否在该位置创建题库", "错误", MessageBoxButtons.YesNo);
                 if (result == DialogResult.Yes)
                 {
-                    初始化题库.初始化题库目录(静态参数.题库目录);
+                    初始化题库.初始化题库目录(题库参数.题库目录);
                 }
                 else
                 {
@@ -54,7 +54,7 @@ namespace TagUI
 
             // 确保标签文件存在
             
-            Directory.CreateDirectory(静态参数.题库目录);
+            Directory.CreateDirectory(题库参数.题库目录);
             if (!File.Exists(tagsPath)) 
                 File.WriteAllText(tagsPath, "[]");
 
@@ -221,7 +221,7 @@ namespace TagUI
 
         private void 切换个人题库(object sender, EventArgs e)
         {
-            静态参数.题库目录 = @"E:\Desktop\个人题库";
+            题库参数.题库目录 = @"E:\Desktop\个人题库";
             重建环境并刷新界面();
         }
 
@@ -272,7 +272,7 @@ namespace TagUI
 
             if (folderBrowserDialog.ShowDialog() == DialogResult.OK&&File.Exists(Path.Combine(folderBrowserDialog.SelectedPath,"tags.json")))
             {
-                静态参数.题库目录 = folderBrowserDialog.SelectedPath;
+                题库参数.题库目录 = folderBrowserDialog.SelectedPath;
                 重建环境并刷新界面();
             }
 

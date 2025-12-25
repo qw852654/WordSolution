@@ -126,8 +126,6 @@ namespace TagRunner
         {
             if(tag==null)
                 return false;
-            if (tag.Id == null)
-                throw new InvalidOperationException("根标签，不允许删除");
             
             //删除标签
             var parent =标签查询服务器.GetById(tag.ParentId.Value);

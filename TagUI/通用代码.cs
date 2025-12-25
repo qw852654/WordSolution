@@ -7,45 +7,12 @@ using System.Threading.Tasks;
 using System.Web;
 using System.Windows.Forms;
 using TagRunner;
+using 题库参数 = TagRunner.题库参数;
+
 
 namespace TagUI
 {
-    public static class 静态参数
-    {
-        private static string _题库目录;
-        public static string 题库目录
-        {
-            get
-            {
-                if (string.IsNullOrEmpty(_题库目录))
-                {
-                    // 1. 尝试从配置文件读取
-                    _题库目录 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TestData_题目查询服务");
-                    // 2. 如果没有配置，弹窗让用户选择
-                    if (string.IsNullOrEmpty(_题库目录) || !Directory.Exists(_题库目录))
-                    {
-                        using (var dlg = new FolderBrowserDialog())
-                        {
-                            dlg.Description = "请选择题库目录";
-                            if (dlg.ShowDialog() == DialogResult.OK)
-                            {
-                                _题库目录 = dlg.SelectedPath;
-                            }
-                            else
-                            {
-                                throw new InvalidOperationException("未设置题库目录，无法继续。");
-                            }
-                        }
-                    }
-                }
-                return _题库目录;
-            }
-            set
-            {
-                _题库目录 = value;
-            }
-        }
-    }
+    
 
 
     public static class 通用类
@@ -54,15 +21,15 @@ namespace TagUI
         {
             try
             {
-                标签查询服务.Initialize(静态参数.题库目录);
-                题目服务.Initialize(静态参数.题库目录);
+                标签查询服务.Initialize(题库参数.题库目录);
+                题目服务.Initialize(题库参数.题库目录);
                 标签维护器.Initialize(标签查询服务.Instance);
             }
-            catch(InvalidOperationException ex)
+            catch
             {
                 if (MessageBox.Show("不存在题库，是否初始化题库？", "错误", MessageBoxButtons.OKCancel) == DialogResult.Cancel)
                     return;
-                TagRunner.初始化题库.初始化题库目录(静态参数.题库目录);
+                TagRunner.初始化题库.初始化题库目录(题库参数.题库目录);
             }
         }
 

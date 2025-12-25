@@ -15,8 +15,6 @@ namespace WordAddIn
 {
     public partial class MyRibbon
     {
-        private string 题库路径= @"E:\Desktop\个人题库";
-
         private void Ribbon1_Load(object sender, RibbonUIEventArgs e)
         {
 
@@ -261,7 +259,7 @@ namespace WordAddIn
         private void 插入选中题目(object sender, RibbonControlEventArgs e)
         {
 
-            TagUI.静态参数.题库目录 = @"E:\Desktop\个人题库";
+            题库参数.题库目录 = @"E:\Desktop\个人题库";
             将选中题目加入题库();
 
 
@@ -269,7 +267,7 @@ namespace WordAddIn
 
         private void button9_Click(object sender, RibbonControlEventArgs e)
         {
-            TagUI.静态参数.题库目录 = @"E:\Desktop\高中题库";
+            题库参数.题库目录 = @"E:\Desktop\高中题库";
             将选中题目加入题库();
         }
 
