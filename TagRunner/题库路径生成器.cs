@@ -10,7 +10,7 @@ namespace TagRunner
     ///   root/html/{id}.html
     ///   root/pdf/{id}.pdf
     /// </summary>
-    public class 文件库助手
+    public class 题库路径生成器
     {
         public string 根目录 { get; }
 
@@ -21,7 +21,7 @@ namespace TagRunner
         /// <summary>
         /// 构造函数，提供题库根目录。不会自动创建目录，除非调用 EnsureDirectories。
         /// </summary>
-        public 文件库助手(string rootDir)
+        public 题库路径生成器(string rootDir)
         {
             if (string.IsNullOrWhiteSpace(rootDir))
                 throw new ArgumentException("根目录不能为空", nameof(rootDir));

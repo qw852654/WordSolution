@@ -9,6 +9,7 @@ using WordLibrary;
 using Microsoft.VisualBasic;
 using TagUI;
 using TagRunner;
+using System.Xml.Linq;
 
 namespace WordAddIn
 {
@@ -259,50 +260,68 @@ namespace WordAddIn
 
         private void 插入选中题目(object sender, RibbonControlEventArgs e)
         {
-            
+
+            TagUI.静态参数.题库目录 = @"E:\Desktop\个人题库";
+            将选中题目加入题库();
+
+
+        }
+
+        private void button9_Click(object sender, RibbonControlEventArgs e)
+        {
+            TagUI.静态参数.题库目录 = @"E:\Desktop\高中题库";
+            将选中题目加入题库();
+        }
+
+        private void 将选中题目加入题库()
+        {
+            TagUI.通用类.初始化三大类();
 
 
             var app = Globals.ThisAddIn.Application;
+            if (app.Selection == null || app.Selection.Range.StoryLength == 0) return;
             var quesRange = app.Selection.Range;
 
-            if(quesRange.StoryLength==0)
+            if (quesRange.StoryLength == 0)
             {
                 MessageBox.Show("请先选择题目内容");
                 return;
             }
 
 
-            var quesDoc=app.Documents.Add();
+            var quesDoc = app.Documents.Add();
 
             quesDoc.Content.Delete();
 
             quesDoc.Content.FormattedText = quesRange.FormattedText;
 
             //激活标签窗口筛选标签
-            var 查询器=new 标签查询服务(题库路径);
-            List<标签> quesTags=null;
+            var 标签查询器 = TagRunner.标签查询服务.Instance;
+            List<标签> quesTags = null;
 
-            using(var dlg=new TagUI.标签选择窗口(查询器))
+            using (var dlg = new TagUI.标签选择窗口(标签查询器))
             {
                 if (dlg.ShowDialog() == DialogResult.OK)
                     quesTags = (List<标签>)dlg.标签列表;
             }
 
-            if (quesTags==null || quesTags.Count==0)
+            if (quesTags == null || quesTags.Count == 0)
             {
-                MessageBox.Show("未选择标签，操作取消");
-                quesDoc.Close(SaveChanges:WdSaveOptions.wdDoNotSaveChanges);
+                quesDoc.Close(SaveChanges: WdSaveOptions.wdDoNotSaveChanges);
                 return;
             }
 
-            var 题目管理器=new TagRunner.题目服务(题库路径);
-            var quesTempPath=System.IO.Path.GetTempFileName()+ $"题目_{DateTime.Now:yyyyMMdd_HHmmssfff}.docx";
+            var 题目管理器 = TagRunner.题目服务.Instance;
+            var quesTempPath = System.IO.Path.GetTempFileName() + $"题目_{DateTime.Now:yyyyMMdd_HHmmssfff}.docx";
             quesDoc.SaveAs2(quesTempPath, WdSaveFormat.wdFormatXMLDocument);
 
 
-            if(题目管理器.新增题目(quesTags, quesTempPath))
+            if (题目管理器.新增题目(quesTags, quesTempPath))
                 MessageBox.Show("题目添加成功");
-            
+
+            quesDoc.Close(SaveChanges: WdSaveOptions.wdDoNotSaveChanges);
         }
+
+        
     }
 }

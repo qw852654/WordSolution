@@ -55,6 +55,7 @@
             this.tab3 = this.Factory.CreateRibbonTab();
             this.group4 = this.Factory.CreateRibbonGroup();
             this.button8 = this.Factory.CreateRibbonButton();
+            this.button9 = this.Factory.CreateRibbonButton();
             this.处理当前文档.SuspendLayout();
             this.group1.SuspendLayout();
             this.tab2.SuspendLayout();
@@ -194,15 +195,22 @@
             // group4
             // 
             this.group4.Items.Add(this.button8);
+            this.group4.Items.Add(this.button9);
             this.group4.Label = "录入题目";
             this.group4.Name = "group4";
             // 
             // button8
             // 
-            this.button8.Label = "插入选中题目";
+            this.button8.Label = "加入初中题库";
             this.button8.Name = "button8";
             this.button8.ShowImage = true;
             this.button8.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.插入选中题目);
+            // 
+            // button9
+            // 
+            this.button9.Label = "加入高中题库";
+            this.button9.Name = "button9";
+            this.button9.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.button9_Click);
             // 
             // MyRibbon
             // 
@@ -260,6 +268,7 @@
         private Microsoft.Office.Tools.Ribbon.RibbonTab tab3;
         internal Microsoft.Office.Tools.Ribbon.RibbonGroup group4;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton button8;
+        internal Microsoft.Office.Tools.Ribbon.RibbonButton button9;
     }
 
     partial class ThisRibbonCollection

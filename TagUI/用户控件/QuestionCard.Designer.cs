@@ -29,8 +29,8 @@
         private void InitializeComponent()
         {
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
-            this.QuestionContent = new System.Windows.Forms.WebBrowser();
             this.button1 = new System.Windows.Forms.Button();
+            this.QuestionContent = new System.Windows.Forms.WebBrowser();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -55,6 +55,17 @@
             this.splitContainer1.SplitterDistance = 25;
             this.splitContainer1.TabIndex = 0;
             // 
+            // button1
+            // 
+            this.button1.AutoSize = true;
+            this.button1.Location = new System.Drawing.Point(4, 0);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(77, 25);
+            this.button1.TabIndex = 0;
+            this.button1.Text = "删除题目";
+            this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.button1_Click);
+            // 
             // QuestionContent
             // 
             this.QuestionContent.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -65,16 +76,6 @@
             this.QuestionContent.TabIndex = 0;
             this.QuestionContent.Url = new System.Uri("", System.UriKind.Relative);
             // 
-            // button1
-            // 
-            this.button1.Location = new System.Drawing.Point(4, 0);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(75, 23);
-            this.button1.TabIndex = 0;
-            this.button1.Text = "删除题目";
-            this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.button1_Click);
-            // 
             // QuestionCard
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
@@ -84,6 +85,7 @@
             this.Name = "QuestionCard";
             this.Size = new System.Drawing.Size(635, 378);
             this.splitContainer1.Panel1.ResumeLayout(false);
+            this.splitContainer1.Panel1.PerformLayout();
             this.splitContainer1.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
             this.splitContainer1.ResumeLayout(false);

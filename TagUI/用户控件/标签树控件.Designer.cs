@@ -121,6 +121,7 @@
             this.删除标签ToolStripMenuItem.Name = "删除标签ToolStripMenuItem";
             this.删除标签ToolStripMenuItem.Size = new System.Drawing.Size(210, 24);
             this.删除标签ToolStripMenuItem.Text = "删除标签";
+            this.删除标签ToolStripMenuItem.Click += new System.EventHandler(this.删除标签ToolStripMenuItem_Click);
             // 
             // 修改标签ToolStripMenuItem
             // 

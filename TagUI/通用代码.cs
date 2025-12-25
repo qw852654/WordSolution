@@ -48,13 +48,58 @@ namespace TagUI
     }
 
 
-    internal static class 通用类
+    public static class 通用类
     {
         public static void 初始化三大类()
         {
-            标签查询服务.Initialize(静态参数.题库目录);
-            题目服务.Initialize(静态参数.题库目录);
-            标签维护器.Initialize(标签查询服务.Instance);
+            try
+            {
+                标签查询服务.Initialize(静态参数.题库目录);
+                题目服务.Initialize(静态参数.题库目录);
+                标签维护器.Initialize(标签查询服务.Instance);
+            }
+            catch(InvalidOperationException ex)
+            {
+                if (MessageBox.Show("不存在题库，是否初始化题库？", "错误", MessageBoxButtons.OKCancel) == DialogResult.Cancel)
+                    return;
+                TagRunner.初始化题库.初始化题库目录(静态参数.题库目录);
+            }
+        }
+
+        internal static bool 删除选中标签(TreeView TagsTreeView)
+        {
+            标签 rootTag = TagsTreeView.Nodes[0].Tag as 标签;
+            var selectedNode = TagsTreeView.SelectedNode;
+            if (selectedNode.Tag == null)
+            {
+                MessageBox.Show("错误", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+
+            if (selectedNode.Tag is 标签 selectedTag)
+            {
+                if (selectedTag.ParentId == null)
+                {
+                    MessageBox.Show("无法删除根标签。", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false ;
+                }
+                else
+                {
+                    var maintainer = 标签维护器.Instance;
+                    try
+                    {
+                        maintainer.删除标签(selectedTag);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"删除标签失败：{ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return false;
+                    }
+                    加载标签树(TagsTreeView, rootTag);
+                    return true;
+                }
+            }
+            return false;
         }
 
         public static bool 新增题目(List<标签> tags, string quesDocx=null)
@@ -84,6 +129,7 @@ namespace TagUI
             treeView.Nodes.Add(rootNode);
             AddChildrenNodes(rootNode, 根标签.Children);
             treeView.EndUpdate();
+            treeView.ExpandAll();
         }
 
         public static bool 新增子标签(标签维护器 maintainer, string tagName, 标签 parentTag)

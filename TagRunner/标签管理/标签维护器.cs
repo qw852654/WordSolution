@@ -22,14 +22,14 @@ namespace TagRunner
         private static readonly object _lock = new object();
         private static bool _initialized = false;
 
-        private readonly 标签查询服务 _query;
+        private readonly 标签查询服务 标签查询服务器;
         private string TagsJsonPath { get; }
 
         // 私有构造函数，防止外部直接 new
         private 标签维护器(标签查询服务 queryService)
         {
-            _query = queryService ?? throw new ArgumentNullException(nameof(queryService));
-            TagsJsonPath = _query.TagsJsonPath;
+            标签查询服务器 = queryService ?? throw new ArgumentNullException(nameof(queryService));
+            TagsJsonPath = 标签查询服务器.TagsJsonPath;
         }
 
         /// <summary>
@@ -69,7 +69,7 @@ namespace TagRunner
                 category = tagName;
 
             // 先检查重复（同一父节点 + 同类别 + 同名）
-            if (_query.ExistsByName(tagName.Trim(), parentId, category))
+            if (标签查询服务器.ExistsByName(tagName.Trim(), parentId, category))
                 throw new InvalidOperationException($"已存在同名标签：'{tagName.Trim()}'（父Id={parentId?.ToString() ?? "null"}，类别={category ?? "null"}）");
 
             // 父存在性检查（当提供 parentId）
@@ -87,7 +87,7 @@ namespace TagRunner
             }
             else
             {
-                parent = _query.GetById(parentId.Value);
+                parent = 标签查询服务器.GetById(parentId.Value);
                 if (parent == null)
                     throw new InvalidOperationException($"指定的父标签 Id 不存在，无法创建子标签（Id={parentId.Value}）。");
             }
@@ -108,7 +108,7 @@ namespace TagRunner
             // 更新树结构
             if (parent == null)
             {
-                _query.标签树根.Add(newTag);
+                标签查询服务器.标签树根.Add(newTag);
             }
             else
             {
@@ -117,14 +117,35 @@ namespace TagRunner
 
             // 持久化并重载，保证索引与树一致
             写入标签到Json();
-            _query.加载标签树();
+            标签查询服务器.加载标签树();
 
             return newId;
         }
 
-        public bool ID删除标签(int tagId)
+        public bool 删除标签(标签 tag)
         {
-            throw new NotImplementedException();
+            if(tag==null)
+                return false;
+            if (tag.Id == null)
+                throw new InvalidOperationException("根标签，不允许删除");
+            
+            //删除标签
+            var parent =标签查询服务器.GetById(tag.ParentId.Value);
+            if (parent == null) return false;
+            parent.Children.Remove(tag);
+            写入标签到Json();
+
+            //删除题目关联的标签
+            foreach(题目 ques in 题目服务.Instance.获取所有题目())
+            {
+                if(ques.TagIds.Contains(tag.Id))
+                {
+                    题目服务.Instance.移除题目标签(ques,tag);
+                }
+            }
+            return true;
+
+
         }
 
         public bool ID修改标签(int tagId, string newName, string newCategory, int? newNumericValue = null)
@@ -139,7 +160,7 @@ namespace TagRunner
         private int GenerateNewId()
         {
             int maxId = 0;
-            foreach (var t in _query.遍历标签树获取标签())
+            foreach (var t in 标签查询服务器.遍历标签树获取标签())
             {
                 if (t.Id > maxId) maxId = t.Id;
             }
@@ -149,7 +170,7 @@ namespace TagRunner
 
         private void 写入标签到Json()
         {
-            var flat = _query.遍历标签树获取标签().Select(t => new
+            var flat = 标签查询服务器.遍历标签树获取标签().Select(t => new
             {
                 Id = t.Id,
                 Name = t.Name,

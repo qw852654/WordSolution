@@ -50,8 +50,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="标签维护器Test.cs" />
-    <Compile Include="题目查询服务Test.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

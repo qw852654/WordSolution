@@ -59,11 +59,11 @@
     <Compile Include="用户控件\标签树控件.Designer.cs">
       <DependentUpon>标签树控件.cs</DependentUpon>
     </Compile>
-    <Compile Include="选题窗口.cs">
+    <Compile Include="题库管理主程序.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="选题窗口.Designer.cs">
-      <DependentUpon>选题窗口.cs</DependentUpon>
+    <Compile Include="题库管理主程序.Designer.cs">
+      <DependentUpon>题库管理主程序.cs</DependentUpon>
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -80,8 +80,8 @@
     <EmbeddedResource Include="用户控件\标签树控件.resx">
       <DependentUpon>标签树控件.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="选题窗口.resx">
-      <DependentUpon>选题窗口.cs</DependentUpon>
+    <EmbeddedResource Include="题库管理主程序.resx">
+      <DependentUpon>题库管理主程序.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>

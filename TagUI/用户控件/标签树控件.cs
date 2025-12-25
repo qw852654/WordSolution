@@ -97,5 +97,10 @@ namespace TagUI.用户控件
                 treeView1.SelectedNode = e.Node;
             }
         }
+
+        private void 删除标签ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            通用类.删除选中标签(this.treeView1);
+        }
     }
 }

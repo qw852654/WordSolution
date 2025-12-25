@@ -8,12 +8,12 @@ using System.Collections.Generic;
 
 namespace TagUI
 {
-    public partial class 选题窗口 : Form
+    public partial class 题库管理主程序 : Form
     {
         private 标签查询服务 _标签查询器;
         private 题目服务 _题目服务;
 
-        public 选题窗口()
+        public 题库管理主程序()
         {
             InitializeComponent();
 
@@ -43,7 +43,7 @@ namespace TagUI
                 var result = MessageBox.Show($"指定的题库目录不存在，是否在该位置创建题库", "错误", MessageBoxButtons.YesNo);
                 if (result == DialogResult.Yes)
                 {
-                    初始化环境.初始化题库目录(静态参数.题库目录);
+                    初始化题库.初始化题库目录(静态参数.题库目录);
                 }
                 else
                 {
@@ -116,7 +116,7 @@ namespace TagUI
             var tag =e.Node.Tag as 标签;
             if (tag != null) {
                 this.flowLayoutPanel1.Controls.Clear();
-                var questions = _题目服务.标签ID找题(tag.Id);
+                var questions = _题目服务.标签找题(tag);
                 foreach (var q in questions)
                 {
                     var card = new QuestionCard(q);
@@ -186,7 +186,7 @@ namespace TagUI
 
        
 
-        private void removeTag_Click(object sender, EventArgs e)
+        private void 删除标签_Click(object sender, EventArgs e)
         {
             var selectedNode = TagsTreeView.SelectedNode;
             if (selectedNode.Tag == null)
@@ -207,7 +207,7 @@ namespace TagUI
                     var maintainer = 标签维护器.Instance;
                     try
                     {
-                        maintainer.ID删除标签(selectedTag.Id);
+                        maintainer.删除标签(selectedTag);
                     }
                     catch (Exception ex)
                     {
@@ -260,6 +260,22 @@ namespace TagUI
                 加载结点题目(this, new TreeViewEventArgs(selectedNode));
 
             }
+        }
+
+        private void 选择题库(object sender, EventArgs e)
+        {
+            
+            FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog
+            {
+                Description = "选择题库根目录",
+            };
+
+            if (folderBrowserDialog.ShowDialog() == DialogResult.OK&&File.Exists(Path.Combine(folderBrowserDialog.SelectedPath,"tags.json")))
+            {
+                静态参数.题库目录 = folderBrowserDialog.SelectedPath;
+                重建环境并刷新界面();
+            }
+
         }
     }
 }

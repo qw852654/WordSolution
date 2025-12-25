@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Aspose.Words.Tables;
 using Newtonsoft.Json;
 
 namespace TagRunner
@@ -12,7 +13,7 @@ namespace TagRunner
         转换失败 = 2
     }
 
-    public class 初始化环境
+    public class 初始化题库
     {
         /// <summary>
         /// 初始化题库环境（幂等）：
@@ -24,7 +25,7 @@ namespace TagRunner
         public static void 初始化题库目录(string rootDir)
         {
             if (string.IsNullOrWhiteSpace(rootDir))
-                throw new ArgumentException("根目录不能为空", nameof(rootDir));
+                throw new ArgumentException("题库根目录不存在", nameof(rootDir));
 
             var sourceDir = Path.Combine(rootDir, "source");
             var htmlDir   = Path.Combine(rootDir, "html");
@@ -41,27 +42,12 @@ namespace TagRunner
             // 写入扁平化的标签列表（仅在文件不存在时写入）
             if (!File.Exists(tagsPath))
             {
-                var flatTags = new 标签[]
-                {
-                    // 根：题型
-                    new 标签{ Id = 100, Name = "题型",   ParentId = (int?)null, Category = "题型",   NumericValue = (int?)null },
-                    // 子：题型
-                    new 标签{ Id = 101, Name = "填空题", ParentId = 100,       Category = "题型",   NumericValue = (int?)null },
-                    new 标签{ Id = 102, Name = "选择题", ParentId = 100,       Category = "题型",   NumericValue = (int?)null },
+                File.Create(tagsPath).Dispose();
+                标签查询服务.Initialize(rootDir);
+                标签维护器.Initialize(标签查询服务.Instance);
+                foreach (var tag in 标签类别.允许的根标签类别)
+                    标签维护器.Instance.新增标签(tag,tag,parentId:null);
 
-                    // 根：难度
-                    new 标签{ Id = 200, Name = "难度",   ParentId = (int?)null, Category = "难度",   NumericValue = (int?)null },
-                    // 子：难度（带数值）
-                    new 标签{ Id = 201, Name = "一星",   ParentId = 200,       Category = "难度",   NumericValue = 1 },
-                    new 标签{ Id = 202, Name = "二星",   ParentId = 200,       Category = "难度",   NumericValue = 2 }
-                };
-
-                var settings = new JsonSerializerSettings
-                {
-                    NullValueHandling = NullValueHandling.Include,
-                    DefaultValueHandling = DefaultValueHandling.Include
-                };
-                File.WriteAllText(tagsPath, JsonConvert.SerializeObject(flatTags, Formatting.Indented, settings));
             }
 
             // 题目 JSON（若不存在则初始化；已存在则保留）
@@ -70,8 +56,8 @@ namespace TagRunner
             {
                 questions = new List<题目>
                 {
-                    new 题目 { Id = 1001, TagIds = new List<int>{101,201}, Status = 题目状态.待审核 },
-                    new 题目 { Id = 1002, TagIds = new List<int>{102,202}, Status = 题目状态.已标注 }
+                    new 题目 { Id = 1001, TagIds = new List<int>{1,2}, Status = 题目状态.待审核 },
+                    new 题目 { Id = 1002, TagIds = new List<int>{1,2}, Status = 题目状态.已标注 }
                 };
                 File.WriteAllText(questionsPath, JsonConvert.SerializeObject(questions, Formatting.Indented));
 

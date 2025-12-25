@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
+using System.Windows.Forms;
 
 namespace TagRunner
 {
@@ -99,11 +100,11 @@ namespace TagRunner
         }
 
         // 按标签查找标签及其子标签的题目
-        public List<题目> 标签ID找题(int tagId)
+        public List<题目> 标签找题(标签 tag)
         {
             标签查询服务 标签服务 = 标签查询服务.Instance;
             标签服务.加载标签树();
-            var targetIDs= 标签服务.根据ID获取当前标签及其子孙标签列表(tagId);
+            var targetIDs= 标签服务.ID获取当前标签及其子孙标签列表(tag);
             var merged=new List<题目>();
             foreach(var id in targetIDs)
             {
@@ -120,16 +121,16 @@ namespace TagRunner
 
         }
 
-        public List<题目> 多标签ID找题(IEnumerable<int> TagIds)
+        public List<题目> 多标签找题(IEnumerable<标签> Tags)
         {
-            if (TagIds==null) return new List<题目>();
+            if (Tags==null) return new List<题目>();
             var 标签服务=标签查询服务.Instance;
             标签服务.加载标签树();
 
             var expeadedTagIdSets=new List<HashSet<int>>();
-            foreach(var tagId in TagIds)
+            foreach(var tag in Tags)
             {
-                var expanded=标签服务.根据ID获取当前标签及其子孙标签列表(tagId);
+                var expanded=标签服务.ID获取当前标签及其子孙标签列表(tag);
                 expeadedTagIdSets.Add( new HashSet<int>(expanded));
             }
             if(expeadedTagIdSets.Count==0) return new List<题目>();
@@ -198,9 +199,12 @@ namespace TagRunner
             if (convertStatus != 文档转换结果状态.成功)
             {
                 // 可选：如果转换失败要回滚文档/新增，则在此返回 false 并删除已复制的 DOCX
-                // File.Delete(Path.Combine(_文档转换器.SourceDir, $"{newQ.Id}.docx"));
+                File.Delete(Path.Combine(_文档转换器.SourceDir, $"{newQ.Id}.docx"));
                 // return false;
                 // 这里选择不中断新增流程，仅继续写入数据
+                MessageBox.Show($"转换失败，题目编号：{newQ.Id}，文件已删除");
+                return false;
+
             }
 
             // 3. 更新内存与索引
@@ -401,6 +405,54 @@ namespace TagRunner
             if (_题目列表.Count == 0)
                 return 1;
             return _题目列表.Max(q => q.Id) + 1;
+        }
+
+        public List<题目> 获取所有题目()
+        {
+            return _题目列表;
+        }
+
+        public void 移除题目标签(题目 ques,标签 tag)
+        {
+            if (ques == null) throw new ArgumentNullException(nameof(ques));
+            if (tag == null) throw new ArgumentNullException(nameof(tag));
+            if (ques.TagIds == null || !ques.TagIds.Contains(tag.Id))
+                return;
+            ques.TagIds.Remove(tag.Id);
+            if (ques.TagIds.Count == 0)
+            {
+                Instance.题目新增标签(ques, new List<标签>
+                {
+                    标签查询服务.Instance.标签名获取标签("无标签题目")
+                });
+            }
+            写入题目信息到Json();
+            if (标签id_题目字典.TryGetValue(tag.Id, out var qlist))
+            {
+                qlist.Remove(ques);
+                if (qlist.Count == 0)
+                {
+                    标签id_题目字典.Remove(tag.Id);
+                }
+            }
+        }
+
+        public void 题目新增标签(题目 ques, List<标签> newTags)
+        {
+            if (newTags == null || newTags.Count == 0) return;
+            foreach (var tag in newTags)
+            {
+                _题目列表.FirstOrDefault(q => q.Id == ques.Id)?.TagIds.Add(tag.Id);
+                标签id_题目字典.TryGetValue(tag.Id, out var qlist);
+                if (qlist == null)
+                {
+                    标签id_题目字典[tag.Id] = new List<题目> { ques };
+                }
+                else
+                {
+                    qlist.Add(ques);
+                }
+            }
         }
     }
 }

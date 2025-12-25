@@ -8,6 +8,8 @@ using TagRunner.标签管理;
 
 namespace TagRunner
 {
+    
+
     //<summary>
     //主要根据标签json文件加载标签树、查询标签、索引标签等查询服务
     //提供：
@@ -31,6 +33,8 @@ namespace TagRunner
         {
             var tagsJsonPath = Path.Combine(题库目录, "tags.json");
             TagsJsonPath = tagsJsonPath ?? throw new ArgumentNullException(nameof(tagsJsonPath));
+            if (!File.Exists(tagsJsonPath))
+                throw new InvalidOperationException($"题库标签文件不存在:{tagsJsonPath}");
             加载标签树();
         }
 
@@ -39,6 +43,7 @@ namespace TagRunner
         /// </summary>
         public static void Initialize(string 题库目录)
         {
+            
             lock (_lock)
             {
                 _instance = new 标签查询服务(题库目录);
@@ -172,24 +177,7 @@ namespace TagRunner
         /// <summary>
         /// 查找同一父节点下的指定名称（且类别）标签，找不到返回 null。
         /// </summary>
-        public 标签 FindTagByName(string name, int? parentId, string category = null)
-        {
-            var targetName = (name ?? string.Empty).Trim();
-            if (!parentId.HasValue)
-            {
-                return 标签树根.FirstOrDefault(t =>
-                    string.Equals(t.Name, targetName, StringComparison.Ordinal) &&
-                    string.Equals(t.Category, category, StringComparison.Ordinal));
-            }
-
-            var parent = GetById(parentId.Value);
-            if (parent == null) return null;
-
-            var children = parent.Children ?? new List<标签>();
-            return children.FirstOrDefault(t =>
-                string.Equals(t.Name, targetName, StringComparison.Ordinal) &&
-                string.Equals(t.Category, category, StringComparison.Ordinal));
-        }
+        
 
         /// <summary>
         /// 递归遍历指定标签节点，先返回当前节点，再递归返回其所有子孙节点。
@@ -215,12 +203,14 @@ namespace TagRunner
         /// 返回某父标签的所有子孙标签 Id（不包含父标签本身），
         /// 用于在选择父节点时获取其覆盖范围。
         /// </summary>
-        public List<int> 根据ID获取当前标签及其子孙标签列表(int parentId)
+        public List<int> ID获取当前标签及其子孙标签列表(标签 parentTag)
         {
+            if (parentTag == null)
+                throw new ArgumentNullException(nameof(parentTag));
             var result = new List<int>();
-            var parent = GetById(parentId);
+            var parent = parentTag;
 
-            result.Add(parentId); // 包含父标签本身
+            result.Add(parentTag.Id); // 包含父标签本身
 
             void Walk(标签 node)
             {
@@ -235,6 +225,18 @@ namespace TagRunner
             Walk(parent);
 
             return result;
+        }
+
+        public 标签 标签名获取标签(string tagName)
+        {
+            if (string.IsNullOrWhiteSpace(tagName))
+                return null;
+            foreach (var tag in 遍历标签树获取标签())
+            {
+                if (string.Equals(tag.Name, tagName.Trim(), StringComparison.Ordinal))
+                    return tag;
+            }
+            return null;
         }
 
         /// <summary>
