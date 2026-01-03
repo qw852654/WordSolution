@@ -84,6 +84,13 @@
   <ItemGroup>
     <Compile Include="Aspose许可授权.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="基础\文件存储工具.cs" />
+    <Compile Include="数据\Db连接工厂.SQLite.cs" />
+    <Compile Include="数据\IDb连接工厂.cs" />
+    <Compile Include="数据\I标签仓储.cs" />
+    <Compile Include="数据\I题目仓储.cs" />
+    <Compile Include="数据\标签仓储.SQLite.cs" />
+    <Compile Include="数据\题目仓储.SQLite.cs" />
     <Compile Include="通用\题库参数.cs" />
     <Compile Include="题库路径生成器.cs" />
     <Compile Include="标签管理\标签接口.cs" />
