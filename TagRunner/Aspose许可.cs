@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace TagRunner
 {
-    public class Aspose许可授权
+    public class Aspose许可
     {
         public static void Authorize()
         {

@@ -179,7 +179,7 @@ namespace TagRunner
         public bool 新增题目(List<标签> quesTags, string 文档路径 = null)
         {
             
-            Aspose许可授权.Authorize();
+            Aspose许可.Authorize();
 
             if (quesTags == null||quesTags.Count==0) throw new ArgumentNullException(nameof(quesTags));
             if (string.IsNullOrWhiteSpace(文档路径) || !File.Exists(文档路径))
