@@ -4,6 +4,7 @@ using System.Data;
 using System.Threading;
 using Dapper;
 using TagRunner.Models;
+using TagRunner.基础;
 
 namespace TagRunner.数据
 {
@@ -29,8 +30,8 @@ namespace TagRunner.数据
 
         // 接口方法签名（已实现 插入标签，下面实现 Id获取标签）
 
-
-        public int 插入标签(标签 标签对象)
+        // 待完成，插入标签没有检查同名标签。为 (ParentId, Name) 建立唯一索引（SQLite 中可建 UNIQUE 索引或在表定义时加 UNIQUE 约束），并在插入时捕获 SQLite 的唯一约束冲突（SQLiteException 的 ResultCode == Constraint），将其转换为友好的重复插入错误。？？？？
+        public int 新增标签(标签 标签对象)
         {
             if (标签对象 == null) throw new ArgumentNullException(nameof(标签对象));
 
@@ -71,7 +72,7 @@ namespace TagRunner.数据
             if (标签对象 == null) throw new ArgumentNullException(nameof(标签对象));
             if (标签对象.Id <= 0) return false;
 
-            return 在写操作重试中执行(() =>
+            return  在写操作重试中执行(() =>
             {
                 using (var conn = _数据库连接工厂.创建连接())
                 {
@@ -142,30 +143,9 @@ namespace TagRunner.数据
             }
         }
 
-        // 私有帮助方法：写操作重试模板（示例）
-        // 使用示例（伪代码，实际 SQL 在实现时提供）：
-        // 在 插入/更新/删除 等写方法中调用：
-        // return 在写操作重试中执行(() => { using (var conn = _连接工厂.创建连接()) { // 执行 Dapper 的 Execute/Query } });
         private T 在写操作重试中执行<T>(Func<T> 操作)
         {
-            int attempt = 0;
-            int delay = _初始重试间隔毫秒;
-            while (true)
-            {
-                attempt++;
-                try
-                {
-                    return 操作();
-                }
-                catch (System.Data.SQLite.SQLiteException ex) when (ex.ResultCode == System.Data.SQLite.SQLiteErrorCode.Busy || ex.ResultCode == System.Data.SQLite.SQLiteErrorCode.Locked)
-                {
-                    if (attempt >= _写重试次数)
-                        throw;
-                    Thread.Sleep(delay);
-                    delay *= 2;
-                    continue;
-                }
-            }
+            return Sqlite写重试.在写操作重试中执行(操作, _写重试次数, _初始重试间隔毫秒);
         }
 
 

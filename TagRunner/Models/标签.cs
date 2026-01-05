@@ -15,7 +15,7 @@ namespace TagRunner.Models
         public List<标签> Children { get; set; } = new List<标签>();
 
         // 描述信息
-        public string Description { get; set; } = "";
+        public string Description { get; set; } 
 
         // 在父节点下的顺序位置（可用于快速排序或显示）；如果需要链式首尾相接，也可以使用 PrevSiblingId/NextSiblingId
         public int? PrevSiblingId { get; set; }
