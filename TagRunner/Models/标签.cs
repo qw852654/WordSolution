@@ -11,7 +11,7 @@ namespace TagRunner.Models
         // 原始（与数据库列名保持一致，便于 Dapper 映射）
         public int Id { get; set; }
         public string Name { get; set; }
-        public int? ParentId { get; set; } //null表示无父节点
+        public int? ParentId { get; set; } //0表示无父节点
         public List<标签> Children { get; set; } = new List<标签>();
 
         // 描述信息

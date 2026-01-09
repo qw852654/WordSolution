@@ -135,9 +135,15 @@ namespace TagRunner.数据
 
             using (var conn = _数据库连接工厂.创建连接())
             {
+                // 处理三态：@ParentId IS NULL => 查找 ParentId IS NULL（孤儿）
+                //           @ParentId = 0 => 查找 ParentId = 0（根）
+                //           @ParentId > 0 => 查找对应父 id
                 var sql = @"SELECT COUNT(1) FROM Tags 
                                 WHERE Name = @Name 
-                                AND ((@ParentId IS NULL AND ParentId IS NULL) OR ParentId = @ParentId);";
+                                AND (
+                                    (@ParentId IS NULL AND ParentId IS NULL)
+                                    OR (@ParentId IS NOT NULL AND ParentId = @ParentId)
+                                );";
                 var count = conn.ExecuteScalar<long>(sql, new { Name = trimmed, ParentId = 父标签Id });
                 return count > 0;
             }

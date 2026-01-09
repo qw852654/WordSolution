@@ -63,18 +63,16 @@ namespace TagRunner.数据
                 using (var cmd = conn.CreateCommand())
                 {
                     // Tags 表（自引用父子关系，ParentId+Name 唯一约束）
-                    cmd.CommandText = @"
-CREATE TABLE IF NOT EXISTS Tags (
-    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-    Name TEXT NOT NULL,
-    ParentId INTEGER NULL,
-    Description TEXT,
-    PrevSiblingId INTEGER,
-    NextSiblingId INTEGER,
-    FOREIGN KEY(ParentId) REFERENCES Tags(Id) ON DELETE SET NULL,
-    UNIQUE(ParentId, Name)
-);
-";
+                    cmd.CommandText = @"CREATE TABLE IF NOT EXISTS Tags (
+                                            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                            Name TEXT NOT NULL,
+                                            ParentId INTEGER NULL,
+                                            Description TEXT,
+                                            PrevSiblingId INTEGER,
+                                            NextSiblingId INTEGER,
+                                            FOREIGN KEY(ParentId) REFERENCES Tags(Id) ON DELETE SET NULL,
+                                            UNIQUE(ParentId, Name)
+                                        );";
                     cmd.ExecuteNonQuery();
 
                     // Questions 表，包含 LastIndexedAt 便于后续索引增量
@@ -83,7 +81,9 @@ CREATE TABLE IF NOT EXISTS Tags (
                                             Description TEXT,
                                             CreatedTime TEXT NOT NULL,
                                             UpdateTime TEXT NOT NULL,
-                                            LastIndexedAt TEXT);";
+                                            LastIndexedAt TEXT,
+                                            Content TEXT 
+                                            );";
                     cmd.ExecuteNonQuery();
 
                     // QuestionTags 中间表
@@ -97,6 +97,11 @@ CREATE TABLE IF NOT EXISTS Tags (
 
                     // 索引：按需创建
                     cmd.CommandText = @"CREATE INDEX IF NOT EXISTS IX_QuestionTags_TagId ON QuestionTags(TagId);";
+                    cmd.ExecuteNonQuery();
+
+                    // 插入虚根（Id = 0）。ParentId 保持 NULL（虚根无父）。
+                    cmd.CommandText = @"INSERT OR IGNORE INTO Tags (Id, Name, ParentId, Description, PrevSiblingId, NextSiblingId)
+                                        VALUES (0, '虚根', NULL, '系统虚根（保留）', NULL, NULL);";
                     cmd.ExecuteNonQuery();
 
                     tran.Commit();
