@@ -11,7 +11,7 @@ namespace TagRunner.业务
         int 新增题目(List<标签> 标签集合, string 源文件路径);
         bool 删除题目(int 题目Id);
         bool 更新题目(题目 修改题目);
-        List<题目> 按标签查找(IEnumerable<int> 标签Ids);
+        List<题目> 标签找题(List<标签> 标签列表);
         void 设置题目标签(int 题目Id, IEnumerable<int> 标签Ids);
     }
 }

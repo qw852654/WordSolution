@@ -1,21 +1,22 @@
 using System;
-using System.Data.SQLite;
 using System.IO;
+using Microsoft.Data.Sqlite;
 
 namespace TagRunner.数据
 {
     /// <summary>
-    /// 程序化数据库初始化器（覆盖模式）。
-    /// 用途：创建或覆盖指定路径的 SQLite 数据库文件，并创建基础表结构：Tags, Questions, QuestionTags。
-    /// 注意：该初始化会在覆盖模式下删除已有文件，请谨慎使用。
+    /// 数据库初始化器（v0）：确保 SQLite 数据库文件存在，并创建所需表结构。
+    /// 说明：
+    /// - 使用 Microsoft.Data.Sqlite（完全托管）；
+    /// - SQLite 的 db 文件会在第一次打开连接时自动创建，因此不需要 CreateFile。
     /// </summary>
     public static class Db初始化器
     {
         /// <summary>
-        /// 初始化数据库文件并创建基础表（覆盖模式可删除已有文件）。
+        /// 初始化数据库文件与表结构。
         /// </summary>
         /// <param name="数据库文件路径">目标 SQLite 数据库文件路径。</param>
-        /// <param name="覆盖">如果为 true 且文件存在则先删除再创建新库。</param>
+        /// <param name="覆盖">为 true 时删除旧 db 文件重新创建。</param>
         public static void 初始化数据库(string 数据库文件路径, bool 覆盖 = false)
         {
             if (string.IsNullOrWhiteSpace(数据库文件路径))
@@ -25,34 +26,22 @@ namespace TagRunner.数据
             var dir = Path.GetDirectoryName(fullPath);
             if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
 
-            if (File.Exists(fullPath))
-            {
-                if (覆盖)
-                {
-                    File.Delete(fullPath);
-                }
-                else
-                {
-                    // 已存在且不覆盖，仍尝试确保表存在
-                    CreateSchemaIfNotExists(fullPath);
-                    return;
-                }
-            }
-
-            // 创建空数据库文件
-            SQLiteConnection.CreateFile(fullPath);
+            if (File.Exists(fullPath) && 覆盖)
+                File.Delete(fullPath);
 
             CreateSchemaIfNotExists(fullPath);
         }
 
         private static void CreateSchemaIfNotExists(string dbPath)
         {
-            var connStr = $"Data Source={dbPath};Version=3;";
-            using (var conn = new SQLiteConnection(connStr))
+            // Microsoft.Data.Sqlite 的连接字符串只需要 Data Source
+            var connStr = $"Data Source={dbPath};";
+
+            using (var conn = new SqliteConnection(connStr))
             {
                 conn.Open();
 
-                // 开启外键支持
+                // 打开外键约束（SQLite 默认是 OFF）
                 using (var cmdPragma = conn.CreateCommand())
                 {
                     cmdPragma.CommandText = "PRAGMA foreign_keys = ON;";
@@ -60,54 +49,57 @@ namespace TagRunner.数据
                 }
 
                 using (var tran = conn.BeginTransaction())
-                using (var cmd = conn.CreateCommand())
                 {
-                    // Tags 表（自引用父子关系，ParentId+Name 唯一约束）
-                    cmd.CommandText = @"CREATE TABLE IF NOT EXISTS Tags (
-                                            Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                            Name TEXT NOT NULL,
-                                            ParentId INTEGER NULL,
-                                            Description TEXT,
-                                            PrevSiblingId INTEGER,
-                                            NextSiblingId INTEGER,
-                                            FOREIGN KEY(ParentId) REFERENCES Tags(Id) ON DELETE SET NULL,
-                                            UNIQUE(ParentId, Name)
-                                        );";
-                    cmd.ExecuteNonQuery();
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        cmd.Transaction = tran;
 
-                    // Questions 表，包含 LastIndexedAt 便于后续索引增量
-                    cmd.CommandText = @"CREATE TABLE IF NOT EXISTS Questions (
-                                            Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                            Description TEXT,
-                                            CreatedTime TEXT NOT NULL,
-                                            UpdateTime TEXT NOT NULL,
-                                            LastIndexedAt TEXT,
-                                            Content TEXT 
+                        // 1) Tags 表：存标签树结构。UNIQUE(ParentId, Name) 防止同父重名。
+                        cmd.CommandText = @"CREATE TABLE IF NOT EXISTS Tags (
+                                                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                Name TEXT NOT NULL,
+                                                ParentId INTEGER NULL,
+                                                Description TEXT,
+                                                PrevSiblingId INTEGER,
+                                                NextSiblingId INTEGER,
+                                                FOREIGN KEY(ParentId) REFERENCES Tags(Id) ON DELETE SET NULL,
+                                                UNIQUE(ParentId, Name)
                                             );";
-                    cmd.ExecuteNonQuery();
+                        cmd.ExecuteNonQuery();
 
-                    // QuestionTags 中间表
-                    cmd.CommandText = @"CREATE TABLE IF NOT EXISTS QuestionTags (
-                                            QuestionId INTEGER NOT NULL,
-                                            TagId INTEGER NOT NULL,
-                                            PRIMARY KEY (QuestionId, TagId),
-                                            FOREIGN KEY(QuestionId) REFERENCES Questions(Id) ON DELETE CASCADE,
-                                            FOREIGN KEY(TagId) REFERENCES Tags(Id) ON DELETE CASCADE);";
-                    cmd.ExecuteNonQuery();
+                        // 2) Questions 表：题目元数据
+                        cmd.CommandText = @"CREATE TABLE IF NOT EXISTS Questions (
+                                                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                Description TEXT,
+                                                CreatedTime TEXT NOT NULL,
+                                                UpdateTime TEXT NOT NULL,
+                                                LastIndexedAt TEXT,
+                                                Content TEXT
+                                            );";
+                        cmd.ExecuteNonQuery();
 
-                    // 索引：按需创建
-                    cmd.CommandText = @"CREATE INDEX IF NOT EXISTS IX_QuestionTags_TagId ON QuestionTags(TagId);";
-                    cmd.ExecuteNonQuery();
+                        // 3) QuestionTags 中间表：题目-标签 多对多
+                        cmd.CommandText = @"CREATE TABLE IF NOT EXISTS QuestionTags (
+                                                QuestionId INTEGER NOT NULL,
+                                                TagId INTEGER NOT NULL,
+                                                PRIMARY KEY (QuestionId, TagId),
+                                                FOREIGN KEY(QuestionId) REFERENCES Questions(Id) ON DELETE CASCADE,
+                                                FOREIGN KEY(TagId) REFERENCES Tags(Id) ON DELETE CASCADE
+                                            );";
+                        cmd.ExecuteNonQuery();
 
-                    // 插入虚根（Id = 0）。ParentId 保持 NULL（虚根无父）。
-                    cmd.CommandText = @"INSERT OR IGNORE INTO Tags (Id, Name, ParentId, Description, PrevSiblingId, NextSiblingId)
-                                        VALUES (0, '虚根', NULL, '系统虚根（保留）', NULL, NULL);";
-                    cmd.ExecuteNonQuery();
+                        // 4) 索引：按 TagId 查题目会更快（虽然 v0 不追求性能，但索引不影响理解）
+                        cmd.CommandText = @"CREATE INDEX IF NOT EXISTS IX_QuestionTags_TagId ON QuestionTags(TagId);";
+                        cmd.ExecuteNonQuery();
+
+                        // 5) （保留你原来的“系统根标签 Id=0”逻辑）
+                        cmd.CommandText = @"INSERT OR IGNORE INTO Tags (Id, Name, ParentId, Description, PrevSiblingId, NextSiblingId)
+                                            VALUES (0, '根', NULL, '系统根标签记录', NULL, NULL);";
+                        cmd.ExecuteNonQuery();
+                    }
 
                     tran.Commit();
                 }
-
-                conn.Close();
             }
         }
     }

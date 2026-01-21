@@ -35,7 +35,8 @@ namespace TagRunner.业务
             var 目标目录 = Path.GetDirectoryName(目标路径);
             if (!Directory.Exists(目标目录)) Directory.CreateDirectory(目标目录);
 
-            File.Copy(源文件路径, 目标路径, overwrite: false);
+            // 教学版：直接覆盖（更直观），避免因为目标文件已存在导致异常
+            File.Copy(源文件路径, 目标路径, overwrite: true);
             return 目标路径;
         }
 

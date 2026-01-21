@@ -44,7 +44,7 @@ namespace TagRunner.Models
 
         public override string ToString()
         {
-            return string.IsNullOrEmpty(Name) ? $"标签:{Id}" : $"{Name}({Id})";
+            return string.IsNullOrEmpty(Name) ? $"{Name}:{Id}" : $"{Name}({Id})";
         }
     }
 }

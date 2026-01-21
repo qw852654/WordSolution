@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Aspose.Words;
 using Aspose.Words.Saving;
 
@@ -13,7 +9,7 @@ namespace TagRunner.基础
     /// 基于 Aspose.Words 的文档转换器实现，按文件路径执行转换。
     /// 实现 I文档转换器 接口，返回 bool 表示是否成功。
     /// </summary>
-    internal class 文档转换器 : I文档转换器
+    public class 文档转换器 : I文档转换器
     {
         public 文档转换器()
         {
