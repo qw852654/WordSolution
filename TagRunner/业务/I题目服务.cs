@@ -13,5 +13,6 @@ namespace TagRunner.业务
         bool 更新题目(题目 修改题目);
         List<题目> 标签找题(List<标签> 标签列表);
         void 设置题目标签(int 题目Id, IEnumerable<int> 标签Ids);
+        string 获取题目文档路径(题目 q);
     }
 }

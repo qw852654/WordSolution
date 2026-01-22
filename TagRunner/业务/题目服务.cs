@@ -89,5 +89,11 @@ namespace TagRunner.业务
         public bool 删除题目(int 题目Id) => throw new NotImplementedException();
         public bool 更新题目(题目 修改题目) => throw new NotImplementedException();
         public void 设置题目标签(int 题目Id, System.Collections.Generic.IEnumerable<int> 标签Ids) => throw new NotImplementedException();
+
+        public string 获取题目文档路径(题目 q)
+        {
+            var path = _文件存储.获取Docx路径(q.Id);
+            return path;
+        }
     }
 }

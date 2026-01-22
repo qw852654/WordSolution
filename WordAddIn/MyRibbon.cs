@@ -2,13 +2,16 @@
 using Microsoft.Office.Tools.Ribbon;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using WordLibrary;
 using Microsoft.VisualBasic;
-using TagUI;
+using UI;
 using TagRunner;
+using TagRunner.Models;
+using TagRunner.业务;
 using System.Xml.Linq;
 
 namespace WordAddIn
@@ -259,67 +262,122 @@ namespace WordAddIn
         private void 插入选中题目(object sender, RibbonControlEventArgs e)
         {
 
-            题库参数.题库目录 = @"E:\Desktop\个人题库";
-            将选中题目加入题库();
-
-
         }
 
-        private void button9_Click(object sender, RibbonControlEventArgs e)
+        private void 插入高中题目(object sender, RibbonControlEventArgs e)
         {
-            题库参数.题库目录 = @"E:\Desktop\高中题库";
-            将选中题目加入题库();
+            try
+            {
+                var app = Globals.ThisAddIn.Application;
+                var selection = app.Selection;
+
+                if (selection == null || selection.Range == null)
+                {
+                    MessageBox.Show("没有可用的选区。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                if (selection.Range.Start == selection.Range.End)
+                {
+                    MessageBox.Show("请先选中要作为题目的内容。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // 1) 复制选中内容到新文档
+                var newDoc = app.Documents.Add();
+                newDoc.Content.Delete();
+                newDoc.Content.FormattedText = selection.Range.FormattedText;
+
+                // 2) 保存到临时目录
+                var tempDir = Path.Combine(Path.GetTempPath(), "TagRunner");
+                Directory.CreateDirectory(tempDir);
+                var tempDocxPath = Path.Combine(tempDir, "高中题目_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".docx");
+
+                newDoc.SaveAs2(tempDocxPath, WdSaveFormat.wdFormatDocumentDefault);
+                newDoc.Close(WdSaveOptions.wdDoNotSaveChanges);
+
+                // 3) 确保业务层已初始化
+                var services = EnsureServicesInitialized();
+                if (services == null)
+                    return;
+
+                // 4) 打开新增题目窗口，并预填临时文件路径
+                using (var dlg = new UI.窗体.新增题目窗口(services))
+                {
+                    dlg.设置源文件路径(tempDocxPath);
+                    dlg.ShowDialog();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("插入高中题目失败: " + ex.Message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
-        private void 将选中题目加入题库()
+        private static 题库应用服务集 EnsureServicesInitialized()
         {
-            TagUI.通用类.初始化三大类();
+            // 如果已经初始化过，直接拿服务集
+            if (Bootstrapper.配置 != null && Bootstrapper.标签服务 != null && Bootstrapper.题目服务 != null)
+                return Bootstrapper.获取应用服务集();
 
-
-            var app = Globals.ThisAddIn.Application;
-            if (app.Selection == null || app.Selection.Range.StoryLength == 0) return;
-            var quesRange = app.Selection.Range;
-
-            if (quesRange.StoryLength == 0)
+            // 让用户选择题库根目录
+            using (var fbd = new FolderBrowserDialog())
             {
-                MessageBox.Show("请先选择题目内容");
-                return;
+                fbd.Description = "请选择题库根目录（包含 source/html/index/tagrunner.db）";
+                if (fbd.ShowDialog() != DialogResult.OK)
+                    return null;
+                
+                var root = fbd.SelectedPath;
+                var config = new 题库配置(root);
+                Bootstrapper.Initialize(config, 覆盖数据库: false);
+                return Bootstrapper.获取应用服务集();
             }
-
-
-            var quesDoc = app.Documents.Add();
-
-            quesDoc.Content.Delete();
-
-            quesDoc.Content.FormattedText = quesRange.FormattedText;
-
-            //激活标签窗口筛选标签
-            var 标签查询器 = TagRunner.标签查询服务.Instance;
-            List<标签> quesTags = null;
-
-            using (var dlg = new TagUI.标签选择窗口(标签查询器))
-            {
-                if (dlg.ShowDialog() == DialogResult.OK)
-                    quesTags = (List<标签>)dlg.标签列表;
-            }
-
-            if (quesTags == null || quesTags.Count == 0)
-            {
-                quesDoc.Close(SaveChanges: WdSaveOptions.wdDoNotSaveChanges);
-                return;
-            }
-
-            var 题目管理器 = TagRunner.题目服务.Instance;
-            var quesTempPath = System.IO.Path.GetTempFileName() + $"题目_{DateTime.Now:yyyyMMdd_HHmmssfff}.docx";
-            quesDoc.SaveAs2(quesTempPath, WdSaveFormat.wdFormatXMLDocument);
-
-
-            if (题目管理器.新增题目(quesTags, quesTempPath))
-                MessageBox.Show("题目添加成功");
-
-            quesDoc.Close(SaveChanges: WdSaveOptions.wdDoNotSaveChanges);
         }
 
-        
+        private void 插入题目but_Click(object sender, RibbonControlEventArgs e)
+        {
+            插入题目(InsertPosition.AtSelection);
+            
+        }
+
+        private static bool 插入题目(InsertPosition insP)
+        {
+            // 1) 确保题库服务已初始化
+            var services = EnsureServicesInitialized();
+            if (services == null)
+                return false;
+
+            // 2) 打开选题窗口，让用户筛选题目并返回题目 Id 列表
+            using (var dlg = new UI.窗体.选题窗口(services))
+            {
+                var dr = dlg.ShowDialog();
+                if (dr != DialogResult.OK)
+                    return false;
+
+                var questions = dlg.选中的题目;
+                if (questions == null) questions = new List<题目>();
+
+                //遍历题目列表，将题目插入到光标处
+                foreach (var q in questions)
+                {
+                    var handler = new WordHandler(services, Globals.ThisAddIn.Application);
+                    handler.插入题目(q, insP);
+
+                }
+
+            }
+
+            return true;
+        }
+
+        private void 之前插入_Click(object sender, RibbonControlEventArgs e)
+        {
+            插入题目(InsertPosition.Before);
+        }
+
+        private void 之后插入_Click(object sender, RibbonControlEventArgs e)
+        {
+            插入题目(InsertPosition.After);
+        }
     }
 }

@@ -56,6 +56,10 @@
             this.group4 = this.Factory.CreateRibbonGroup();
             this.button8 = this.Factory.CreateRibbonButton();
             this.button9 = this.Factory.CreateRibbonButton();
+            this.group6 = this.Factory.CreateRibbonGroup();
+            this.插入题目but = this.Factory.CreateRibbonButton();
+            this.之前插入 = this.Factory.CreateRibbonButton();
+            this.之后插入 = this.Factory.CreateRibbonButton();
             this.处理当前文档.SuspendLayout();
             this.group1.SuspendLayout();
             this.tab2.SuspendLayout();
@@ -66,6 +70,7 @@
             this.group5.SuspendLayout();
             this.tab3.SuspendLayout();
             this.group4.SuspendLayout();
+            this.group6.SuspendLayout();
             this.SuspendLayout();
             // 
             // 处理当前文档
@@ -189,6 +194,7 @@
             // tab3
             // 
             this.tab3.Groups.Add(this.group4);
+            this.tab3.Groups.Add(this.group6);
             this.tab3.Label = "题库";
             this.tab3.Name = "tab3";
             // 
@@ -210,7 +216,33 @@
             // 
             this.button9.Label = "加入高中题库";
             this.button9.Name = "button9";
-            this.button9.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.button9_Click);
+            this.button9.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.插入高中题目);
+            // 
+            // group6
+            // 
+            this.group6.Items.Add(this.插入题目but);
+            this.group6.Items.Add(this.之前插入);
+            this.group6.Items.Add(this.之后插入);
+            this.group6.Label = "插入题目";
+            this.group6.Name = "group6";
+            // 
+            // 插入题目but
+            // 
+            this.插入题目but.Label = "插入题目";
+            this.插入题目but.Name = "插入题目but";
+            this.插入题目but.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.插入题目but_Click);
+            // 
+            // 之前插入
+            // 
+            this.之前插入.Label = "之前插入";
+            this.之前插入.Name = "之前插入";
+            this.之前插入.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.之前插入_Click);
+            // 
+            // 之后插入
+            // 
+            this.之后插入.Label = "之后插入";
+            this.之后插入.Name = "之后插入";
+            this.之后插入.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.之后插入_Click);
             // 
             // MyRibbon
             // 
@@ -241,6 +273,8 @@
             this.tab3.PerformLayout();
             this.group4.ResumeLayout(false);
             this.group4.PerformLayout();
+            this.group6.ResumeLayout(false);
+            this.group6.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -269,6 +303,10 @@
         internal Microsoft.Office.Tools.Ribbon.RibbonGroup group4;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton button8;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton button9;
+        internal Microsoft.Office.Tools.Ribbon.RibbonGroup group6;
+        internal Microsoft.Office.Tools.Ribbon.RibbonButton 插入题目but;
+        internal Microsoft.Office.Tools.Ribbon.RibbonButton 之前插入;
+        internal Microsoft.Office.Tools.Ribbon.RibbonButton 之后插入;
     }
 
     partial class ThisRibbonCollection

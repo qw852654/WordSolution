@@ -47,13 +47,22 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="IWordHandler.cs" />
+    <Compile Include="WordHandler.cs" />
     <Compile Include="WordLibrary.cs" />
+    <Compile Include="内容控件Model.cs" />
   </ItemGroup>
   <ItemGroup>
     <WCFMetadata Include="Connected Services\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TagRunner\TagRunner.csproj">
+      <Project>{b414cfe2-f5bd-4292-a841-db5fcd0c718b}</Project>
+      <Name>TagRunner</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -255,5 +255,11 @@ namespace TagRunner.业务
 
             return result;
         }
+
+        public 标签 ID找标签(int id)
+        {
+            // 直接调用仓储实现
+            return _标签仓储.Id获取标签(id);
+        }
     }
 }

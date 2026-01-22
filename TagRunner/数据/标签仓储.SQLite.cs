@@ -90,7 +90,7 @@ namespace TagRunner.数据
 
         public 标签 Id获取标签(int 标签Id)
         {
-            if (标签Id <= 0) return null;
+            if (标签Id < 0) return null;
 
             using (var conn = _数据库连接工厂.创建连接())
             {

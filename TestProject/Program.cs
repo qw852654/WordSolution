@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Windows.Forms;
 using TagRunner.Models;
+using TagRunner.测试;
+using TagRunner.业务;
 using UI.控件;
 
 namespace TestProject
@@ -11,27 +14,33 @@ namespace TestProject
         [STAThread]
         static void Main()
         {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-
-            // 构造示例标签树
-            var roots = new List<标签>
+            try
             {
-                new 标签 { Id = 1, Name = "编程", Children = new List<标签> {
-                    new 标签 { Id = 11, Name = "C#", Children = new List<标签>() },
-                    new 标签 { Id = 12, Name = "Python", Children = new List<标签>() }
-                }},
-                new 标签 { Id = 2, Name = "数学", Children = new List<标签> {
-                    new 标签 { Id = 21, Name = "代数", Children = new List<标签>() },
-                    new 标签 { Id = 22, Name = "几何", Children = new List<标签>() }
-                }}
-            };
+                // 1) 初始化题库到桌面的 test 文件夹（覆盖旧数据库）
+                var demoRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "test");
+                Console.WriteLine($"Initializing demo library at: {demoRoot}");
 
-            var form = new Form { Text = "标签树控件 测试", Width = 400, Height = 500 };
-            var treeCtrl = new 标签树控件(roots) { Dock = DockStyle.Fill };
-            form.Controls.Add(treeCtrl);
+                // 生成示例题库（会调用 Bootstrapper.Initialize 并覆盖数据库）
+                var created = DemoDataInitializer.生成示例题库(demoRoot, 标签数量: 3, 题目数量: 10);
+                Console.WriteLine($"Created {created.Count} demo questions.");
 
-            Application.Run(form);
+                // 2) 获取应用服务集并传入选题窗口进行 UI 测试
+                var services = Bootstrapper.获取应用服务集();
+
+                // 启动 WinForms 选题窗口，传入服务集（UI 将使用服务集中的标签/题目服务）
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+
+                // 手工测试：新增题目窗口
+                Application.Run(new UI.窗体.新增题目窗口(services));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("初始化或运行失败：" + ex.Message);
+                Console.WriteLine(ex.ToString());
+                Console.WriteLine("按回车退出。");
+                Console.ReadLine();
+            }
         }
     }
 }

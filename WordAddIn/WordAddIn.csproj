@@ -256,6 +256,10 @@
       <Project>{b414cfe2-f5bd-4292-a841-db5fcd0c718b}</Project>
       <Name>TagRunner</Name>
     </ProjectReference>
+    <ProjectReference Include="..\UI\UI.csproj">
+      <Project>{c298889b-9d35-4ce7-a321-4f936dd22205}</Project>
+      <Name>UI</Name>
+    </ProjectReference>
     <ProjectReference Include="..\WordLibrary\WordLibrary.csproj">
       <Project>{19968e34-78e6-4732-b2eb-dd56c88166be}</Project>
       <Name>WordLibrary</Name>
@@ -289,4 +293,8 @@
       </FlavorProperties>
     </VisualStudio>
   </ProjectExtensions>
+  <PropertyGroup>
+    <PostBuildEvent>
+    </PostBuildEvent>
+  </PropertyGroup>
 </Project>

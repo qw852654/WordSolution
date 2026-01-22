@@ -9,6 +9,8 @@ namespace UI.控件
     public class 题目列表控件 : UserControl
     {
         private FlowLayoutPanel flowLayoutPanel1; // 用于按顺序排列题目预览控件
+        private List<题目> choosenQuetions=new List<题目>();
+        
 
         public 题目列表控件()
         {
@@ -18,6 +20,8 @@ namespace UI.控件
             flowLayoutPanel1.FlowDirection = FlowDirection.TopDown;
             flowLayoutPanel1.WrapContents = false;
             flowLayoutPanel1.AutoScroll = true;
+
+            
         }
 
         // 公共方法：按照传入题目列表顺序展示每个题目
@@ -35,10 +39,21 @@ namespace UI.控件
             {
                 // 为每个题目创建一个预览控件，传入服务实例
                 var preview = new 题目预览控件(q, 题目服务实例, 标签服务实例);
+                preview.题目被点击事件 += (s, e) =>
+                {
+                    if (e.选中状态)
+                    {
+                        choosenQuetions.Add(e.题目对象);
+                    }
+                    else
+                    {
+                        choosenQuetions.RemoveAll(t => t.Id == e.题目对象.Id);
+                    }
+                };
 
                 // 使预览控件水平拉伸以匹配列表宽度
                 preview.Width = flowLayoutPanel1.ClientSize.Width - SystemInformation.VerticalScrollBarWidth;
-                preview.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
+                preview.Anchor = AnchorStyles.Left;
 
                 // 在 FlowLayoutPanel 中按添加顺序展示（TopDown）
                 flowLayoutPanel1.Controls.Add(preview);
@@ -81,6 +96,11 @@ namespace UI.控件
             this.Size = new System.Drawing.Size(489, 433);
             this.ResumeLayout(false);
 
+        }
+
+        public List<题目> 获取选中题目()
+        {
+            return choosenQuetions;
         }
     }
 }

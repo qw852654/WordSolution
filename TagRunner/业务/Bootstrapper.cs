@@ -36,6 +36,8 @@ namespace TagRunner.业务
         /// </summary>
         public static void Initialize(题库配置 config, bool 覆盖数据库 = false)
         {
+            Aspose许可.Authorize();
+
             if (config == null) throw new ArgumentNullException(nameof(config));
 
             // 初始化 SQLitePCL（使用 Microsoft.Data.Sqlite 时必需）
