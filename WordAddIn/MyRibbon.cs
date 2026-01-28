@@ -264,7 +264,15 @@ namespace WordAddIn
 
         }
 
-        private void 插入高中题目(object sender, RibbonControlEventArgs e)
+        private void 录入高中题目(object sender, RibbonControlEventArgs e)
+        {
+            string 高中题库路径 = @"E:\Desktop\GZ_realLibrary";
+            Bootstrapper.Initialize(new 题库配置(高中题库路径), 覆盖数据库: false);
+            录入选中部分进题库();
+            
+        }
+
+        private static bool 录入选中部分进题库()
         {
             try
             {
@@ -274,13 +282,13 @@ namespace WordAddIn
                 if (selection == null || selection.Range == null)
                 {
                     MessageBox.Show("没有可用的选区。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    return;
+                    return false;
                 }
 
                 if (selection.Range.Start == selection.Range.End)
                 {
                     MessageBox.Show("请先选中要作为题目的内容。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    return;
+                    return false;
                 }
 
                 // 1) 复制选中内容到新文档
@@ -291,7 +299,7 @@ namespace WordAddIn
                 // 2) 保存到临时目录
                 var tempDir = Path.Combine(Path.GetTempPath(), "TagRunner");
                 Directory.CreateDirectory(tempDir);
-                var tempDocxPath = Path.Combine(tempDir, "高中题目_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".docx");
+                var tempDocxPath = Path.Combine(tempDir, "题目_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".docx");
 
                 newDoc.SaveAs2(tempDocxPath, WdSaveFormat.wdFormatDocumentDefault);
                 newDoc.Close(WdSaveOptions.wdDoNotSaveChanges);
@@ -299,7 +307,7 @@ namespace WordAddIn
                 // 3) 确保业务层已初始化
                 var services = EnsureServicesInitialized();
                 if (services == null)
-                    return;
+                    return false;
 
                 // 4) 打开新增题目窗口，并预填临时文件路径
                 using (var dlg = new UI.窗体.新增题目窗口(services))
@@ -310,8 +318,10 @@ namespace WordAddIn
             }
             catch (Exception ex)
             {
-                MessageBox.Show("插入高中题目失败: " + ex.Message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("插入题目失败: " + ex.Message, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+
+            return true;
         }
 
         private static 题库应用服务集 EnsureServicesInitialized()
@@ -378,6 +388,13 @@ namespace WordAddIn
         private void 之后插入_Click(object sender, RibbonControlEventArgs e)
         {
             插入题目(InsertPosition.After);
+        }
+
+        private void 测试加入题库(object sender, RibbonControlEventArgs e)
+        {
+            string 高中题库路径 = @"E:\Desktop\test_gaozhogn";
+            Bootstrapper.Initialize(new 题库配置(高中题库路径), 覆盖数据库: false);
+            录入选中部分进题库();
         }
     }
 }

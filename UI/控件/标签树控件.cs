@@ -21,7 +21,6 @@ namespace UI.控件
         {
             InitializeComponent();
 
-            treeView1.AfterSelect += treeView1_AfterSelect;
             treeView1.NodeMouseClick += treeView1_NodeMouseClick;
 
             if (根标签列表 != null)
@@ -61,23 +60,24 @@ namespace UI.控件
         {
             if (e == null) return;
 
+           
             // 右键时也选中节点，便于菜单操作
             if (e.Button == MouseButtons.Right)
             {
                 treeView1.SelectedNode = e.Node;
             }
+
+            //左键点击调用事件通知外部
+            if (e.Button == MouseButtons.Left)
+            {
+                treeView1.SelectedNode = e.Node;
+
+                var handler = TagSelected;
+                if (handler != null)
+                    handler(this, (标签)e.Node.Tag);
+            }
         }
 
-        private void treeView1_AfterSelect(object sender, TreeViewEventArgs e)
-        {
-            var tag = e.Node != null ? e.Node.Tag as 标签 : null;
-            if (tag == null)
-                return;
-
-            var handler = TagSelected;
-            if (handler != null)
-                handler(this, tag);
-        }
 
         private void InitializeComponent()
         {
@@ -97,6 +97,7 @@ namespace UI.控件
             this.treeView1.Name = "treeView1";
             this.treeView1.Size = new System.Drawing.Size(232, 497);
             this.treeView1.TabIndex = 0;
+            this.treeView1.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.treeView1_AfterSelect_1);
             // 
             // contextMenuStrip1
             // 
@@ -105,19 +106,19 @@ namespace UI.控件
             this.新增标签ToolStripMenuItem,
             this.删除标签ToolStripMenuItem});
             this.contextMenuStrip1.Name = "contextMenuStrip1";
-            this.contextMenuStrip1.Size = new System.Drawing.Size(211, 80);
+            this.contextMenuStrip1.Size = new System.Drawing.Size(139, 52);
             // 
             // 新增标签ToolStripMenuItem
             // 
             this.新增标签ToolStripMenuItem.Name = "新增标签ToolStripMenuItem";
-            this.新增标签ToolStripMenuItem.Size = new System.Drawing.Size(210, 24);
+            this.新增标签ToolStripMenuItem.Size = new System.Drawing.Size(138, 24);
             this.新增标签ToolStripMenuItem.Text = "新增标签";
             this.新增标签ToolStripMenuItem.Click += new System.EventHandler(this.新增标签ToolStripMenuItem_Click);
             // 
             // 删除标签ToolStripMenuItem
             // 
             this.删除标签ToolStripMenuItem.Name = "删除标签ToolStripMenuItem";
-            this.删除标签ToolStripMenuItem.Size = new System.Drawing.Size(210, 24);
+            this.删除标签ToolStripMenuItem.Size = new System.Drawing.Size(138, 24);
             this.删除标签ToolStripMenuItem.Text = "删除标签";
             // 
             // 标签树控件
@@ -260,6 +261,11 @@ namespace UI.控件
                     return null;
                 }
             }
+        }
+
+        private void treeView1_AfterSelect_1(object sender, TreeViewEventArgs e)
+        {
+
         }
     }
 }
