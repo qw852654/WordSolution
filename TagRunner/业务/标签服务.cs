@@ -18,6 +18,32 @@ namespace TagRunner.业务
         private readonly 数据.I题目仓储 _题目仓储;
         private readonly 数据.IDb连接工厂 _db连接工厂; // 可为 null
 
+        private List<标签> _上次被选择的标签;
+
+        public  List<标签> 上次被选择的标签
+        {
+            get
+            {
+                if (_上次被选择的标签 == null)
+                {
+                    _上次被选择的标签 = new List<标签>();
+                }
+
+                return _上次被选择的标签;
+            }
+            private set
+            {
+                _上次被选择的标签 = value;
+            }
+        }
+
+
+        public  方法执行结果 保存上次被选择的标签(List<标签> Tags)
+        {
+            上次被选择的标签 = Tags;
+            return 方法执行结果.succeeded;
+        }
+
         // 提供一个受保护的无参构造，用于测试时派生不依赖仓储的轻量实现
         protected 标签服务()
         {

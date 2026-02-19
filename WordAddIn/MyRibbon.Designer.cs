@@ -214,7 +214,7 @@
             this.button8.Label = "加入初中题库";
             this.button8.Name = "button8";
             this.button8.ShowImage = true;
-            this.button8.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.插入选中题目);
+            this.button8.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.录入初中题目);
             // 
             // button9
             // 

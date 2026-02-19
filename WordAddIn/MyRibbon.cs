@@ -259,9 +259,11 @@ namespace WordAddIn
             }
         }
 
-        private void 插入选中题目(object sender, RibbonControlEventArgs e)
+        private void 录入初中题目(object sender, RibbonControlEventArgs e)
         {
-
+            string 初中题库路径 = @"E:\Desktop\CZ_realLibrary";
+            Bootstrapper.Initialize(new 题库配置(初中题库路径), 覆盖数据库: false);
+            录入选中部分进题库();
         }
 
         private void 录入高中题目(object sender, RibbonControlEventArgs e)
@@ -366,15 +368,30 @@ namespace WordAddIn
 
                 var questions = dlg.选中的题目;
                 if (questions == null) questions = new List<题目>();
+                var handler = new WordHandler(services, Globals.ThisAddIn.Application);
 
-                //遍历题目列表，将题目插入到光标处
-                foreach (var q in questions)
+                if (insP == InsertPosition.AtSelection)
                 {
-                    var handler = new WordHandler(services, Globals.ThisAddIn.Application);
-                    handler.插入题目(q, insP);
-
+                    bool isFirstQues = true;
+                    foreach (var q in questions)
+                    {
+                        if (isFirstQues)
+                        {
+                            isFirstQues = false;
+                            handler.插入题目(q, InsertPosition.AtSelection);
+                        }
+                        else
+                            handler.插入题目(q, InsertPosition.After);
+                    }
                 }
-
+                else
+                {
+                    //遍历题目列表，将题目插入到光标处
+                    foreach (var q in questions)
+                    {
+                        handler.插入题目(q, insP);
+                    }
+                }
             }
 
             return true;
@@ -392,8 +409,13 @@ namespace WordAddIn
 
         private void 测试加入题库(object sender, RibbonControlEventArgs e)
         {
-            string 高中题库路径 = @"E:\Desktop\test_gaozhogn";
-            Bootstrapper.Initialize(new 题库配置(高中题库路径), 覆盖数据库: false);
+            string 测试题库路径 = @"E:\Desktop\test_gaozhogn";
+            if (Bootstrapper.配置 != null && Bootstrapper.标签服务 != null && Bootstrapper.题目服务 != null)
+            {
+                录入选中部分进题库();
+                return;
+            }
+            Bootstrapper.Initialize(new 题库配置(测试题库路径), 覆盖数据库: false);
             录入选中部分进题库();
         }
     }

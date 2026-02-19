@@ -93,6 +93,7 @@ namespace UI.窗体
 
                 // 关闭窗口并返回 OK
                 this.DialogResult = DialogResult.OK;
+                // _服务集.标签服务.保存上次被选择的标签(_标签筛选器.获取选中标签());
                 this.Close();
             }
             catch (Exception ex)

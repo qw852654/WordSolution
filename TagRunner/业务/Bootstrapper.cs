@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using TagRunner.Models;
 
 namespace TagRunner.业务
@@ -28,6 +29,7 @@ namespace TagRunner.业务
         // 业务层实例（暴露给 UI 使用）
         public static I标签服务 标签服务 { get; private set; }
         public static I题目服务 题目服务 { get; private set; }
+
 
         /// <summary>
         /// 初始化组合根并创建必须的组件实例。

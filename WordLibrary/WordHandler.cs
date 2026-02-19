@@ -34,7 +34,8 @@ namespace WordLibrary
                 switch (insP)
                 {
                     case InsertPosition.AtSelection:
-                        insertRng=selRng;
+                        selRng.InsertParagraphAfter();
+                        insertRng = selRng.Paragraphs[1].Next().Range;
                         break;
                     case InsertPosition.Before:
                         var rng=findCurrentControlRange(selRng.Start);
@@ -45,8 +46,9 @@ namespace WordLibrary
                         else
                         {
                             rng.Collapse(WdCollapseDirection.wdCollapseStart);
-                            insertRng =rng;
-                            insertRng.Move(WdUnits.wdCharacter, -1);
+                            rng.Move(WdUnits.wdCharacter, -1);
+                            rng.InsertParagraphBefore();
+                            insertRng = rng;
                         }
                         break;
                     case InsertPosition.After:
@@ -58,8 +60,10 @@ namespace WordLibrary
                         else
                         {
                             rng.Collapse(WdCollapseDirection.wdCollapseEnd);
-                            insertRng = rng;
-                            insertRng.Move(WdUnits.wdCharacter, 1);
+                            var r = rng.Duplicate;
+                            rng.Move(WdUnits.wdCharacter, 1);
+                            rng.InsertParagraphAfter();
+                            insertRng = r.Paragraphs[1].Next().Range;
                         }
                         break;
 
@@ -69,9 +73,13 @@ namespace WordLibrary
                 var Doc = _curApp.Documents.Open(docxPath,ReadOnly:true,Visible:false);
                 ct = insertRng.ContentControls.Add(WdContentControlType.wdContentControlRichText);
                 ct.Range.FormattedText = Doc.Content;
+                ct.Range.Paragraphs.Last.Range.Delete();
+                var ctRng=ct.Range.Paragraphs.Last.Range;
+                ctRng.Collapse(WdCollapseDirection.wdCollapseEnd);
+                ctRng.Select();
                 Doc.Close();
-                ct.Title= $"题目_{q.Id}";
-                ct.Tag = "";
+                ct.Title= $"题目:{q.Description}";
+                ct.Tag = $"ID:{q.Id}";
                 return ct;
             }
         }

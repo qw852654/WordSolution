@@ -53,6 +53,7 @@ namespace UI.控件
 
                 // 使预览控件水平拉伸以匹配列表宽度
                 preview.Width = flowLayoutPanel1.ClientSize.Width - SystemInformation.VerticalScrollBarWidth;
+                preview.Height = 400;
                 preview.Anchor = AnchorStyles.Left;
 
                 // 在 FlowLayoutPanel 中按添加顺序展示（TopDown）

@@ -14,7 +14,7 @@ namespace UI.控件
         private I标签服务 _标签服务; // 注入的标签服务，用于获取标签信息
         private bool chosen=false;
         private WebBrowser webBrowser1; // 用于显示题目 HTML 内容
-        private Button button1; // 用于后续的“修改”等操作（当前为占位）
+        private Button 选中按钮; 
         private SplitContainer splitContainer1; // 分割面板：上部显示标签，下部显示 HTML
         private Panel panel1; // 新增：最底层容器面板，所有其它控件都放在此面板内
         private 题目 _题目; // 当前正在展示的题目对象
@@ -27,7 +27,7 @@ namespace UI.控件
         public 题目预览控件(题目 待展示题目, I题目服务 注入题目服务, I标签服务 注入标签服务)
         {
             // 初始化窗体子控件（设计器风格方法）
-            InitializeComponent();
+            InitializeComponent(); 
 
             // 保存注入的服务引用，便于以后调用（比如删除或编辑）
             _题目服务 = 注入题目服务;
@@ -101,7 +101,7 @@ namespace UI.控件
         {
             this.panel1 = new System.Windows.Forms.Panel();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
-            this.button1 = new System.Windows.Forms.Button();
+            this.选中按钮 = new System.Windows.Forms.Button();
             this.webBrowser1 = new System.Windows.Forms.WebBrowser();
             this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
@@ -119,37 +119,38 @@ namespace UI.控件
             this.panel1.Location = new System.Drawing.Point(0, 0);
             this.panel1.Name = "panel1";
             this.panel1.Padding = new System.Windows.Forms.Padding(1);
-            this.panel1.Size = new System.Drawing.Size(410, 150);
+            this.panel1.Size = new System.Drawing.Size(715, 283);
             this.panel1.TabIndex = 0;
             // 
             // splitContainer1
             // 
             this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.splitContainer1.FixedPanel = System.Windows.Forms.FixedPanel.Panel1;
             this.splitContainer1.Location = new System.Drawing.Point(1, 1);
             this.splitContainer1.Name = "splitContainer1";
             this.splitContainer1.Orientation = System.Windows.Forms.Orientation.Horizontal;
             // 
             // splitContainer1.Panel1
             // 
-            this.splitContainer1.Panel1.Controls.Add(this.button1);
+            this.splitContainer1.Panel1.Controls.Add(this.选中按钮);
             // 
             // splitContainer1.Panel2
             // 
             this.splitContainer1.Panel2.Controls.Add(this.webBrowser1);
-            this.splitContainer1.Size = new System.Drawing.Size(406, 146);
-            this.splitContainer1.SplitterDistance = 32;
+            this.splitContainer1.Size = new System.Drawing.Size(711, 279);
+            this.splitContainer1.SplitterDistance = 36;
             this.splitContainer1.TabIndex = 0;
             // 
-            // button1
+            // 选中按钮
             // 
-            this.button1.Dock = System.Windows.Forms.DockStyle.Right;
-            this.button1.Location = new System.Drawing.Point(361, 0);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(45, 32);
-            this.button1.TabIndex = 0;
-            this.button1.Text = "选中";
-            this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.题目预览控件_Click);
+            this.选中按钮.Dock = System.Windows.Forms.DockStyle.Right;
+            this.选中按钮.Location = new System.Drawing.Point(666, 0);
+            this.选中按钮.Name = "选中按钮";
+            this.选中按钮.Size = new System.Drawing.Size(45, 36);
+            this.选中按钮.TabIndex = 0;
+            this.选中按钮.Text = "选中";
+            this.选中按钮.UseVisualStyleBackColor = true;
+            this.选中按钮.Click += new System.EventHandler(this.题目预览控件_Click);
             // 
             // webBrowser1
             // 
@@ -157,14 +158,14 @@ namespace UI.控件
             this.webBrowser1.Location = new System.Drawing.Point(0, 0);
             this.webBrowser1.MinimumSize = new System.Drawing.Size(20, 20);
             this.webBrowser1.Name = "webBrowser1";
-            this.webBrowser1.Size = new System.Drawing.Size(406, 110);
+            this.webBrowser1.Size = new System.Drawing.Size(711, 239);
             this.webBrowser1.TabIndex = 0;
             // 
             // 题目预览控件
             // 
             this.Controls.Add(this.panel1);
             this.Name = "题目预览控件";
-            this.Size = new System.Drawing.Size(410, 150);
+            this.Size = new System.Drawing.Size(715, 283);
             this.Click += new System.EventHandler(this.题目预览控件_Click);
             this.panel1.ResumeLayout(false);
             this.splitContainer1.Panel1.ResumeLayout(false);
