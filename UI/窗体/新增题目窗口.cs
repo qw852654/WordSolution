@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Windows.Forms;
 using UI.控件;
-using TagRunner.Models;
+using Core.QuestionBank.Domain;
 using TagRunner.业务;
 
 namespace UI.窗体

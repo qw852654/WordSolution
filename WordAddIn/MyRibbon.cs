@@ -10,7 +10,7 @@ using WordLibrary;
 using Microsoft.VisualBasic;
 using UI;
 using TagRunner;
-using TagRunner.Models;
+using Core.QuestionBank.Domain;
 using TagRunner.业务;
 using System.Xml.Linq;
 
@@ -18,6 +18,8 @@ namespace WordAddIn
 {
     public partial class MyRibbon
     {
+        private string _当前题库路径;
+
         private void Ribbon1_Load(object sender, RibbonUIEventArgs e)
         {
 
@@ -259,22 +261,32 @@ namespace WordAddIn
             }
         }
 
+        private void 确认当前bootStrapper(string 题库路径)
+        {
+            if (Bootstrapper.题库 == null || Bootstrapper.题库.根目录 != 题库路径)
+            {
+                Bootstrapper.Initialize(new 题库配置(题库路径));
+                _当前题库路径 = 题库路径;
+            }
+
+        }
+
         private void 录入初中题目(object sender, RibbonControlEventArgs e)
         {
             string 初中题库路径 = @"E:\Desktop\CZ_realLibrary";
-            Bootstrapper.Initialize(new 题库配置(初中题库路径), 覆盖数据库: false);
-            录入选中部分进题库();
+            确认当前bootStrapper(初中题库路径);
+            录入选中部分进题库(初中题库路径);
         }
 
         private void 录入高中题目(object sender, RibbonControlEventArgs e)
         {
             string 高中题库路径 = @"E:\Desktop\GZ_realLibrary";
-            Bootstrapper.Initialize(new 题库配置(高中题库路径), 覆盖数据库: false);
-            录入选中部分进题库();
+            确认当前bootStrapper(高中题库路径);
+            录入选中部分进题库(高中题库路径);
             
         }
 
-        private static bool 录入选中部分进题库()
+        private bool 录入选中部分进题库(string 题库路径)
         {
             try
             {
@@ -329,7 +341,7 @@ namespace WordAddIn
         private static 题库应用服务集 EnsureServicesInitialized()
         {
             // 如果已经初始化过，直接拿服务集
-            if (Bootstrapper.配置 != null && Bootstrapper.标签服务 != null && Bootstrapper.题目服务 != null)
+            if (Bootstrapper.题库 != null && Bootstrapper.标签服务 != null && Bootstrapper.题目服务 != null)
                 return Bootstrapper.获取应用服务集();
 
             // 让用户选择题库根目录
@@ -352,7 +364,7 @@ namespace WordAddIn
             
         }
 
-        private static bool 插入题目(InsertPosition insP)
+        private  bool 插入题目(InsertPosition insP)
         {
             // 1) 确保题库服务已初始化
             var services = EnsureServicesInitialized();
@@ -410,13 +422,9 @@ namespace WordAddIn
         private void 测试加入题库(object sender, RibbonControlEventArgs e)
         {
             string 测试题库路径 = @"E:\Desktop\test_gaozhogn";
-            if (Bootstrapper.配置 != null && Bootstrapper.标签服务 != null && Bootstrapper.题目服务 != null)
-            {
-                录入选中部分进题库();
-                return;
-            }
-            Bootstrapper.Initialize(new 题库配置(测试题库路径), 覆盖数据库: false);
-            录入选中部分进题库();
+            if (Bootstrapper.题库 == null || Bootstrapper.题库.根目录 != 测试题库路径)
+                Bootstrapper.Initialize(new 题库配置(测试题库路径));
+            录入选中部分进题库(测试题库路径);
         }
     }
 }

@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using TagRunner.Models;
+using Core.QuestionBank.Domain;
 
 namespace UI.基础控件
 {

@@ -1,6 +1,6 @@
-﻿using System;
+﻿using Core.QuestionBank.Domain;
+using System;
 using System.IO;
-using TagRunner.Models;
 
 namespace TagRunner.业务
 {
@@ -8,7 +8,7 @@ namespace TagRunner.业务
     /// 本地文件存储实现：基于题库配置管理文件路径与文件操作。
     /// 构造时注入 题库配置 实例。
     /// </summary>
-    internal class 文件存储实现 : I文件存储
+    public class 文件存储实现 : I文件存储
     {
         private readonly 题库配置 _配置;
 
@@ -16,7 +16,7 @@ namespace TagRunner.业务
         {
             _配置 = 配置 ?? throw new ArgumentNullException(nameof(配置));
             // 确保目录存在
-            _配置.初始化目录(创建如果不存在: true);
+            _配置.初始化目录(如果不存在就创建: true);
         }
 
         /// <summary>
@@ -31,7 +31,7 @@ namespace TagRunner.业务
             if (!File.Exists(源文件路径))
                 throw new FileNotFoundException("源文件不存在", 源文件路径);
 
-            var 目标路径 = _配置.获取Docx路径(题目Id);
+            var 目标路径 = _配置.获取Docx目录(题目Id);
             var 目标目录 = Path.GetDirectoryName(目标路径);
             if (!Directory.Exists(目标目录)) Directory.CreateDirectory(目标目录);
 
@@ -43,12 +43,12 @@ namespace TagRunner.业务
         /// <summary>
         /// 获取题目的 Docx 路径（绝对路径）。
         /// </summary>
-        public string 获取Docx路径(int 题目Id) => _配置.获取Docx路径(题目Id);
+        public string 获取Docx路径(int 题目Id) => _配置.获取Docx目录(题目Id);
 
         /// <summary>
         /// 获取题目的 Html 路径（绝对路径）。
         /// </summary>
-        public string 获取Html路径(int 题目Id) => _配置.获取Html路径(题目Id);
+        public string 获取Html路径(int 题目Id) => _配置.获取Html目录(题目Id);
 
         /// <summary>
         /// 删除题目相关的文件（Docx + Html），返回是否删除成功（目标不存在也算成功）。
@@ -57,8 +57,8 @@ namespace TagRunner.业务
         {
             if (题目Id <= 0) return false;
 
-            var docx = _配置.获取Docx路径(题目Id);
-            var html = _配置.获取Html路径(题目Id);
+            var docx = _配置.获取Docx目录(题目Id);
+            var html = _配置.获取Html目录(题目Id);
             var ok = true;
 
             try

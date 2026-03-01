@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using Core.QuestionBank.Domain;
+using System.Collections.Generic;
 using TagRunner;
-using TagRunner.Models;
 
 namespace TagRunner.数据
 {

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace TagRunner.Models
+namespace Core.QuestionBank.Domain
 {
     public class ÌâÄ¿
     {

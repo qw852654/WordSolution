@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace TagRunner.Models
+namespace Core.QuestionBank.Domain
 {
     /// <summary>
     /// 题库配置：表示一个题库实例的根目录与子目录约定。
@@ -45,17 +45,17 @@ namespace TagRunner.Models
         /// <summary>
         /// 验证并（可选）创建所需的目录（根目录、source/html/index）。
         /// </summary>
-        public string 初始化目录(bool 创建如果不存在 = true)
+        public string 初始化目录(bool 如果不存在就创建 = true)
         {
             if (!Directory.Exists(根目录))
             {
-                if (创建如果不存在)
+                if (如果不存在就创建)
                     Directory.CreateDirectory(根目录);
                 else
                     throw new DirectoryNotFoundException($"题库根目录不存在: {根目录}");
             }
 
-            if (创建如果不存在)
+            if (如果不存在就创建)
             {
                 Directory.CreateDirectory(源目录路径);
                 Directory.CreateDirectory(Html目录路径);
@@ -70,13 +70,13 @@ namespace TagRunner.Models
             return 根目录;
         }
 
-        public string 获取Docx路径(int 题目Id)
+        public string 获取Docx目录(int 题目Id)
         {
             if (题目Id <= 0) throw new ArgumentException("题目Id必须为正整数", nameof(题目Id));
             return Path.Combine(源目录路径, $"{题目Id}.docx");
         }
 
-        public string 获取Html路径(int 题目Id)
+        public string 获取Html目录(int 题目Id)
         {
             if (题目Id <= 0) throw new ArgumentException("题目Id必须为正整数", nameof(题目Id));
             return Path.Combine(Html目录路径, $"{题目Id}.html");

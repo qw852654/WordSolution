@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace TagRunner.Models
+namespace Core.QuestionBank.Domain
 {
     /// <summary>
     /// 领域模型：标签（移动到 Models 目录，保留英文字段以便与数据库列映射）。

@@ -1,7 +1,7 @@
-﻿using System;
+﻿using Core.QuestionBank.Domain;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using TagRunner.Models;
 
 namespace TagRunner.业务
 {
@@ -10,7 +10,7 @@ namespace TagRunner.业务
     /// - 实现新增题目流程：先写元数据以获取 Id，再复制源文件并转换为 HTML。
     /// - 同步、线性实现，出现错误会以异常方式返回，便于观察问题。
     /// </summary>
-    public class 题目服务 : I题目服务
+    public class 题目服务 
     {
         private readonly 数据.I题目仓储 _题目仓储;
         private readonly I文件存储 _文件存储;

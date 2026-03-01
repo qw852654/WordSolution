@@ -1,6 +1,6 @@
 ﻿using System;
 using Dapper;
-using TagRunner.Models;
+using Core.QuestionBank.Domain;
 
 namespace TagRunner.数据
 {

@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using TagRunner.Models;
+using Core.QuestionBank.Domain;
 
 namespace TagRunner.业务
 {
@@ -15,7 +15,7 @@ namespace TagRunner.业务
         List<标签> 上次被选择的标签{ get; }
         List<标签> 获取标签树();
 
-        方法执行结果 保存上次被选择的标签(List<标签> Tags);
+        bool 保存上次被选择的标签(List<标签> Tags);
 
         // 联想标签：根据输入文本返回若干匹配标签（教学/UI 使用）
         List<标签> 联想标签(string 输入文本);

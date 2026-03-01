@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Dapper;
-using TagRunner.Models;
+using Core.QuestionBank.Domain;
 
 namespace TagRunner.业务
 {
@@ -12,7 +12,7 @@ namespace TagRunner.业务
     /// - 依赖注入仓储和可选的 DB 连接工厂用于简单查询
     /// - 每个方法实现都尽量直观，并在必要时使用父链遍历检测环
     /// </summary>
-    public class 标签服务 : I标签服务
+    public class 标签服务
     {
         private readonly 数据.I标签仓储 _标签仓储;
         private readonly 数据.I题目仓储 _题目仓储;
@@ -38,10 +38,10 @@ namespace TagRunner.业务
         }
 
 
-        public  方法执行结果 保存上次被选择的标签(List<标签> Tags)
+        public  bool 保存上次被选择的标签(List<标签> Tags)
         {
             上次被选择的标签 = Tags;
-            return 方法执行结果.succeeded;
+            return true;
         }
 
         // 提供一个受保护的无参构造，用于测试时派生不依赖仓储的轻量实现

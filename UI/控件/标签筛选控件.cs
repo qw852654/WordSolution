@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using UI.基础控件;
-using TagRunner.Models;
+using Core.QuestionBank.Domain;
 using TagRunner;
 using TagRunner.业务;
 

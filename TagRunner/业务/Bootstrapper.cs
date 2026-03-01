@@ -1,6 +1,7 @@
-﻿using System;
+﻿using Core.QuestionBank.Domain;
+using System;
 using System.Collections.Generic;
-using TagRunner.Models;
+using TagRunner.业务;
 
 namespace TagRunner.业务
 {
@@ -11,24 +12,24 @@ namespace TagRunner.业务
     /// - 创建并持有共享的基础组件实例（Db连接工厂、仓储、文件存储、文档转换器、索引器等）；
     /// - 对外暴露这些共享实例，供 UI 或业务服务在运行时获取。
     /// </summary>
-    public static class Bootstrapper
+    public  class Bootstrapper
     {
-        private static bool _sqliteInitialized = false;
+        private  bool _sqliteInitialized = false;
 
         // 已配置的题库配置对象
-        public static 题库配置 配置 { get; private set; }
+        public  题库配置 题库 { get; private set; }
 
         // 基础组件（对外可读）
-        public static 数据.IDb连接工厂 Db连接工厂 { get; private set; }
-        public static 数据.I标签仓储 标签仓储 { get; private set; }
-        public static 数据.I题目仓储 题目仓储 { get; private set; }
-        public static I文件存储 文件存储 { get; private set; }
-        public static 基础.I文档转换器 文档转换器 { get; private set; }
-        public static 索引.I索引服务 索引服务 { get; private set; }
+        private  数据.IDb连接工厂 Db连接工厂 { get; set; }
+        private  数据.I标签仓储 标签仓储 { get; set; }
+        private  数据.I题目仓储 题目仓储 { get; set; }
+        public  I文件存储 文件存储 { get; private set; }
+        public  基础.I文档转换器 文档转换器 { get; private set; }
+        public  索引.I索引服务 索引服务 { get; private set; }
 
         // 业务层实例（暴露给 UI 使用）
-        public static I标签服务 标签服务 { get; private set; }
-        public static I题目服务 题目服务 { get; private set; }
+        public  标签服务 标签服务 { get; private set; }
+        public  题目服务 题目服务 { get; private set; }
 
 
         /// <summary>
@@ -36,11 +37,11 @@ namespace TagRunner.业务
         /// - config: 题库配置（包含目录与数据库路径）
         /// - 覆盖数据库: 若为 true 则删除并重新创建数据库文件（按你之前的策略）
         /// </summary>
-        public static void Initialize(题库配置 config, bool 覆盖数据库 = false)
+        public  void Initialize(题库配置 题库, bool 覆盖数据库 = false)
         {
             Aspose许可.Authorize();
 
-            if (config == null) throw new ArgumentNullException(nameof(config));
+            if (题库 == null) throw new ArgumentNullException(nameof(题库));
 
             // 初始化 SQLitePCL（使用 Microsoft.Data.Sqlite 时必需）
             // 只需执行一次，多次调用 Initialize 不会重复初始化
@@ -51,21 +52,21 @@ namespace TagRunner.业务
             }
 
             // 记录配置并确保目录存在
-            配置 = config;
-            配置.初始化目录(创建如果不存在: true);
+            this.题库 = 题库;
+            this.题库.初始化目录(如果不存在就创建: true);
 
             // 初始化数据库（程序化建表，覆盖模式可删除旧 DB）
-            数据.Db初始化器.初始化数据库(配置.数据库文件路径, 覆盖数据库);
+            数据.Db初始化器.初始化数据库(this.题库.数据库文件路径, 覆盖数据库);
 
             // 创建 Db 连接工厂
-            Db连接工厂 = new 数据.Db连接工厂SQLite(配置.数据库文件路径);
+            Db连接工厂 = new 数据.Db连接工厂SQLite(this.题库.数据库文件路径);
 
             // 创建仓储实现（注入连接工厂）
             标签仓储 = new 数据.标签仓储SQLite(Db连接工厂);
             题目仓储 = new 数据.题目仓储SQLite(Db连接工厂);
 
             // 文件存储与文档转换器
-            文件存储 = new 文件存储实现(配置);
+            文件存储 = new 文件存储实现(this.题库);
             文档转换器 = new 基础.文档转换器();
 
             // 创建并暴露业务服务（使用已实现的教学版服务）
@@ -73,17 +74,17 @@ namespace TagRunner.业务
             题目服务 = new 题目服务(题目仓储, 文件存储, 文档转换器);
 
             // 索引器（骨架），索引路径由配置提供
-            索引服务 = new 索引.Lucene索引器(配置.索引目录路径);
+            索引服务 = new 索引.Lucene索引器(this.题库.索引目录路径);
 
             // 启动索引服务（若需要，当前为骨架无需自动启动）
             // 索引服务.启动();
         }
 
-        public static 题库应用服务集 获取应用服务集()
+        public  题库应用服务集 获取应用服务集()
         {
             return new 题库应用服务集
             {
-                配置 = 配置,
+                配置 = 题库,
                 Db连接工厂 = Db连接工厂,
                 标签仓储 = 标签仓储,
                 题目仓储 = 题目仓储,
@@ -108,7 +109,7 @@ namespace TagRunner.业务
         public 基础.I文档转换器 文档转换器 { get; internal set; }
         public 索引.I索引服务 索引服务 { get; internal set; }
 
-        public I标签服务 标签服务 { get; internal set; }
-        public I题目服务 题目服务 { get; internal set; }
+        public 标签服务 标签服务 { get; internal set; }
+        public 题目服务 题目服务 { get; internal set; }
     }
 }

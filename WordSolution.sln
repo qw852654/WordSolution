@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestProject", "TestProject\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI", "UI\UI.csproj", "{C298889B-9D35-4CE7-A321-4F936DD22205}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.QuestionBank", "Core.QuestionBank\Core.QuestionBank.csproj", "{1E4E97E1-4849-4908-BBFF-B99242BB50CE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{C298889B-9D35-4CE7-A321-4F936DD22205}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C298889B-9D35-4CE7-A321-4F936DD22205}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C298889B-9D35-4CE7-A321-4F936DD22205}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1E4E97E1-4849-4908-BBFF-B99242BB50CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E4E97E1-4849-4908-BBFF-B99242BB50CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E4E97E1-4849-4908-BBFF-B99242BB50CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E4E97E1-4849-4908-BBFF-B99242BB50CE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
