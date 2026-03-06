@@ -81,22 +81,54 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Application\标签服务.cs" />
-    <Compile Include="Application\题目服务.cs" />
-    <Compile Include="Aspose许可.cs" />
-    <Compile Include="Astractions\IDb连接工厂.cs" />
-    <Compile Include="Astractions\I文件存储.cs" />
-    <Compile Include="Astractions\I文档转换器.cs" />
-    <Compile Include="Astractions\Respositories\I标签仓储.cs" />
-    <Compile Include="Astractions\Respositories\I题目仓储.cs" />
-    <Compile Include="Domain\标签.cs" />
-    <Compile Include="Domain\题库配置.cs" />
-    <Compile Include="Domain\题目.cs" />
-    <Compile Include="Infrastructure\Conversion\文档转换器.cs" />
-    <Compile Include="Infrastructure\Sqlite\Db连接工厂.SQLite.cs" />
-    <Compile Include="Infrastructure\Sqlite\标签仓储.SQLite.cs" />
-    <Compile Include="Infrastructure\Sqlite\题目仓储.SQLite.cs" />
-    <Compile Include="Infrastructure\Storage\文件存储实现.cs" />
+    <Compile Include="..\TagRunner\Models\标签.cs">
+      <Link>Domain\标签.cs</Link>
+    </Compile>
+    <Compile Include="..\TagRunner\Models\题库配置.cs">
+      <Link>Domain\题库配置.cs</Link>
+    </Compile>
+    <Compile Include="..\TagRunner\Models\题目.cs">
+      <Link>Domain\题目.cs</Link>
+    </Compile>
+    <Compile Include="..\TagRunner\业务\I文件存储.cs">
+      <Link>Astractions\I文件存储.cs</Link>
+    </Compile>
+    <Compile Include="..\TagRunner\业务\文件存储实现.cs">
+      <Link>Infrastructure\Storage\文件存储实现.cs</Link>
+    </Compile>
+    <Compile Include="..\TagRunner\业务\标签服务.cs">
+      <Link>Application\标签服务.cs</Link>
+    </Compile>
+    <Compile Include="..\TagRunner\业务\题目服务.cs">
+      <Link>Application\题目服务.cs</Link>
+    </Compile>
+    <Compile Include="..\TagRunner\基础建设\Aspose许可.cs">
+      <Link>Aspose许可.cs</Link>
+    </Compile>
+    <Compile Include="..\TagRunner\基础建设\I文档转换器.cs">
+      <Link>Astractions\I文档转换器.cs</Link>
+    </Compile>
+    <Compile Include="..\TagRunner\基础建设\文档转换器.cs">
+      <Link>Infrastructure\Conversion\文档转换器.cs</Link>
+    </Compile>
+    <Compile Include="..\TagRunner\数据\Db连接工厂.SQLite.cs">
+      <Link>Infrastructure\Sqlite\Db连接工厂.SQLite.cs</Link>
+    </Compile>
+    <Compile Include="..\TagRunner\数据\IDb连接工厂.cs">
+      <Link>Astractions\IDb连接工厂.cs</Link>
+    </Compile>
+    <Compile Include="..\TagRunner\数据\I标签仓储.cs">
+      <Link>Astractions\Respositories\I标签仓储.cs</Link>
+    </Compile>
+    <Compile Include="..\TagRunner\数据\I题目仓储.cs">
+      <Link>Astractions\Respositories\I题目仓储.cs</Link>
+    </Compile>
+    <Compile Include="..\TagRunner\数据\标签仓储.SQLite.cs">
+      <Link>Infrastructure\Sqlite\标签仓储.SQLite.cs</Link>
+    </Compile>
+    <Compile Include="..\TagRunner\数据\题目仓储.SQLite.cs">
+      <Link>Infrastructure\Sqlite\题目仓储.SQLite.cs</Link>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
