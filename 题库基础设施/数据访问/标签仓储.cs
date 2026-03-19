@@ -53,5 +53,11 @@ namespace 题库基础设施.数据访问
                     标签.IsEnabled))
                 .ToList();
         }
+
+        public void 增加标签(标签 标签)
+        {
+            _题库DbContext.标签表.Add(标签);
+            _题库DbContext.SaveChanges();
+        }
     }
 }

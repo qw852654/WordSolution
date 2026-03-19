@@ -13,17 +13,20 @@ namespace 题库本地服务.题目模块
     public class 题目控制器 : ControllerBase
     {
         private readonly 录入题目用例 _录入题目用例;
+        private readonly 录入Ooxml题目用例 _录入Ooxml题目用例;
         private readonly 根据ID获取题目详情用例 _根据ID获取题目详情用例;
         private readonly 获取题目预览HTML用例 _获取题目预览HTML用例;
         private readonly 根据标签筛选题目用例 _根据标签筛选题目用例;
 
         public 题目控制器(
             录入题目用例 录入题目用例,
+            录入Ooxml题目用例 录入Ooxml题目用例,
             根据ID获取题目详情用例 根据ID获取题目详情用例,
             获取题目预览HTML用例 获取题目预览HTML用例,
             根据标签筛选题目用例 根据标签筛选题目用例)
         {
             _录入题目用例 = 录入题目用例;
+            _录入Ooxml题目用例 = 录入Ooxml题目用例;
             _根据ID获取题目详情用例 = 根据ID获取题目详情用例;
             _获取题目预览HTML用例 = 获取题目预览HTML用例;
             _根据标签筛选题目用例 = 根据标签筛选题目用例;
@@ -33,6 +36,13 @@ namespace 题库本地服务.题目模块
         public ActionResult<题目> 录入题目([FromBody] 录入题目的请求 请求)
         {
             var 新题目 = _录入题目用例.执行(请求);
+            return CreatedAtAction(nameof(根据ID获取题目详情), new { id = 新题目.Id }, 新题目);
+        }
+
+        [HttpPost("ooxml")]
+        public ActionResult<题目> 录入Ooxml题目([FromBody] 录入Ooxml题目的请求 请求)
+        {
+            var 新题目 = _录入Ooxml题目用例.执行(请求);
             return CreatedAtAction(nameof(根据ID获取题目详情), new { id = 新题目.Id }, 新题目);
         }
 

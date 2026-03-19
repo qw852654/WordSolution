@@ -1,9 +1,11 @@
 using System;
 using System.IO;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using 题库应用.标签模块;
 using 题库应用.筛选模块;
 using 题库应用.题目模块;
+using 题库基础设施.Aspose;
 using 题库基础设施.数据访问;
 using 题库基础设施.文件存储;
 using 题库基础设施.初始化;
@@ -18,8 +20,13 @@ var 题库数据根目录 = Path.Combine(
     "题库");
 var 数据库文件路径 = Path.Combine(题库数据根目录, "question-bank.db");
 var 文件存储根目录 = Path.Combine(题库数据根目录, "files");
+var Aspose授权文件路径 = Path.Combine(AppContext.BaseDirectory, "Aspose.Total.NET.lic");
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -39,22 +46,29 @@ builder.Services.AddScoped(服务提供器 => new 题库初始化器(
     服务提供器.GetRequiredService<题库DbContext>(),
     题库数据根目录,
     文件存储根目录));
+builder.Services.AddScoped(服务提供器 => new Aspose授权初始化器(Aspose授权文件路径));
 builder.Services.AddScoped<I题目仓储, 题目仓储>();
 builder.Services.AddScoped<I标签仓储, 标签仓储>();
 builder.Services.AddScoped<I题目文件存储>(服务提供器 => new 题目文件存储(文件存储根目录));
+builder.Services.AddScoped<I题目文档转换器, Aspose题目文档转换器>();
 builder.Services.AddScoped<I题目预览生成器, 题目预览生成器>();
 
 builder.Services.AddScoped<录入题目用例>();
+builder.Services.AddScoped<录入Ooxml题目用例>();
 builder.Services.AddScoped<根据ID获取题目详情用例>();
 builder.Services.AddScoped<获取题目预览HTML用例>();
 builder.Services.AddScoped<根据标签筛选题目用例>();
 builder.Services.AddScoped<获取标签树用例>();
+builder.Services.AddScoped<新增标签用例>();
 
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
+    var Aspose授权初始化器 = scope.ServiceProvider.GetRequiredService<Aspose授权初始化器>();
     var 题库初始化器 = scope.ServiceProvider.GetRequiredService<题库初始化器>();
+
+    Aspose授权初始化器.初始化授权();
     题库初始化器.初始化题库();
 }
 

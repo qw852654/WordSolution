@@ -8,5 +8,7 @@ namespace 题库核心.标签模块.契约
         标签? GetById(int id);
 
         IReadOnlyList<标签> 获取全部标签();
+
+        void 增加标签(标签 标签);
     }
 }
