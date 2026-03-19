@@ -15,6 +15,7 @@ namespace 题库本地服务.题目模块
         private readonly 录入题目用例 _录入题目用例;
         private readonly 录入Ooxml题目用例 _录入Ooxml题目用例;
         private readonly 根据ID获取题目详情用例 _根据ID获取题目详情用例;
+        private readonly 获取题目文件Base64用例 _获取题目文件Base64用例;
         private readonly 获取题目预览HTML用例 _获取题目预览HTML用例;
         private readonly 根据标签筛选题目用例 _根据标签筛选题目用例;
 
@@ -22,12 +23,14 @@ namespace 题库本地服务.题目模块
             录入题目用例 录入题目用例,
             录入Ooxml题目用例 录入Ooxml题目用例,
             根据ID获取题目详情用例 根据ID获取题目详情用例,
+            获取题目文件Base64用例 获取题目文件Base64用例,
             获取题目预览HTML用例 获取题目预览HTML用例,
             根据标签筛选题目用例 根据标签筛选题目用例)
         {
             _录入题目用例 = 录入题目用例;
             _录入Ooxml题目用例 = 录入Ooxml题目用例;
             _根据ID获取题目详情用例 = 根据ID获取题目详情用例;
+            _获取题目文件Base64用例 = 获取题目文件Base64用例;
             _获取题目预览HTML用例 = 获取题目预览HTML用例;
             _根据标签筛选题目用例 = 根据标签筛选题目用例;
         }
@@ -68,6 +71,18 @@ namespace 题库本地服务.题目模块
             }
 
             return Content(HTML内容, "text/html; charset=utf-8");
+        }
+
+        [HttpGet("{id:int}/文件base64")]
+        public ActionResult 获取题目文件Base64(int id)
+        {
+            var 文件Base64 = _获取题目文件Base64用例.执行(id);
+            if (string.IsNullOrWhiteSpace(文件Base64))
+            {
+                return NotFound();
+            }
+
+            return Content(文件Base64, "text/plain; charset=utf-8");
         }
 
         [HttpPost("筛选")]

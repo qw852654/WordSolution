@@ -56,6 +56,7 @@ builder.Services.AddScoped<I题目预览生成器, 题目预览生成器>();
 builder.Services.AddScoped<录入题目用例>();
 builder.Services.AddScoped<录入Ooxml题目用例>();
 builder.Services.AddScoped<根据ID获取题目详情用例>();
+builder.Services.AddScoped<获取题目文件Base64用例>();
 builder.Services.AddScoped<获取题目预览HTML用例>();
 builder.Services.AddScoped<根据标签筛选题目用例>();
 builder.Services.AddScoped<获取标签树用例>();

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { makeStyles } from "@fluentui/react-components";
-import { 获取当前选区Ooxml } from "../taskpane";
+import { 获取当前选区Ooxml, 插入题目到当前文档 } from "../taskpane";
 
 interface AppProps {
   title: string;
@@ -314,6 +314,14 @@ const useStyles = makeStyles({
     margin: "0 0 12px 0",
     color: "#666666",
   },
+  resultToolbar: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
+    flexWrap: "wrap",
+    marginBottom: "12px",
+  },
   resultCardList: {
     display: "grid",
     gap: "16px",
@@ -411,6 +419,9 @@ const App: React.FC<AppProps> = (props: AppProps) => {
   const [已执行筛题, 设置已执行筛题] = React.useState(false);
   const [筛题结果卡片列表, 设置筛题结果卡片列表] = React.useState<题目卡片项[]>([]);
   const [已选题目ID列表, 设置已选题目ID列表] = React.useState<number[]>([]);
+  const [正在插题, 设置正在插题] = React.useState(false);
+  const [插题错误, 设置插题错误] = React.useState("");
+  const [插题成功提示, 设置插题成功提示] = React.useState("");
 
   const 读取标签 = async () => {
     try {
@@ -536,6 +547,8 @@ const App: React.FC<AppProps> = (props: AppProps) => {
       设置正在筛题(true);
       设置筛题错误("");
       设置已执行筛题(true);
+      设置插题错误("");
+      设置插题成功提示("");
 
       const 响应 = await fetch("http://localhost:5282/api/题目/筛选", {
         method: "POST",
@@ -597,6 +610,45 @@ const App: React.FC<AppProps> = (props: AppProps) => {
     }
 
     设置已选题目ID列表([...已选题目ID列表, 题目ID]);
+  };
+
+  const 插入已选题目 = async () => {
+    if (已选题目ID列表.length === 0) {
+      设置插题错误("请先选择至少一道题目。");
+      设置插题成功提示("");
+      return;
+    }
+
+    try {
+      设置正在插题(true);
+      设置插题错误("");
+      设置插题成功提示("");
+
+      const 待插入题目列表 = await Promise.all(
+        已选题目ID列表.map(async (题目ID) => {
+          const 响应 = await fetch(`http://localhost:5282/api/题目/${题目ID}/文件base64`);
+          if (!响应.ok) {
+            throw new Error(`题目 ${题目ID} 的原文件读取失败。`);
+          }
+
+          const 文件Base64 = await 响应.text();
+          return {
+            题目ID,
+            文件Base64,
+          };
+        }),
+      );
+
+      await 插入题目到当前文档(待插入题目列表);
+      设置已选题目ID列表([]);
+      设置插题成功提示(`已成功插入 ${待插入题目列表.length} 道题目。`);
+    } catch (error) {
+      console.error(error);
+      设置插题错误("插入已选题目失败，请确认本地服务和 Word 文档都处于正常状态。");
+      设置插题成功提示("");
+    } finally {
+      设置正在插题(false);
+    }
   };
 
   const 新增标签 = async () => {
@@ -875,9 +927,21 @@ const App: React.FC<AppProps> = (props: AppProps) => {
 
           <div className={styles.resultSection}>
             <h2 className={styles.sectionTitle}>筛题结果</h2>
-            <p className={styles.resultMetaText}>已选题目：{已选题目ID列表.length} 道</p>
+            <div className={styles.resultToolbar}>
+              <p className={styles.resultMetaText}>已选题目：{已选题目ID列表.length} 道</p>
+              <button
+                type="button"
+                className={styles.runFilterButton}
+                onClick={插入已选题目}
+                disabled={正在插题 || 已选题目ID列表.length === 0}
+              >
+                {正在插题 ? "正在插入..." : "插入已选题目"}
+              </button>
+            </div>
 
             {筛题错误 !== "" && <p className={styles.errorText}>{筛题错误}</p>}
+            {插题错误 !== "" && <p className={styles.errorText}>{插题错误}</p>}
+            {插题成功提示 !== "" && <p className={styles.successText}>{插题成功提示}</p>}
 
             {筛题错误 === "" && 正在筛题 && <p className={styles.tipText}>正在加载筛题结果...</p>}
 

@@ -47,6 +47,17 @@ namespace 题库基础设施.文件存储
             return Path.Combine(_题库根目录, "html", $"{题目ID}.html");
         }
 
+        public byte[]? 读取题目文件(int 题目ID, string 文件扩展名 = ".docx")
+        {
+            var 题目文件路径 = 获取题目文件路径(题目ID, 文件扩展名);
+            if (!File.Exists(题目文件路径))
+            {
+                return null;
+            }
+
+            return File.ReadAllBytes(题目文件路径);
+        }
+
         public string? 读取题目预览HTML(int 题目ID)
         {
             var HTML文件路径 = 获取题目预览文件路径(题目ID);
