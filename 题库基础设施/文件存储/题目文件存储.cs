@@ -1,21 +1,17 @@
-using System;
+﻿using System;
 using System.IO;
+using 题库基础设施.题库实例;
 using 题库核心.题目模块.契约;
 
 namespace 题库基础设施.文件存储
 {
     public class 题目文件存储 : I题目文件存储
     {
-        private readonly string _题库根目录;
+        private readonly 题库路径提供器 _题库路径提供器;
 
-        public 题目文件存储(string 题库根目录)
+        public 题目文件存储(题库路径提供器 题库路径提供器)
         {
-            if (string.IsNullOrWhiteSpace(题库根目录))
-            {
-                throw new ArgumentException("题库根目录不能为空。", nameof(题库根目录));
-            }
-
-            _题库根目录 = 题库根目录;
+            _题库路径提供器 = 题库路径提供器;
         }
 
         public string 保存题目文件(int 题目ID, byte[] 文件内容, string 文件扩展名)
@@ -39,12 +35,14 @@ namespace 题库基础设施.文件存储
 
         public string 获取题目文件路径(int 题目ID, string 文件扩展名 = ".docx")
         {
-            return Path.Combine(_题库根目录, "source", $"{题目ID}{规范化文件扩展名(文件扩展名)}");
+            var 当前题库键 = _题库路径提供器.获取当前请求题库键();
+            return Path.Combine(_题库路径提供器.获取Source目录(当前题库键), $"{题目ID}{规范化文件扩展名(文件扩展名)}");
         }
 
         public string 获取题目预览文件路径(int 题目ID)
         {
-            return Path.Combine(_题库根目录, "html", $"{题目ID}.html");
+            var 当前题库键 = _题库路径提供器.获取当前请求题库键();
+            return Path.Combine(_题库路径提供器.获取Html目录(当前题库键), $"{题目ID}.html");
         }
 
         public byte[]? 读取题目文件(int 题目ID, string 文件扩展名 = ".docx")
@@ -76,7 +74,7 @@ namespace 题库基础设施.文件存储
                 return ".docx";
             }
 
-            if (文件扩展名.StartsWith("."))
+            if (文件扩展名.StartsWith('.'))
             {
                 return 文件扩展名;
             }

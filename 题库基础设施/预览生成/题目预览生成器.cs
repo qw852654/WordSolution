@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using Aspose.Words;
 using Aspose.Words.Saving;
+using 题库基础设施.Aspose;
 using 题库核心.题目模块.契约;
 
 namespace 题库基础设施.预览生成
@@ -27,6 +28,7 @@ namespace 题库基础设施.预览生成
             }
 
             var 文档 = new Document(题目文件路径);
+            文档清理帮助类.清理页眉页脚(文档);
             var 保存选项 = new HtmlSaveOptions
             {
                 ExportImagesAsBase64 = true,

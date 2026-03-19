@@ -13,7 +13,7 @@ namespace 题库核心.标签模块.领域
 
         private 标签(
             int id,
-            int 大类ID,
+            int 标签种类ID,
             string 名称,
             string? description,
             int? parentId,
@@ -22,12 +22,12 @@ namespace 题库核心.标签模块.领域
             bool isEnabled)
         {
             Id = id;
-            更新标签(大类ID, 名称, description, parentId, 同级排序值, numericValue, isEnabled);
+            更新标签(标签种类ID, 名称, description, parentId, 同级排序值, numericValue, isEnabled);
         }
 
         public int Id { get; private set; }
 
-        public int 大类ID { get; private set; }
+        public int 标签种类ID { get; private set; }
 
         public string 名称 { get; private set; } = string.Empty;
 
@@ -44,7 +44,7 @@ namespace 题库核心.标签模块.领域
         public IReadOnlyList<标签> 子标签列表 => _子标签列表;
 
         public static 标签 创建标签(
-            int 大类ID,
+            int 标签种类ID,
             string 名称,
             string? description,
             int? parentId,
@@ -52,12 +52,12 @@ namespace 题库核心.标签模块.领域
             decimal? numericValue,
             bool isEnabled)
         {
-            return new 标签(0, 大类ID, 名称, description, parentId, 同级排序值, numericValue, isEnabled);
+            return new 标签(0, 标签种类ID, 名称, description, parentId, 同级排序值, numericValue, isEnabled);
         }
 
         public static 标签 从持久化恢复标签(
             int id,
-            int 大类ID,
+            int 标签种类ID,
             string 名称,
             string? description,
             int? parentId,
@@ -65,11 +65,11 @@ namespace 题库核心.标签模块.领域
             decimal? numericValue,
             bool isEnabled)
         {
-            return new 标签(id, 大类ID, 名称, description, parentId, 同级排序值, numericValue, isEnabled);
+            return new 标签(id, 标签种类ID, 名称, description, parentId, 同级排序值, numericValue, isEnabled);
         }
 
         public void 更新标签(
-            int 大类ID,
+            int 标签种类ID,
             string 名称,
             string? description,
             int? parentId,
@@ -82,7 +82,7 @@ namespace 题库核心.标签模块.领域
                 throw new ArgumentException("名称不能为空。", nameof(名称));
             }
 
-            this.大类ID = 大类ID;
+            this.标签种类ID = 标签种类ID;
             this.名称 = 名称.Trim();
             Description = description;
             ParentId = parentId;

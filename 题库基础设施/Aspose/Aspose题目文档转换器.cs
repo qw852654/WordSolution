@@ -35,10 +35,7 @@ namespace 题库基础设施.Aspose
             };
 
             var 文档 = new Document(输入流, 加载选项);
-            foreach (Section 节 in 文档.Sections)
-            {
-                节.HeadersFooters.Clear();
-            }
+            文档清理帮助类.清理页眉页脚(文档);
 
             文档.Save(题目文件路径);
         }

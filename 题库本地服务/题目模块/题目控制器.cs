@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using 题库应用.筛选模块;
@@ -9,7 +9,7 @@ using 题库核心.题目模块.领域;
 namespace 题库本地服务.题目模块
 {
     [ApiController]
-    [Route("api/题目")]
+    [Route("api/题库实例/{题库键}/题目")]
     public class 题目控制器 : ControllerBase
     {
         private readonly 录入题目用例 _录入题目用例;
@@ -39,14 +39,14 @@ namespace 题库本地服务.题目模块
         public ActionResult<题目> 录入题目([FromBody] 录入题目的请求 请求)
         {
             var 新题目 = _录入题目用例.执行(请求);
-            return CreatedAtAction(nameof(根据ID获取题目详情), new { id = 新题目.Id }, 新题目);
+            return CreatedAtAction(nameof(根据ID获取题目详情), new { 题库键 = RouteData.Values["题库键"], id = 新题目.Id }, 新题目);
         }
 
         [HttpPost("ooxml")]
         public ActionResult<题目> 录入Ooxml题目([FromBody] 录入Ooxml题目的请求 请求)
         {
             var 新题目 = _录入Ooxml题目用例.执行(请求);
-            return CreatedAtAction(nameof(根据ID获取题目详情), new { id = 新题目.Id }, 新题目);
+            return CreatedAtAction(nameof(根据ID获取题目详情), new { 题库键 = RouteData.Values["题库键"], id = 新题目.Id }, 新题目);
         }
 
         [HttpGet("{id:int}")]
