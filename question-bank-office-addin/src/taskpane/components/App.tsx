@@ -1,6 +1,8 @@
 ﻿import * as React from "react";
 import { makeStyles } from "@fluentui/react-components";
 import { 获取当前选区Ooxml, 插入题目到当前文档 } from "../taskpane";
+import QuestionPreviewCard from "./QuestionPreviewCard";
+import TagSelectionTree from "./TagSelectionTree";
 
 interface AppProps {
   title: string;
@@ -45,13 +47,8 @@ interface 题目卡片项 {
   id: number;
   description?: string | null;
   标题: string;
-  标签组列表: 标签展示组[];
-  预览Html: string;
-}
-
-interface 标签展示组 {
-  种类名称: string;
   标签列表: 标签项[];
+  预览Html: string;
 }
 
 interface 标签新增表单 {
@@ -211,8 +208,9 @@ const useStyles = makeStyles({
     padding: "16px",
     borderRadius: "12px",
     backgroundColor: "#fffdf9",
-    border: "1px solid #eadfcb",
+    border: "1px solid #caa56a",
   },
+  resultTagRow: { display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "10px" },
   resultPreview: {
     paddingTop: "12px",
     borderTop: "1px solid #efe6d8",
@@ -487,32 +485,26 @@ export default function App(props: AppProps) {
     [正式标签种类列表, 扁平标签字典]
   );
 
-  const 获取题目标签组列表 = React.useCallback(
+  const 获取题目标签列表 = React.useCallback(
     (标签ID列表: number[]) => {
-      const 分组 = new Map<number, 标签项[]>();
-      标签ID列表.forEach((标签ID) => {
-        const 标签 = 扁平标签字典.get(标签ID);
-        if (!标签) {
-          return;
-        }
-        const 标签种类 = 标签种类字典.get(标签.标签种类ID);
-        if (!标签种类 || !标签种类.是否在正式工作流中可见) {
-          return;
-        }
-        const 当前组 = 分组.get(标签.标签种类ID) ?? [];
-        当前组.push(标签);
-        分组.set(标签.标签种类ID, 当前组);
-      });
-      return 正式标签种类列表
-        .map((标签种类) => ({
-          种类名称: 标签种类.名称,
-          标签列表: (分组.get(标签种类.id) ?? []).sort(
-            (前一个, 后一个) => 前一个.同级排序值 - 后一个.同级排序值
-          ),
-        }))
-        .filter((项目) => 项目.标签列表.length > 0);
+      return 标签ID列表
+        .map((标签ID) => 扁平标签字典.get(标签ID))
+        .filter((标签): 标签 is 标签项 => Boolean(标签))
+        .filter((标签) => {
+          const 标签种类 = 标签种类字典.get(标签.标签种类ID);
+          return Boolean(标签种类?.是否在正式工作流中可见);
+        })
+        .sort((前一个, 后一个) => {
+          if (前一个.标签种类ID !== 后一个.标签种类ID) {
+            return 前一个.标签种类ID - 后一个.标签种类ID;
+          }
+          if (前一个.同级排序值 !== 后一个.同级排序值) {
+            return 前一个.同级排序值 - 后一个.同级排序值;
+          }
+          return 前一个.id - 后一个.id;
+        });
     },
-    [扁平标签字典, 标签种类字典, 正式标签种类列表]
+    [扁平标签字典, 标签种类字典]
   );
 
   const 切换标签选择状态 = React.useCallback(
@@ -672,8 +664,8 @@ export default function App(props: AppProps) {
           } catch (error) {
             console.error(error);
           }
-          const 标签组列表 = 获取题目标签组列表(题目.标签ID列表);
-          const 难度标签 = 标签组列表.find((标签组) => 标签组.种类名称 === "难度")?.标签列表[0];
+          const 标签列表 = 获取题目标签列表(题目.标签ID列表);
+          const 难度标签 = 标签列表.find((标签) => 标签.标签种类ID === 系统标签种类.难度);
           return {
             id: 题目.id,
             description: 题目.description,
@@ -681,7 +673,7 @@ export default function App(props: AppProps) {
               难度标签 ? 获取标签显示文本(难度标签) : undefined,
               题目.description
             ),
-            标签组列表,
+            标签列表,
             预览Html,
           };
         })
@@ -969,45 +961,6 @@ export default function App(props: AppProps) {
     );
   };
 
-  const 渲染树形选择 = (
-    标签种类: 标签种类项,
-    标签列表: 标签项[],
-    已选标签ID映射: 标签选择映射,
-    点击标签: (标签种类: 标签种类项, 标签ID: number) => void,
-    层级 = 0
-  ): React.ReactNode => {
-    if (标签列表.length === 0) {
-      return <p className={styles.noteText}>当前没有可选标签。</p>;
-    }
-    return (
-      <div className={styles.treeBlock}>
-        {标签列表.map((标签) => {
-          const 已选中 = (已选标签ID映射[标签种类.id] ?? []).includes(标签.id);
-          return (
-            <div key={标签.id} className={styles.treeBlock}>
-              <div className={styles.treeRow} style={{ paddingLeft: `${层级 * 18}px` }}>
-                <div className={styles.treeInfo}>
-                  <span className={styles.tagName}>{获取标签显示文本(标签)}</span>
-                  {标签.description && <span className={styles.meta}>{标签.description}</span>}
-                </div>
-                <button
-                  type="button"
-                  className={`${styles.chip} ${已选中 ? styles.selectedChip : ""}`}
-                  onClick={() => 点击标签(标签种类, 标签.id)}
-                >
-                  {已选中 ? "已选中" : "选择"}
-                </button>
-              </div>
-              {标签.子标签列表 &&
-                标签.子标签列表.length > 0 &&
-                渲染树形选择(标签种类, 标签.子标签列表, 已选标签ID映射, 点击标签, 层级 + 1)}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
   const 渲染平铺选择 = (
     标签种类: 标签种类项,
     标签列表: 标签项[],
@@ -1268,11 +1221,14 @@ export default function App(props: AppProps) {
           <div key={标签种类.id} className={styles.section}>
             <h2 className={styles.sectionTitle}>{标签种类.名称}</h2>
             {标签种类.是否树形
-              ? 渲染树形选择(
-                  标签种类,
-                  获取指定种类标签列表(标签种类.id),
-                  录题标签选择,
-                  切换录题标签
+              ? (
+                  <TagSelectionTree
+                    树名称={`${标签种类.名称}标签树`}
+                    标签列表={获取指定种类标签列表(标签种类.id)}
+                    已选标签ID列表={录题标签选择[标签种类.id] ?? []}
+                    获取标签显示文本={获取标签显示文本}
+                    切换标签={(标签ID) => 切换录题标签(标签种类, 标签ID)}
+                  />
                 )
               : 渲染平铺选择(
                   标签种类,
@@ -1341,12 +1297,14 @@ export default function App(props: AppProps) {
                     <h2 className={styles.sectionTitle}>{标签种类.名称}</h2>
                     {是否当前步骤
                       ? 标签种类.是否树形
-                        ? 渲染树形选择(
-                            标签种类,
-                            获取指定种类标签列表(标签种类.id),
-                            步骤.已选标签ID映射,
-                            (当前标签种类, 标签ID) =>
-                              切换筛选步骤标签(步骤.步骤编号, 当前标签种类, 标签ID)
+                        ? (
+                            <TagSelectionTree
+                              树名称={`${标签种类.名称}筛选树`}
+                              标签列表={获取指定种类标签列表(标签种类.id)}
+                              已选标签ID列表={步骤.已选标签ID映射[标签种类.id] ?? []}
+                              获取标签显示文本={获取标签显示文本}
+                              切换标签={(标签ID) => 切换筛选步骤标签(步骤.步骤编号, 标签种类, 标签ID)}
+                            />
                           )
                         : 渲染平铺选择(
                             标签种类,
@@ -1416,40 +1374,15 @@ export default function App(props: AppProps) {
               {筛题结果卡片列表.map((题目卡片) => {
                 const 已选中 = 已选题目ID列表.includes(题目卡片.id);
                 return (
-                  <div key={题目卡片.id} className={styles.resultCard}>
-                    {题目卡片.标签组列表.map((标签组) => (
-                      <div key={`${题目卡片.id}-${标签组.种类名称}`} className={styles.column}>
-                        <span className={styles.label}>{标签组.种类名称}</span>
-                        <div className={styles.chipRow}>
-                          {标签组.标签列表.map((标签) => (
-                            <span
-                              key={`${题目卡片.id}-${标签.id}`}
-                              className={`${styles.chip} ${styles.selectedChip}`}
-                            >
-                              {获取标签显示文本(标签)}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                    {题目卡片.description && (
-                      <p className={styles.noteText}>{题目卡片.description}</p>
-                    )}
-                    <div
-                      className={styles.resultPreview}
-                      dangerouslySetInnerHTML={{ __html: 题目卡片.预览Html }}
-                    />
-                    <div className={styles.row}>
-                      <span className={styles.noteText}>题目ID：{题目卡片.id}</span>
-                      <button
-                        type="button"
-                        className={styles.secondaryButton}
-                        onClick={() => 切换题目选择状态(题目卡片.id)}
-                      >
-                        {已选中 ? "取消选择" : "选择题目"}
-                      </button>
-                    </div>
-                  </div>
+                  <QuestionPreviewCard
+                    key={题目卡片.id}
+                    题目ID={题目卡片.id}
+                    描述={题目卡片.description}
+                    标签文本列表={题目卡片.标签列表.map((标签) => 获取标签显示文本(标签))}
+                    预览Html={题目卡片.预览Html}
+                    已选中={已选中}
+                    切换选择={() => 切换题目选择状态(题目卡片.id)}
+                  />
                 );
               })}
             </div>
@@ -1662,3 +1595,8 @@ export default function App(props: AppProps) {
   }
   return 渲染首页();
 }
+
+
+
+
+
