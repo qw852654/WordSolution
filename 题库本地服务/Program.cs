@@ -17,6 +17,30 @@ using 题库核心.题目模块.契约;
 var builder = WebApplication.CreateBuilder(args);
 var 题库中心根目录 = @"E:\Desktop\题库中心";
 var Aspose授权文件路径 = Path.Combine(AppContext.BaseDirectory, "Aspose.Total.NET.lic");
+var 本地Https证书路径 = Path.Combine(AppContext.BaseDirectory, "certs", "localhost-dev.pfx");
+const string 本地Https证书密码 = "WordSolutionLocalHttps2026!";
+var 发布版静态文件目录 = Path.Combine(AppContext.BaseDirectory, "wwwroot");
+
+if (Directory.Exists(发布版静态文件目录))
+{
+    builder.WebHost.UseWebRoot(发布版静态文件目录);
+}
+
+if (File.Exists(本地Https证书路径))
+{
+    builder.WebHost.ConfigureKestrel(options =>
+    {
+        options.ListenLocalhost(5283, listenOptions =>
+        {
+            listenOptions.UseHttps(本地Https证书路径, 本地Https证书密码);
+        });
+    });
+}
+else
+{
+    // 开发态如果还没有安装版证书，则继续沿用当前 HTTP 端口。
+    builder.WebHost.UseUrls("http://localhost:5282");
+}
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -83,6 +107,8 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseCors();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.MapControllers();
 
 app.Run();

@@ -1,7 +1,10 @@
 ﻿import * as React from "react";
-import { makeStyles } from "@fluentui/react-components";
+import { makeStyles, ToggleButton } from "@fluentui/react-components";
+import { 清除待处理导航请求 as clearPendingTaskpaneNavigation, 监听导航请求 as listenTaskpaneNavigation, 读取待处理导航请求 as readPendingTaskpaneNavigation, type Ribbon目标页面 as RibbonTargetPage } from "../../shared/taskpaneNavigation";
 import { 获取当前选区Ooxml, 插入题目到当前文档 } from "../taskpane";
 import QuestionPreviewCard from "./QuestionPreviewCard";
+import QuickAddTagForm from "./QuickAddTagForm";
+import TagBadge from "./TagBadge";
 import TagSelectionTree from "./TagSelectionTree";
 
 interface AppProps {
@@ -68,6 +71,18 @@ interface 标签编辑表单 {
   isEnabled: boolean;
 }
 
+interface 快速新增标签表单 {
+  名称: string;
+  描述: string;
+  数值文本: string;
+}
+
+interface 快速新增目标 {
+  标签种类ID: number;
+  父标签ID: number | null;
+  父标签名称: string | null;
+}
+
 interface 筛选步骤项 {
   步骤编号: number;
   组合方式: 组合方式;
@@ -78,7 +93,19 @@ type 页面名称 = "首页" | "录题页" | "筛题页" | "标签整理页";
 type 组合方式 = "交集" | "并集";
 type 标签选择映射 = Record<number, number[]>;
 
-const API_ROOT = "http://localhost:5282/api";
+const API_ROOT = (() => {
+  const { protocol, hostname, port, origin } = window.location;
+
+  if ((hostname === "localhost" || hostname === "127.0.0.1") && port === "3000") {
+    return "http://localhost:5282/api";
+  }
+
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return `${protocol}//${hostname}${port ? `:${port}` : ""}/api`;
+  }
+
+  return `${origin}/api`;
+})();
 const 当前题库键存储键 = "currentQuestionBankKey";
 const 默认题库键 = "TEST";
 const 系统标签种类 = {
@@ -165,6 +192,38 @@ const useStyles = makeStyles({
   label: { fontSize: "13px", fontWeight: "600", color: "#4a4339" },
   row: { display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" },
   column: { display: "grid", gap: "10px" },
+  sectionHeaderRow: { display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" },
+  selectedTagsCardHeader: {
+    display: "flex",
+    gap: "12px",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: "12px",
+  },
+  selectedTagsCardActions: {
+    display: "flex",
+    gap: "10px",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  selectedTagsRecordButton: {
+    minWidth: "140px",
+  },
+  continuousToggle: {
+    borderRadius: "999px",
+    border: "1px solid #d8cfc0",
+    backgroundColor: "#ffffff",
+    color: "#5a544a",
+    boxShadow: "none",
+  },
+  continuousToggleChecked: {
+    border: "1px solid #c9952e",
+    backgroundColor: "#fde8b2",
+    color: "#5c3b00",
+    boxShadow: "0 4px 10px rgba(160, 112, 9, 0.16)",
+  },
   actionGrid: { display: "grid", gap: "12px" },
   actionButton: {
     padding: "16px",
@@ -194,6 +253,7 @@ const useStyles = makeStyles({
   },
   selectedChip: { border: "1px solid #b8860b", backgroundColor: "#f3c86a", color: "#3b2a00" },
   treeBlock: { display: "grid", gap: "8px" },
+  inlineFormHost: { paddingLeft: "16px", borderLeft: "2px solid #efe2c8", marginTop: "4px" },
   treeRow: {
     display: "flex",
     alignItems: "center",
@@ -226,12 +286,26 @@ function 创建空新增表单(): 标签新增表单 {
   return { 名称: "", 描述: "", 父标签ID文本: "", 数值文本: "" };
 }
 
+function 创建空快速新增表单(): 快速新增标签表单 {
+  return { 名称: "", 描述: "", 数值文本: "" };
+}
+
 function 创建空筛选步骤(步骤编号: number): 筛选步骤项 {
   return { 步骤编号, 组合方式: "交集", 已选标签ID映射: {} };
 }
 
 function 构建题库接口路径(题库键: string, 子路径: string) {
   return `${API_ROOT}/题库实例/${encodeURIComponent(题库键)}${子路径}`;
+}
+
+function mapRibbonPageToAppPage(targetPage: RibbonTargetPage): 页面名称 {
+  if (targetPage === "录题页") {
+    return "录题页";
+  }
+  if (targetPage === "筛题页") {
+    return "筛题页";
+  }
+  return "首页";
 }
 
 function 读取本地题库键() {
@@ -246,6 +320,16 @@ function 保存本地题库键(题库键: string) {
   try {
     localStorage.setItem(当前题库键存储键, 题库键);
   } catch {}
+}
+
+function 选择指定标签(原映射: 标签选择映射, 标签种类: 标签种类项, 标签ID: number) {
+  const 当前已选标签ID列表 = 原映射[标签种类.id] ?? [];
+  if (标签种类.是否允许多选) {
+    return 当前已选标签ID列表.includes(标签ID)
+      ? 原映射
+      : { ...原映射, [标签种类.id]: [...当前已选标签ID列表, 标签ID] };
+  }
+  return { ...原映射, [标签种类.id]: [标签ID] };
 }
 
 function 解析整数文本(文本: string) {
@@ -287,7 +371,13 @@ function 构建内容控件标题(难度名称?: string, 描述?: string | null)
 
 export default function App(props: AppProps) {
   const styles = useStyles();
-  const [当前页面, 设置当前页面] = React.useState<页面名称>("首页");
+  const [当前页面, 设置当前页面] = React.useState<页面名称>(() => {
+    const pendingNavigation = readPendingTaskpaneNavigation();
+    if (pendingNavigation) {
+      return mapRibbonPageToAppPage(pendingNavigation.目标页面);
+    }
+    return "首页";
+  });
   const [题库实例列表, 设置题库实例列表] = React.useState<题库实例项[]>([]);
   const [当前题库键, 设置当前题库键] = React.useState(默认题库键);
   const [正在加载题库实例, 设置正在加载题库实例] = React.useState(true);
@@ -298,9 +388,11 @@ export default function App(props: AppProps) {
   const [标签基础数据错误, 设置标签基础数据错误] = React.useState("");
   const [录题描述, 设置录题描述] = React.useState("");
   const [录题标签选择, 设置录题标签选择] = React.useState<标签选择映射>({});
+  const [连续录入已开启, 设置连续录入已开启] = React.useState(true);
   const [正在录题, 设置正在录题] = React.useState(false);
   const [录题错误, 设置录题错误] = React.useState("");
   const [录题成功提示, 设置录题成功提示] = React.useState("");
+  const [最近录入题目ID, 设置最近录入题目ID] = React.useState<number | null>(null);
   const [筛选步骤列表, 设置筛选步骤列表] = React.useState<筛选步骤项[]>([创建空筛选步骤(1)]);
   const [正在筛题, 设置正在筛题] = React.useState(false);
   const [筛题错误, 设置筛题错误] = React.useState("");
@@ -315,6 +407,9 @@ export default function App(props: AppProps) {
   const [标签整理错误, 设置标签整理错误] = React.useState("");
   const [标签整理成功提示, 设置标签整理成功提示] = React.useState("");
   const [编辑标签表单, 设置编辑标签表单] = React.useState<标签编辑表单 | null>(null);
+  const [快速新增目标, 设置快速新增目标] = React.useState<快速新增目标 | null>(null);
+  const [快速新增表单, 设置快速新增表单] = React.useState<快速新增标签表单>(创建空快速新增表单);
+  const [快速新增错误, 设置快速新增错误] = React.useState("");
 
   const 标签种类字典 = React.useMemo(
     () => new Map(标签种类列表.map((标签种类) => [标签种类.id, 标签种类])),
@@ -329,6 +424,8 @@ export default function App(props: AppProps) {
     [题库实例列表, 当前题库键]
   );
   const 当前筛选步骤 = 筛选步骤列表[筛选步骤列表.length - 1];
+  const handledNavigationTokenRef = React.useRef<string | null>(null);
+  const 上一个页面Ref = React.useRef<页面名称>(当前页面);
 
   const 扁平标签字典 = React.useMemo(() => {
     const 字典 = new Map<number, 标签项>();
@@ -437,8 +534,10 @@ export default function App(props: AppProps) {
     保存本地题库键(当前题库键);
     设置录题标签选择({});
     设置录题描述("");
+    设置连续录入已开启(true);
     设置录题错误("");
     设置录题成功提示("");
+    设置最近录入题目ID(null);
     设置筛选步骤列表([创建空筛选步骤(1)]);
     设置筛题结果卡片列表([]);
     设置已执行筛题(false);
@@ -449,8 +548,46 @@ export default function App(props: AppProps) {
     设置编辑标签表单(null);
     设置标签整理错误("");
     设置标签整理成功提示("");
+    设置快速新增目标(null);
+    设置快速新增表单(创建空快速新增表单());
+    设置快速新增错误("");
     读取标签基础数据(当前题库键);
   }, [当前题库键, 读取标签基础数据]);
+
+  React.useEffect(() => {
+    if (当前页面 === "录题页" && 上一个页面Ref.current !== "录题页") {
+      设置连续录入已开启(true);
+      设置最近录入题目ID(null);
+    }
+    上一个页面Ref.current = 当前页面;
+  }, [当前页面]);
+
+  React.useEffect(() => {
+    const applyPendingNavigation = (
+      pendingNavigation: ReturnType<typeof readPendingTaskpaneNavigation> | null
+    ) => {
+      if (!pendingNavigation) {
+        return;
+      }
+      if (pendingNavigation.导航令牌 === handledNavigationTokenRef.current) {
+        return;
+      }
+      handledNavigationTokenRef.current = pendingNavigation.导航令牌;
+      设置当前页面(mapRibbonPageToAppPage(pendingNavigation.目标页面));
+      clearPendingTaskpaneNavigation(pendingNavigation.导航令牌);
+    };
+
+    applyPendingNavigation(readPendingTaskpaneNavigation());
+    const stopListening = listenTaskpaneNavigation(applyPendingNavigation);
+    const pollTimer = window.setInterval(() => {
+      applyPendingNavigation(readPendingTaskpaneNavigation());
+    }, 500);
+
+    return () => {
+      stopListening();
+      window.clearInterval(pollTimer);
+    };
+  }, []);
   const 获取标签显示文本 = React.useCallback((标签: 标签项) => {
     if (
       标签.标签种类ID === 系统标签种类.难度 &&
@@ -507,6 +644,16 @@ export default function App(props: AppProps) {
     [扁平标签字典, 标签种类字典]
   );
 
+  const 录题按钮文本 = React.useMemo(() => {
+    if (正在录题) {
+      return "正在录题...";
+    }
+    if (最近录入题目ID !== null) {
+      return `已录入，题目ID：${最近录入题目ID}`;
+    }
+    return "从当前选区录入";
+  }, [正在录题, 最近录入题目ID]);
+
   const 切换标签选择状态 = React.useCallback(
     (原映射: 标签选择映射, 标签种类: 标签种类项, 标签ID: number) => {
       const 当前已选标签ID列表 = 原映射[标签种类.id] ?? [];
@@ -528,8 +675,77 @@ export default function App(props: AppProps) {
   );
 
   const 切换录题标签 = (标签种类: 标签种类项, 标签ID: number) => {
+    设置最近录入题目ID(null);
     设置录题标签选择((当前映射) => 切换标签选择状态(当前映射, 标签种类, 标签ID));
   };
+
+  const 打开快速新增表单 = React.useCallback((标签种类: 标签种类项, 父标签: 标签项 | null = null) => {
+    设置快速新增目标({
+      标签种类ID: 标签种类.id,
+      父标签ID: 父标签?.id ?? null,
+      父标签名称: 父标签 ? 获取标签显示文本(父标签) : null,
+    });
+    设置快速新增表单(创建空快速新增表单());
+    设置快速新增错误("");
+  }, [获取标签显示文本]);
+
+  const 关闭快速新增表单 = React.useCallback(() => {
+    设置快速新增目标(null);
+    设置快速新增表单(创建空快速新增表单());
+    设置快速新增错误("");
+  }, []);
+
+  const 更新快速新增表单字段 = React.useCallback((字段: keyof 快速新增标签表单, 值: string) => {
+    设置快速新增表单((当前表单) => ({ ...当前表单, [字段]: 值 }));
+  }, []);
+
+  const 提交快速新增标签 = React.useCallback(async () => {
+    if (!快速新增目标) {
+      return;
+    }
+    if (快速新增表单.名称.trim() === "") {
+      设置快速新增错误("标签名称不能为空。");
+      return;
+    }
+    const 标签种类 = 标签种类字典.get(快速新增目标.标签种类ID);
+    if (!标签种类) {
+      设置快速新增错误("目标标签种类不存在。");
+      return;
+    }
+
+    try {
+      设置正在保存标签(true);
+      设置快速新增错误("");
+      const 响应 = await fetch(构建题库接口路径(当前题库键, "/标签"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          标签种类ID: 标签种类.id,
+          名称: 快速新增表单.名称.trim(),
+          Description: 快速新增表单.描述.trim() === "" ? null : 快速新增表单.描述.trim(),
+          ParentId: 标签种类.是否树形 ? 快速新增目标.父标签ID : null,
+          NumericValue: 标签种类.id === 系统标签种类.难度 ? 解析小数文本(快速新增表单.数值文本) : null,
+          IsEnabled: true,
+        }),
+      });
+      if (!响应.ok) {
+        const 错误文本 = await 响应.text();
+        throw new Error(错误文本 || "新增标签失败。");
+      }
+      const 新标签 = (await 响应.json()) as 标签项;
+      await 读取标签基础数据(当前题库键);
+      设置最近录入题目ID(null);
+      设置录题标签选择((当前映射) => 选择指定标签(当前映射, 标签种类, 新标签.id));
+      关闭快速新增表单();
+    } catch (error) {
+      console.error(error);
+      设置快速新增错误(
+        error instanceof Error && error.message.trim() !== "" ? error.message : "新增标签失败。"
+      );
+    } finally {
+      设置正在保存标签(false);
+    }
+  }, [关闭快速新增表单, 快速新增目标, 快速新增表单, 当前题库键, 标签种类字典, 读取标签基础数据]);
 
   const 切换筛选步骤标签 = (步骤编号: number, 标签种类: 标签种类项, 标签ID: number) => {
     设置筛选步骤列表((当前步骤列表) =>
@@ -566,12 +782,14 @@ export default function App(props: AppProps) {
     if (已选标签ID列表.length === 0) {
       设置录题错误("请至少选择一个标签。");
       设置录题成功提示("");
+      设置最近录入题目ID(null);
       return;
     }
     try {
       设置正在录题(true);
       设置录题错误("");
       设置录题成功提示("");
+      设置最近录入题目ID(null);
       const Ooxml内容 = await 获取当前选区Ooxml();
       const 响应 = await fetch(构建题库接口路径(当前题库键, "/题目/ooxml"), {
         method: "POST",
@@ -588,7 +806,10 @@ export default function App(props: AppProps) {
       }
       const 新题目 = (await 响应.json()) as { id: number };
       设置录题描述("");
-      设置录题标签选择({});
+      if (!连续录入已开启) {
+        设置录题标签选择({});
+      }
+      设置最近录入题目ID(新题目.id);
       设置录题成功提示(`录题成功，题目ID：${新题目.id}`);
     } catch (error) {
       console.error(error);
@@ -598,6 +819,7 @@ export default function App(props: AppProps) {
           : "从当前选区录题失败。"
       );
       设置录题成功提示("");
+      设置最近录入题目ID(null);
     } finally {
       设置正在录题(false);
     }
@@ -928,7 +1150,8 @@ export default function App(props: AppProps) {
 
   const 渲染已选标签摘要 = (
     已选标签ID映射: 标签选择映射,
-    移除标签?: (标签种类ID: number, 标签ID: number) => void
+    移除标签?: (标签种类ID: number, 标签ID: number) => void,
+    交互模式: "默认" | "点击标签移除" = "默认"
   ) => {
     const 已选分组列表 = 获取已选标签分组(已选标签ID映射);
     if (已选分组列表.length === 0) {
@@ -940,20 +1163,31 @@ export default function App(props: AppProps) {
           <div key={项目.标签种类.id} className={styles.column}>
             <span className={styles.label}>{项目.标签种类.名称}</span>
             <div className={styles.chipRow}>
-              {项目.标签列表.map((标签) => (
-                <span key={标签.id} className={`${styles.chip} ${styles.selectedChip}`}>
-                  {获取标签显示文本(标签)}
-                  {移除标签 && (
-                    <button
-                      type="button"
-                      className={styles.secondaryButton}
-                      onClick={() => 移除标签(项目.标签种类.id, 标签.id)}
-                    >
-                      取消
-                    </button>
-                  )}
-                </span>
-              ))}
+              {项目.标签列表.map((标签) =>
+                交互模式 === "点击标签移除" ? (
+                  <TagBadge
+                    key={标签.id}
+                    文本={获取标签显示文本(标签)}
+                    强调
+                    onClick={
+                      移除标签 ? () => 移除标签(项目.标签种类.id, 标签.id) : undefined
+                    }
+                  />
+                ) : (
+                  <span key={标签.id} className={`${styles.chip} ${styles.selectedChip}`}>
+                    {获取标签显示文本(标签)}
+                    {移除标签 && (
+                      <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() => 移除标签(项目.标签种类.id, 标签.id)}
+                      >
+                        取消
+                      </button>
+                    )}
+                  </span>
+                )
+              )}
             </div>
           </div>
         ))}
@@ -989,6 +1223,26 @@ export default function App(props: AppProps) {
       </div>
     );
   };
+
+  const 渲染快速新增表单 = (标签种类: 标签种类项, 父标签名称?: string | null) => (
+    <QuickAddTagForm
+      标题={
+        父标签名称
+          ? `新增 ${标签种类.名称} 子标签`
+          : 标签种类.是否树形
+            ? `新增 ${标签种类.名称} 根标签`
+            : `新增 ${标签种类.名称}`
+      }
+      父标签名称={父标签名称}
+      表单={快速新增表单}
+      是否显示数值输入={标签种类.id === 系统标签种类.难度}
+      错误信息={快速新增错误}
+      正在保存={正在保存标签}
+      onChange={更新快速新增表单字段}
+      onSubmit={提交快速新增标签}
+      onCancel={关闭快速新增表单}
+    />
+  );
 
   const 渲染管理树 = (标签列表: 标签项[], 层级 = 0): React.ReactNode => {
     if (标签列表.length === 0) {
@@ -1209,17 +1463,69 @@ export default function App(props: AppProps) {
           />
         </div>
         <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>已选标签</h2>
-          {渲染已选标签摘要(录题标签选择, (标签种类ID, 标签ID) => {
-            const 标签种类 = 标签种类字典.get(标签种类ID);
-            if (标签种类) {
-              切换录题标签(标签种类, 标签ID);
-            }
-          })}
+          <div className={styles.selectedTagsCardHeader}>
+            <h2 className={styles.sectionTitle}>已选标签</h2>
+            <div className={styles.selectedTagsCardActions}>
+              <ToggleButton
+                checked={连续录入已开启}
+                appearance="outline"
+                className={styles.continuousToggle}
+                style={
+                  连续录入已开启
+                    ? {
+                        borderColor: "#c9952e",
+                        backgroundColor: "#fde8b2",
+                        color: "#5c3b00",
+                        boxShadow: "0 4px 10px rgba(160, 112, 9, 0.16)",
+                        fontWeight: 700,
+                      }
+                    : {
+                        borderColor: "#d8cfc0",
+                        backgroundColor: "#ffffff",
+                        color: "#5a544a",
+                        boxShadow: "none",
+                      }
+                }
+                onClick={() => 设置连续录入已开启((当前值) => !当前值)}
+              >
+                连续录入
+              </ToggleButton>
+              <button
+                type="button"
+                className={`${styles.button} ${styles.selectedTagsRecordButton}`}
+                onClick={录入当前选区题目}
+                disabled={正在录题}
+              >
+                {录题按钮文本}
+              </button>
+            </div>
+          </div>
+          {渲染已选标签摘要(
+            录题标签选择,
+            (标签种类ID, 标签ID) => {
+              const 标签种类 = 标签种类字典.get(标签种类ID);
+              if (标签种类) {
+                切换录题标签(标签种类, 标签ID);
+              }
+            },
+            "点击标签移除"
+          )}
         </div>
         {正式标签种类列表.map((标签种类) => (
           <div key={标签种类.id} className={styles.section}>
-            <h2 className={styles.sectionTitle}>{标签种类.名称}</h2>
+            <div className={styles.sectionHeaderRow}>
+              <h2 className={styles.sectionTitle}>{标签种类.名称}</h2>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() => 打开快速新增表单(标签种类)}
+              >
+                {标签种类.是否树形 ? "新增根标签" : "新增标签"}
+              </button>
+            </div>
+            {快速新增目标?.标签种类ID === 标签种类.id && 快速新增目标.父标签ID === null && (
+              <div className={styles.inlineFormHost}>{渲染快速新增表单(标签种类)}</div>
+            )}
             {标签种类.是否树形
               ? (
                   <TagSelectionTree
@@ -1228,6 +1534,26 @@ export default function App(props: AppProps) {
                     已选标签ID列表={录题标签选择[标签种类.id] ?? []}
                     获取标签显示文本={获取标签显示文本}
                     切换标签={(标签ID) => 切换录题标签(标签种类, 标签ID)}
+                    渲染节点附加操作={(标签) => (
+                      <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={(事件) => {
+                          事件.preventDefault();
+                          事件.stopPropagation();
+                          打开快速新增表单(标签种类, 标签 as 标签项);
+                        }}
+                      >
+                        新增子标签
+                      </button>
+                    )}
+                    渲染节点下方内容={(标签) =>
+                      快速新增目标?.标签种类ID === 标签种类.id && 快速新增目标.父标签ID === 标签.id ? (
+                        <div className={styles.inlineFormHost}>
+                          {渲染快速新增表单(标签种类, 获取标签显示文本(标签 as 标签项))}
+                        </div>
+                      ) : null
+                    }
                   />
                 )
               : 渲染平铺选择(
@@ -1247,7 +1573,7 @@ export default function App(props: AppProps) {
             onClick={录入当前选区题目}
             disabled={正在录题}
           >
-            {正在录题 ? "正在录题..." : "从当前选区录入"}
+            {录题按钮文本}
           </button>
         </div>
       </div>
@@ -1595,8 +1921,3 @@ export default function App(props: AppProps) {
   }
   return 渲染首页();
 }
-
-
-
-
-

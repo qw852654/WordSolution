@@ -14,6 +14,12 @@ interface TagSelectionTreeProps {
   已选标签ID列表: number[];
   获取标签显示文本: (标签: TagTreeNode) => string;
   切换标签: (标签ID: number) => void;
+  渲染节点附加操作?: (标签: TagTreeNode) => React.ReactNode;
+  渲染节点下方内容?: (标签: TagTreeNode) => React.ReactNode;
+  选择按钮文案?: {
+    未选中: string;
+    已选中: string;
+  };
   空提示文本?: string;
 }
 
@@ -31,6 +37,39 @@ const useStyles = makeStyles({
     display: "grid",
     gap: "4px",
     minWidth: 0,
+  },
+  itemContentButton: {
+    display: "grid",
+    gap: "4px",
+    minWidth: 0,
+    padding: "6px 8px",
+    width: "100%",
+    textAlign: "left",
+    borderRadius: "10px",
+    cursor: "pointer",
+    transition: "background-color 120ms ease, box-shadow 120ms ease, border-color 120ms ease, transform 120ms ease",
+    border: "1px solid transparent",
+    appearance: "none",
+    backgroundColor: "transparent",
+    ":hover": {
+      backgroundColor: "#fff6e4",
+      boxShadow: "0 2px 8px rgba(90, 65, 20, 0.08)",
+      transform: "translateY(-1px)",
+    },
+    ":focus-visible": {
+      outline: "2px solid #d79b27",
+      outlineOffset: "2px",
+    },
+  },
+  selectedItemContentButton: {
+    backgroundColor: "#f3c86a",
+    border: "1px solid #b8860b",
+    boxShadow: "0 4px 10px rgba(160, 112, 9, 0.18)",
+    transform: "translateY(-1px)",
+    color: "#3b2a00",
+    "& span": {
+      color: "#3b2a00",
+    },
   },
   tagName: {
     fontSize: "13px",
@@ -61,6 +100,12 @@ const useStyles = makeStyles({
     border: "1px solid #b8860b",
     backgroundColor: "#f3c86a",
     color: "#3b2a00",
+  },
+  actionGroup: {
+    display: "flex",
+    gap: "6px",
+    flexWrap: "wrap",
+    alignItems: "center",
   },
 });
 
@@ -115,40 +160,87 @@ export default function TagSelectionTree(props: TagSelectionTreeProps) {
     设置展开项集合(new Set(Array.from(数据.openItems, (标签ID) => Number(标签ID))));
   }, []);
 
+  const 选择按钮文案 = props.选择按钮文案 ?? {
+    未选中: "选择",
+    已选中: "已选中",
+  };
+
   const 渲染节点 = React.useCallback(
     (标签: TagTreeNode): React.ReactNode => {
       const 有子标签 = 标签.子标签列表.length > 0;
       const 已选中 = 已选标签ID集合.has(标签.id);
+      const 附加操作 = props.渲染节点附加操作?.(标签);
+      const 节点下方内容 = props.渲染节点下方内容?.(标签);
       return (
         <TreeItem key={标签.id} itemType={有子标签 ? "branch" : "leaf"} value={标签.id}>
           <TreeItemLayout
             actions={{
               visible: true,
               children: (
-                <button
-                  type="button"
-                  className={`${styles.actionButton} ${已选中 ? styles.selectedActionButton : ""}`}
-                  onClick={(事件) => {
-                    事件.preventDefault();
-                    事件.stopPropagation();
-                    props.切换标签(标签.id);
-                  }}
-                >
-                  {已选中 ? "已选中" : "选择"}
-                </button>
+                <div className={styles.actionGroup}>
+                  <button
+                    type="button"
+                    className={`${styles.actionButton} ${已选中 ? styles.selectedActionButton : ""}`}
+                    onClick={(事件) => {
+                      事件.preventDefault();
+                      事件.stopPropagation();
+                      props.切换标签(标签.id);
+                    }}
+                  >
+                    {已选中 ? 选择按钮文案.已选中 : 选择按钮文案.未选中}
+                  </button>
+                  {附加操作}
+                </div>
               ),
             }}
           >
-            <div className={styles.itemContent}>
-              <span className={styles.tagName}>{props.获取标签显示文本(标签)}</span>
-              {标签.description && <span className={styles.meta}>{标签.description}</span>}
-            </div>
+            <button
+              type="button"
+              className={`${styles.itemContentButton} ${已选中 ? styles.selectedItemContentButton : ""}`}
+              onPointerDownCapture={(事件) => {
+                事件.stopPropagation();
+              }}
+              onMouseDownCapture={(事件) => {
+                事件.stopPropagation();
+              }}
+              onClick={(事件) => {
+                事件.preventDefault();
+                事件.stopPropagation();
+                props.切换标签(标签.id);
+              }}
+              onKeyDown={(事件) => {
+                if (事件.key === "Enter" || 事件.key === " ") {
+                  事件.preventDefault();
+                  事件.stopPropagation();
+                  props.切换标签(标签.id);
+                }
+              }}
+            >
+              <div className={styles.itemContent}>
+                <span className={styles.tagName}>{props.获取标签显示文本(标签)}</span>
+                {标签.description && <span className={styles.meta}>{标签.description}</span>}
+              </div>
+            </button>
           </TreeItemLayout>
+          {节点下方内容}
           {有子标签 ? <Tree>{标签.子标签列表.map((子标签) => 渲染节点(子标签))}</Tree> : null}
         </TreeItem>
       );
     },
-    [props, styles.actionButton, styles.itemContent, styles.meta, styles.selectedActionButton, styles.tagName, 已选标签ID集合]
+    [
+      props,
+      styles.actionButton,
+      styles.actionGroup,
+      styles.itemContent,
+      styles.itemContentButton,
+      styles.meta,
+      styles.selectedItemContentButton,
+      styles.selectedActionButton,
+      styles.tagName,
+      已选标签ID集合,
+      选择按钮文案.已选中,
+      选择按钮文案.未选中,
+    ]
   );
 
   if (props.标签列表.length === 0) {

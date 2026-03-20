@@ -16,10 +16,22 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <FrontendDistFiles Include="..\question-bank-office-addin\dist\**\*" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+
+  <Target Name="CopyFrontendDistToWwwroot" BeforeTargets="Build;Publish">
+    <MakeDir Directories="$(MSBuildProjectDirectory)\wwwroot" />
+    <Copy
+      SourceFiles="@(FrontendDistFiles)"
+      DestinationFiles="@(FrontendDistFiles->'$(MSBuildProjectDirectory)\wwwroot\%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>
