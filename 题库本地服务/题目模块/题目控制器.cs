@@ -18,6 +18,7 @@ namespace 题库本地服务.题目模块
         private readonly 获取题目文件Base64用例 _获取题目文件Base64用例;
         private readonly 获取题目预览HTML用例 _获取题目预览HTML用例;
         private readonly 根据标签筛选题目用例 _根据标签筛选题目用例;
+        private readonly 更新Ooxml题目用例 _更新Ooxml题目用例;
         private readonly 删除题目用例 _删除题目用例;
 
         public 题目控制器(
@@ -27,6 +28,7 @@ namespace 题库本地服务.题目模块
             获取题目文件Base64用例 获取题目文件Base64用例,
             获取题目预览HTML用例 获取题目预览HTML用例,
             根据标签筛选题目用例 根据标签筛选题目用例,
+            更新Ooxml题目用例 更新Ooxml题目用例,
             删除题目用例 删除题目用例)
         {
             _录入题目用例 = 录入题目用例;
@@ -35,6 +37,7 @@ namespace 题库本地服务.题目模块
             _获取题目文件Base64用例 = 获取题目文件Base64用例;
             _获取题目预览HTML用例 = 获取题目预览HTML用例;
             _根据标签筛选题目用例 = 根据标签筛选题目用例;
+            _更新Ooxml题目用例 = 更新Ooxml题目用例;
             _删除题目用例 = 删除题目用例;
         }
 
@@ -86,6 +89,18 @@ namespace 题库本地服务.题目模块
             }
 
             return Content(文件Base64, "text/plain; charset=utf-8");
+        }
+
+        [HttpPut("{id:int}/ooxml")]
+        public IActionResult 更新Ooxml题目(int id, [FromBody] 更新Ooxml题目的请求 请求)
+        {
+            var 已更新 = _更新Ooxml题目用例.执行(id, 请求);
+            if (!已更新)
+            {
+                return NotFound();
+            }
+
+            return NoContent();
         }
 
         [HttpPost("筛选")]

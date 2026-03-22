@@ -80,6 +80,7 @@ builder.Services.AddScoped<根据ID获取题目详情用例>();
 builder.Services.AddScoped<获取题目文件Base64用例>();
 builder.Services.AddScoped<获取题目预览HTML用例>();
 builder.Services.AddScoped<根据标签筛选题目用例>();
+builder.Services.AddScoped<更新Ooxml题目用例>();
 builder.Services.AddScoped<删除题目用例>();
 builder.Services.AddScoped<获取标签树用例>();
 builder.Services.AddScoped<获取标签种类列表用例>();
@@ -99,6 +100,7 @@ using (var scope = app.Services.CreateScope())
 
     Aspose授权初始化器.初始化授权();
     题库实例服务.确保测试题库已初始化();
+    题库实例服务.确保现有题库已补齐初始化();
 }
 
 app.UseCors();

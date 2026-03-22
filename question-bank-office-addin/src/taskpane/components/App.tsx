@@ -8,6 +8,7 @@ import TagBadge from "./TagBadge";
 import TagSearchPanel from "./TagSearchPanel";
 import TagSelectionTree from "./TagSelectionTree";
 import type { 标签搜索项 } from "../search/tagSearch";
+import { 获取当前题目内容控件上下文 } from "../word/题目内容控件上下文";
 
 interface AppProps {
   title: string;
@@ -121,7 +122,22 @@ const 系统标签种类 = {
   难度: 3,
   附加标签: 4,
   待整理: 5,
+  试卷题型: 6,
 } as const;
+
+const 标签种类显示顺序 = [
+  系统标签种类.章节,
+  系统标签种类.做题方法,
+  系统标签种类.难度,
+  系统标签种类.附加标签,
+  系统标签种类.试卷题型,
+  系统标签种类.待整理,
+];
+
+function 获取标签种类排序值(标签种类ID: number) {
+  const 索引 = 标签种类显示顺序.indexOf(标签种类ID as (typeof 标签种类显示顺序)[number]);
+  return 索引 >= 0 ? 索引 : 标签种类显示顺序.length + 标签种类ID;
+}
 
 const useStyles = makeStyles({
   root: { minHeight: "100vh", backgroundColor: "#f6f1e7" },
@@ -400,6 +416,11 @@ export default function App(props: AppProps) {
   const [录题错误, 设置录题错误] = React.useState("");
   const [录题成功提示, 设置录题成功提示] = React.useState("");
   const [最近录入题目ID, 设置最近录入题目ID] = React.useState<number | null>(null);
+  const [正在更新题目, 设置正在更新题目] = React.useState(false);
+  const [更新题目错误, 设置更新题目错误] = React.useState("");
+  const [更新题目成功提示, 设置更新题目成功提示] = React.useState("");
+  const [最近更新题目ID, 设置最近更新题目ID] = React.useState<number | null>(null);
+  const [更新题目按钮失败提示, 设置更新题目按钮失败提示] = React.useState("");
   const [筛选步骤列表, 设置筛选步骤列表] = React.useState<筛选步骤项[]>([创建空筛选步骤(1)]);
   const [正在筛题, 设置正在筛题] = React.useState(false);
   const [筛题错误, 设置筛题错误] = React.useState("");
@@ -511,7 +532,7 @@ export default function App(props: AppProps) {
         throw new Error("标签种类读取失败。");
       }
       const 标签种类结果 = ((await 标签种类响应.json()) as 标签种类项[]).sort(
-        (前一个, 后一个) => 前一个.id - 后一个.id
+        (前一个, 后一个) => 获取标签种类排序值(前一个.id) - 获取标签种类排序值(后一个.id)
       );
       const 标签读取结果 = await Promise.all(
         标签种类结果.map(async (标签种类) => {
@@ -556,6 +577,11 @@ export default function App(props: AppProps) {
     设置录题错误("");
     设置录题成功提示("");
     设置最近录入题目ID(null);
+    设置正在更新题目(false);
+    设置更新题目错误("");
+    设置更新题目成功提示("");
+    设置最近更新题目ID(null);
+    设置更新题目按钮失败提示("");
     设置筛选步骤列表([创建空筛选步骤(1)]);
     设置筛题结果卡片列表([]);
     设置已执行筛题(false);
@@ -579,6 +605,8 @@ export default function App(props: AppProps) {
     if (当前页面 === "录题页" && 上一个页面Ref.current !== "录题页") {
       设置连续录入已开启(true);
       设置最近录入题目ID(null);
+      设置最近更新题目ID(null);
+      设置更新题目按钮失败提示("");
     }
     if (当前页面 !== "筛题页") {
       设置删除确认状态(null);
@@ -587,6 +615,20 @@ export default function App(props: AppProps) {
     }
     上一个页面Ref.current = 当前页面;
   }, [当前页面]);
+
+  React.useEffect(() => {
+    if (更新题目按钮失败提示 === "") {
+      return undefined;
+    }
+
+    const 定时器 = window.setTimeout(() => {
+      设置更新题目按钮失败提示("");
+    }, 5000);
+
+    return () => {
+      window.clearTimeout(定时器);
+    };
+  }, [更新题目按钮失败提示]);
 
   React.useEffect(() => {
     const applyPendingNavigation = (
@@ -659,7 +701,7 @@ export default function App(props: AppProps) {
         })
         .sort((前一个, 后一个) => {
           if (前一个.标签种类ID !== 后一个.标签种类ID) {
-            return 前一个.标签种类ID - 后一个.标签种类ID;
+            return 获取标签种类排序值(前一个.标签种类ID) - 获取标签种类排序值(后一个.标签种类ID);
           }
           if (前一个.同级排序值 !== 后一个.同级排序值) {
             return 前一个.同级排序值 - 后一个.同级排序值;
@@ -730,6 +772,19 @@ export default function App(props: AppProps) {
     }
     return "从当前选区录入";
   }, [正在录题, 最近录入题目ID]);
+
+  const 更新题目按钮文本 = React.useMemo(() => {
+    if (正在更新题目) {
+      return "正在更新...";
+    }
+    if (更新题目按钮失败提示 !== "") {
+      return 更新题目按钮失败提示;
+    }
+    if (最近更新题目ID !== null) {
+      return `已更新，题目ID：${最近更新题目ID}`;
+    }
+    return "更新当前题目";
+  }, [正在更新题目, 更新题目按钮失败提示, 最近更新题目ID]);
 
   const 切换标签选择状态 = React.useCallback(
     (原映射: 标签选择映射, 标签种类: 标签种类项, 标签ID: number) => {
@@ -901,6 +956,9 @@ export default function App(props: AppProps) {
       设置录题错误("");
       设置录题成功提示("");
       设置最近录入题目ID(null);
+      设置更新题目错误("");
+      设置更新题目成功提示("");
+      设置最近更新题目ID(null);
       const Ooxml内容 = await 获取当前选区Ooxml();
       const 响应 = await fetch(构建题库接口路径(当前题库键, "/题目/ooxml"), {
         method: "POST",
@@ -933,6 +991,54 @@ export default function App(props: AppProps) {
       设置最近录入题目ID(null);
     } finally {
       设置正在录题(false);
+    }
+  };
+
+  const 更新当前题目 = async () => {
+    try {
+      设置正在更新题目(true);
+      设置更新题目错误("");
+      设置更新题目成功提示("");
+      设置最近更新题目ID(null);
+      设置更新题目按钮失败提示("");
+      设置录题错误("");
+      设置录题成功提示("");
+      设置最近录入题目ID(null);
+
+      const 当前题目上下文 = await 获取当前题目内容控件上下文();
+      const 响应 = await fetch(
+        构建题库接口路径(当前题库键, `/题目/${当前题目上下文.题目ID}/ooxml`),
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            Ooxml内容: 当前题目上下文.OOXML内容,
+          }),
+        }
+      );
+
+      if (!响应.ok) {
+        if (响应.status === 404) {
+          throw new Error("当前题目在题库中不存在。");
+        }
+
+        const 错误文本 = await 响应.text();
+        throw new Error(错误文本 || "更新题目失败。");
+      }
+
+      设置最近更新题目ID(当前题目上下文.题目ID);
+      设置更新题目成功提示(`更新成功，题目ID：${当前题目上下文.题目ID}`);
+      设置更新题目按钮失败提示("");
+    } catch (error) {
+      console.error(error);
+      const 错误消息 =
+        error instanceof Error && error.message.trim() !== "" ? error.message : "更新题目失败。";
+      设置更新题目错误(错误消息);
+      设置更新题目成功提示("");
+      设置最近更新题目ID(null);
+      设置更新题目按钮失败提示(截断文本(错误消息, 18));
+    } finally {
+      设置正在更新题目(false);
     }
   };
 
@@ -1608,7 +1714,7 @@ export default function App(props: AppProps) {
             >
               <p className={styles.actionName}>筛选题目</p>
               <p className={styles.actionDescription}>
-                按章节、做题方法、难度和附加标签分区筛题，并继续插入已选题目。
+                按章节、做题方法、难度、附加标签和试卷题型分区筛题，并继续插入已选题目。
               </p>
             </button>
             <button
@@ -1618,7 +1724,7 @@ export default function App(props: AppProps) {
             >
               <p className={styles.actionName}>标签整理</p>
               <p className={styles.actionDescription}>
-                维护章节树、做题方法树、难度、附加标签和迁移期的待整理标签。
+                维护章节树、做题方法树、难度、附加标签、试卷题型和迁移期的待整理标签。
               </p>
             </button>
           </div>
@@ -1678,9 +1784,17 @@ export default function App(props: AppProps) {
                 type="button"
                 className={`${styles.button} ${styles.selectedTagsRecordButton}`}
                 onClick={录入当前选区题目}
-                disabled={正在录题}
+                disabled={正在录题 || 正在更新题目}
               >
                 {录题按钮文本}
+              </button>
+              <button
+                type="button"
+                className={`${styles.secondaryButton} ${styles.selectedTagsRecordButton}`}
+                onClick={更新当前题目}
+                disabled={正在录题 || 正在更新题目}
+              >
+                {更新题目按钮文本}
               </button>
             </div>
           </div>
@@ -1760,14 +1874,26 @@ export default function App(props: AppProps) {
         <div className={styles.section}>
           {录题错误 !== "" && <p className={styles.errorText}>{录题错误}</p>}
           {录题成功提示 !== "" && <p className={styles.successText}>{录题成功提示}</p>}
-          <button
-            type="button"
-            className={styles.button}
-            onClick={录入当前选区题目}
-            disabled={正在录题}
-          >
-            {录题按钮文本}
-          </button>
+          {更新题目错误 !== "" && <p className={styles.errorText}>{更新题目错误}</p>}
+          {更新题目成功提示 !== "" && <p className={styles.successText}>{更新题目成功提示}</p>}
+          <div className={styles.row}>
+            <button
+              type="button"
+              className={styles.button}
+              onClick={录入当前选区题目}
+              disabled={正在录题 || 正在更新题目}
+            >
+              {录题按钮文本}
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={更新当前题目}
+              disabled={正在录题 || 正在更新题目}
+            >
+              {更新题目按钮文本}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1954,7 +2080,7 @@ export default function App(props: AppProps) {
         <div className={styles.bankBanner}>当前题库：{当前题库键}</div>
         <h1 className={styles.title}>标签整理</h1>
         <p className={styles.subtitle}>
-          这里负责整理章节树、做题方法树、难度、附加标签，以及迁移期的待整理标签。
+          这里负责整理章节树、做题方法树、难度、附加标签、试卷题型，以及迁移期的待整理标签。
         </p>
         {标签整理错误 !== "" && (
           <div className={styles.section}>

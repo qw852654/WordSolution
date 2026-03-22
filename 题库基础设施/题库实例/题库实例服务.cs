@@ -26,6 +26,16 @@ namespace 题库基础设施.题库实例
             _题库实例初始化器.确保题库已初始化(题库路径提供器.默认测试题库键);
         }
 
+        public void 确保现有题库已补齐初始化()
+        {
+            Directory.CreateDirectory(_题库路径提供器.获取题库中心根目录());
+
+            foreach (var 题库键 in _题库路径提供器.获取所有题库键().Where(_题库路径提供器.题库目录结构完整))
+            {
+                _题库实例初始化器.确保题库已初始化(题库键);
+            }
+        }
+
         public IReadOnlyList<题库实例信息> 获取题库实例列表()
         {
             Directory.CreateDirectory(_题库路径提供器.获取题库中心根目录());

@@ -31,21 +31,17 @@ namespace 题库基础设施.初始化
 
             初始化标签种类(dbContext);
             初始化难度种子数据(dbContext);
+            初始化试卷题型种子数据(dbContext);
         }
 
         private void 初始化标签种类(数据访问.题库DbContext dbContext)
         {
-            if (dbContext.标签种类表.Any())
-            {
-                return;
-            }
-
-            dbContext.标签种类表.AddRange(
-                标签种类.创建(系统标签种类.章节, "章节", true, true, true, true),
-                标签种类.创建(系统标签种类.做题方法, "做题方法", true, true, true, true),
-                标签种类.创建(系统标签种类.难度, "难度", false, false, true, true),
-                标签种类.创建(系统标签种类.附加标签, "附加标签", false, true, true, true),
-                标签种类.创建(系统标签种类.待整理, "待整理", true, true, true, false));
+            确保标签种类存在(dbContext, 系统标签种类.章节, "章节", true, true, true, true);
+            确保标签种类存在(dbContext, 系统标签种类.做题方法, "做题方法", true, true, true, true);
+            确保标签种类存在(dbContext, 系统标签种类.难度, "难度", false, false, true, true);
+            确保标签种类存在(dbContext, 系统标签种类.附加标签, "附加标签", false, true, true, true);
+            确保标签种类存在(dbContext, 系统标签种类.待整理, "待整理", true, true, true, false);
+            确保标签种类存在(dbContext, 系统标签种类.试卷题型, "试卷题型", false, false, true, true);
 
             dbContext.SaveChanges();
         }
@@ -65,6 +61,49 @@ namespace 题库基础设施.初始化
                 标签.创建标签(系统标签种类.难度, "拔尖", null, null, 3, 3, true));
 
             dbContext.SaveChanges();
+        }
+
+        private void 初始化试卷题型种子数据(数据访问.题库DbContext dbContext)
+        {
+            确保平铺标签存在(dbContext, 系统标签种类.试卷题型, "选择题", 0);
+            确保平铺标签存在(dbContext, 系统标签种类.试卷题型, "填空题", 1);
+            确保平铺标签存在(dbContext, 系统标签种类.试卷题型, "实验题", 2);
+            确保平铺标签存在(dbContext, 系统标签种类.试卷题型, "解答题", 3);
+
+            dbContext.SaveChanges();
+        }
+
+        private static void 确保标签种类存在(
+            数据访问.题库DbContext dbContext,
+            int 标签种类ID,
+            string 名称,
+            bool 是否树形,
+            bool 是否允许多选,
+            bool 是否系统内置,
+            bool 是否在正式工作流中可见)
+        {
+            if (dbContext.标签种类表.Any(标签种类 => 标签种类.Id == 标签种类ID))
+            {
+                return;
+            }
+
+            dbContext.标签种类表.Add(
+                标签种类.创建(标签种类ID, 名称, 是否树形, 是否允许多选, 是否系统内置, 是否在正式工作流中可见)
+            );
+        }
+
+        private static void 确保平铺标签存在(
+            数据访问.题库DbContext dbContext,
+            int 标签种类ID,
+            string 名称,
+            int 同级排序值)
+        {
+            if (dbContext.标签表.Any(标签 => 标签.标签种类ID == 标签种类ID && 标签.ParentId == null && 标签.名称 == 名称))
+            {
+                return;
+            }
+
+            dbContext.标签表.Add(标签.创建标签(标签种类ID, 名称, null, null, 同级排序值, null, true));
         }
     }
 }

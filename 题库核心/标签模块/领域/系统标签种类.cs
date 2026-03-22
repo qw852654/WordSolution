@@ -7,6 +7,7 @@ namespace 题库核心.标签模块.领域
         public const int 难度 = 3;
         public const int 附加标签 = 4;
         public const int 待整理 = 5;
+        public const int 试卷题型 = 6;
 
         public static bool 是否树形(int 标签种类ID)
         {
@@ -15,7 +16,7 @@ namespace 题库核心.标签模块.领域
 
         public static bool 是否允许多选(int 标签种类ID)
         {
-            return 标签种类ID != 难度;
+            return 标签种类ID != 难度 && 标签种类ID != 试卷题型;
         }
 
         public static bool 是否正式工作流可见(int 标签种类ID)
