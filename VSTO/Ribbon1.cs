@@ -32,10 +32,14 @@ namespace VSTO
                 var 用例 = new 导出双版本pdf();
                 var 结果 = 用例.执行(参数);
 
+                string 无答案版提示 = string.IsNullOrWhiteSpace(结果.无答案版Pdf路径)
+                    ? "无答案版：本次未生成，请先确认文档内容或稍后重试"
+                    : "无答案版：" + 结果.无答案版Pdf路径;
+
                 MessageBox.Show(
                     "导出完成。\n" +
                     "原始版：" + 结果.原始版Pdf路径 + "\n" +
-                    "无答案版：" + 结果.无答案版Pdf路径);
+                    无答案版提示);
             }
             catch (Exception ex)
             {
@@ -44,3 +48,4 @@ namespace VSTO
         }
     }
 }
+

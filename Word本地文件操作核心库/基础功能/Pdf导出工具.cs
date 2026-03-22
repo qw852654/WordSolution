@@ -17,11 +17,11 @@ namespace Word本地文件操作核心库.工具
                 OptimizeFor: WdExportOptimizeFor.wdExportOptimizeForPrint,
                 Range: WdExportRange.wdExportAllDocument,
                 IncludeDocProps: true,
-                KeepIRM: true,
-                CreateBookmarks: WdExportCreateBookmarks.wdExportCreateHeadingBookmarks,
-                DocStructureTags: true,
+                KeepIRM: false,
+                CreateBookmarks: WdExportCreateBookmarks.wdExportCreateNoBookmarks,
+                DocStructureTags: false,
                 BitmapMissingFonts: true,
-                UseISO19005_1: true
+                UseISO19005_1: false
             );
         }
     }
