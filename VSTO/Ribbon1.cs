@@ -46,6 +46,35 @@ namespace VSTO
                 MessageBox.Show("导出失败：" + ex.Message);
             }
         }
+
+        private void 源目录导出pdf_Click(object sender, RibbonControlEventArgs e)
+        {
+            try
+            {
+                var 当前文档 = Globals.ThisAddIn.Application.ActiveDocument;
+                if (当前文档 == null)
+                {
+                    MessageBox.Show("当前没有可导出的文档。");
+                    return;
+                }
+
+                var 参数 = new 导出源目录pdf参数
+                {
+                    文档 = 当前文档
+                };
+
+                var 用例 = new 导出源目录pdf();
+                var 结果 = 用例.执行(参数);
+
+                MessageBox.Show(
+                    "导出完成。\n" +
+                    "PDF：" + 结果.Pdf路径);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("导出失败：" + ex.Message);
+            }
+        }
     }
 }
 

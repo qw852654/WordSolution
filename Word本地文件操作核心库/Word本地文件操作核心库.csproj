@@ -51,6 +51,7 @@
     <Compile Include="基础功能\答案处理工具.cs" />
     <Compile Include="基础功能\文档路径工具.cs" />
     <Compile Include="基础功能\Pdf导出工具.cs" />
+    <Compile Include="用例\导出源目录pdf.cs" />
     <Compile Include="用例\导出双版本pdf.cs" />
     <Compile Include="自动处理\将新下载的组卷试卷插入文档.cs" />
   </ItemGroup>

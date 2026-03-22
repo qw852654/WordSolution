@@ -39,6 +39,7 @@
             this.处理当前文档 = this.Factory.CreateRibbonTab();
             this.导出功能组 = this.Factory.CreateRibbonGroup();
             this.导出为pdf = this.Factory.CreateRibbonButton();
+            this.源目录导出pdf = this.Factory.CreateRibbonButton();
             this.tab1.SuspendLayout();
             this.处理当前文档.SuspendLayout();
             this.导出功能组.SuspendLayout();
@@ -65,6 +66,7 @@
             // 导出功能组
             // 
             this.导出功能组.Items.Add(this.导出为pdf);
+            this.导出功能组.Items.Add(this.源目录导出pdf);
             this.导出功能组.Label = "导出功能";
             this.导出功能组.Name = "导出功能组";
             // 
@@ -73,6 +75,12 @@
             this.导出为pdf.Label = "导出为pdf";
             this.导出为pdf.Name = "导出为pdf";
             this.导出为pdf.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.导出pdf_Click);
+            // 
+            // 源目录导出pdf
+            // 
+            this.源目录导出pdf.Label = "源目录导出pdf";
+            this.源目录导出pdf.Name = "源目录导出pdf";
+            this.源目录导出pdf.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.源目录导出pdf_Click);
             // 
             // Ribbon1
             // 
@@ -98,6 +106,7 @@
         private Microsoft.Office.Tools.Ribbon.RibbonTab 处理当前文档;
         internal Microsoft.Office.Tools.Ribbon.RibbonGroup 导出功能组;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton 导出为pdf;
+        internal Microsoft.Office.Tools.Ribbon.RibbonButton 源目录导出pdf;
     }
 
     partial class ThisRibbonCollection
