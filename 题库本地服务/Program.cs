@@ -19,12 +19,6 @@ var 题库中心根目录 = @"E:\Desktop\题库中心";
 var Aspose授权文件路径 = Path.Combine(AppContext.BaseDirectory, "Aspose.Total.NET.lic");
 var 本地Https证书路径 = Path.Combine(AppContext.BaseDirectory, "certs", "localhost-dev.pfx");
 const string 本地Https证书密码 = "WordSolutionLocalHttps2026!";
-var 发布版静态文件目录 = Path.Combine(AppContext.BaseDirectory, "wwwroot");
-
-if (Directory.Exists(发布版静态文件目录))
-{
-    builder.WebHost.UseWebRoot(发布版静态文件目录);
-}
 
 if (File.Exists(本地Https证书路径))
 {
@@ -86,6 +80,7 @@ builder.Services.AddScoped<根据ID获取题目详情用例>();
 builder.Services.AddScoped<获取题目文件Base64用例>();
 builder.Services.AddScoped<获取题目预览HTML用例>();
 builder.Services.AddScoped<根据标签筛选题目用例>();
+builder.Services.AddScoped<删除题目用例>();
 builder.Services.AddScoped<获取标签树用例>();
 builder.Services.AddScoped<获取标签种类列表用例>();
 builder.Services.AddScoped<获取标签列表用例>();

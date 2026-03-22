@@ -89,6 +89,11 @@ interface 筛选步骤项 {
   已选标签ID映射: 标签选择映射;
 }
 
+interface 删除确认状态 {
+  题目ID: number;
+  阶段: 1 | 2;
+}
+
 type 页面名称 = "首页" | "录题页" | "筛题页" | "标签整理页";
 type 组合方式 = "交集" | "并集";
 type 标签选择映射 = Record<number, number[]>;
@@ -399,6 +404,9 @@ export default function App(props: AppProps) {
   const [已执行筛题, 设置已执行筛题] = React.useState(false);
   const [筛题结果卡片列表, 设置筛题结果卡片列表] = React.useState<题目卡片项[]>([]);
   const [已选题目ID列表, 设置已选题目ID列表] = React.useState<number[]>([]);
+  const [删除确认状态, 设置删除确认状态] = React.useState<删除确认状态 | null>(null);
+  const [正在删除题目ID, 设置正在删除题目ID] = React.useState<number | null>(null);
+  const [删除题目错误, 设置删除题目错误] = React.useState("");
   const [正在插题, 设置正在插题] = React.useState(false);
   const [插题错误, 设置插题错误] = React.useState("");
   const [插题成功提示, 设置插题成功提示] = React.useState("");
@@ -424,6 +432,14 @@ export default function App(props: AppProps) {
     [题库实例列表, 当前题库键]
   );
   const 当前筛选步骤 = 筛选步骤列表[筛选步骤列表.length - 1];
+  const 当前结果题目ID列表 = React.useMemo(() => 筛题结果卡片列表.map((题目卡片) => 题目卡片.id), [筛题结果卡片列表]);
+  const 当前结果题目ID集合 = React.useMemo(() => new Set(当前结果题目ID列表), [当前结果题目ID列表]);
+  const 当前结果已选题目数量 = React.useMemo(
+    () => 已选题目ID列表.filter((题目ID) => 当前结果题目ID集合.has(题目ID)).length,
+    [已选题目ID列表, 当前结果题目ID集合]
+  );
+  const 当前结果题目总数 = 当前结果题目ID列表.length;
+  const 当前结果已全选 = 当前结果题目总数 > 0 && 当前结果已选题目数量 === 当前结果题目总数;
   const handledNavigationTokenRef = React.useRef<string | null>(null);
   const 上一个页面Ref = React.useRef<页面名称>(当前页面);
 
@@ -543,6 +559,9 @@ export default function App(props: AppProps) {
     设置已执行筛题(false);
     设置筛题错误("");
     设置已选题目ID列表([]);
+    设置删除确认状态(null);
+    设置正在删除题目ID(null);
+    设置删除题目错误("");
     设置插题错误("");
     设置插题成功提示("");
     设置编辑标签表单(null);
@@ -558,6 +577,11 @@ export default function App(props: AppProps) {
     if (当前页面 === "录题页" && 上一个页面Ref.current !== "录题页") {
       设置连续录入已开启(true);
       设置最近录入题目ID(null);
+    }
+    if (当前页面 !== "筛题页") {
+      设置删除确认状态(null);
+      设置正在删除题目ID(null);
+      设置删除题目错误("");
     }
     上一个页面Ref.current = 当前页面;
   }, [当前页面]);
@@ -857,6 +881,10 @@ export default function App(props: AppProps) {
       设置正在筛题(true);
       设置筛题错误("");
       设置已执行筛题(true);
+      设置已选题目ID列表([]);
+      设置删除确认状态(null);
+      设置正在删除题目ID(null);
+      设置删除题目错误("");
       设置插题错误("");
       设置插题成功提示("");
       const 响应 = await fetch(构建题库接口路径(当前题库键, "/题目/筛选"), {
@@ -909,17 +937,85 @@ export default function App(props: AppProps) {
           : "筛题失败，请确认本地服务正在运行。"
       );
       设置筛题结果卡片列表([]);
+      设置删除确认状态(null);
+      设置正在删除题目ID(null);
     } finally {
       设置正在筛题(false);
     }
   };
 
   const 切换题目选择状态 = (题目ID: number) => {
+    设置删除题目错误("");
     设置已选题目ID列表((当前题目ID列表) =>
       当前题目ID列表.includes(题目ID)
         ? 当前题目ID列表.filter((当前题目ID) => 当前题目ID !== 题目ID)
         : [...当前题目ID列表, 题目ID]
     );
+  };
+
+  const 切换全选当前结果 = () => {
+    设置删除题目错误("");
+    设置已选题目ID列表((当前题目ID列表) => {
+      if (当前结果已全选) {
+        return 当前题目ID列表.filter((题目ID) => !当前结果题目ID集合.has(题目ID));
+      }
+
+      const 结果 = [...当前题目ID列表];
+      当前结果题目ID列表.forEach((题目ID) => {
+        if (!结果.includes(题目ID)) {
+          结果.push(题目ID);
+        }
+      });
+      return 结果;
+    });
+  };
+
+  const 删除当前题目 = async (题目ID: number) => {
+    try {
+      设置正在删除题目ID(题目ID);
+      设置删除题目错误("");
+      const 响应 = await fetch(构建题库接口路径(当前题库键, `/题目/${题目ID}`), {
+        method: "DELETE",
+      });
+      if (响应.status === 404) {
+        throw new Error("题目不存在，可能已被删除。");
+      }
+      if (!响应.ok) {
+        const 错误文本 = await 响应.text();
+        throw new Error(错误文本 || "删除题目失败。");
+      }
+
+      设置筛题结果卡片列表((当前列表) => 当前列表.filter((题目卡片) => 题目卡片.id !== 题目ID));
+      设置已选题目ID列表((当前题目ID列表) => 当前题目ID列表.filter((当前题目ID) => 当前题目ID !== 题目ID));
+      设置删除确认状态(null);
+    } catch (error) {
+      console.error(error);
+      设置删除题目错误(
+        error instanceof Error && error.message.trim() !== "" ? error.message : "删除题目失败。"
+      );
+    } finally {
+      设置正在删除题目ID(null);
+    }
+  };
+
+  const 点击删除题目按钮 = async (题目ID: number) => {
+    if (正在删除题目ID !== null) {
+      return;
+    }
+
+    设置删除题目错误("");
+
+    if (!删除确认状态 || 删除确认状态.题目ID !== 题目ID) {
+      设置删除确认状态({ 题目ID, 阶段: 1 });
+      return;
+    }
+
+    if (删除确认状态.阶段 === 1) {
+      设置删除确认状态({ 题目ID, 阶段: 2 });
+      return;
+    }
+
+    await 删除当前题目(题目ID);
   };
 
   const 插入已选题目 = async () => {
@@ -932,6 +1028,7 @@ export default function App(props: AppProps) {
       设置正在插题(true);
       设置插题错误("");
       设置插题成功提示("");
+      设置删除题目错误("");
       const 题目卡片字典 = new Map(
         筛题结果卡片列表.map((题目卡片) => [题目卡片.id, 题目卡片] as const)
       );
@@ -1675,17 +1772,27 @@ export default function App(props: AppProps) {
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>筛题结果</h2>
           <div className={styles.row}>
-            <p className={styles.noteText}>已选题目：{已选题目ID列表.length} 道</p>
+            <p className={styles.noteText}>已选：{当前结果已选题目数量} 道</p>
+            <p className={styles.noteText}>筛中：{当前结果题目总数} 道</p>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={切换全选当前结果}
+              disabled={当前结果题目总数 === 0}
+            >
+              {当前结果已全选 ? "取消全选" : "全选当前结果"}
+            </button>
             <button
               type="button"
               className={styles.button}
               onClick={插入已选题目}
-              disabled={正在插题 || 已选题目ID列表.length === 0}
+              disabled={正在插题 || 当前结果已选题目数量 === 0}
             >
               {正在插题 ? "正在插入..." : "插入已选题目"}
             </button>
           </div>
           {筛题错误 !== "" && <p className={styles.errorText}>{筛题错误}</p>}
+          {删除题目错误 !== "" && <p className={styles.errorText}>{删除题目错误}</p>}
           {插题错误 !== "" && <p className={styles.errorText}>{插题错误}</p>}
           {插题成功提示 !== "" && <p className={styles.successText}>{插题成功提示}</p>}
           {筛题错误 === "" && 正在筛题 && <p className={styles.noteText}>正在加载筛题结果...</p>}
@@ -1708,6 +1815,17 @@ export default function App(props: AppProps) {
                     预览Html={题目卡片.预览Html}
                     已选中={已选中}
                     切换选择={() => 切换题目选择状态(题目卡片.id)}
+                    删除按钮阶段={
+                      删除确认状态?.题目ID !== 题目卡片.id
+                        ? "默认"
+                        : 删除确认状态.阶段 === 1
+                        ? "确认"
+                        : "最终确认"
+                    }
+                    正在删除={正在删除题目ID === 题目卡片.id}
+                    点击删除按钮={() => {
+                      void 点击删除题目按钮(题目卡片.id);
+                    }}
                   />
                 );
               })}

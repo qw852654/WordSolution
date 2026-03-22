@@ -11,5 +11,9 @@ namespace 题库核心.题目模块.契约
         byte[]? 读取题目文件(int 题目ID, string 文件扩展名 = ".docx");
 
         string? 读取题目预览HTML(int 题目ID);
+
+        void 删除题目文件(int 题目ID, string 文件扩展名 = ".docx");
+
+        void 删除题目预览文件(int 题目ID);
     }
 }

@@ -12,6 +12,8 @@ namespace 题库核心.题目模块.契约
 
         void 保存题目(题目 题目);
 
+        void 删除题目(int 题目ID);
+
         IReadOnlyList<题目> 根据标签查找(IReadOnlyList<int> 标签ID列表, 组合方式 组合方式);
     }
 }

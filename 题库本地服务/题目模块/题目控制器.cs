@@ -18,6 +18,7 @@ namespace 题库本地服务.题目模块
         private readonly 获取题目文件Base64用例 _获取题目文件Base64用例;
         private readonly 获取题目预览HTML用例 _获取题目预览HTML用例;
         private readonly 根据标签筛选题目用例 _根据标签筛选题目用例;
+        private readonly 删除题目用例 _删除题目用例;
 
         public 题目控制器(
             录入题目用例 录入题目用例,
@@ -25,7 +26,8 @@ namespace 题库本地服务.题目模块
             根据ID获取题目详情用例 根据ID获取题目详情用例,
             获取题目文件Base64用例 获取题目文件Base64用例,
             获取题目预览HTML用例 获取题目预览HTML用例,
-            根据标签筛选题目用例 根据标签筛选题目用例)
+            根据标签筛选题目用例 根据标签筛选题目用例,
+            删除题目用例 删除题目用例)
         {
             _录入题目用例 = 录入题目用例;
             _录入Ooxml题目用例 = 录入Ooxml题目用例;
@@ -33,6 +35,7 @@ namespace 题库本地服务.题目模块
             _获取题目文件Base64用例 = 获取题目文件Base64用例;
             _获取题目预览HTML用例 = 获取题目预览HTML用例;
             _根据标签筛选题目用例 = 根据标签筛选题目用例;
+            _删除题目用例 = 删除题目用例;
         }
 
         [HttpPost]
@@ -97,6 +100,18 @@ namespace 题库本地服务.题目模块
 
             var 结果 = _根据标签筛选题目用例.执行(筛选步骤列表);
             return Ok(结果);
+        }
+
+        [HttpDelete("{id:int}")]
+        public IActionResult 删除题目(int id)
+        {
+            var 已删除 = _删除题目用例.执行(id);
+            if (!已删除)
+            {
+                return NotFound();
+            }
+
+            return NoContent();
         }
     }
 }

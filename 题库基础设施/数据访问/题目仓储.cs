@@ -58,6 +58,26 @@ namespace 题库基础设施.数据访问
             保存题目标签关系(题目.Id, 题目.标签ID列表);
         }
 
+        public void 删除题目(int 题目ID)
+        {
+            var 旧关系列表 = _题库DbContext.题目标签关系表
+                .Where(关系 => 关系.题目ID == 题目ID)
+                .ToList();
+
+            if (旧关系列表.Count > 0)
+            {
+                _题库DbContext.题目标签关系表.RemoveRange(旧关系列表);
+            }
+
+            var 题目数据 = _题库DbContext.题目表.SingleOrDefault(题目 => 题目.Id == 题目ID);
+            if (题目数据 != null)
+            {
+                _题库DbContext.题目表.Remove(题目数据);
+            }
+
+            _题库DbContext.SaveChanges();
+        }
+
         public IReadOnlyList<题目> 根据标签查找(IReadOnlyList<int> 标签ID列表, 组合方式 组合方式)
         {
             if (标签ID列表 == null || 标签ID列表.Count == 0)

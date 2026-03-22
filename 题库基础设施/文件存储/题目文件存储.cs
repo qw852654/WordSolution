@@ -67,6 +67,24 @@ namespace 题库基础设施.文件存储
             return File.ReadAllText(HTML文件路径);
         }
 
+        public void 删除题目文件(int 题目ID, string 文件扩展名 = ".docx")
+        {
+            var 题目文件路径 = 获取题目文件路径(题目ID, 文件扩展名);
+            if (File.Exists(题目文件路径))
+            {
+                File.Delete(题目文件路径);
+            }
+        }
+
+        public void 删除题目预览文件(int 题目ID)
+        {
+            var HTML文件路径 = 获取题目预览文件路径(题目ID);
+            if (File.Exists(HTML文件路径))
+            {
+                File.Delete(HTML文件路径);
+            }
+        }
+
         private string 规范化文件扩展名(string 文件扩展名)
         {
             if (string.IsNullOrWhiteSpace(文件扩展名))
