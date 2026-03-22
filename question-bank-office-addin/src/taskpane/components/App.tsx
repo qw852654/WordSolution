@@ -5,7 +5,9 @@ import { 获取当前选区Ooxml, 插入题目到当前文档 } from "../taskpan
 import QuestionPreviewCard from "./QuestionPreviewCard";
 import QuickAddTagForm from "./QuickAddTagForm";
 import TagBadge from "./TagBadge";
+import TagSearchPanel from "./TagSearchPanel";
 import TagSelectionTree from "./TagSelectionTree";
+import type { 标签搜索项 } from "../search/tagSearch";
 
 interface AppProps {
   title: string;
@@ -668,6 +670,57 @@ export default function App(props: AppProps) {
     [扁平标签字典, 标签种类字典]
   );
 
+  const 正式标签搜索项列表 = React.useMemo<标签搜索项[]>(() => {
+    const 结果列表: 标签搜索项[] = [];
+
+    const 收集树形标签 = (标签种类: 标签种类项, 标签列表: 标签项[], 祖先路径: string[]) => {
+      标签列表.forEach((标签) => {
+        const 当前显示名称 = 获取标签显示文本(标签);
+        const 当前路径 = [...祖先路径, 当前显示名称];
+        const 路径文本 = 当前路径.join(" / ");
+        const 展示路径文本 = [...祖先路径].reverse().join(" / ");
+        结果列表.push({
+          标签ID: 标签.id,
+          标签种类ID: 标签种类.id,
+          标签种类名称: 标签种类.名称,
+          标签名称: 标签.名称,
+          完整路径文本: `${标签种类.名称} · ${路径文本}`,
+          路径文本,
+          展示路径文本,
+          是否树形标签: true,
+        });
+
+        if (标签.子标签列表.length > 0) {
+          收集树形标签(标签种类, 标签.子标签列表, 当前路径);
+        }
+      });
+    };
+
+    正式标签种类列表.forEach((标签种类) => {
+      const 标签列表 = 获取指定种类标签列表(标签种类.id);
+      if (标签种类.是否树形) {
+        收集树形标签(标签种类, 标签列表, []);
+        return;
+      }
+
+      标签列表.forEach((标签) => {
+        const 路径文本 = 获取标签显示文本(标签);
+        结果列表.push({
+          标签ID: 标签.id,
+          标签种类ID: 标签种类.id,
+          标签种类名称: 标签种类.名称,
+          标签名称: 标签.名称,
+          完整路径文本: `${标签种类.名称} · ${路径文本}`,
+          路径文本,
+          展示路径文本: 路径文本,
+          是否树形标签: false,
+        });
+      });
+    });
+
+    return 结果列表;
+  }, [正式标签种类列表, 获取指定种类标签列表, 获取标签显示文本]);
+
   const 录题按钮文本 = React.useMemo(() => {
     if (正在录题) {
       return "正在录题...";
@@ -702,6 +755,18 @@ export default function App(props: AppProps) {
     设置最近录入题目ID(null);
     设置录题标签选择((当前映射) => 切换标签选择状态(当前映射, 标签种类, 标签ID));
   };
+
+  const 通过搜索选择录题标签 = React.useCallback(
+    (标签ID: number, 标签种类ID: number) => {
+      const 标签种类 = 标签种类字典.get(标签种类ID);
+      if (!标签种类) {
+        return;
+      }
+      设置最近录入题目ID(null);
+      设置录题标签选择((当前映射) => 选择指定标签(当前映射, 标签种类, 标签ID));
+    },
+    [标签种类字典]
+  );
 
   const 打开快速新增表单 = React.useCallback((标签种类: 标签种类项, 父标签: 标签项 | null = null) => {
     设置快速新增目标({
@@ -781,6 +846,28 @@ export default function App(props: AppProps) {
       })
     );
   };
+
+  const 通过搜索选择筛选步骤标签 = React.useCallback(
+    (步骤编号: number, 标签ID: number, 标签种类ID: number) => {
+      const 标签种类 = 标签种类字典.get(标签种类ID);
+      if (!标签种类) {
+        return;
+      }
+      设置筛选步骤列表((当前步骤列表) =>
+        当前步骤列表.map((步骤) => {
+          if (步骤.步骤编号 !== 步骤编号) {
+            return 步骤;
+          }
+
+          return {
+            ...步骤,
+            已选标签ID映射: 选择指定标签(步骤.已选标签ID映射, 标签种类, 标签ID),
+          };
+        })
+      );
+    },
+    [标签种类字典]
+  );
 
   const 移除筛选步骤标签 = (步骤编号: number, 标签种类ID: number, 标签ID: number) => {
     设置筛选步骤列表((当前步骤列表) =>
@@ -1608,6 +1695,15 @@ export default function App(props: AppProps) {
             "点击标签移除"
           )}
         </div>
+        <div className={styles.section}>
+          <TagSearchPanel
+            标题="标签关键字搜索"
+            提示文本="输入关键字，直接搜索并选中标签"
+            标签搜索项列表={正式标签搜索项列表}
+            已选标签ID列表={Object.values(录题标签选择).flat()}
+            选择标签={通过搜索选择录题标签}
+          />
+        </div>
         {正式标签种类列表.map((标签种类) => (
           <div key={标签种类.id} className={styles.section}>
             <div className={styles.sectionHeaderRow}>
@@ -1715,6 +1811,19 @@ export default function App(props: AppProps) {
                       : undefined
                   )}
                 </div>
+                {是否当前步骤 && (
+                  <div className={styles.section}>
+                    <TagSearchPanel
+                      标题="标签关键字搜索"
+                      提示文本="输入关键字，直接加入当前筛选步骤"
+                      标签搜索项列表={正式标签搜索项列表}
+                      已选标签ID列表={Object.values(步骤.已选标签ID映射).flat()}
+                      选择标签={(标签ID, 标签种类ID) =>
+                        通过搜索选择筛选步骤标签(步骤.步骤编号, 标签ID, 标签种类ID)
+                      }
+                    />
+                  </div>
+                )}
                 {正式标签种类列表.map((标签种类) => (
                   <div key={标签种类.id} className={styles.kindSection}>
                     <h2 className={styles.sectionTitle}>{标签种类.名称}</h2>
