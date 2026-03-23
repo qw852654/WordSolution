@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Text;
 using Aspose.Words;
@@ -31,13 +31,25 @@ namespace 题库基础设施.Aspose
             using var 输入流 = new MemoryStream(文档字节);
             var 加载选项 = new LoadOptions
             {
-                LoadFormat = LoadFormat.FlatOpc
+                LoadFormat = LoadFormat.FlatOpc,
             };
 
             var 文档 = new Document(输入流, 加载选项);
             文档清理帮助类.清理页眉页脚(文档);
-
             文档.Save(题目文件路径);
+        }
+
+        public string 读取题目文件Ooxml(string 题目文件路径)
+        {
+            if (string.IsNullOrWhiteSpace(题目文件路径))
+            {
+                throw new ArgumentException("题目文件路径不能为空。", nameof(题目文件路径));
+            }
+
+            var 文档 = new Document(题目文件路径);
+            using var 输出流 = new MemoryStream();
+            文档.Save(输出流, SaveFormat.FlatOpc);
+            return Encoding.UTF8.GetString(输出流.ToArray());
         }
     }
 }

@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using 题库核心.标签模块.领域;
 using 题库核心.题目模块.领域;
 
@@ -12,6 +12,8 @@ namespace 题库基础设施.数据访问
 
         public DbSet<题目> 题目表 => Set<题目>();
 
+        public DbSet<题型定义> 题型定义表 => Set<题型定义>();
+
         public DbSet<标签> 标签表 => Set<标签>();
 
         public DbSet<标签种类> 标签种类表 => Set<标签种类>();
@@ -22,13 +24,27 @@ namespace 题库基础设施.数据访问
         {
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.Entity<题型定义>(builder =>
+            {
+                builder.ToTable("QuestionTypes");
+                builder.HasKey(题型 => 题型.Id);
+                builder.Property(题型 => 题型.名称).HasColumnName("Name");
+                builder.Property(题型 => 题型.描述).HasColumnName("Description");
+                builder.Property(题型 => 题型.排序值).HasColumnName("SortOrder");
+            });
+
             modelBuilder.Entity<题目>(builder =>
             {
                 builder.ToTable("Questions");
                 builder.HasKey(题目 => 题目.Id);
                 builder.Property(题目 => 题目.Description);
+                builder.Property(题目 => 题目.题型ID).HasColumnName("TypeId");
                 builder.Property(题目 => 题目.CreatedTime);
                 builder.Property(题目 => 题目.UpdateTime);
+                builder.HasOne<题型定义>()
+                    .WithMany()
+                    .HasForeignKey(题目 => 题目.题型ID)
+                    .OnDelete(DeleteBehavior.Restrict);
                 builder.Ignore(题目 => 题目.标签ID列表);
             });
 

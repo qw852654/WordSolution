@@ -7,6 +7,7 @@ type 删除按钮阶段 = "默认" | "确认" | "最终确认";
 interface QuestionPreviewCardProps {
   题目ID: number;
   描述?: string | null;
+  题型名称?: string;
   标签文本列表: string[];
   预览Html: string;
   已选中: boolean;
@@ -185,8 +186,9 @@ export default function QuestionPreviewCard(props: QuestionPreviewCardProps) {
           </button>
         </div>
       </div>
-      {props.标签文本列表.length > 0 && (
+      {(props.题型名称 || props.标签文本列表.length > 0) && (
         <div className={styles.tagRow}>
+          {props.题型名称 && <TagBadge 文本={`题型：${props.题型名称}`} 强调 />}
           {props.标签文本列表.map((标签文本) => (
             <TagBadge key={`${props.题目ID}-${标签文本}`} 文本={标签文本} />
           ))}

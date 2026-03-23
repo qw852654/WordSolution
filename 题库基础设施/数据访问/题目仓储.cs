@@ -1,5 +1,4 @@
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using 题库核心.筛选模块.领域;
@@ -37,6 +36,7 @@ namespace 题库基础设施.数据访问
             return 题目.从持久化恢复题目(
                 题目数据.Id,
                 题目数据.Description,
+                题目数据.题型ID,
                 题目数据.CreatedTime,
                 题目数据.UpdateTime,
                 标签ID列表);
@@ -78,26 +78,71 @@ namespace 题库基础设施.数据访问
             _题库DbContext.SaveChanges();
         }
 
-        public IReadOnlyList<题目> 根据标签查找(IReadOnlyList<int> 标签ID列表, 组合方式 组合方式)
+        public void 更新题型(int 题目ID, int 题型ID)
         {
-            if (标签ID列表 == null || 标签ID列表.Count == 0)
+            var 题目数据 = _题库DbContext.题目表.SingleOrDefault(题目 => 题目.Id == 题目ID);
+            if (题目数据 == null)
             {
-                return new List<题目>();
+                return;
             }
 
-            var 有效标签ID列表 = 标签ID列表
+            题目数据.更新题型(题型ID);
+            _题库DbContext.题目表.Update(题目数据);
+            _题库DbContext.SaveChanges();
+        }
+
+        public 题目? 获取下一道未设置题型的题目()
+        {
+            var 题目数据 = _题库DbContext.题目表
+                .AsNoTracking()
+                .Where(题目 => 题目.题型ID == null)
+                .OrderBy(题目 => 题目.Id)
+                .FirstOrDefault();
+
+            return 题目数据 == null ? null : GetById(题目数据.Id);
+        }
+
+        public IReadOnlyList<题目> 根据条件查找(
+            IReadOnlyList<int> 标签ID列表,
+            组合方式 本步标签组合方式,
+            int? 题型ID,
+            bool 仅筛选题型未设置)
+        {
+            var 有效标签ID列表 = (标签ID列表 ?? new List<int>())
                 .Where(id => id > 0)
                 .Distinct()
                 .ToList();
 
-            if (有效标签ID列表.Count == 0)
+            var 查询 = _题库DbContext.题目表
+                .AsNoTracking()
+                .AsQueryable();
+
+            if (题型ID.HasValue)
             {
-                return new List<题目>();
+                查询 = 查询.Where(题目 => 题目.题型ID == 题型ID.Value);
+            }
+            else if (仅筛选题型未设置)
+            {
+                查询 = 查询.Where(题目 => 题目.题型ID == null);
             }
 
-            var 题目ID列表 = 查询题目ID列表(有效标签ID列表, 组合方式);
-            var 题目列表 = new List<题目>();
+            if (有效标签ID列表.Count > 0)
+            {
+                var 标签过滤后的题目ID列表 = 查询题目ID列表(有效标签ID列表, 本步标签组合方式);
+                if (标签过滤后的题目ID列表.Count == 0)
+                {
+                    return new List<题目>();
+                }
 
+                查询 = 查询.Where(题目 => 标签过滤后的题目ID列表.Contains(题目.Id));
+            }
+
+            var 题目ID列表 = 查询
+                .OrderBy(题目 => 题目.Id)
+                .Select(题目 => 题目.Id)
+                .ToList();
+
+            var 题目列表 = new List<题目>();
             foreach (var 题目ID in 题目ID列表)
             {
                 var 题目 = GetById(题目ID);
@@ -147,7 +192,7 @@ namespace 题库基础设施.数据访问
                 _题库DbContext.题目标签关系表.Add(new 题目标签关系
                 {
                     题目ID = 题目ID,
-                    标签ID = 标签ID
+                    标签ID = 标签ID,
                 });
             }
 

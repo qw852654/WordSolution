@@ -47,6 +47,7 @@ interface 题目项 {
   id: number;
   description?: string | null;
   标签ID列表: number[];
+  题型ID?: number | null;
 }
 
 interface 题目卡片项 {
@@ -54,7 +55,29 @@ interface 题目卡片项 {
   description?: string | null;
   标题: string;
   标签列表: 标签项[];
+  题型ID?: number | null;
+  题型名称?: string;
   预览Html: string;
+}
+
+interface 题型定义项 {
+  id: number;
+  名称: string;
+  描述?: string | null;
+  排序值: number;
+}
+
+interface 题型识别页题目项 {
+  题目ID: number;
+  描述?: string | null;
+  预览Html: string;
+  题型ID?: number | null;
+  推荐题型ID?: number | null;
+  推荐题型名称?: string | null;
+  识别说明: string;
+  置信度: number;
+  可选题型列表: 题型定义项[];
+  剩余未设置题型数量: number;
 }
 
 interface 标签新增表单 {
@@ -90,6 +113,8 @@ interface 筛选步骤项 {
   步骤编号: number;
   组合方式: 组合方式;
   已选标签ID映射: 标签选择映射;
+  已选题型ID: number | null;
+  仅筛选题型未设置: boolean;
 }
 
 interface 删除确认状态 {
@@ -97,7 +122,7 @@ interface 删除确认状态 {
   阶段: 1 | 2;
 }
 
-type 页面名称 = "首页" | "录题页" | "筛题页" | "标签整理页";
+type 页面名称 = "首页" | "录题页" | "筛题页" | "标签整理页" | "题型识别页";
 type 组合方式 = "交集" | "并集";
 type 标签选择映射 = Record<number, number[]>;
 
@@ -122,7 +147,8 @@ const 系统标签种类 = {
   难度: 3,
   附加标签: 4,
   待整理: 5,
-  试卷题型: 6,
+  年份: 7,
+  来源: 8,
 } as const;
 
 const 标签种类显示顺序 = [
@@ -130,7 +156,8 @@ const 标签种类显示顺序 = [
   系统标签种类.做题方法,
   系统标签种类.难度,
   系统标签种类.附加标签,
-  系统标签种类.试卷题型,
+  系统标签种类.年份,
+  系统标签种类.来源,
   系统标签种类.待整理,
 ];
 
@@ -314,7 +341,7 @@ function 创建空快速新增表单(): 快速新增标签表单 {
 }
 
 function 创建空筛选步骤(步骤编号: number): 筛选步骤项 {
-  return { 步骤编号, 组合方式: "交集", 已选标签ID映射: {} };
+  return { 步骤编号, 组合方式: "交集", 已选标签ID映射: {}, 已选题型ID: null, 仅筛选题型未设置: false };
 }
 
 function 构建题库接口路径(题库键: string, 子路径: string) {
@@ -407,10 +434,12 @@ export default function App(props: AppProps) {
   const [题库实例错误, 设置题库实例错误] = React.useState("");
   const [标签种类列表, 设置标签种类列表] = React.useState<标签种类项[]>([]);
   const [标签映射, 设置标签映射] = React.useState<Record<number, 标签项[]>>({});
+  const [题型定义列表, 设置题型定义列表] = React.useState<题型定义项[]>([]);
   const [正在加载标签基础数据, 设置正在加载标签基础数据] = React.useState(false);
   const [标签基础数据错误, 设置标签基础数据错误] = React.useState("");
   const [录题描述, 设置录题描述] = React.useState("");
   const [录题标签选择, 设置录题标签选择] = React.useState<标签选择映射>({});
+  const [录题题型ID, 设置录题题型ID] = React.useState<number | null>(null);
   const [连续录入已开启, 设置连续录入已开启] = React.useState(true);
   const [正在录题, 设置正在录题] = React.useState(false);
   const [录题错误, 设置录题错误] = React.useState("");
@@ -433,6 +462,12 @@ export default function App(props: AppProps) {
   const [正在插题, 设置正在插题] = React.useState(false);
   const [插题错误, 设置插题错误] = React.useState("");
   const [插题成功提示, 设置插题成功提示] = React.useState("");
+  const [题型识别当前题目, 设置题型识别当前题目] = React.useState<题型识别页题目项 | null>(null);
+  const [题型识别当前选择ID, 设置题型识别当前选择ID] = React.useState<number | null>(null);
+  const [正在加载题型识别题目, 设置正在加载题型识别题目] = React.useState(false);
+  const [正在确认题型识别, 设置正在确认题型识别] = React.useState(false);
+  const [题型识别错误, 设置题型识别错误] = React.useState("");
+  const [题型识别完成, 设置题型识别完成] = React.useState(false);
   const [新增标签表单映射, 设置新增标签表单映射] = React.useState<Record<number, 标签新增表单>>({});
   const [正在保存标签, 设置正在保存标签] = React.useState(false);
   const [标签整理错误, 设置标签整理错误] = React.useState("");
@@ -445,6 +480,10 @@ export default function App(props: AppProps) {
   const 标签种类字典 = React.useMemo(
     () => new Map(标签种类列表.map((标签种类) => [标签种类.id, 标签种类])),
     [标签种类列表]
+  );
+  const 题型定义字典 = React.useMemo(
+    () => new Map(题型定义列表.map((题型定义) => [题型定义.id, 题型定义])),
+    [题型定义列表]
   );
   const 正式标签种类列表 = React.useMemo(
     () => 标签种类列表.filter((标签种类) => 标签种类.是否在正式工作流中可见),
@@ -527,12 +566,21 @@ export default function App(props: AppProps) {
     try {
       设置正在加载标签基础数据(true);
       设置标签基础数据错误("");
-      const 标签种类响应 = await fetch(构建题库接口路径(题库键, "/标签种类"));
+      const [标签种类响应, 题型定义响应] = await Promise.all([
+        fetch(构建题库接口路径(题库键, "/标签种类")),
+        fetch(构建题库接口路径(题库键, "/题型")),
+      ]);
       if (!标签种类响应.ok) {
         throw new Error("标签种类读取失败。");
       }
+      if (!题型定义响应.ok) {
+        throw new Error("题型定义读取失败。");
+      }
       const 标签种类结果 = ((await 标签种类响应.json()) as 标签种类项[]).sort(
         (前一个, 后一个) => 获取标签种类排序值(前一个.id) - 获取标签种类排序值(后一个.id)
+      );
+      const 题型定义结果 = ((await 题型定义响应.json()) as 题型定义项[]).sort(
+        (前一个, 后一个) => 前一个.排序值 - 后一个.排序值 || 前一个.id - 后一个.id
       );
       const 标签读取结果 = await Promise.all(
         标签种类结果.map(async (标签种类) => {
@@ -546,6 +594,7 @@ export default function App(props: AppProps) {
         })
       );
       设置标签种类列表(标签种类结果);
+      设置题型定义列表(题型定义结果);
       设置标签映射(
         标签读取结果.reduce<Record<number, 标签项[]>>((结果, [标签种类ID, 标签列表]) => {
           结果[标签种类ID] = 标签列表;
@@ -557,6 +606,7 @@ export default function App(props: AppProps) {
       设置标签基础数据错误("标签数据读取失败，请确认本地服务正在运行。");
       设置标签种类列表([]);
       设置标签映射({});
+      设置题型定义列表([]);
     } finally {
       设置正在加载标签基础数据(false);
     }
@@ -572,6 +622,7 @@ export default function App(props: AppProps) {
     }
     保存本地题库键(当前题库键);
     设置录题标签选择({});
+    设置录题题型ID(null);
     设置录题描述("");
     设置连续录入已开启(true);
     设置录题错误("");
@@ -592,6 +643,10 @@ export default function App(props: AppProps) {
     设置删除题目错误("");
     设置插题错误("");
     设置插题成功提示("");
+    设置题型识别当前题目(null);
+    设置题型识别当前选择ID(null);
+    设置题型识别错误("");
+    设置题型识别完成(false);
     设置编辑标签表单(null);
     设置标签整理错误("");
     设置标签整理成功提示("");
@@ -674,6 +729,15 @@ export default function App(props: AppProps) {
   const 获取指定种类扁平标签列表 = React.useCallback(
     (标签种类ID: number) => 按种类扁平标签映射[标签种类ID] ?? [],
     [按种类扁平标签映射]
+  );
+  const 获取题型名称 = React.useCallback(
+    (题型ID?: number | null) => {
+      if (!题型ID) {
+        return "题型未设置";
+      }
+      return 题型定义字典.get(题型ID)?.名称 ?? "题型未设置";
+    },
+    [题型定义字典]
   );
 
   const 获取已选标签分组 = React.useCallback(
@@ -823,6 +887,11 @@ export default function App(props: AppProps) {
     [标签种类字典]
   );
 
+  const 选择录题题型 = React.useCallback((题型ID: number) => {
+    设置最近录入题目ID(null);
+    设置录题题型ID(题型ID);
+  }, []);
+
   const 打开快速新增表单 = React.useCallback((标签种类: 标签种类项, 父标签: 标签项 | null = null) => {
     设置快速新增目标({
       标签种类ID: 标签种类.id,
@@ -943,8 +1012,119 @@ export default function App(props: AppProps) {
     );
   };
 
+  const 设置筛选步骤题型 = React.useCallback((步骤编号: number, 题型ID: number | null) => {
+    设置筛选步骤列表((当前步骤列表) =>
+      当前步骤列表.map((步骤) =>
+        步骤.步骤编号 === 步骤编号
+          ? { ...步骤, 已选题型ID: 题型ID, 仅筛选题型未设置: false }
+          : 步骤
+      )
+    );
+  }, []);
+
+  const 切换筛选步骤仅未设置题型 = React.useCallback((步骤编号: number, 是否仅未设置: boolean) => {
+    设置筛选步骤列表((当前步骤列表) =>
+      当前步骤列表.map((步骤) =>
+        步骤.步骤编号 === 步骤编号
+          ? { ...步骤, 仅筛选题型未设置: 是否仅未设置, 已选题型ID: 是否仅未设置 ? null : 步骤.已选题型ID }
+          : 步骤
+      )
+    );
+  }, []);
+
+  const 加载下一道待识别题型题目 = React.useCallback(async () => {
+    try {
+      设置正在加载题型识别题目(true);
+      设置题型识别错误("");
+      const 响应 = await fetch(构建题库接口路径(当前题库键, "/题型识别/下一题"));
+      if (响应.status === 204) {
+        设置题型识别当前题目(null);
+        设置题型识别当前选择ID(null);
+        设置题型识别完成(true);
+        return;
+      }
+      if (!响应.ok) {
+        const 错误文本 = await 响应.text();
+        throw new Error(错误文本 || "读取待识别题目失败。");
+      }
+
+      const 结果 = (await 响应.json()) as 题型识别页题目项;
+      设置题型识别当前题目(结果);
+      设置题型识别当前选择ID(结果.推荐题型ID ?? 结果.可选题型列表[0]?.id ?? null);
+      设置题型识别完成(false);
+    } catch (error) {
+      console.error(error);
+      设置题型识别错误(
+        error instanceof Error && error.message.trim() !== "" ? error.message : "读取待识别题目失败。"
+      );
+      设置题型识别当前题目(null);
+      设置题型识别当前选择ID(null);
+      设置题型识别完成(false);
+    } finally {
+      设置正在加载题型识别题目(false);
+    }
+  }, [当前题库键]);
+
+  const 确认当前题型识别结果 = React.useCallback(async () => {
+    if (!题型识别当前题目 || 题型识别当前选择ID === null) {
+      设置题型识别错误("请先为当前题目选择题型。");
+      return;
+    }
+
+    try {
+      设置正在确认题型识别(true);
+      设置题型识别错误("");
+      const 响应 = await fetch(构建题库接口路径(当前题库键, "/题型识别/确认"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          题目ID: 题型识别当前题目.题目ID,
+          题型ID: 题型识别当前选择ID,
+        }),
+      });
+
+      if (响应.status === 204) {
+        设置题型识别当前题目(null);
+        设置题型识别当前选择ID(null);
+        设置题型识别完成(true);
+        return;
+      }
+
+      if (!响应.ok) {
+        const 错误文本 = await 响应.text();
+        throw new Error(错误文本 || "保存题型识别结果失败。");
+      }
+
+      const 下一题 = (await 响应.json()) as 题型识别页题目项;
+      设置题型识别当前题目(下一题);
+      设置题型识别当前选择ID(下一题.推荐题型ID ?? 下一题.可选题型列表[0]?.id ?? null);
+      设置题型识别完成(false);
+    } catch (error) {
+      console.error(error);
+      设置题型识别错误(
+        error instanceof Error && error.message.trim() !== "" ? error.message : "保存题型识别结果失败。"
+      );
+    } finally {
+      设置正在确认题型识别(false);
+    }
+  }, [当前题库键, 题型识别当前题目, 题型识别当前选择ID]);
+
+  React.useEffect(() => {
+    if (当前页面 !== "题型识别页") {
+      return;
+    }
+
+    void 加载下一道待识别题型题目();
+  }, [当前页面, 加载下一道待识别题型题目]);
+
   const 录入当前选区题目 = async () => {
     const 已选标签ID列表 = Object.values(录题标签选择).flat();
+    if (录题题型ID === null) {
+      设置录题错误("请选择题型。");
+      设置录题成功提示("");
+      设置最近录入题目ID(null);
+      return;
+    }
     if (已选标签ID列表.length === 0) {
       设置录题错误("请至少选择一个标签。");
       设置录题成功提示("");
@@ -965,6 +1145,7 @@ export default function App(props: AppProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           Description: 录题描述.trim() === "" ? null : 录题描述.trim(),
+          题型ID: 录题题型ID,
           标签ID列表: 已选标签ID列表,
           Ooxml内容,
         }),
@@ -977,6 +1158,7 @@ export default function App(props: AppProps) {
       设置录题描述("");
       if (!连续录入已开启) {
         设置录题标签选择({});
+        设置录题题型ID(null);
       }
       设置最近录入题目ID(新题目.id);
       设置录题成功提示(`录题成功，题目ID：${新题目.id}`);
@@ -1062,10 +1244,16 @@ export default function App(props: AppProps) {
 
   const 执行筛题 = async () => {
     const 有效步骤列表 = 筛选步骤列表
-      .map((步骤) => ({ ...步骤, 标签ID列表: Object.values(步骤.已选标签ID映射).flat() }))
-      .filter((步骤) => 步骤.标签ID列表.length > 0);
+      .map((步骤) => ({
+        ...步骤,
+        标签ID列表: Object.values(步骤.已选标签ID映射).flat(),
+      }))
+      .filter(
+        (步骤) =>
+          步骤.标签ID列表.length > 0 || 步骤.已选题型ID !== null || 步骤.仅筛选题型未设置
+      );
     if (有效步骤列表.length === 0) {
-      设置筛题错误("请至少在一步筛选中选择一个标签。");
+      设置筛题错误("请至少设置一个筛题条件。");
       设置筛题结果卡片列表([]);
       设置已执行筛题(false);
       return;
@@ -1086,6 +1274,8 @@ export default function App(props: AppProps) {
         body: JSON.stringify(
           有效步骤列表.map((步骤, 索引) => ({
             标签ID列表: 步骤.标签ID列表,
+            题型ID: 步骤.已选题型ID,
+            仅筛选题型未设置: 步骤.仅筛选题型未设置,
             本步标签组合方式: 步骤.组合方式,
             与前一步结果组合方式: 索引 === 0 ? "交集" : "交集",
           }))
@@ -1117,6 +1307,8 @@ export default function App(props: AppProps) {
               题目.description
             ),
             标签列表,
+            题型ID: 题目.题型ID ?? null,
+            题型名称: 获取题型名称(题目.题型ID),
             预览Html,
           };
         })
@@ -1514,6 +1706,40 @@ export default function App(props: AppProps) {
     );
   };
 
+  const 渲染题型选择 = (
+    已选题型ID: number | null,
+    选择题型: (题型ID: number | null) => void,
+    允许清空 = false,
+    题型列表: 题型定义项[] = 题型定义列表
+  ) => {
+    if (题型列表.length === 0) {
+      return <p className={styles.noteText}>当前题库还没有可用题型。</p>;
+    }
+
+    return (
+      <div className={styles.chipRow}>
+        {题型列表.map((题型) => {
+          const 已选中 = 已选题型ID === 题型.id;
+          return (
+            <button
+              key={题型.id}
+              type="button"
+              className={`${styles.chip} ${已选中 ? styles.selectedChip : ""}`}
+              onClick={() => 选择题型(题型.id)}
+            >
+              {题型.名称}
+            </button>
+          );
+        })}
+        {允许清空 && 已选题型ID !== null && (
+          <button type="button" className={styles.secondaryButton} onClick={() => 选择题型(null)}>
+            清空题型
+          </button>
+        )}
+      </div>
+    );
+  };
+
   const 渲染快速新增表单 = (标签种类: 标签种类项, 父标签名称?: string | null) => (
     <QuickAddTagForm
       标题={
@@ -1649,7 +1875,7 @@ export default function App(props: AppProps) {
       <div className={styles.container}>
         <h1 className={styles.title}>{props.title}</h1>
         <p className={styles.subtitle}>
-          当前系统已经切到多题库结构。先在首页选择题库，再进入录题、筛题或标签整理。
+          当前系统已经切到多题库结构。先在首页选择题库，再进入录题、筛题、旧题题型补齐或标签整理。
         </p>
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>当前题库</h2>
@@ -1714,7 +1940,17 @@ export default function App(props: AppProps) {
             >
               <p className={styles.actionName}>筛选题目</p>
               <p className={styles.actionDescription}>
-                按章节、做题方法、难度、附加标签和试卷题型分区筛题，并继续插入已选题目。
+                按章节、做题方法、难度、附加标签、年份、来源和题型分区筛题，并继续插入已选题目。
+              </p>
+            </button>
+            <button
+              type="button"
+              className={styles.actionButton}
+              onClick={() => 设置当前页面("题型识别页")}
+            >
+              <p className={styles.actionName}>识别旧题题型</p>
+              <p className={styles.actionDescription}>
+                按题目 ID 升序逐题加载尚未设置题型的旧题，展示推荐结果，并允许人工确认后自动进入下一题。
               </p>
             </button>
             <button
@@ -1724,7 +1960,7 @@ export default function App(props: AppProps) {
             >
               <p className={styles.actionName}>标签整理</p>
               <p className={styles.actionDescription}>
-                维护章节树、做题方法树、难度、附加标签、试卷题型和迁移期的待整理标签。
+                维护章节树、做题方法树、难度、附加标签、年份、来源和迁移期的待整理标签。
               </p>
             </button>
           </div>
@@ -1742,7 +1978,7 @@ export default function App(props: AppProps) {
         <div className={styles.bankBanner}>当前题库：{当前题库键}</div>
         <h1 className={styles.title}>录入题目</h1>
         <p className={styles.subtitle}>
-          先在 Word 中选中题目内容，再填写描述、选择标签，然后从当前选区录入。
+          先在 Word 中选中题目内容，再填写描述、选择题型和标签，然后从当前选区录入。
         </p>
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>题目描述</h2>
@@ -1753,8 +1989,12 @@ export default function App(props: AppProps) {
           />
         </div>
         <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>题型</h2>
+          {渲染题型选择(录题题型ID, 选择录题题型)}
+        </div>
+        <div className={styles.section}>
           <div className={styles.selectedTagsCardHeader}>
-            <h2 className={styles.sectionTitle}>已选标签</h2>
+            <h2 className={styles.sectionTitle}>当前选择</h2>
             <div className={styles.selectedTagsCardActions}>
               <ToggleButton
                 checked={连续录入已开启}
@@ -1798,16 +2038,31 @@ export default function App(props: AppProps) {
               </button>
             </div>
           </div>
-          {渲染已选标签摘要(
-            录题标签选择,
-            (标签种类ID, 标签ID) => {
-              const 标签种类 = 标签种类字典.get(标签种类ID);
-              if (标签种类) {
-                切换录题标签(标签种类, 标签ID);
-              }
-            },
-            "点击标签移除"
-          )}
+          <div className={styles.column}>
+            <div className={styles.column}>
+              <span className={styles.label}>当前题型</span>
+              {录题题型ID === null ? (
+                <p className={styles.noteText}>当前还没有选择题型。</p>
+              ) : (
+                <div className={styles.chipRow}>
+                  <TagBadge 文本={获取题型名称(录题题型ID)} 强调 onClick={() => 设置录题题型ID(null)} />
+                </div>
+              )}
+            </div>
+            <div className={styles.column}>
+              <span className={styles.label}>当前标签</span>
+              {渲染已选标签摘要(
+                录题标签选择,
+                (标签种类ID, 标签ID) => {
+                  const 标签种类 = 标签种类字典.get(标签种类ID);
+                  if (标签种类) {
+                    切换录题标签(标签种类, 标签ID);
+                  }
+                },
+                "点击标签移除"
+              )}
+            </div>
+          </div>
         </div>
         <div className={styles.section}>
           <TagSearchPanel
@@ -1908,7 +2163,7 @@ export default function App(props: AppProps) {
         <div className={styles.bankBanner}>当前题库：{当前题库键}</div>
         <h1 className={styles.title}>筛选题目</h1>
         <p className={styles.subtitle}>
-          每一步按标签种类分区筛选，步骤内默认交集，可切换并集；下一步继续在当前结果上筛选。
+          每一步按标签与题型组合筛选，步骤内默认交集，可切换并集；下一步继续在当前结果上筛选。
         </p>
         <div className={styles.column}>
           {筛选步骤列表.map((步骤) => {
@@ -1929,13 +2184,38 @@ export default function App(props: AppProps) {
                   )}
                 </div>
                 <div className={styles.section}>
-                  <h2 className={styles.sectionTitle}>已选标签</h2>
-                  {渲染已选标签摘要(
-                    步骤.已选标签ID映射,
-                    是否当前步骤
-                      ? (标签种类ID, 标签ID) => 移除筛选步骤标签(步骤.步骤编号, 标签种类ID, 标签ID)
-                      : undefined
-                  )}
+                  <h2 className={styles.sectionTitle}>已选条件</h2>
+                  <div className={styles.column}>
+                    <div className={styles.column}>
+                      <span className={styles.label}>题型</span>
+                      {步骤.仅筛选题型未设置 ? (
+                        <div className={styles.chipRow}>
+                          <TagBadge 文本="仅看未设置题型" 强调 />
+                        </div>
+                      ) : 步骤.已选题型ID !== null ? (
+                        <div className={styles.chipRow}>
+                          <TagBadge
+                            文本={获取题型名称(步骤.已选题型ID)}
+                            强调
+                            onClick={
+                              是否当前步骤 ? () => 设置筛选步骤题型(步骤.步骤编号, null) : undefined
+                            }
+                          />
+                        </div>
+                      ) : (
+                        <p className={styles.noteText}>本步骤未指定题型条件。</p>
+                      )}
+                    </div>
+                    <div className={styles.column}>
+                      <span className={styles.label}>标签</span>
+                      {渲染已选标签摘要(
+                        步骤.已选标签ID映射,
+                        是否当前步骤
+                          ? (标签种类ID, 标签ID) => 移除筛选步骤标签(步骤.步骤编号, 标签种类ID, 标签ID)
+                          : undefined
+                      )}
+                    </div>
+                  </div>
                 </div>
                 {是否当前步骤 && (
                   <div className={styles.section}>
@@ -1950,6 +2230,40 @@ export default function App(props: AppProps) {
                     />
                   </div>
                 )}
+                <div className={styles.kindSection}>
+                  <h2 className={styles.sectionTitle}>题型</h2>
+                  {是否当前步骤 ? (
+                    <div className={styles.column}>
+                      {渲染题型选择(
+                        步骤.已选题型ID,
+                        (题型ID) => 设置筛选步骤题型(步骤.步骤编号, 题型ID),
+                        true
+                      )}
+                      <label className={styles.row}>
+                        <input
+                          type="checkbox"
+                          checked={步骤.仅筛选题型未设置}
+                          onChange={(事件) =>
+                            切换筛选步骤仅未设置题型(步骤.步骤编号, 事件.target.checked)
+                          }
+                        />
+                        仅看未设置题型
+                      </label>
+                    </div>
+                  ) : 步骤.仅筛选题型未设置 ? (
+                    <div className={styles.chipRow}>
+                      <span className={`${styles.chip} ${styles.selectedChip}`}>仅看未设置题型</span>
+                    </div>
+                  ) : 步骤.已选题型ID !== null ? (
+                    <div className={styles.chipRow}>
+                      <span className={`${styles.chip} ${styles.selectedChip}`}>
+                        {获取题型名称(步骤.已选题型ID)}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className={styles.noteText}>本步骤未设置题型条件。</p>
+                  )}
+                </div>
                 {正式标签种类列表.map((标签种类) => (
                   <div key={标签种类.id} className={styles.kindSection}>
                     <h2 className={styles.sectionTitle}>{标签种类.名称}</h2>
@@ -2046,6 +2360,7 @@ export default function App(props: AppProps) {
                     key={题目卡片.id}
                     题目ID={题目卡片.id}
                     描述={题目卡片.description}
+                    题型名称={题目卡片.题型名称}
                     标签文本列表={题目卡片.标签列表.map((标签) => 获取标签显示文本(标签))}
                     预览Html={题目卡片.预览Html}
                     已选中={已选中}
@@ -2071,6 +2386,87 @@ export default function App(props: AppProps) {
     </div>
   );
 
+  const 渲染题型识别页 = () => (
+    <div className={styles.root}>
+      <div className={styles.container}>
+        <button type="button" className={styles.backButton} onClick={() => 设置当前页面("首页")}>
+          返回首页
+        </button>
+        <div className={styles.bankBanner}>当前题库：{当前题库键}</div>
+        <h1 className={styles.title}>识别旧题题型</h1>
+        <p className={styles.subtitle}>
+          系统会按题目 ID 升序逐题加载尚未设置题型的旧题。你可以接受推荐结果，也可以手动改成别的题型，再确认进入下一题。
+        </p>
+
+        <div className={styles.section}>
+          <div className={styles.sectionHeaderRow}>
+            <h2 className={styles.sectionTitle}>当前进度</h2>
+            <button type="button" className={styles.secondaryButton} onClick={() => 设置当前页面("首页")}>
+              退出
+            </button>
+          </div>
+          {正在加载题型识别题目 && <p className={styles.noteText}>正在加载待识别题目...</p>}
+          {题型识别错误 !== "" && <p className={styles.errorText}>{题型识别错误}</p>}
+          {题型识别完成 && !正在加载题型识别题目 && (
+            <div className={styles.column}>
+              <p className={styles.successText}>当前题库所有旧题都已补齐题型。</p>
+              <div className={styles.row}>
+                <button type="button" className={styles.secondaryButton} onClick={() => 设置当前页面("首页")}>
+                  返回首页
+                </button>
+              </div>
+            </div>
+          )}
+          {!题型识别完成 && 题型识别当前题目 && (
+            <div className={styles.column}>
+              <p className={styles.noteText}>
+                当前题目 ID：{题型识别当前题目.题目ID}，剩余未设置题型题目：
+                {题型识别当前题目.剩余未设置题型数量} 道
+              </p>
+              <div className={styles.section}>
+                <h2 className={styles.sectionTitle}>识别结果</h2>
+                <p className={styles.noteText}>
+                  推荐题型：{题型识别当前题目.推荐题型名称 ?? "暂未给出推荐"}　
+                  置信度：{题型识别当前题目.置信度.toFixed(2)}
+                </p>
+                <p className={styles.noteText}>识别说明：{题型识别当前题目.识别说明}</p>
+              </div>
+              <div className={styles.section}>
+                <h2 className={styles.sectionTitle}>确认题型</h2>
+                {渲染题型选择(
+                  题型识别当前选择ID,
+                  (题型ID) => 设置题型识别当前选择ID(题型ID),
+                  false,
+                  题型识别当前题目.可选题型列表
+                )}
+              </div>
+              <div className={styles.row}>
+                <button
+                  type="button"
+                  className={styles.button}
+                  onClick={() => void 确认当前题型识别结果()}
+                  disabled={正在确认题型识别 || 题型识别当前选择ID === null}
+                >
+                  {正在确认题型识别 ? "正在确认..." : "确认并下一题"}
+                </button>
+                <button type="button" className={styles.secondaryButton} onClick={() => 设置当前页面("首页")}>
+                  退出
+                </button>
+              </div>
+              <div className={styles.section}>
+                <h2 className={styles.sectionTitle}>题目预览</h2>
+                {题型识别当前题目.描述 && (
+                  <p className={styles.noteText}>题目描述：{题型识别当前题目.描述}</p>
+                )}
+                <div className={styles.resultPreview} dangerouslySetInnerHTML={{ __html: 题型识别当前题目.预览Html }} />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   const 渲染标签整理页 = () => (
     <div className={styles.root}>
       <div className={styles.container}>
@@ -2080,7 +2476,7 @@ export default function App(props: AppProps) {
         <div className={styles.bankBanner}>当前题库：{当前题库键}</div>
         <h1 className={styles.title}>标签整理</h1>
         <p className={styles.subtitle}>
-          这里负责整理章节树、做题方法树、难度、附加标签、试卷题型，以及迁移期的待整理标签。
+          这里负责整理章节树、做题方法树、难度、附加标签、年份、来源，以及迁移期的待整理标签。
         </p>
         {标签整理错误 !== "" && (
           <div className={styles.section}>
@@ -2268,6 +2664,9 @@ export default function App(props: AppProps) {
   }
   if (当前页面 === "筛题页") {
     return 渲染筛题页();
+  }
+  if (当前页面 === "题型识别页") {
+    return 渲染题型识别页();
   }
   if (当前页面 === "标签整理页") {
     return 渲染标签整理页();

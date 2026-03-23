@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using 题库核心.标签模块.契约;
@@ -32,9 +32,14 @@ namespace 题库应用.题目模块
                 throw new InvalidOperationException("题目最多只能选择一个难度标签。");
             }
 
-            if (已选标签列表.Count(标签 => 标签.标签种类ID == 系统标签种类.试卷题型) > 1)
+            if (已选标签列表.Count(标签 => 标签.标签种类ID == 系统标签种类.年份) > 1)
             {
-                throw new InvalidOperationException("题目最多只能选择一个试卷题型标签。");
+                throw new InvalidOperationException("题目最多只能选择一个年份标签。");
+            }
+
+            if (已选标签列表.Count(标签 => 标签.标签种类ID == 系统标签种类.来源) > 1)
+            {
+                throw new InvalidOperationException("题目最多只能选择一个来源标签。");
             }
         }
     }

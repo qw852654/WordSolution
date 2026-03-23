@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using 题库核心.筛选模块.领域;
 using 题库核心.题目模块.契约;
@@ -27,13 +27,14 @@ namespace 题库应用.筛选模块
 
             foreach (var 步骤 in 筛选步骤列表)
             {
-                if (步骤.标签ID列表.Count == 0)
+                var 无任何筛选条件 = 步骤.标签ID列表.Count == 0 && !步骤.题型ID.HasValue && !步骤.仅筛选题型未设置;
+                if (无任何筛选条件)
                 {
                     continue;
                 }
 
                 var 本步结果 = _题目仓储
-                    .根据标签查找(步骤.标签ID列表, 步骤.本步标签组合方式)
+                    .根据条件查找(步骤.标签ID列表, 步骤.本步标签组合方式, 步骤.题型ID, 步骤.仅筛选题型未设置)
                     .ToList();
 
                 if (是否第一步)

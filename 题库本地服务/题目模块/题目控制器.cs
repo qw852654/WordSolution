@@ -20,6 +20,7 @@ namespace 题库本地服务.题目模块
         private readonly 根据标签筛选题目用例 _根据标签筛选题目用例;
         private readonly 更新Ooxml题目用例 _更新Ooxml题目用例;
         private readonly 删除题目用例 _删除题目用例;
+        private readonly 更新题目题型用例 _更新题目题型用例;
 
         public 题目控制器(
             录入题目用例 录入题目用例,
@@ -29,7 +30,8 @@ namespace 题库本地服务.题目模块
             获取题目预览HTML用例 获取题目预览HTML用例,
             根据标签筛选题目用例 根据标签筛选题目用例,
             更新Ooxml题目用例 更新Ooxml题目用例,
-            删除题目用例 删除题目用例)
+            删除题目用例 删除题目用例,
+            更新题目题型用例 更新题目题型用例)
         {
             _录入题目用例 = 录入题目用例;
             _录入Ooxml题目用例 = 录入Ooxml题目用例;
@@ -39,6 +41,7 @@ namespace 题库本地服务.题目模块
             _根据标签筛选题目用例 = 根据标签筛选题目用例;
             _更新Ooxml题目用例 = 更新Ooxml题目用例;
             _删除题目用例 = 删除题目用例;
+            _更新题目题型用例 = 更新题目题型用例;
         }
 
         [HttpPost]
@@ -103,12 +106,26 @@ namespace 题库本地服务.题目模块
             return NoContent();
         }
 
+        [HttpPut("{id:int}/题型")]
+        public IActionResult 更新题目题型(int id, [FromBody] 更新题目题型的请求 请求)
+        {
+            var 已更新 = _更新题目题型用例.执行(id, 请求.题型ID);
+            if (!已更新)
+            {
+                return NotFound();
+            }
+
+            return NoContent();
+        }
+
         [HttpPost("筛选")]
         public ActionResult<IReadOnlyList<题目>> 根据标签筛选题目([FromBody] List<筛选步骤请求>? 请求列表)
         {
             var 筛选步骤列表 = (请求列表 ?? new List<筛选步骤请求>())
                 .Select(步骤 => new 筛选步骤(
                     步骤.标签ID列表,
+                    步骤.题型ID,
+                    步骤.仅筛选题型未设置,
                     步骤.本步标签组合方式,
                     步骤.与前一步结果组合方式))
                 .ToList();

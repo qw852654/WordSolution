@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using 题库应用.标签模块;
 using 题库应用.筛选模块;
 using 题库应用.题目模块;
+using 题库应用.题目模块.题型识别;
+using 题库应用.题目模块.题型识别.题型特征;
 using 题库基础设施.Aspose;
 using 题库基础设施.数据访问;
 using 题库基础设施.文件存储;
@@ -32,7 +34,6 @@ if (File.Exists(本地Https证书路径))
 }
 else
 {
-    // 开发态如果还没有安装版证书，则继续沿用当前 HTTP 端口。
     builder.WebHost.UseUrls("http://localhost:5282");
 }
 
@@ -69,11 +70,14 @@ builder.Services.AddScoped(服务提供器 => new Aspose授权初始化器(Aspos
 builder.Services.AddScoped<I题目仓储, 题目仓储>();
 builder.Services.AddScoped<I标签仓储, 标签仓储>();
 builder.Services.AddScoped<I标签种类仓储, 标签种类仓储>();
+builder.Services.AddScoped<I题型定义仓储, 题型定义仓储>();
 builder.Services.AddScoped<I题目文件存储, 题目文件存储>();
 builder.Services.AddScoped<I题目文档转换器, Aspose题目文档转换器>();
 builder.Services.AddScoped<I题目预览生成器, 题目预览生成器>();
+builder.Services.AddScoped<I题型识别器, 题型识别器>();
 
 builder.Services.AddScoped<题目标签规则校验器>();
+builder.Services.AddScoped<题型规则校验器>();
 builder.Services.AddScoped<录入题目用例>();
 builder.Services.AddScoped<录入Ooxml题目用例>();
 builder.Services.AddScoped<根据ID获取题目详情用例>();
@@ -82,6 +86,15 @@ builder.Services.AddScoped<获取题目预览HTML用例>();
 builder.Services.AddScoped<根据标签筛选题目用例>();
 builder.Services.AddScoped<更新Ooxml题目用例>();
 builder.Services.AddScoped<删除题目用例>();
+builder.Services.AddScoped<更新题目题型用例>();
+builder.Services.AddScoped<获取下一道待识别题型题目用例>();
+builder.Services.AddScoped<根据Ooxml识别题型用例>();
+builder.Services.AddScoped<Ooxml题型特征提取器>();
+builder.Services.AddScoped<选择题规则>();
+builder.Services.AddScoped<填空题规则>();
+builder.Services.AddScoped<实验题规则>();
+builder.Services.AddScoped<解答题规则>();
+builder.Services.AddScoped<作图题规则>();
 builder.Services.AddScoped<获取标签树用例>();
 builder.Services.AddScoped<获取标签种类列表用例>();
 builder.Services.AddScoped<获取标签列表用例>();
