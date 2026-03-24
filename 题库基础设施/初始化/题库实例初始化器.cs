@@ -34,12 +34,19 @@ namespace 题库基础设施.初始化
             Directory.CreateDirectory(_题库路径提供器.获取Source目录(题库键));
             Directory.CreateDirectory(_题库路径提供器.获取Html目录(题库键));
             Directory.CreateDirectory(_题库路径提供器.获取Index目录(题库键));
+            Directory.CreateDirectory(Path.Combine(题库根目录, "papers"));
+            Directory.CreateDirectory(Path.Combine(题库根目录, "temp", "import-sessions"));
 
             using var dbContext = _题库DbContext工厂.创建(题库键);
             dbContext.Database.EnsureCreated();
 
             确保题型表存在(dbContext);
             确保题目表包含题型列(dbContext);
+            确保试卷记录表存在(dbContext);
+            确保试卷记录表包含统计列(dbContext);
+            确保试卷源文件表存在(dbContext);
+            确保知识点映射表存在(dbContext);
+            确保试卷题目项表存在(dbContext);
             初始化标签种类(dbContext);
             初始化难度种子数据(dbContext);
             初始化题型定义(dbContext, 题库键);
@@ -188,6 +195,91 @@ namespace 题库基础设施.初始化
             dbContext.Database.ExecuteSqlRaw("ALTER TABLE \"Questions\" ADD COLUMN \"TypeId\" INTEGER NULL;");
         }
 
+        private void 确保试卷记录表存在(题库DbContext dbContext)
+        {
+            dbContext.Database.ExecuteSqlRaw(
+                "CREATE TABLE IF NOT EXISTS \"Papers\" (" +
+                "\"Id\" INTEGER NOT NULL CONSTRAINT \"PK_Papers\" PRIMARY KEY AUTOINCREMENT," +
+                "\"YearTagId\" INTEGER NOT NULL," +
+                "\"SourceTagId\" INTEGER NOT NULL," +
+                "\"DisplayName\" TEXT NOT NULL," +
+                "\"TotalCount\" INTEGER NOT NULL DEFAULT 0," +
+                "\"ConfirmedCount\" INTEGER NOT NULL DEFAULT 0," +
+                "\"SkippedCount\" INTEGER NOT NULL DEFAULT 0," +
+                "\"Status\" TEXT NOT NULL DEFAULT '导入中');");
+            dbContext.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Papers_YearTagId_SourceTagId\" ON \"Papers\" (\"YearTagId\", \"SourceTagId\");");
+        }
+
+        private void 确保试卷记录表包含统计列(题库DbContext dbContext)
+        {
+            if (!表列已存在(dbContext, "Papers", "TotalCount"))
+            {
+                dbContext.Database.ExecuteSqlRaw("ALTER TABLE \"Papers\" ADD COLUMN \"TotalCount\" INTEGER NOT NULL DEFAULT 0;");
+            }
+
+            if (!表列已存在(dbContext, "Papers", "ConfirmedCount"))
+            {
+                dbContext.Database.ExecuteSqlRaw("ALTER TABLE \"Papers\" ADD COLUMN \"ConfirmedCount\" INTEGER NOT NULL DEFAULT 0;");
+            }
+
+            if (!表列已存在(dbContext, "Papers", "SkippedCount"))
+            {
+                dbContext.Database.ExecuteSqlRaw("ALTER TABLE \"Papers\" ADD COLUMN \"SkippedCount\" INTEGER NOT NULL DEFAULT 0;");
+            }
+
+            if (!表列已存在(dbContext, "Papers", "Status"))
+            {
+                dbContext.Database.ExecuteSqlRaw("ALTER TABLE \"Papers\" ADD COLUMN \"Status\" TEXT NOT NULL DEFAULT '导入中';");
+            }
+        }
+
+        private void 确保试卷源文件表存在(题库DbContext dbContext)
+        {
+            dbContext.Database.ExecuteSqlRaw(
+                "CREATE TABLE IF NOT EXISTS \"PaperSourceFiles\" (" +
+                "\"Id\" INTEGER NOT NULL CONSTRAINT \"PK_PaperSourceFiles\" PRIMARY KEY AUTOINCREMENT," +
+                "\"PaperId\" INTEGER NOT NULL," +
+                "\"OriginalFileName\" TEXT NOT NULL," +
+                "\"RelativePath\" TEXT NOT NULL," +
+                "\"ImportedAt\" TEXT NOT NULL);");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_PaperSourceFiles_PaperId\" ON \"PaperSourceFiles\" (\"PaperId\");");
+        }
+
+        private void 确保知识点映射表存在(题库DbContext dbContext)
+        {
+            dbContext.Database.ExecuteSqlRaw(
+                "CREATE TABLE IF NOT EXISTS \"KnowledgeMappings\" (" +
+                "\"Id\" INTEGER NOT NULL CONSTRAINT \"PK_KnowledgeMappings\" PRIMARY KEY AUTOINCREMENT," +
+                "\"RawText\" TEXT NOT NULL," +
+                "\"NormalizedRawText\" TEXT NOT NULL," +
+                "\"TargetTagId\" INTEGER NULL," +
+                "\"IsDiscarded\" INTEGER NOT NULL DEFAULT 0);");
+            dbContext.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_KnowledgeMappings_NormalizedRawText\" ON \"KnowledgeMappings\" (\"NormalizedRawText\");");
+        }
+
+        private void 确保试卷题目项表存在(题库DbContext dbContext)
+        {
+            dbContext.Database.ExecuteSqlRaw(
+                "CREATE TABLE IF NOT EXISTS \"PaperQuestions\" (" +
+                "\"Id\" INTEGER NOT NULL CONSTRAINT \"PK_PaperQuestions\" PRIMARY KEY AUTOINCREMENT," +
+                "\"PaperId\" INTEGER NOT NULL," +
+                "\"Sequence\" INTEGER NOT NULL," +
+                "\"QuestionNumberText\" TEXT NOT NULL," +
+                "\"QuestionSummary\" TEXT NOT NULL," +
+                "\"FullOoxml\" TEXT NOT NULL," +
+                "\"QuestionBodyOoxml\" TEXT NOT NULL," +
+                "\"DifficultyRawText\" TEXT NOT NULL," +
+                "\"KnowledgeRawTextJson\" TEXT NOT NULL," +
+                "\"SuggestedTypeId\" INTEGER NULL," +
+                "\"SuggestedTypeName\" TEXT NULL," +
+                "\"RecognitionReason\" TEXT NOT NULL," +
+                "\"Confidence\" REAL NOT NULL," +
+                "\"Status\" TEXT NOT NULL," +
+                "\"CreatedQuestionId\" INTEGER NULL);");
+            dbContext.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_PaperQuestions_PaperId_Sequence\" ON \"PaperQuestions\" (\"PaperId\", \"Sequence\");");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_PaperQuestions_PaperId_Status\" ON \"PaperQuestions\" (\"PaperId\", \"Status\");");
+        }
+
         private bool 表列已存在(题库DbContext dbContext, string 表名, string 列名)
         {
             var connection = dbContext.Database.GetDbConnection();
@@ -266,5 +358,3 @@ namespace 题库基础设施.初始化
         }
     }
 }
-
-

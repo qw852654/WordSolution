@@ -4,9 +4,12 @@ import { 清除待处理导航请求 as clearPendingTaskpaneNavigation, 监听�
 import { 获取当前选区Ooxml, 插入题目到当前文档 } from "../taskpane";
 import QuestionPreviewCard from "./QuestionPreviewCard";
 import QuickAddTagForm from "./QuickAddTagForm";
+import SingleSelectChipGroup from "./SingleSelectChipGroup";
 import TagBadge from "./TagBadge";
+import 导入试卷页 from "./导入试卷页";
 import TagSearchPanel from "./TagSearchPanel";
 import TagSelectionTree from "./TagSelectionTree";
+import 标签工作台 from "./标签工作台";
 import type { 标签搜索项 } from "../search/tagSearch";
 import { 获取当前题目内容控件上下文 } from "../word/题目内容控件上下文";
 
@@ -122,7 +125,7 @@ interface 删除确认状态 {
   阶段: 1 | 2;
 }
 
-type 页面名称 = "首页" | "录题页" | "筛题页" | "标签整理页" | "题型识别页";
+type 页面名称 = "首页" | "录题页" | "筛题页" | "标签整理页" | "导入试卷页" | "题型识别页";
 type 组合方式 = "交集" | "并集";
 type 标签选择映射 = Record<number, number[]>;
 
@@ -141,6 +144,19 @@ const API_ROOT = (() => {
 })();
 const 当前题库键存储键 = "currentQuestionBankKey";
 const 默认题库键 = "TEST";
+function 获取题库前端显示名称(题库键: string, 默认显示名称?: string | null) {
+  if (题库键 === "CZ") {
+    return "初中";
+  }
+
+  if (题库键 === "GZ") {
+    return "高中";
+  }
+
+  const 清洗后的默认名称 = 默认显示名称?.trim() ?? "";
+  return 清洗后的默认名称 !== "" ? 清洗后的默认名称 : 题库键;
+}
+
 const 系统标签种类 = {
   章节: 1,
   做题方法: 2,
@@ -492,6 +508,10 @@ export default function App(props: AppProps) {
   const 当前题库实例 = React.useMemo(
     () => 题库实例列表.find((题库实例) => 题库实例.题库键 === 当前题库键) ?? null,
     [题库实例列表, 当前题库键]
+  );
+  const 当前题库前端显示名称 = React.useMemo(
+    () => 获取题库前端显示名称(当前题库键, 当前题库实例?.显示名称 ?? null),
+    [当前题库键, 当前题库实例]
   );
   const 当前筛选步骤 = 筛选步骤列表[筛选步骤列表.length - 1];
   const 当前结果题目ID列表 = React.useMemo(() => 筛题结果卡片列表.map((题目卡片) => 题目卡片.id), [筛题结果卡片列表]);
@@ -885,6 +905,79 @@ export default function App(props: AppProps) {
       设置录题标签选择((当前映射) => 选择指定标签(当前映射, 标签种类, 标签ID));
     },
     [标签种类字典]
+  );
+
+  const 新增录题工作台标签 = React.useCallback(
+    async ({
+      标签种类,
+      父标签ID,
+      名称,
+      描述,
+      数值文本,
+    }: {
+      标签种类: 标签种类项;
+      父标签ID: number | null;
+      名称: string;
+      描述: string;
+      数值文本: string;
+    }) => {
+      const 响应 = await fetch(构建题库接口路径(当前题库键, "/标签"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          标签种类ID: 标签种类.id,
+          名称,
+          Description: 描述 === "" ? null : 描述,
+          ParentId: 标签种类.是否树形 ? 父标签ID : null,
+          NumericValue: 标签种类.id === 系统标签种类.难度 ? 解析小数文本(数值文本) : null,
+          IsEnabled: true,
+        }),
+      });
+      if (!响应.ok) {
+        const 错误文本 = await 响应.text();
+        throw new Error(错误文本 || "新增标签失败。");
+      }
+      const 新标签 = (await 响应.json()) as 标签项;
+      await 读取标签基础数据(当前题库键);
+      设置最近录入题目ID(null);
+      return { id: 新标签.id, 名称: 新标签.名称 };
+    },
+    [当前题库键, 读取标签基础数据]
+  );
+
+  const 编辑录题工作台标签 = React.useCallback(
+    async ({
+      标签,
+      标签种类,
+      名称,
+      描述,
+      数值文本,
+    }: {
+      标签: 标签项;
+      标签种类: 标签种类项;
+      名称: string;
+      描述: string;
+      数值文本: string;
+    }) => {
+      const 响应 = await fetch(构建题库接口路径(当前题库键, `/标签/${标签.id}`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          标签种类ID: 标签种类.id,
+          名称,
+          Description: 描述 === "" ? null : 描述,
+          NumericValue: 标签种类.id === 系统标签种类.难度 ? 解析小数文本(数值文本) : null,
+          IsEnabled: 标签.isEnabled,
+        }),
+      });
+      if (!响应.ok) {
+        const 错误文本 = await 响应.text();
+        throw new Error(错误文本 || "更新标签失败。");
+      }
+      await 读取标签基础数据(当前题库键);
+      设置最近录入题目ID(null);
+    },
+    [当前题库键, 读取标签基础数据]
   );
 
   const 选择录题题型 = React.useCallback((题型ID: number) => {
@@ -1883,21 +1976,18 @@ export default function App(props: AppProps) {
           {题库实例错误 !== "" && <p className={styles.errorText}>{题库实例错误}</p>}
           {题库实例错误 === "" && (
             <div className={styles.column}>
-              <label className={styles.label} htmlFor="bank-selector">
+              <label className={styles.label}>
                 首页全局题库选择
               </label>
-              <select
-                id="bank-selector"
-                className={styles.select}
-                value={当前题库键}
-                onChange={(事件) => 设置当前题库键(事件.target.value)}
-              >
-                {题库实例列表.map((题库实例) => (
-                  <option key={题库实例.题库键} value={题库实例.题库键}>
-                    {题库实例.显示名称}（{题库实例.题库键}）
-                  </option>
-                ))}
-              </select>
+              <SingleSelectChipGroup
+                选项列表={题库实例列表.map((题库实例) => ({
+                  id: 题库实例.题库键,
+                  名称: 获取题库前端显示名称(题库实例.题库键, 题库实例.显示名称),
+                }))}
+                当前选中ID={当前题库键}
+                选择选项={(题库键) => 设置当前题库键(String(题库键))}
+                空提示文本="当前还没有可选题库。"
+              />
             </div>
           )}
         </div>
@@ -1906,6 +1996,7 @@ export default function App(props: AppProps) {
           {!当前题库实例 && <p className={styles.noteText}>当前还没有可用题库。</p>}
           {当前题库实例 && (
             <div className={styles.column}>
+              <p className={styles.noteText}>题库名称：{当前题库前端显示名称}</p>
               <p className={styles.noteText}>题库键：{当前题库实例.题库键}</p>
               <p className={styles.noteText}>题目数量：{当前题库实例.题目数量}</p>
               <p className={styles.noteText}>标签数量：{当前题库实例.标签数量}</p>
@@ -1946,11 +2037,11 @@ export default function App(props: AppProps) {
             <button
               type="button"
               className={styles.actionButton}
-              onClick={() => 设置当前页面("题型识别页")}
+              onClick={() => 设置当前页面("导入试卷页")}
             >
-              <p className={styles.actionName}>识别旧题题型</p>
+              <p className={styles.actionName}>导入试卷</p>
               <p className={styles.actionDescription}>
-                按题目 ID 升序逐题加载尚未设置题型的旧题，展示推荐结果，并允许人工确认后自动进入下一题。
+                选择一份 docx 试卷，按题号拆题、识别题型与答案区元信息，再逐题确认后录入当前题库。
               </p>
             </button>
             <button
@@ -1975,7 +2066,7 @@ export default function App(props: AppProps) {
         <button type="button" className={styles.backButton} onClick={() => 设置当前页面("首页")}>
           返回首页
         </button>
-        <div className={styles.bankBanner}>当前题库：{当前题库键}</div>
+        <div className={styles.bankBanner}>当前题库：{当前题库前端显示名称}</div>
         <h1 className={styles.title}>录入题目</h1>
         <p className={styles.subtitle}>
           先在 Word 中选中题目内容，再填写描述、选择题型和标签，然后从当前选区录入。
@@ -2049,83 +2140,27 @@ export default function App(props: AppProps) {
                 </div>
               )}
             </div>
-            <div className={styles.column}>
-              <span className={styles.label}>当前标签</span>
-              {渲染已选标签摘要(
-                录题标签选择,
-                (标签种类ID, 标签ID) => {
-                  const 标签种类 = 标签种类字典.get(标签种类ID);
-                  if (标签种类) {
-                    切换录题标签(标签种类, 标签ID);
-                  }
-                },
-                "点击标签移除"
-              )}
-            </div>
           </div>
         </div>
         <div className={styles.section}>
-          <TagSearchPanel
-            标题="标签关键字搜索"
-            提示文本="输入关键字，直接搜索并选中标签"
+          <标签工作台
+            模式="录题"
+            标签种类列表={正式标签种类列表.map((标签种类) => ({
+              id: 标签种类.id,
+              名称: 标签种类.名称,
+              是否树形: 标签种类.是否树形,
+              是否允许多选: 标签种类.是否允许多选,
+            }))}
+            已选标签ID映射={录题标签选择}
             标签搜索项列表={正式标签搜索项列表}
-            已选标签ID列表={Object.values(录题标签选择).flat()}
-            选择标签={通过搜索选择录题标签}
+            获取指定种类标签列表={(标签种类ID) => 获取指定种类标签列表(标签种类ID)}
+            获取标签显示文本={获取标签显示文本}
+            切换标签={切换录题标签}
+            通过搜索选择标签={通过搜索选择录题标签}
+            新增标签={新增录题工作台标签}
+            编辑标签={编辑录题工作台标签}
           />
         </div>
-        {正式标签种类列表.map((标签种类) => (
-          <div key={标签种类.id} className={styles.section}>
-            <div className={styles.sectionHeaderRow}>
-              <h2 className={styles.sectionTitle}>{标签种类.名称}</h2>
-              <button
-                type="button"
-                className={styles.secondaryButton}
-                onClick={() => 打开快速新增表单(标签种类)}
-              >
-                {标签种类.是否树形 ? "新增根标签" : "新增标签"}
-              </button>
-            </div>
-            {快速新增目标?.标签种类ID === 标签种类.id && 快速新增目标.父标签ID === null && (
-              <div className={styles.inlineFormHost}>{渲染快速新增表单(标签种类)}</div>
-            )}
-            {标签种类.是否树形
-              ? (
-                  <TagSelectionTree
-                    树名称={`${标签种类.名称}标签树`}
-                    标签列表={获取指定种类标签列表(标签种类.id)}
-                    已选标签ID列表={录题标签选择[标签种类.id] ?? []}
-                    获取标签显示文本={获取标签显示文本}
-                    切换标签={(标签ID) => 切换录题标签(标签种类, 标签ID)}
-                    渲染节点附加操作={(标签) => (
-                      <button
-                        type="button"
-                        className={styles.secondaryButton}
-                        onClick={(事件) => {
-                          事件.preventDefault();
-                          事件.stopPropagation();
-                          打开快速新增表单(标签种类, 标签 as 标签项);
-                        }}
-                      >
-                        新增子标签
-                      </button>
-                    )}
-                    渲染节点下方内容={(标签) =>
-                      快速新增目标?.标签种类ID === 标签种类.id && 快速新增目标.父标签ID === 标签.id ? (
-                        <div className={styles.inlineFormHost}>
-                          {渲染快速新增表单(标签种类, 获取标签显示文本(标签 as 标签项))}
-                        </div>
-                      ) : null
-                    }
-                  />
-                )
-              : 渲染平铺选择(
-                  标签种类,
-                  获取指定种类标签列表(标签种类.id),
-                  录题标签选择,
-                  切换录题标签
-                )}
-          </div>
-        ))}
         <div className={styles.section}>
           {录题错误 !== "" && <p className={styles.errorText}>{录题错误}</p>}
           {录题成功提示 !== "" && <p className={styles.successText}>{录题成功提示}</p>}
@@ -2160,7 +2195,7 @@ export default function App(props: AppProps) {
         <button type="button" className={styles.backButton} onClick={() => 设置当前页面("首页")}>
           返回首页
         </button>
-        <div className={styles.bankBanner}>当前题库：{当前题库键}</div>
+        <div className={styles.bankBanner}>当前题库：{当前题库前端显示名称}</div>
         <h1 className={styles.title}>筛选题目</h1>
         <p className={styles.subtitle}>
           每一步按标签与题型组合筛选，步骤内默认交集，可切换并集；下一步继续在当前结果上筛选。
@@ -2392,7 +2427,7 @@ export default function App(props: AppProps) {
         <button type="button" className={styles.backButton} onClick={() => 设置当前页面("首页")}>
           返回首页
         </button>
-        <div className={styles.bankBanner}>当前题库：{当前题库键}</div>
+        <div className={styles.bankBanner}>当前题库：{当前题库前端显示名称}</div>
         <h1 className={styles.title}>识别旧题题型</h1>
         <p className={styles.subtitle}>
           系统会按题目 ID 升序逐题加载尚未设置题型的旧题。你可以接受推荐结果，也可以手动改成别的题型，再确认进入下一题。
@@ -2467,13 +2502,68 @@ export default function App(props: AppProps) {
     </div>
   );
 
+  const 渲染导入试卷页面 = () => {
+    const 可用标签种类列表 = 标签种类列表
+      .filter((标签种类) => 标签种类.id !== 系统标签种类.年份 && 标签种类.id !== 系统标签种类.来源)
+      .map((标签种类) => ({
+        id: 标签种类.id,
+        名称: 标签种类.名称,
+        是否树形: 标签种类.是否树形,
+        是否允许多选: 标签种类.是否允许多选,
+      }));
+    const 年份标签列表 = 获取指定种类标签列表(系统标签种类.年份)
+      .filter((标签) => 标签.isEnabled)
+      .map((标签) => ({ id: 标签.id, 名称: 标签.名称 }));
+    const 来源标签列表 = 获取指定种类标签列表(系统标签种类.来源)
+      .filter((标签) => 标签.isEnabled)
+      .map((标签) => ({ id: 标签.id, 名称: 标签.名称 }));
+    const 难度标签列表 = 获取指定种类标签列表(系统标签种类.难度)
+      .filter((标签) => 标签.isEnabled)
+      .map((标签) => ({ id: 标签.id, 名称: 标签.名称 }));
+    const 可映射标签列表 = Array.from(扁平标签字典.values())
+      .filter((标签) => 标签.isEnabled)
+      .sort((前一个, 后一个) => {
+        const 种类排序差 = 获取标签种类排序值(前一个.标签种类ID) - 获取标签种类排序值(后一个.标签种类ID);
+        if (种类排序差 !== 0) {
+          return 种类排序差;
+        }
+        return 前一个.名称.localeCompare(后一个.名称, "zh-Hans-CN");
+      })
+      .map((标签) => ({
+        id: 标签.id,
+        名称: 标签.名称,
+        标签种类ID: 标签.标签种类ID,
+        父标签ID: 标签.parentId ?? null,
+        描述: 标签.description,
+        numericValue: 标签.numericValue ?? null,
+        isEnabled: 标签.isEnabled,
+        标签种类名称: 标签种类字典.get(标签.标签种类ID)?.名称 ?? "未知种类",
+      }));
+
+    return (
+      <导入试卷页
+        当前题库键={当前题库键}
+        当前题库显示名称={当前题库前端显示名称}
+        标签种类列表={可用标签种类列表}
+        年份标签列表={年份标签列表}
+        来源标签列表={来源标签列表}
+        难度标签列表={难度标签列表}
+        可映射标签列表={可映射标签列表}
+        标签搜索项列表={正式标签搜索项列表}
+        构建题库接口路径={(子路径) => 构建题库接口路径(当前题库键, 子路径)}
+        返回首页={() => 设置当前页面("首页")}
+        刷新标签基础数据={() => 读取标签基础数据(当前题库键)}
+      />
+    );
+  };
+
   const 渲染标签整理页 = () => (
     <div className={styles.root}>
       <div className={styles.container}>
         <button type="button" className={styles.backButton} onClick={() => 设置当前页面("首页")}>
           返回首页
         </button>
-        <div className={styles.bankBanner}>当前题库：{当前题库键}</div>
+        <div className={styles.bankBanner}>当前题库：{当前题库前端显示名称}</div>
         <h1 className={styles.title}>标签整理</h1>
         <p className={styles.subtitle}>
           这里负责整理章节树、做题方法树、难度、附加标签、年份、来源，以及迁移期的待整理标签。
@@ -2665,8 +2755,8 @@ export default function App(props: AppProps) {
   if (当前页面 === "筛题页") {
     return 渲染筛题页();
   }
-  if (当前页面 === "题型识别页") {
-    return 渲染题型识别页();
+  if (当前页面 === "导入试卷页") {
+    return 渲染导入试卷页面();
   }
   if (当前页面 === "标签整理页") {
     return 渲染标签整理页();

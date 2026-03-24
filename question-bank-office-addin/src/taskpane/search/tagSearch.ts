@@ -27,10 +27,7 @@ function 规范化文本(文本: string) {
   return 文本.trim().toLocaleLowerCase();
 }
 
-function 转为结果(
-  搜索项: 标签搜索项,
-  命中方式: 标签搜索结果["命中方式"]
-): 标签搜索结果 {
+function 转为结果(搜索项: 标签搜索项, 命中方式: 标签搜索结果["命中方式"]): 标签搜索结果 {
   return {
     标签ID: 搜索项.标签ID,
     标签种类ID: 搜索项.标签种类ID,

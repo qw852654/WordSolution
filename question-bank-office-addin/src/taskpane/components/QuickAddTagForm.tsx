@@ -11,7 +11,7 @@ interface QuickAddTagFormProps {
   标题: string;
   父标签名称?: string | null;
   表单: QuickAddTagFormState;
-  是否显示数值输入: boolean;
+  是否显示数值输入?: boolean;
   错误信息: string;
   正在保存: boolean;
   onChange: (字段: keyof QuickAddTagFormState, 值: string) => void;
@@ -98,6 +98,7 @@ const useStyles = makeStyles({
 
 export default function QuickAddTagForm(props: QuickAddTagFormProps) {
   const styles = useStyles();
+
   const 阻止冒泡 = (事件: React.SyntheticEvent) => {
     事件.stopPropagation();
   };
@@ -111,6 +112,7 @@ export default function QuickAddTagForm(props: QuickAddTagFormProps) {
     >
       <p className={styles.title}>{props.标题}</p>
       {props.父标签名称 && <p className={styles.note}>父标签：{props.父标签名称}</p>}
+
       <label className={styles.label} htmlFor={`${props.标题}-name`}>
         标签名称
       </label>
@@ -120,6 +122,7 @@ export default function QuickAddTagForm(props: QuickAddTagFormProps) {
         value={props.表单.名称}
         onChange={(事件) => props.onChange("名称", 事件.target.value)}
       />
+
       <label className={styles.label} htmlFor={`${props.标题}-description`}>
         标签描述
       </label>
@@ -129,10 +132,11 @@ export default function QuickAddTagForm(props: QuickAddTagFormProps) {
         value={props.表单.描述}
         onChange={(事件) => props.onChange("描述", 事件.target.value)}
       />
+
       {props.是否显示数值输入 && (
         <>
           <label className={styles.label} htmlFor={`${props.标题}-value`}>
-            难度数值
+            数值
           </label>
           <input
             id={`${props.标题}-value`}
@@ -142,12 +146,24 @@ export default function QuickAddTagForm(props: QuickAddTagFormProps) {
           />
         </>
       )}
+
       {props.错误信息 !== "" && <p className={styles.errorText}>{props.错误信息}</p>}
+
       <div className={styles.row}>
-        <button type="button" className={styles.primaryButton} onClick={props.onSubmit} disabled={props.正在保存}>
-          {props.正在保存 ? "正在保存..." : "保存新增"}
+        <button
+          type="button"
+          className={styles.primaryButton}
+          onClick={props.onSubmit}
+          disabled={props.正在保存}
+        >
+          {props.正在保存 ? "正在保存..." : "保存"}
         </button>
-        <button type="button" className={styles.secondaryButton} onClick={props.onCancel} disabled={props.正在保存}>
+        <button
+          type="button"
+          className={styles.secondaryButton}
+          onClick={props.onCancel}
+          disabled={props.正在保存}
+        >
           取消
         </button>
       </div>

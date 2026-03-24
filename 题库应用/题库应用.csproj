@@ -4,6 +4,13 @@
     <ProjectReference Include="..\题库核心\题库核心.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="Aspose.Words">
+      <HintPath>..\lib\Aspose.Words.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

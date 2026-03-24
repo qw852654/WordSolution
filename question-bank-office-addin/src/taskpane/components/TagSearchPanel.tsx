@@ -8,6 +8,8 @@ interface TagSearchPanelProps {
   标签搜索项列表: 标签搜索项[];
   已选标签ID列表: number[];
   选择标签: (标签ID: number, 标签种类ID: number) => void;
+  无外框?: boolean;
+  隐藏标题?: boolean;
 }
 
 const useStyles = makeStyles({
@@ -18,6 +20,12 @@ const useStyles = makeStyles({
     borderRadius: "12px",
     backgroundColor: "#fffdf9",
     border: "1px solid #ece4d7",
+  },
+  plainRoot: {
+    padding: 0,
+    borderRadius: 0,
+    backgroundColor: "transparent",
+    border: "none",
   },
   title: {
     margin: 0,
@@ -45,7 +53,8 @@ const useStyles = makeStyles({
     border: "1px solid #e5dac7",
     backgroundColor: "#ffffff",
     cursor: "pointer",
-    transition: "background-color 140ms ease, box-shadow 140ms ease, transform 140ms ease",
+    transition:
+      "background-color 140ms ease, box-shadow 140ms ease, transform 140ms ease",
     ":hover": {
       backgroundColor: "#fff7eb",
       boxShadow: "0 6px 14px rgba(90, 65, 20, 0.08)",
@@ -100,17 +109,25 @@ export default function TagSearchPanel(props: TagSearchPanelProps) {
   );
 
   return (
-    <div className={styles.root}>
-      <h2 className={styles.title}>{props.标题}</h2>
+    <div
+      className={mergeClasses(
+        styles.root,
+        props.无外框 ? styles.plainRoot : undefined
+      )}
+    >
+      {!props.隐藏标题 && <h2 className={styles.title}>{props.标题}</h2>}
+
       <input
         className={styles.input}
         placeholder={props.提示文本 ?? "输入关键字，快速定位标签"}
         value={关键字}
         onChange={(事件) => 设置关键字(事件.target.value)}
       />
+
       {关键字.trim() !== "" && 搜索结果列表.length === 0 && (
         <p className={styles.emptyText}>没有找到匹配的标签。</p>
       )}
+
       {关键字.trim() !== "" && 搜索结果列表.length > 0 && (
         <div className={styles.resultList}>
           {搜索结果列表.map((结果项) => {
@@ -134,7 +151,9 @@ export default function TagSearchPanel(props: TagSearchPanelProps) {
                 </div>
                 <div className={styles.resultPath}>
                   {结果项.标签种类名称}
-                  {结果项.展示路径文本 !== "" ? ` · ${结果项.展示路径文本}` : ""}
+                  {结果项.展示路径文本 !== ""
+                    ? ` · ${结果项.展示路径文本}`
+                    : ""}
                 </div>
               </button>
             );
