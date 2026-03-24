@@ -183,16 +183,23 @@ function 获取标签种类排序值(标签种类ID: number) {
 }
 
 const useStyles = makeStyles({
-  root: { minHeight: "100vh", backgroundColor: "#f6f1e7" },
-  container: { padding: "24px 18px 28px" },
+  root: {
+    minHeight: "100vh",
+    backgroundImage:
+      "linear-gradient(180deg, #fbf7ef 0%, #f4ecde 56%, #efe5d5 100%)",
+  },
+  container: {
+    padding: "22px 18px 30px",
+  },
   title: { fontSize: "28px", fontWeight: "700", margin: "0 0 8px 0", color: "#1f1f1f" },
   subtitle: { fontSize: "14px", lineHeight: "22px", margin: "0 0 20px 0", color: "#5f5a50" },
   section: {
     marginTop: "18px",
     padding: "16px",
     borderRadius: "14px",
-    backgroundColor: "#ffffff",
-    border: "1px solid #e4ddd2",
+    backgroundColor: "rgba(255, 251, 244, 0.96)",
+    border: "1px solid #e8dcc8",
+    boxShadow: "0 12px 28px rgba(110, 82, 35, 0.08)",
   },
   sectionTitle: { fontSize: "16px", fontWeight: "600", margin: "0 0 12px 0", color: "#2d2a26" },
   input: {
@@ -224,36 +231,59 @@ const useStyles = makeStyles({
   button: {
     padding: "10px 14px",
     borderRadius: "8px",
-    border: "1px solid #b8860b",
-    backgroundColor: "#f3c86a",
+    border: "1px solid #c58b2a",
+    backgroundImage:
+      "linear-gradient(180deg, #f7ce77 0%, #efbd57 100%)",
     color: "#3b2a00",
     cursor: "pointer",
     fontSize: "13px",
+    boxShadow: "0 8px 16px rgba(160, 112, 9, 0.18)",
+    transition:
+      "transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease",
+    ":hover": {
+      transform: "translateY(-1px)",
+      boxShadow: "0 10px 20px rgba(160, 112, 9, 0.22)",
+    },
   },
   secondaryButton: {
     padding: "8px 12px",
     borderRadius: "8px",
-    border: "1px solid #d8cfc0",
-    backgroundColor: "#ffffff",
-    color: "#2f2a25",
+    border: "1px solid #ddcfbb",
+    backgroundColor: "rgba(255, 253, 248, 0.98)",
+    color: "#3a342d",
     cursor: "pointer",
     fontSize: "12px",
+    transition:
+      "transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease",
+    ":hover": {
+      transform: "translateY(-1px)",
+      boxShadow: "0 6px 14px rgba(90, 65, 20, 0.08)",
+    },
   },
   backButton: {
     padding: "8px 12px",
     borderRadius: "8px",
-    border: "1px solid #d8cfc0",
-    backgroundColor: "#ffffff",
+    border: "1px solid #ddcfbb",
+    backgroundColor: "rgba(255, 253, 248, 0.98)",
     cursor: "pointer",
     marginBottom: "16px",
+    color: "#3a342d",
+    transition:
+      "transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease",
+    ":hover": {
+      transform: "translateY(-1px)",
+      boxShadow: "0 6px 14px rgba(90, 65, 20, 0.08)",
+    },
   },
   bankBanner: {
     marginBottom: "14px",
     padding: "10px 12px",
     borderRadius: "10px",
-    backgroundColor: "#fff8ec",
-    color: "#6a5800",
+    backgroundImage:
+      "linear-gradient(180deg, rgba(255, 246, 225, 0.96) 0%, rgba(255, 239, 205, 0.96) 100%)",
+    color: "#6a5600",
     fontSize: "12px",
+    border: "1px solid #ebd5a8",
   },
   label: { fontSize: "13px", fontWeight: "600", color: "#4a4339" },
   row: { display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" },
@@ -294,10 +324,18 @@ const useStyles = makeStyles({
   actionButton: {
     padding: "16px",
     borderRadius: "12px",
-    backgroundColor: "#fff7eb",
-    border: "1px solid #d8b36d",
+    backgroundImage:
+      "linear-gradient(180deg, rgba(255, 247, 231, 0.98) 0%, rgba(255, 240, 214, 0.98) 100%)",
+    border: "1px solid #d7b377",
     cursor: "pointer",
     textAlign: "left",
+    boxShadow: "0 10px 22px rgba(124, 90, 32, 0.08)",
+    transition:
+      "transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
+    ":hover": {
+      transform: "translateY(-1px)",
+      boxShadow: "0 14px 26px rgba(124, 90, 32, 0.12)",
+    },
   },
   actionName: { fontSize: "15px", fontWeight: "600", margin: "0 0 6px 0", color: "#1f1f1f" },
   actionDescription: { fontSize: "13px", lineHeight: "20px", margin: "0", color: "#655f55" },
