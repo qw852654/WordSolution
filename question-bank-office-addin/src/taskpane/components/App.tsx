@@ -507,6 +507,7 @@ export default function App(props: AppProps) {
   const [筛选步骤列表, 设置筛选步骤列表] = React.useState<筛选步骤项[]>([创建空筛选步骤(1)]);
   const [正在筛题, 设置正在筛题] = React.useState(false);
   const [筛题错误, 设置筛题错误] = React.useState("");
+  const [最近筛题标签操作ID, 设置最近筛题标签操作ID] = React.useState<number | null>(null);
   const [已执行筛题, 设置已执行筛题] = React.useState(false);
   const [筛题结果卡片列表, 设置筛题结果卡片列表] = React.useState<题目卡片项[]>([]);
   const [已选题目ID列表, 设置已选题目ID列表] = React.useState<number[]>([]);
@@ -742,6 +743,20 @@ export default function App(props: AppProps) {
       window.clearTimeout(定时器);
     };
   }, [更新题目按钮失败提示]);
+
+  React.useEffect(() => {
+    if (最近筛题标签操作ID === null) {
+      return undefined;
+    }
+
+    const 定时器 = window.setTimeout(() => {
+      设置最近筛题标签操作ID(null);
+    }, 2200);
+
+    return () => {
+      window.clearTimeout(定时器);
+    };
+  }, [最近筛题标签操作ID]);
 
   React.useEffect(() => {
     const applyPendingNavigation = (
@@ -1018,6 +1033,30 @@ export default function App(props: AppProps) {
     [当前题库键, 读取标签基础数据]
   );
 
+  const 移动当前题库标签 = React.useCallback(
+    async (
+      标签种类: 标签种类项,
+      拖动标签ID: number,
+      目标标签ID: number,
+      放置方式: "before" | "after" | "inside"
+    ) => {
+      const 响应 = await fetch(构建题库接口路径(当前题库键, `/标签/${拖动标签ID}/移动`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          目标标签ID,
+          放置方式,
+        }),
+      });
+      if (!响应.ok) {
+        const 错误文本 = await 响应.text();
+        throw new Error(错误文本 || `移动${标签种类.名称}标签失败。`);
+      }
+      await 读取标签基础数据(当前题库键);
+    },
+    [当前题库键, 读取标签基础数据]
+  );
+
   const 选择录题题型 = React.useCallback((题型ID: number) => {
     设置最近录入题目ID(null);
     设置录题题型ID(题型ID);
@@ -1122,6 +1161,28 @@ export default function App(props: AppProps) {
       );
     },
     [标签种类字典]
+  );
+
+  const 移动筛选步骤标签 = React.useCallback(
+    async (
+      标签种类: 标签种类项,
+      拖动标签ID: number,
+      目标标签ID: number,
+      放置方式: "before" | "after" | "inside"
+    ) => {
+      try {
+        设置筛题错误("");
+        await 移动当前题库标签(标签种类, 拖动标签ID, 目标标签ID, 放置方式);
+        设置最近筛题标签操作ID(拖动标签ID);
+      } catch (error) {
+        console.error(error);
+        设置筛题错误(
+          error instanceof Error && error.message.trim() !== "" ? error.message : "移动标签失败。"
+        );
+        throw error;
+      }
+    },
+    [移动当前题库标签]
   );
 
   const 移除筛选步骤标签 = (步骤编号: number, 标签种类ID: number, 标签ID: number) => {
@@ -2194,11 +2255,12 @@ export default function App(props: AppProps) {
             获取指定种类标签列表={(标签种类ID) => 获取指定种类标签列表(标签种类ID)}
             获取标签显示文本={获取标签显示文本}
             切换标签={切换录题标签}
-            通过搜索选择标签={通过搜索选择录题标签}
-            新增标签={新增录题工作台标签}
-            编辑标签={编辑录题工作台标签}
-          />
-        </div>
+          通过搜索选择标签={通过搜索选择录题标签}
+          新增标签={新增录题工作台标签}
+          编辑标签={编辑录题工作台标签}
+          移动标签={移动当前题库标签}
+        />
+      </div>
         <div className={styles.section}>
           {录题错误 !== "" && <p className={styles.errorText}>{录题错误}</p>}
           {录题成功提示 !== "" && <p className={styles.successText}>{录题成功提示}</p>}
@@ -2347,8 +2409,15 @@ export default function App(props: AppProps) {
                               树名称={`${标签种类.名称}筛选树`}
                               标签列表={获取指定种类标签列表(标签种类.id)}
                               已选标签ID列表={步骤.已选标签ID映射[标签种类.id] ?? []}
+                              高亮标签ID={最近筛题标签操作ID}
                               获取标签显示文本={获取标签显示文本}
                               切换标签={(标签ID) => 切换筛选步骤标签(步骤.步骤编号, 标签种类, 标签ID)}
+                              移动标签={
+                                是否当前步骤
+                                  ? (拖动标签ID, 目标标签ID, 放置方式) =>
+                                      移动筛选步骤标签(标签种类, 拖动标签ID, 目标标签ID, 放置方式)
+                                  : undefined
+                              }
                             />
                           )
                         : 渲染平铺选择(
@@ -2541,7 +2610,7 @@ export default function App(props: AppProps) {
   );
 
   const 渲染导入试卷页面 = () => {
-    const 可用标签种类列表 = 标签种类列表
+    const 可用标签种类列表 = 正式标签种类列表
       .filter((标签种类) => 标签种类.id !== 系统标签种类.年份 && 标签种类.id !== 系统标签种类.来源)
       .map((标签种类) => ({
         id: 标签种类.id,
@@ -2591,6 +2660,9 @@ export default function App(props: AppProps) {
         构建题库接口路径={(子路径) => 构建题库接口路径(当前题库键, 子路径)}
         返回首页={() => 设置当前页面("首页")}
         刷新标签基础数据={() => 读取标签基础数据(当前题库键)}
+        获取指定种类标签列表={(标签种类ID) => 获取指定种类标签列表(标签种类ID) as any}
+        获取标签显示文本={(标签) => 获取标签显示文本(标签 as any)}
+        移动标签={移动当前题库标签}
       />
     );
   };

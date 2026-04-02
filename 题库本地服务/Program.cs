@@ -124,6 +124,7 @@ builder.Services.AddScoped<新增标签用例>();
 builder.Services.AddScoped<更新标签用例>();
 builder.Services.AddScoped<调整标签父级用例>();
 builder.Services.AddScoped<调整标签排序用例>();
+builder.Services.AddScoped<移动标签用例>();
 builder.Services.AddScoped<删除标签用例>();
 
 var app = builder.Build();

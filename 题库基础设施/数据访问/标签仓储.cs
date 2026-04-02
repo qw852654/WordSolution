@@ -87,6 +87,17 @@ namespace 题库基础设施.数据访问
             _题库DbContext.SaveChanges();
         }
 
+        public void 批量保存标签(IReadOnlyList<标签> 标签列表)
+        {
+            if (标签列表.Count == 0)
+            {
+                return;
+            }
+
+            _题库DbContext.标签表.UpdateRange(标签列表);
+            _题库DbContext.SaveChanges();
+        }
+
         public void 删除标签(标签 标签)
         {
             _题库DbContext.标签表.Remove(标签);

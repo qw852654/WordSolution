@@ -125,7 +125,9 @@ export default function TagSearchPanel(props: TagSearchPanelProps) {
       />
 
       {关键字.trim() !== "" && 搜索结果列表.length === 0 && (
-        <p className={styles.emptyText}>没有找到匹配的标签。</p>
+        <p className={styles.emptyText}>
+          没有找到匹配的标签。可以在下方对应标签种类中新增，或者换一个关键字再试试。
+        </p>
       )}
 
       {关键字.trim() !== "" && 搜索结果列表.length > 0 && (

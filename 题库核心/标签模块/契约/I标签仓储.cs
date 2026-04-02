@@ -15,6 +15,8 @@ namespace 题库核心.标签模块.契约
 
         void 保存标签(标签 标签);
 
+        void 批量保存标签(IReadOnlyList<标签> 标签列表);
+
         void 删除标签(标签 标签);
 
         bool 是否存在同父同种类同名标签(int 标签种类ID, int? parentId, string 名称, int? 排除标签ID = null);

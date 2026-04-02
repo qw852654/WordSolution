@@ -14,6 +14,7 @@ namespace 题库本地服务.标签模块
         private readonly 更新标签用例 _更新标签用例;
         private readonly 调整标签父级用例 _调整标签父级用例;
         private readonly 调整标签排序用例 _调整标签排序用例;
+        private readonly 移动标签用例 _移动标签用例;
         private readonly 删除标签用例 _删除标签用例;
 
         public 标签控制器(
@@ -22,6 +23,7 @@ namespace 题库本地服务.标签模块
             更新标签用例 更新标签用例,
             调整标签父级用例 调整标签父级用例,
             调整标签排序用例 调整标签排序用例,
+            移动标签用例 移动标签用例,
             删除标签用例 删除标签用例)
         {
             _获取标签列表用例 = 获取标签列表用例;
@@ -29,6 +31,7 @@ namespace 题库本地服务.标签模块
             _更新标签用例 = 更新标签用例;
             _调整标签父级用例 = 调整标签父级用例;
             _调整标签排序用例 = 调整标签排序用例;
+            _移动标签用例 = 移动标签用例;
             _删除标签用例 = 删除标签用例;
         }
 
@@ -64,6 +67,13 @@ namespace 题库本地服务.标签模块
         public IActionResult 调整同级排序(int id, [FromBody] 调整标签排序的请求 请求)
         {
             _调整标签排序用例.执行(id, 请求);
+            return Ok();
+        }
+
+        [HttpPost("{id:int}/移动")]
+        public IActionResult 移动标签(int id, [FromBody] 移动标签的请求 请求)
+        {
+            _移动标签用例.执行(id, 请求);
             return Ok();
         }
 

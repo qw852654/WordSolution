@@ -16,8 +16,8 @@ interface 可映射标签项 extends 简单标签项 {
   描述?: string | null;
   numericValue?: number | null;
   isEnabled?: boolean;
+  子标签列表?: 可映射标签项[];
 }
-interface 树形标签节点 extends 可映射标签项 { description?: string | null; 子标签列表: 树形标签节点[]; }
 interface 标签种类项 { id: number; 名称: string; 是否树形: boolean; 是否允许多选: boolean; }
 interface 题型定义项 { id: number; 名称: string; 描述?: string | null; 排序值: number; }
 interface 知识点映射展示项 { 原始知识点文本: string; 是否已解决: boolean; 目标标签ID?: number | null; 目标标签名称?: string | null; 是否抛弃: boolean; }
@@ -32,6 +32,14 @@ interface 导入试卷页Props {
   当前题库显示名称: string;
   当前题库键: string; 标签种类列表: 标签种类项[]; 年份标签列表: 简单标签项[]; 来源标签列表: 简单标签项[]; 难度标签列表: 简单标签项[];
   可映射标签列表: 可映射标签项[]; 标签搜索项列表: 标签搜索项[]; 构建题库接口路径: (子路径: string) => string; 返回首页: () => void; 刷新标签基础数据: () => Promise<void>;
+  获取指定种类标签列表: (标签种类ID: number) => 可映射标签项[];
+  获取标签显示文本: (标签: 可映射标签项) => string;
+  移动标签?: (
+    标签种类: 标签种类项,
+    拖动标签ID: number,
+    目标标签ID: number,
+    放置方式: "before" | "after" | "inside"
+  ) => Promise<void>;
 }
 interface 知识点本地决策 { 目标标签ID: number | null; 是否抛弃: boolean; }
 interface 快速新增标签表单 { 名称: string; 描述: string; 数值文本: string; }
@@ -74,16 +82,21 @@ const useStyles = makeStyles({
     border: "1px solid #ebd5a8",
   },
   section: {
-    marginTop: "18px",
-    padding: "16px",
+    marginTop: "14px",
+    padding: "14px",
     borderRadius: "14px",
     backgroundColor: "rgba(255, 251, 244, 0.96)",
     border: "1px solid #e8dcc8",
     boxShadow: "0 12px 28px rgba(110, 82, 35, 0.08)",
     display: "grid",
-    gap: "10px",
+    gap: "8px",
   },
   sectionTitle: { fontSize: "16px", fontWeight: "600", margin: 0, color: "#2d2a26" },
+  highlightedSection: {
+    border: "1px solid #d7b377",
+    boxShadow: "0 0 0 2px rgba(215, 179, 119, 0.14), 0 12px 28px rgba(110, 82, 35, 0.08)",
+    backgroundColor: "#fffaf0",
+  },
   row: { display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" },
   between: { display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" },
   column: { display: "grid", gap: "10px" },
@@ -125,6 +138,7 @@ const useStyles = makeStyles({
   noteText: { margin: 0, fontSize: "12px", lineHeight: "18px", color: "#756d60" },
   successText: { margin: 0, fontSize: "13px", lineHeight: "20px", color: "#0f7b0f" },
   errorText: { margin: 0, fontSize: "12px", lineHeight: "18px", color: "#b42318" },
+  infoText: { margin: 0, fontSize: "12px", lineHeight: "18px", color: "#7a5a1d" },
   chipRow: { display: "flex", gap: "8px", flexWrap: "wrap" },
   chip: { padding: "6px 10px", borderRadius: "999px", border: "1px solid #dfd3bc", backgroundColor: "#fff", color: "#524c43", cursor: "pointer", fontSize: "12px" },
   selectedChip: { border: "1px solid #b8860b", backgroundColor: "#f3c86a", color: "#3b2a00" },
@@ -145,6 +159,34 @@ const useStyles = makeStyles({
     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.7)",
     overflowX: "auto",
   },
+  progressPanel: {
+    display: "grid",
+    gap: "8px",
+    padding: "10px 12px",
+    borderRadius: "12px",
+    border: "1px solid #ebd5a8",
+    backgroundImage:
+      "linear-gradient(180deg, rgba(255, 247, 226, 0.98) 0%, rgba(255, 240, 214, 0.98) 100%)",
+  },
+  progressMeta: {
+    display: "flex",
+    gap: "8px",
+    flexWrap: "wrap",
+    alignItems: "center",
+  },
+  progressTrack: {
+    width: "100%",
+    height: "8px",
+    borderRadius: "999px",
+    backgroundColor: "rgba(122, 90, 29, 0.12)",
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: "999px",
+    backgroundImage: "linear-gradient(90deg, #efbd57 0%, #d79b27 100%)",
+    transition: "width 180ms ease",
+  },
   mappingItem: {
     padding: "12px",
     borderRadius: "10px",
@@ -157,34 +199,132 @@ const useStyles = makeStyles({
   },
   processedMappingItem: { backgroundColor: "#fff6db", border: "2px solid #c97800", boxShadow: "0 0 0 2px rgba(201, 120, 0, 0.15), 0 10px 18px rgba(90, 65, 20, 0.12)" },
   resolved: { padding: "10px 12px", borderRadius: "10px", border: "2px solid #c97800", backgroundColor: "#fff6db", boxShadow: "0 0 0 2px rgba(201, 120, 0, 0.12), 0 8px 16px rgba(90, 65, 20, 0.1)" },
+  mappingGroup: {
+    display: "grid",
+    gap: "10px",
+    padding: "10px 12px",
+    borderRadius: "12px",
+    border: "1px solid #eee4d4",
+    backgroundColor: "rgba(255,255,255,0.72)",
+  },
+  mappingGroupHeader: {
+    display: "flex",
+    gap: "8px",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  nextStepHint: {
+    padding: "10px 12px",
+    borderRadius: "10px",
+    border: "1px solid #ebd5a8",
+    backgroundColor: "#fff7e2",
+  },
   kindSection: { padding: "12px", borderRadius: "12px", backgroundColor: "#fffdf9", border: "1px solid #ece4d7", display: "grid", gap: "10px" },
   quickAddBox: { padding: "12px", borderRadius: "10px", border: "1px solid #e8dcc7", backgroundColor: "#fffaf0", display: "grid", gap: "8px" },
   fileInput: { fontSize: "13px" },
+  actionBar: {
+    display: "grid",
+    gap: "8px",
+    padding: "12px",
+    borderRadius: "12px",
+    border: "1px solid #e8dcc8",
+    backgroundColor: "#fffaf1",
+  },
+  dualWorkspaceSection: {
+    display: "grid",
+    gap: "10px",
+  },
+  workspaceTabs: {
+    display: "flex",
+    gap: "8px",
+    flexWrap: "wrap",
+  },
+  workspaceTabButton: {
+    padding: "8px 12px",
+    borderRadius: "999px",
+    border: "1px solid #ddcfbb",
+    backgroundColor: "rgba(255, 253, 248, 0.98)",
+    color: "#3a342d",
+    cursor: "pointer",
+    fontSize: "12px",
+  },
+  activeWorkspaceTabButton: {
+    border: "1px solid #c58b2a",
+    backgroundImage: "linear-gradient(180deg, #f7ce77 0%, #efbd57 100%)",
+    color: "#3b2a00",
+    boxShadow: "0 8px 16px rgba(160, 112, 9, 0.14)",
+  },
+  workspaceSplit: {
+    display: "grid",
+    gap: "12px",
+    gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+    alignItems: "start",
+  },
+  workspacePanel: {
+    minWidth: 0,
+    padding: "12px",
+    borderRadius: "12px",
+    border: "1px solid #ece4d7",
+    backgroundColor: "#fffdf9",
+    boxShadow: "0 8px 20px rgba(110, 82, 35, 0.06)",
+    display: "grid",
+    gap: "10px",
+  },
+  highlightedWorkspacePanel: {
+    border: "1px solid #d7b377",
+    boxShadow: "0 0 0 2px rgba(215, 179, 119, 0.14), 0 8px 20px rgba(110, 82, 35, 0.08)",
+    backgroundColor: "#fffaf0",
+  },
+  workspacePanelHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "10px",
+    flexWrap: "wrap",
+  },
+  workspacePanelBody: {
+    display: "grid",
+    gap: "10px",
+    maxHeight: "420px",
+    overflowY: "auto",
+    paddingRight: "4px",
+  },
+  helperHint: {
+    padding: "8px 10px",
+    borderRadius: "10px",
+    border: "1px solid #eee2ca",
+    backgroundColor: "#fff8ec",
+  },
+  mappingActions: {
+    display: "flex",
+    gap: "8px",
+    flexWrap: "wrap",
+    alignItems: "center",
+  },
 });
 
 const 空新增标签表单 = (): 快速新增标签表单 => ({ 名称: "", 描述: "", 数值文本: "" });
 const 获取错误信息 = (error: unknown, 默认文案: string) => error instanceof Error && error.message.trim() !== "" ? error.message : 默认文案;
 const 去重 = (ids: number[]) => Array.from(new Set(ids));
-const 构建树形标签列表 = (标签列表: 可映射标签项[]): 树形标签节点[] => {
-  const 映射 = new Map<number, 树形标签节点>();
-  标签列表.forEach((标签) => 映射.set(标签.id, { ...标签, description: 标签.描述 ?? null, 子标签列表: [] }));
-  const 根节点: 树形标签节点[] = [];
-  映射.forEach((节点) => {
-    const 父标签ID = 节点.父标签ID ?? null;
-    if (父标签ID !== null && 映射.has(父标签ID)) {
-      映射.get(父标签ID)?.子标签列表.push(节点);
-      return;
-    }
-    根节点.push(节点);
-  });
-  const 排序 = (节点列表: 树形标签节点[]) => { 节点列表.sort((a, b) => a.名称.localeCompare(b.名称, "zh-Hans-CN")); 节点列表.forEach((节点) => 排序(节点.子标签列表)); };
-  排序(根节点);
-  return 根节点;
+const 拍平标签列表 = (标签列表: 可映射标签项[]): 可映射标签项[] => {
+  const 结果: 可映射标签项[] = [];
+  const 遍历 = (当前列表: 可映射标签项[]) => {
+    当前列表.forEach((标签) => {
+      结果.push(标签);
+      if (标签.子标签列表 && 标签.子标签列表.length > 0) {
+        遍历(标签.子标签列表 as 可映射标签项[]);
+      }
+    });
+  };
+  遍历(标签列表);
+  return 结果;
 };
 
 export default function 导入试卷页(props: 导入试卷页Props) {
   const styles = useStyles();
   const 页面顶部Ref = React.useRef<HTMLDivElement | null>(null);
+  const 标签树辅助区Ref = React.useRef<HTMLDivElement | null>(null);
   const [试卷列表, 设置试卷列表] = React.useState<试卷记录列表项[]>([]);
   const [正在加载试卷列表, 设置正在加载试卷列表] = React.useState(true);
   const [选中文件, 设置选中文件] = React.useState<File | null>(null);
@@ -211,6 +351,9 @@ export default function 导入试卷页(props: 导入试卷页Props) {
   const [新增标签表单, 设置新增标签表单] = React.useState<快速新增标签表单>(空新增标签表单);
   const [新增标签错误, 设置新增标签错误] = React.useState("");
   const [正在新增标签, 设置正在新增标签] = React.useState(false);
+  const [顶部工作区窄布局, 设置顶部工作区窄布局] = React.useState(false);
+  const [顶部工作区页签, 设置顶部工作区页签] = React.useState<"知识点映射" | "标签树辅助">("知识点映射");
+  const [标签树辅助高亮, 设置标签树辅助高亮] = React.useState(false);
 
   const 当前试卷记录 = React.useMemo(() => 试卷列表.find((item) => item.试卷记录ID === 当前试卷记录ID) ?? null, [试卷列表, 当前试卷记录ID]);
   const 未解决知识点列表 = React.useMemo(() => (当前题目?.知识点列表 ?? []).filter((item) => !item.是否已解决), [当前题目]);
@@ -225,17 +368,20 @@ export default function 导入试卷页(props: 导入试卷页Props) {
       ),
     [props.标签种类列表]
   );
+  const 按种类展示标签 = React.useMemo(() => {
+    const map: Record<number, 可映射标签项[]> = {};
+    props.标签种类列表.forEach((kind) => {
+      map[kind.id] = props.获取指定种类标签列表(kind.id) ?? [];
+    });
+    return map;
+  }, [props.标签种类列表, props.获取指定种类标签列表]);
   const 按种类标签 = React.useMemo(() => {
     const map: Record<number, 可映射标签项[]> = {};
-    props.可映射标签列表.forEach((tag) => { if (!map[tag.标签种类ID]) { map[tag.标签种类ID] = []; } map[tag.标签种类ID].push(tag); });
-    Object.values(map).forEach((list) => list.sort((a, b) => a.名称.localeCompare(b.名称, "zh-Hans-CN")));
+    Object.entries(按种类展示标签).forEach(([kindId, tags]) => {
+      map[Number(kindId)] = 拍平标签列表(tags);
+    });
     return map;
-  }, [props.可映射标签列表]);
-  const 按种类树 = React.useMemo(() => {
-    const map: Record<number, 树形标签节点[]> = {};
-    Object.entries(按种类标签).forEach(([kindId, tags]) => { map[Number(kindId)] = 构建树形标签列表(tags); });
-    return map;
-  }, [按种类标签]);
+  }, [按种类展示标签]);
   const 当前新增标签种类 = React.useMemo(() => 新增标签目标种类ID === null ? null : props.标签种类列表.find((kind) => kind.id === 新增标签目标种类ID) ?? null, [props.标签种类列表, 新增标签目标种类ID]);
   const 当前新增父标签名称 = React.useMemo(() => 新增标签父标签ID === null || 新增标签目标种类ID === null ? null : 按种类标签[新增标签目标种类ID]?.find((tag) => tag.id === 新增标签父标签ID)?.名称 ?? null, [新增标签父标签ID, 新增标签目标种类ID, 按种类标签]);
   const 固定标签ID列表 = React.useMemo(() => {
@@ -260,6 +406,63 @@ export default function 导入试卷页(props: 导入试卷页Props) {
     if (!当前题目 || 当前题型ID === null || 当前难度标签ID === null) { return false; }
     return 未解决知识点列表.every((item) => { const d = 知识点决策映射[item.原始知识点文本]; return Boolean(d) && (d.是否抛弃 || d.目标标签ID !== null); });
   }, [当前题目, 当前题型ID, 当前难度标签ID, 未解决知识点列表, 知识点决策映射]);
+  const 已有已处理知识点列表 = React.useMemo(
+    () => (当前题目?.知识点列表 ?? []).filter((item) => item.是否已解决),
+    [当前题目]
+  );
+  const 本轮已处理知识点列表 = React.useMemo(
+    () =>
+      未解决知识点列表.filter((item) => {
+        const 决策 = 知识点决策映射[item.原始知识点文本];
+        return Boolean(决策) && (决策.是否抛弃 || 决策.目标标签ID !== null);
+      }),
+    [未解决知识点列表, 知识点决策映射]
+  );
+  const 本轮未处理知识点列表 = React.useMemo(
+    () =>
+      未解决知识点列表.filter((item) => {
+        const 决策 = 知识点决策映射[item.原始知识点文本];
+        return !决策 || (!决策.是否抛弃 && 决策.目标标签ID === null);
+      }),
+    [未解决知识点列表, 知识点决策映射]
+  );
+  const 知识点总数 = React.useMemo(() => 当前题目?.知识点列表.length ?? 0, [当前题目]);
+  const 已处理知识点总数 = React.useMemo(
+    () => 已有已处理知识点列表.length + 本轮已处理知识点列表.length,
+    [已有已处理知识点列表.length, 本轮已处理知识点列表.length]
+  );
+  const 知识点均已处理 = React.useMemo(
+    () => 知识点总数 === 0 || 本轮未处理知识点列表.length === 0,
+    [知识点总数, 本轮未处理知识点列表.length]
+  );
+  const 已处理题目数量 = React.useMemo(
+    () => (当前试卷记录?.已确认数 ?? 0) + (当前试卷记录?.已跳过数 ?? 0),
+    [当前试卷记录]
+  );
+  const 当前试卷总题数 = React.useMemo(
+    () => 当前试卷记录?.总题数 ?? (当前题目 ? 已处理题目数量 + 当前题目.剩余数量 + 1 : 0),
+    [当前试卷记录, 当前题目, 已处理题目数量]
+  );
+  const 当前题序号 = React.useMemo(
+    () => (当前题目 ? Math.min(当前试卷总题数, 已处理题目数量 + 1) : 0),
+    [当前题目, 当前试卷总题数, 已处理题目数量]
+  );
+  const 当前进度百分比 = React.useMemo(
+    () => (当前试卷总题数 > 0 ? Math.min(100, Math.round((已处理题目数量 / 当前试卷总题数) * 100)) : 0),
+    [当前试卷总题数, 已处理题目数量]
+  );
+  const 操作区提示文本 = React.useMemo(() => {
+    if (正在确认) {
+      return "正在保存当前题，并准备进入下一题...";
+    }
+    if (正在跳过) {
+      return "正在记录跳过结果，并准备进入下一题...";
+    }
+    if (!知识点均已处理) {
+      return "请先处理完所有知识点映射，再检查标签并确认录入。";
+    }
+    return "知识点已处理完成，下一步请检查题型、难度和标签后确认录入。";
+  }, [正在确认, 正在跳过, 知识点均已处理]);
 
   const 加载试卷列表 = React.useCallback(async () => {
     try {
@@ -278,6 +481,14 @@ export default function 导入试卷页(props: 导入试卷页Props) {
 
   React.useEffect(() => { void 加载试卷列表(); }, [加载试卷列表]);
   React.useEffect(() => {
+    const 处理窗口尺寸变化 = () => {
+      设置顶部工作区窄布局(window.innerWidth < 720);
+    };
+    处理窗口尺寸变化();
+    window.addEventListener("resize", 处理窗口尺寸变化);
+    return () => window.removeEventListener("resize", 处理窗口尺寸变化);
+  }, []);
+  React.useEffect(() => {
     if (!当前题目) {
       设置当前题型ID(null); 设置当前难度标签ID(null); 设置知识点决策映射({}); 设置手动附加标签ID列表([]); 设置排除标签ID列表([]); 设置新增标签目标种类ID(null); 设置新增标签错误("");
       return;
@@ -285,9 +496,16 @@ export default function 导入试卷页(props: 导入试卷页Props) {
     设置当前题型ID(当前题目.推荐题型ID ?? 当前题目.可选题型列表[0]?.id ?? null);
     设置当前难度标签ID(null);
     设置知识点决策映射(未解决知识点列表.reduce<Record<string, 知识点本地决策>>((acc, item) => { acc[item.原始知识点文本] = { 目标标签ID: null, 是否抛弃: false }; return acc; }, {}));
-    设置手动附加标签ID列表([]); 设置排除标签ID列表([]); 设置新增标签目标种类ID(null); 设置新增标签错误("");
+    设置手动附加标签ID列表([]); 设置排除标签ID列表([]); 设置新增标签目标种类ID(null); 设置新增标签错误(""); 设置顶部工作区页签("知识点映射"); 设置标签树辅助高亮(false);
   }, [当前题目, 未解决知识点列表]);
   React.useEffect(() => { if (!当前新增标签种类?.是否树形) { 设置新增标签父标签ID(null); } }, [当前新增标签种类]);
+  React.useEffect(() => {
+    if (!标签树辅助高亮) {
+      return undefined;
+    }
+    const 定时器 = window.setTimeout(() => 设置标签树辅助高亮(false), 1800);
+    return () => window.clearTimeout(定时器);
+  }, [标签树辅助高亮]);
 
   const 滚动到页面顶部 = React.useCallback(() => {
     window.requestAnimationFrame(() => {
@@ -295,6 +513,19 @@ export default function 导入试卷页(props: 导入试卷页Props) {
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
   }, []);
+  const 去标签树辅助区 = React.useCallback(() => {
+    if (顶部工作区窄布局) {
+      设置顶部工作区页签("标签树辅助");
+    }
+    设置标签树辅助高亮(true);
+    window.requestAnimationFrame(() => {
+      标签树辅助区Ref.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest",
+      });
+    });
+  }, [顶部工作区窄布局]);
 
   const 创建年份或来源标签 = async (标签种类ID: number, 名称: string) => {
     const 修整名称 = 名称.trim();
@@ -490,7 +721,7 @@ export default function 导入试卷页(props: 导入试卷页Props) {
   const 打开新增标签表单 = (标签种类: 标签种类项) => { 设置新增标签目标种类ID(标签种类.id); 设置新增标签父标签ID(null); 设置新增标签表单(空新增标签表单()); 设置新增标签错误(""); };
   const 关闭新增标签表单 = () => { 设置新增标签目标种类ID(null); 设置新增标签父标签ID(null); 设置新增标签表单(空新增标签表单()); 设置新增标签错误(""); };
   const 更新新增标签表单字段 = (字段: keyof 快速新增标签表单, 值: string) => 设置新增标签表单((current) => ({ ...current, [字段]: 值 }));
-  const 开始新增子标签 = (标签种类: 标签种类项, 标签: 树形标签节点) => { 设置新增标签目标种类ID(标签种类.id); 设置新增标签父标签ID(标签.id); 设置新增标签表单(空新增标签表单()); 设置新增标签错误(""); };
+  const 开始新增子标签 = (标签种类: 标签种类项, 标签: 可映射标签项) => { 设置新增标签目标种类ID(标签种类.id); 设置新增标签父标签ID(标签.id); 设置新增标签表单(空新增标签表单()); 设置新增标签错误(""); };
   const 提交新增映射标签 = async () => {
     if (!当前新增标签种类) { 设置新增标签错误("请选择标签种类。"); return; }
     if (新增标签表单.名称.trim() === "") { 设置新增标签错误("标签名称不能为空。"); return; }
@@ -545,6 +776,146 @@ export default function 导入试卷页(props: 导入试卷页Props) {
       </div>
     );
   };
+
+  const 渲染知识点映射内容 = () => (
+    <>
+      {(当前题目?.知识点列表 ?? []).length === 0 && (
+        <p className={styles.noteText}>当前题目未提取到知识点，可以直接继续检查题目标签。</p>
+      )}
+
+      {知识点总数 > 0 && (
+        <div className={styles.row}>
+          <TagBadge 文本={`未处理 ${本轮未处理知识点列表.length}`} 强调={本轮未处理知识点列表.length > 0} />
+          <TagBadge 文本={`已处理 ${已处理知识点总数}`} />
+        </div>
+      )}
+
+      {本轮未处理知识点列表.length > 0 && (
+        <div className={styles.mappingGroup}>
+          <div className={styles.mappingGroupHeader}>
+            <h3 className={styles.sectionTitle}>未处理知识点</h3>
+            <TagBadge 文本={`${本轮未处理知识点列表.length} 条待处理`} 强调 />
+          </div>
+          {本轮未处理知识点列表.map((item) => {
+            const 决策 = 知识点决策映射[item.原始知识点文本] ?? { 目标标签ID: null, 是否抛弃: false };
+            const 当前已选标签 =
+              决策.目标标签ID === null ? null : props.可映射标签列表.find((tag) => tag.id === 决策.目标标签ID) ?? null;
+            return (
+              <div key={item.原始知识点文本} className={styles.mappingItem}>
+                <p className={styles.noteText}>原始知识点：{item.原始知识点文本}</p>
+                {!决策.是否抛弃 && (
+                  <TagSearchPanel
+                    标题="标签关键词搜索"
+                    提示文本="输入关键字，搜索并选中映射标签；如果还没有这个标签，可去右侧标签树辅助区新增"
+                    标签搜索项列表={props.标签搜索项列表}
+                    已选标签ID列表={决策.目标标签ID === null ? [] : [决策.目标标签ID]}
+                    选择标签={(标签ID) =>
+                      更新知识点决策(item.原始知识点文本, { 目标标签ID: 标签ID, 是否抛弃: false })
+                    }
+                  />
+                )}
+                {当前已选标签 && !决策.是否抛弃 && (
+                  <p className={styles.noteText}>
+                    当前映射：{当前已选标签.标签种类名称} · {当前已选标签.名称}
+                  </p>
+                )}
+                <div className={styles.mappingActions}>
+                  <label className={styles.noteText}>
+                    <input
+                      type="checkbox"
+                      checked={决策.是否抛弃}
+                      onChange={(e) =>
+                        更新知识点决策(item.原始知识点文本, {
+                          是否抛弃: e.target.checked,
+                          目标标签ID: e.target.checked ? null : 决策.目标标签ID,
+                        })
+                      }
+                    />{" "}
+                    抛弃这个知识点
+                  </label>
+                  <button type="button" className={styles.secondaryButton} onClick={去标签树辅助区}>
+                    去标签树
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {已处理知识点总数 > 0 && (
+        <div className={styles.mappingGroup}>
+          <div className={styles.mappingGroupHeader}>
+            <h3 className={styles.sectionTitle}>已处理知识点</h3>
+            <TagBadge 文本={`${已处理知识点总数} 条已处理`} />
+          </div>
+          {已有已处理知识点列表.map((item) => (
+            <div key={`resolved-${item.原始知识点文本}`} className={styles.resolved}>
+              <p className={styles.noteText}>
+                {item.原始知识点文本}：{item.是否抛弃 ? "已设置为抛弃" : `已映射到 ${item.目标标签名称 ?? "未知标签"}`}
+              </p>
+            </div>
+          ))}
+          {本轮已处理知识点列表.map((item) => {
+            const 决策 = 知识点决策映射[item.原始知识点文本] ?? { 目标标签ID: null, 是否抛弃: false };
+            const 当前已选标签 =
+              决策.目标标签ID === null ? null : props.可映射标签列表.find((tag) => tag.id === 决策.目标标签ID) ?? null;
+            return (
+              <div key={`processed-${item.原始知识点文本}`} className={`${styles.mappingItem} ${styles.processedMappingItem}`}>
+                {当前已选标签 && !决策.是否抛弃 ? (
+                  <p className={styles.noteText}>
+                    {item.原始知识点文本}：已映射到 {当前已选标签.标签种类名称} · {当前已选标签.名称}
+                  </p>
+                ) : (
+                  <p className={styles.noteText}>{item.原始知识点文本}：已设置为抛弃</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {知识点均已处理 && 知识点总数 > 0 && (
+        <div className={styles.nextStepHint}>
+          <p className={styles.infoText}>知识点都处理好了。下一步请检查题目标签，再确认录入。</p>
+        </div>
+      )}
+    </>
+  );
+
+  const 渲染标签树辅助工作台 = () => (
+    <div
+      ref={标签树辅助区Ref}
+      className={`${styles.workspacePanel} ${标签树辅助高亮 ? styles.highlightedWorkspacePanel : ""}`}
+    >
+      <div className={styles.workspacePanelHeader}>
+        <div className={styles.column}>
+          <h2 className={styles.sectionTitle}>标签树辅助</h2>
+          <p className={styles.noteText}>这里专门用来补标签和维护标签树，右侧改动会同步到下方正式检查区。</p>
+        </div>
+        <TagBadge 文本={`已选 ${最终标签ID列表.length}`} />
+      </div>
+      <div className={styles.helperHint}>
+        <p className={styles.noteText}>新增标签后会在树里高亮，但不会自动绑定当前知识点，仍需回到左侧手动决定映射。</p>
+      </div>
+      <div className={styles.workspacePanelBody}>
+        <标签工作台
+          key={`import-helper-${当前题目?.试卷题目项ID ?? "empty"}`}
+          模式="导入标签辅助"
+          标签种类列表={可编辑标签种类列表}
+          已选标签ID映射={导入标签检查已选映射}
+          标签搜索项列表={props.标签搜索项列表}
+          获取指定种类标签列表={(标签种类ID) => 按种类展示标签[标签种类ID] ?? []}
+          获取标签显示文本={props.获取标签显示文本}
+          切换标签={切换题目标签}
+          通过搜索选择标签={通过搜索选择题目标签}
+          新增标签={新增导入工作台标签}
+          编辑标签={编辑导入工作台标签}
+          移动标签={props.移动标签}
+        />
+      </div>
+    </div>
+  );
 
   return (
     <div className={styles.root}>
@@ -603,19 +974,25 @@ export default function 导入试卷页(props: 导入试卷页Props) {
                 <div className={styles.column}>
                   {试卷列表.map((试卷) => (
                     <div key={试卷.试卷记录ID} className={styles.card}>
-                      <p className={styles.sectionTitle}>{试卷.显示名称}</p>
+                      <div className={styles.between}>
+                        <p className={styles.sectionTitle}>{试卷.显示名称}</p>
+                        <TagBadge 文本={`状态：${试卷.状态}`} 强调={试卷.状态 !== "已完成"} />
+                      </div>
                       <div className={styles.row}>
                         <TagBadge 文本={`年份：${试卷.年份标签名称}`} />
                         <TagBadge 文本={`来源：${试卷.来源标签名称}`} />
                         <TagBadge 文本={`进度：${试卷.已确认数}/${试卷.总题数}`} 强调 />
                         <TagBadge 文本={`已跳过：${试卷.已跳过数}`} />
                       </div>
+                      <p className={styles.noteText}>
+                        待处理：{Math.max(0, 试卷.总题数 - 试卷.已确认数 - 试卷.已跳过数)} 道
+                      </p>
                       <div className={styles.row}>
                         <button type="button" className={styles.secondaryButton} onClick={() => 下载试卷(试卷.试卷记录ID)}>
                           下载试卷
                         </button>
                         {试卷.状态 !== "已完成" && (
-                          <button type="button" className={styles.secondaryButton} onClick={() => void 继续导入试卷(试卷)}>
+                          <button type="button" className={styles.button} onClick={() => void 继续导入试卷(试卷)}>
                             继续导入
                           </button>
                         )}
@@ -634,21 +1011,67 @@ export default function 导入试卷页(props: 导入试卷页Props) {
               <div className={styles.between}>
                 <div className={styles.column}>
                   <h2 className={styles.sectionTitle}>逐题确认</h2>
-                  <p className={styles.noteText}>当前题号：{当前题目.题号文本 || 当前题目.草稿题序号}，剩余待处理：{当前题目.剩余数量} 道</p>
+                  <p className={styles.noteText}>当前题号：{当前题目.题号文本 || 当前题目.草稿题序号}</p>
                 </div>
-                <button type="button" className={styles.secondaryButton} onClick={退出当前导入}>退出</button>
+                <button type="button" className={styles.secondaryButton} onClick={退出当前导入} disabled={正在确认 || 正在跳过}>退出</button>
+              </div>
+              <div className={styles.progressPanel}>
+                <div className={styles.progressMeta}>
+                  <TagBadge 文本={`当前第 ${当前题序号}/${当前试卷总题数} 题`} 强调 />
+                  <TagBadge 文本={`已处理 ${已处理题目数量}`} />
+                  <TagBadge 文本={`剩余 ${当前题目.剩余数量}`} />
+                </div>
+                <div className={styles.progressTrack}>
+                  <div className={styles.progressFill} style={{ width: `${当前进度百分比}%` }} />
+                </div>
+                <p className={styles.noteText}>
+                  已确认 {当前试卷记录?.已确认数 ?? 0} 道，已跳过 {当前试卷记录?.已跳过数 ?? 0} 道。
+                </p>
               </div>
               {页面错误 !== "" && <p className={styles.errorText}>{页面错误}</p>}
-              <div className={styles.section}>
-                <h2 className={styles.sectionTitle}>知识点映射</h2>
-                {(当前题目.知识点列表 ?? []).length === 0 && <p className={styles.noteText}>当前题目未提取到知识点。</p>}
-                {(当前题目.知识点列表 ?? []).filter((item) => item.是否已解决).map((item) => <div key={`resolved-${item.原始知识点文本}`} className={styles.resolved}><p className={styles.noteText}>{item.原始知识点文本}：{item.是否抛弃 ? "已设置为抛弃" : `已映射到 ${item.目标标签名称 ?? "未知标签"}`}</p></div>)}
-                {未解决知识点列表.map((item) => {
-                  const 决策 = 知识点决策映射[item.原始知识点文本] ?? { 目标标签ID: null, 是否抛弃: false };
-                  const 当前已选标签 = 决策.目标标签ID === null ? null : props.可映射标签列表.find((tag) => tag.id === 决策.目标标签ID) ?? null;
-                  const 已处理 = 决策.是否抛弃 || 决策.目标标签ID !== null;
-                  return <div key={item.原始知识点文本} className={`${styles.mappingItem} ${已处理 ? styles.processedMappingItem : ""}`}><p className={styles.noteText}>原始知识点：{item.原始知识点文本}</p>{!决策.是否抛弃 && <TagSearchPanel 标题="标签关键词搜索" 提示文本="输入关键字，搜索并选中映射标签；如果还没有这个标签，可在下方“题目标签检查”里新增" 标签搜索项列表={props.标签搜索项列表} 已选标签ID列表={决策.目标标签ID === null ? [] : [决策.目标标签ID]} 选择标签={(标签ID) => 更新知识点决策(item.原始知识点文本, { 目标标签ID: 标签ID, 是否抛弃: false })} />}{当前已选标签 && !决策.是否抛弃 && <p className={styles.noteText}>当前映射：{当前已选标签.标签种类名称} · {当前已选标签.名称}</p>}{决策.是否抛弃 && <p className={styles.noteText}>当前处理：已设置为抛弃</p>}<label className={styles.noteText}><input type="checkbox" checked={决策.是否抛弃} onChange={(e) => 更新知识点决策(item.原始知识点文本, { 是否抛弃: e.target.checked, 目标标签ID: e.target.checked ? null : 决策.目标标签ID })} /> 抛弃这个知识点</label></div>;
-                })}
+              <div className={styles.dualWorkspaceSection}>
+                {顶部工作区窄布局 ? (
+                  <>
+                    <div className={styles.workspaceTabs}>
+                      <button
+                        type="button"
+                        className={`${styles.workspaceTabButton} ${顶部工作区页签 === "知识点映射" ? styles.activeWorkspaceTabButton : ""}`}
+                        onClick={() => 设置顶部工作区页签("知识点映射")}
+                      >
+                        知识点映射
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.workspaceTabButton} ${顶部工作区页签 === "标签树辅助" ? styles.activeWorkspaceTabButton : ""}`}
+                        onClick={() => 设置顶部工作区页签("标签树辅助")}
+                      >
+                        标签树辅助
+                      </button>
+                    </div>
+                    {顶部工作区页签 === "知识点映射" ? (
+                      <div className={styles.workspacePanel}>
+                        <div className={styles.workspacePanelHeader}>
+                          <h2 className={styles.sectionTitle}>知识点映射</h2>
+                          {知识点总数 > 0 && <TagBadge 文本={`共 ${知识点总数} 条`} />}
+                        </div>
+                        <div className={styles.workspacePanelBody}>{渲染知识点映射内容()}</div>
+                      </div>
+                    ) : (
+                      渲染标签树辅助工作台()
+                    )}
+                  </>
+                ) : (
+                  <div className={styles.workspaceSplit}>
+                    <div className={styles.workspacePanel}>
+                      <div className={styles.workspacePanelHeader}>
+                        <h2 className={styles.sectionTitle}>知识点映射</h2>
+                        {知识点总数 > 0 && <TagBadge 文本={`共 ${知识点总数} 条`} />}
+                      </div>
+                      <div className={styles.workspacePanelBody}>{渲染知识点映射内容()}</div>
+                    </div>
+                    {渲染标签树辅助工作台()}
+                  </div>
+                )}
               </div>
               <div className={styles.section}><h2 className={styles.sectionTitle}>题目预览</h2>{当前题目.题目摘要 !== "" && <p className={styles.noteText}>题目摘要：{当前题目.题目摘要}</p>}<div className={styles.preview} dangerouslySetInnerHTML={{ __html: 当前题目.题目预览Html }} /></div>
               <div className={styles.section}><h2 className={styles.sectionTitle}>推荐题型</h2><p className={styles.noteText}>推荐结果：{当前题目.推荐题型名称 ?? "暂未给出推荐"}。置信度：{当前题目.置信度.toFixed(2)}</p><p className={styles.noteText}>识别说明：{当前题目.识别说明}</p></div>
@@ -671,28 +1094,33 @@ export default function 导入试卷页(props: 导入试卷页Props) {
                   空提示文本="当前题库还没有难度标签。"
                 />
               </div>
-              <div className={styles.section}>
+              <div className={`${styles.section} ${知识点均已处理 ? styles.highlightedSection : ""}`}>
                 <h2 className={styles.sectionTitle}>题目标签检查</h2>
                 <div className={styles.row}>{固定标签ID列表.map((id) => { const year = props.年份标签列表.find((tag) => tag.id === id); const source = props.来源标签列表.find((tag) => tag.id === id); const name = year?.名称 ?? source?.名称; return name ? <TagBadge key={`fixed-${id}`} 文本={name} 强调 /> : null; })}{当前难度标签ID !== null && <TagBadge 文本={`难度：${props.难度标签列表.find((tag) => tag.id === 当前难度标签ID)?.名称 ?? "未命名"}`} 强调 />}</div>
                 <p className={styles.noteText}>系统会先根据年份、来源、难度和知识点映射预填标签，这里再做最终人工检查。</p>
+                {知识点均已处理 && <p className={styles.infoText}>下一步：确认最终标签是否合理，然后录入题库。</p>}
                 <标签工作台
                   模式="导入标签检查"
                   标签种类列表={可编辑标签种类列表}
                   已选标签ID映射={导入标签检查已选映射}
                   标签搜索项列表={props.标签搜索项列表}
-                  获取指定种类标签列表={(标签种类ID) =>
-                    标签种类字典.get(标签种类ID)?.是否树形
-                      ? (按种类树[标签种类ID] ?? [])
-                      : (按种类标签[标签种类ID] ?? [])
-                  }
-                  获取标签显示文本={(标签) => 标签.名称}
+                  获取指定种类标签列表={(标签种类ID) => 按种类展示标签[标签种类ID] ?? []}
+                  获取标签显示文本={props.获取标签显示文本}
                   切换标签={切换题目标签}
                   通过搜索选择标签={通过搜索选择题目标签}
                   新增标签={新增导入工作台标签}
                   编辑标签={编辑导入工作台标签}
+                  移动标签={props.移动标签}
                 />
               </div>
-              <div className={styles.row}><button type="button" className={styles.button} onClick={() => void 确认并下一题()} disabled={!可确认 || 正在确认}>{正在确认 ? "正在确认..." : "确认并下一题"}</button><button type="button" className={styles.secondaryButton} onClick={() => void 跳过当前题()} disabled={正在跳过}>{正在跳过 ? "正在跳过..." : "跳过"}</button><button type="button" className={styles.secondaryButton} onClick={退出当前导入}>退出</button></div>
+              <div className={styles.actionBar}>
+                <p className={知识点均已处理 ? styles.infoText : styles.noteText}>{操作区提示文本}</p>
+                <div className={styles.row}>
+                  <button type="button" className={styles.button} onClick={() => void 确认并下一题()} disabled={!可确认 || 正在确认 || 正在跳过}>{正在确认 ? "正在保存..." : "确认并下一题"}</button>
+                  <button type="button" className={styles.secondaryButton} onClick={() => void 跳过当前题()} disabled={正在跳过 || 正在确认}>{正在跳过 ? "正在跳过..." : "跳过"}</button>
+                  <button type="button" className={styles.secondaryButton} onClick={退出当前导入} disabled={正在确认 || 正在跳过}>退出</button>
+                </div>
+              </div>
             </div>
           ) : (
             <div className={styles.section}><h2 className={styles.sectionTitle}>导入完成</h2><p className={styles.successText}>{完成提示 || "当前试卷已经全部处理完成。"}</p><div className={styles.row}><button type="button" className={styles.secondaryButton} onClick={退出当前导入}>返回试卷列表</button></div></div>
