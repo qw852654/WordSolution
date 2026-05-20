@@ -14,6 +14,7 @@ namespace 题库本地服务.题目模块
     {
         private readonly 录入题目用例 _录入题目用例;
         private readonly 录入Ooxml题目用例 _录入Ooxml题目用例;
+        private readonly 预览Ooxml题目用例 _预览Ooxml题目用例;
         private readonly 根据ID获取题目详情用例 _根据ID获取题目详情用例;
         private readonly 获取题目文件Base64用例 _获取题目文件Base64用例;
         private readonly 获取题目预览HTML用例 _获取题目预览HTML用例;
@@ -25,6 +26,7 @@ namespace 题库本地服务.题目模块
         public 题目控制器(
             录入题目用例 录入题目用例,
             录入Ooxml题目用例 录入Ooxml题目用例,
+            预览Ooxml题目用例 预览Ooxml题目用例,
             根据ID获取题目详情用例 根据ID获取题目详情用例,
             获取题目文件Base64用例 获取题目文件Base64用例,
             获取题目预览HTML用例 获取题目预览HTML用例,
@@ -35,6 +37,7 @@ namespace 题库本地服务.题目模块
         {
             _录入题目用例 = 录入题目用例;
             _录入Ooxml题目用例 = 录入Ooxml题目用例;
+            _预览Ooxml题目用例 = 预览Ooxml题目用例;
             _根据ID获取题目详情用例 = 根据ID获取题目详情用例;
             _获取题目文件Base64用例 = 获取题目文件Base64用例;
             _获取题目预览HTML用例 = 获取题目预览HTML用例;
@@ -56,6 +59,13 @@ namespace 题库本地服务.题目模块
         {
             var 新题目 = _录入Ooxml题目用例.执行(请求);
             return CreatedAtAction(nameof(根据ID获取题目详情), new { 题库键 = RouteData.Values["题库键"], id = 新题目.Id }, 新题目);
+        }
+
+        [HttpPost("ooxml/预览")]
+        public ActionResult<预览Ooxml题目的结果> 预览Ooxml题目([FromBody] 预览Ooxml题目的请求 请求)
+        {
+            var 结果 = _预览Ooxml题目用例.执行(请求);
+            return Ok(结果);
         }
 
         [HttpGet("{id:int}")]

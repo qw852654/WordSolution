@@ -10,6 +10,7 @@ import 导入试卷页 from "./导入试卷页";
 import TagSearchPanel from "./TagSearchPanel";
 import TagSelectionTree from "./TagSelectionTree";
 import 标签工作台 from "./标签工作台";
+import 题目录入确认面板 from "./题目录入确认面板";
 import type { 标签搜索项 } from "../search/tagSearch";
 import { 获取当前题目内容控件上下文 } from "../word/题目内容控件上下文";
 
@@ -81,6 +82,14 @@ interface 题型识别页题目项 {
   置信度: number;
   可选题型列表: 题型定义项[];
   剩余未设置题型数量: number;
+}
+
+interface 录题预览结果项 {
+  预览Html: string;
+  推荐题型ID?: number | null;
+  推荐题型名称?: string | null;
+  识别说明: string;
+  置信度: number;
 }
 
 interface 标签新增表单 {
@@ -473,6 +482,11 @@ function 构建内容控件标题(难度名称?: string, 描述?: string | null)
   return "题目";
 }
 
+function 构建题目内容控件标题(难度名称?: string) {
+  const 修整后的难度名称 = 难度名称?.trim() ?? "";
+  return 修整后的难度名称 !== "" ? `题目内容｜${修整后的难度名称}` : "题目内容";
+}
+
 export default function App(props: AppProps) {
   const styles = useStyles();
   const [当前页面, 设置当前页面] = React.useState<页面名称>(() => {
@@ -495,10 +509,13 @@ export default function App(props: AppProps) {
   const [录题标签选择, 设置录题标签选择] = React.useState<标签选择映射>({});
   const [录题题型ID, 设置录题题型ID] = React.useState<number | null>(null);
   const [连续录入已开启, 设置连续录入已开启] = React.useState(true);
+  const [正在识别录题预览, 设置正在识别录题预览] = React.useState(false);
   const [正在录题, 设置正在录题] = React.useState(false);
   const [录题错误, 设置录题错误] = React.useState("");
   const [录题成功提示, 设置录题成功提示] = React.useState("");
   const [最近录入题目ID, 设置最近录入题目ID] = React.useState<number | null>(null);
+  const [录题预览结果, 设置录题预览结果] = React.useState<录题预览结果项 | null>(null);
+  const [录题预览快照Ooxml, 设置录题预览快照Ooxml] = React.useState<string | null>(null);
   const [正在更新题目, 设置正在更新题目] = React.useState(false);
   const [更新题目错误, 设置更新题目错误] = React.useState("");
   const [更新题目成功提示, 设置更新题目成功提示] = React.useState("");
@@ -511,10 +528,12 @@ export default function App(props: AppProps) {
   const [已执行筛题, 设置已执行筛题] = React.useState(false);
   const [筛题结果卡片列表, 设置筛题结果卡片列表] = React.useState<题目卡片项[]>([]);
   const [已选题目ID列表, 设置已选题目ID列表] = React.useState<number[]>([]);
+  const [已插入题目ID列表, 设置已插入题目ID列表] = React.useState<number[]>([]);
   const [删除确认状态, 设置删除确认状态] = React.useState<删除确认状态 | null>(null);
   const [正在删除题目ID, 设置正在删除题目ID] = React.useState<number | null>(null);
   const [删除题目错误, 设置删除题目错误] = React.useState("");
   const [正在插题, 设置正在插题] = React.useState(false);
+  const [正在插入单题ID, 设置正在插入单题ID] = React.useState<number | null>(null);
   const [插题错误, 设置插题错误] = React.useState("");
   const [插题成功提示, 设置插题成功提示] = React.useState("");
   const [题型识别当前题目, 设置题型识别当前题目] = React.useState<题型识别页题目项 | null>(null);
@@ -558,6 +577,13 @@ export default function App(props: AppProps) {
   const 当前结果已选题目数量 = React.useMemo(
     () => 已选题目ID列表.filter((题目ID) => 当前结果题目ID集合.has(题目ID)).length,
     [已选题目ID列表, 当前结果题目ID集合]
+  );
+  const 当前结果可插入已选题目数量 = React.useMemo(
+    () =>
+      已选题目ID列表.filter(
+        (题目ID) => 当前结果题目ID集合.has(题目ID) && !已插入题目ID列表.includes(题目ID)
+      ).length,
+    [已选题目ID列表, 当前结果题目ID集合, 已插入题目ID列表]
   );
   const 当前结果题目总数 = 当前结果题目ID列表.length;
   const 当前结果已全选 = 当前结果题目总数 > 0 && 当前结果已选题目数量 === 当前结果题目总数;
@@ -684,9 +710,12 @@ export default function App(props: AppProps) {
     设置录题题型ID(null);
     设置录题描述("");
     设置连续录入已开启(true);
+    设置正在识别录题预览(false);
     设置录题错误("");
     设置录题成功提示("");
     设置最近录入题目ID(null);
+    设置录题预览结果(null);
+    设置录题预览快照Ooxml(null);
     设置正在更新题目(false);
     设置更新题目错误("");
     设置更新题目成功提示("");
@@ -702,6 +731,7 @@ export default function App(props: AppProps) {
     设置删除题目错误("");
     设置插题错误("");
     设置插题成功提示("");
+    设置已插入题目ID列表([]);
     设置题型识别当前题目(null);
     设置题型识别当前选择ID(null);
     设置题型识别错误("");
@@ -721,11 +751,16 @@ export default function App(props: AppProps) {
       设置最近录入题目ID(null);
       设置最近更新题目ID(null);
       设置更新题目按钮失败提示("");
+      设置录题预览结果(null);
+      设置录题预览快照Ooxml(null);
+      设置录题错误("");
+      设置录题成功提示("");
     }
     if (当前页面 !== "筛题页") {
       设置删除确认状态(null);
       设置正在删除题目ID(null);
       设置删除题目错误("");
+      设置已插入题目ID列表([]);
     }
     上一个页面Ref.current = 当前页面;
   }, [当前页面]);
@@ -900,15 +935,56 @@ export default function App(props: AppProps) {
     return 结果列表;
   }, [正式标签种类列表, 获取指定种类标签列表, 获取标签显示文本]);
 
+  const 录题工作台标签种类列表 = React.useMemo(
+    () => 正式标签种类列表.filter((标签种类) => 标签种类.id !== 系统标签种类.难度),
+    [正式标签种类列表]
+  );
+
+  const 录题工作台标签搜索项列表 = React.useMemo(
+    () => 正式标签搜索项列表.filter((标签搜索项) => 标签搜索项.标签种类ID !== 系统标签种类.难度),
+    [正式标签搜索项列表]
+  );
+
+  const 录题难度选项列表 = React.useMemo(
+    () =>
+      获取指定种类标签列表(系统标签种类.难度)
+        .filter((标签) => 标签.isEnabled)
+        .map((标签) => ({ id: 标签.id, 名称: 标签.名称 })),
+    [获取指定种类标签列表]
+  );
+
+  const 当前录题难度ID = React.useMemo(
+    () => 录题标签选择[系统标签种类.难度]?.[0] ?? null,
+    [录题标签选择]
+  );
+
+  const 当前录题难度名称 = React.useMemo(() => {
+    if (当前录题难度ID === null) {
+      return undefined;
+    }
+
+    const 难度标签 = 扁平标签字典.get(当前录题难度ID);
+    return 难度标签 ? 获取标签显示文本(难度标签) : undefined;
+  }, [当前录题难度ID, 扁平标签字典, 获取标签显示文本]);
+
+  const 当前录题难度数值 = React.useMemo(() => {
+    if (当前录题难度ID === null) {
+      return null;
+    }
+
+    const 难度标签 = 扁平标签字典.get(当前录题难度ID);
+    return typeof 难度标签?.numericValue === "number" ? 难度标签.numericValue : null;
+  }, [当前录题难度ID, 扁平标签字典]);
+
   const 录题按钮文本 = React.useMemo(() => {
-    if (正在录题) {
-      return "正在录题...";
+    if (正在识别录题预览) {
+      return "正在识别...";
     }
-    if (最近录入题目ID !== null) {
-      return `已录入，题目ID：${最近录入题目ID}`;
+    if (录题预览结果 !== null) {
+      return "已生成预览";
     }
-    return "从当前选区录入";
-  }, [正在录题, 最近录入题目ID]);
+    return "识别并预览";
+  }, [正在识别录题预览, 录题预览结果]);
 
   const 更新题目按钮文本 = React.useMemo(() => {
     if (正在更新题目) {
@@ -1061,6 +1137,27 @@ export default function App(props: AppProps) {
     设置最近录入题目ID(null);
     设置录题题型ID(题型ID);
   }, []);
+
+  const 选择录题难度 = React.useCallback(
+    (标签ID: number | null) => {
+      const 难度标签种类 = 标签种类字典.get(系统标签种类.难度);
+      if (!难度标签种类) {
+        return;
+      }
+
+      设置最近录入题目ID(null);
+      设置录题标签选择((当前映射) => {
+        if (标签ID === null) {
+          const 新映射 = { ...当前映射 };
+          delete 新映射[系统标签种类.难度];
+          return 新映射;
+        }
+
+        return 选择指定标签(当前映射, 难度标签种类, 标签ID);
+      });
+    },
+    [标签种类字典]
+  );
 
   const 打开快速新增表单 = React.useCallback((标签种类: 标签种类项, 父标签: 标签项 | null = null) => {
     设置快速新增目标({
@@ -1309,8 +1406,64 @@ export default function App(props: AppProps) {
     void 加载下一道待识别题型题目();
   }, [当前页面, 加载下一道待识别题型题目]);
 
+  const 返回录题编辑 = React.useCallback(() => {
+    设置录题预览结果(null);
+    设置录题预览快照Ooxml(null);
+    设置录题错误("");
+  }, []);
+
+  const 识别并预览当前选区题目 = async () => {
+    try {
+      设置正在识别录题预览(true);
+      设置录题错误("");
+      设置录题成功提示("");
+      设置最近录入题目ID(null);
+      设置更新题目错误("");
+      设置更新题目成功提示("");
+      设置最近更新题目ID(null);
+
+      const Ooxml内容 = await 获取当前选区Ooxml();
+      const 响应 = await fetch(构建题库接口路径(当前题库键, "/题目/ooxml/预览"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          Ooxml内容,
+        }),
+      });
+
+      if (!响应.ok) {
+        const 错误文本 = await 响应.text();
+        throw new Error(错误文本 || "识别并预览失败。");
+      }
+
+      const 结果 = (await 响应.json()) as 录题预览结果项;
+      设置录题预览快照Ooxml(Ooxml内容);
+      设置录题预览结果(结果);
+      if (结果.推荐题型ID) {
+        设置录题题型ID(结果.推荐题型ID);
+      }
+    } catch (error) {
+      console.error(error);
+      设置录题预览结果(null);
+      设置录题预览快照Ooxml(null);
+      设置录题错误(
+        error instanceof Error && error.message.trim() !== ""
+          ? error.message
+          : "识别并预览失败。"
+      );
+    } finally {
+      设置正在识别录题预览(false);
+    }
+  };
+
   const 录入当前选区题目 = async () => {
     const 已选标签ID列表 = Object.values(录题标签选择).flat();
+    if (!录题预览结果 || !录题预览快照Ooxml) {
+      设置录题错误("请先识别并预览当前选区内容。");
+      设置录题成功提示("");
+      设置最近录入题目ID(null);
+      return;
+    }
     if (录题题型ID === null) {
       设置录题错误("请选择题型。");
       设置录题成功提示("");
@@ -1331,7 +1484,6 @@ export default function App(props: AppProps) {
       设置更新题目错误("");
       设置更新题目成功提示("");
       设置最近更新题目ID(null);
-      const Ooxml内容 = await 获取当前选区Ooxml();
       const 响应 = await fetch(构建题库接口路径(当前题库键, "/题目/ooxml"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1339,7 +1491,7 @@ export default function App(props: AppProps) {
           Description: 录题描述.trim() === "" ? null : 录题描述.trim(),
           题型ID: 录题题型ID,
           标签ID列表: 已选标签ID列表,
-          Ooxml内容,
+          Ooxml内容: 录题预览快照Ooxml,
         }),
       });
       if (!响应.ok) {
@@ -1347,13 +1499,44 @@ export default function App(props: AppProps) {
         throw new Error(错误文本 || "录题失败。");
       }
       const 新题目 = (await 响应.json()) as { id: number };
+      let 插回文档错误 = "";
+      try {
+        const 文件响应 = await fetch(构建题库接口路径(当前题库键, `/题目/${新题目.id}/文件base64`));
+        if (!文件响应.ok) {
+          throw new Error(`题目 ${新题目.id} 的原文件读取失败。`);
+        }
+        await 插入题目到当前文档([
+          {
+            题目ID: 新题目.id,
+            文件Base64: await 文件响应.text(),
+            标题: 录题描述.trim() === "" ? "题目" : 录题描述.trim(),
+            题目内容标题: 构建题目内容控件标题(当前录题难度名称),
+            难度数值: 当前录题难度数值,
+            是否解答题: 获取题型名称(录题题型ID) === "解答题",
+          },
+        ]);
+      } catch (插回错误) {
+        console.error(插回错误);
+        插回文档错误 =
+          插回错误 instanceof Error && 插回错误.message.trim() !== ""
+            ? 插回错误.message
+            : "插回文档失败。";
+      }
+
       设置录题描述("");
+      设置录题预览结果(null);
+      设置录题预览快照Ooxml(null);
       if (!连续录入已开启) {
         设置录题标签选择({});
         设置录题题型ID(null);
       }
       设置最近录入题目ID(新题目.id);
-      设置录题成功提示(`录题成功，题目ID：${新题目.id}`);
+      if (插回文档错误 !== "") {
+        设置录题成功提示(`题目已录入题库，题目ID：${新题目.id}`);
+        设置录题错误(`但插回文档失败：${插回文档错误}`);
+      } else {
+        设置录题成功提示(`录题并插入成功，题目ID：${新题目.id}`);
+      }
     } catch (error) {
       console.error(error);
       设置录题错误(
@@ -1460,6 +1643,7 @@ export default function App(props: AppProps) {
       设置删除题目错误("");
       设置插题错误("");
       设置插题成功提示("");
+      设置已插入题目ID列表([]);
       const 响应 = await fetch(构建题库接口路径(当前题库键, "/题目/筛选"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1595,6 +1779,62 @@ export default function App(props: AppProps) {
     await 删除当前题目(题目ID);
   };
 
+  const 构建待插入题目 = React.useCallback(
+    async (题目ID: number, 题目卡片字典: Map<number, 题目卡片项>) => {
+      const 响应 = await fetch(构建题库接口路径(当前题库键, `/题目/${题目ID}/文件base64`));
+      if (!响应.ok) {
+        throw new Error(`题目 ${题目ID} 的原文件读取失败。`);
+      }
+
+      const 当前题目卡片 = 题目卡片字典.get(题目ID);
+      const 难度标签 = 当前题目卡片?.标签列表.find(
+        (标签) => 标签.标签种类ID === 系统标签种类.难度
+      );
+
+      return {
+        题目ID,
+        文件Base64: await 响应.text(),
+        标题: 当前题目卡片?.标题 ?? "题目",
+        题目内容标题: 构建题目内容控件标题(
+          难度标签 ? 获取标签显示文本(难度标签) : undefined
+        ),
+        难度数值: typeof 难度标签?.numericValue === "number" ? 难度标签.numericValue : null,
+        是否解答题: 当前题目卡片?.题型名称 === "解答题",
+      };
+    },
+    [当前题库键, 获取标签显示文本]
+  );
+
+  const 执行插题 = React.useCallback(
+    async (题目ID列表: number[], 完成后清空已选: boolean) => {
+      const 待处理题目ID列表 = 题目ID列表.filter((题目ID) => !已插入题目ID列表.includes(题目ID));
+      if (待处理题目ID列表.length === 0) {
+        throw new Error("这些题目已经插入过了。");
+      }
+
+      const 题目卡片字典 = new Map(
+        筛题结果卡片列表.map((题目卡片) => [题目卡片.id, 题目卡片] as const)
+      );
+      const 待插入题目列表 = await Promise.all(
+        待处理题目ID列表.map((题目ID) => 构建待插入题目(题目ID, 题目卡片字典))
+      );
+
+      await 插入题目到当前文档(待插入题目列表);
+      设置已插入题目ID列表((当前列表) =>
+        Array.from(new Set([...当前列表, ...待处理题目ID列表]))
+      );
+
+      if (完成后清空已选) {
+        设置已选题目ID列表((当前列表) =>
+          当前列表.filter((题目ID) => !待处理题目ID列表.includes(题目ID))
+        );
+      }
+
+      return 待处理题目ID列表.length;
+    },
+    [已插入题目ID列表, 构建待插入题目, 筛题结果卡片列表]
+  );
+
   const 插入已选题目 = async () => {
     if (已选题目ID列表.length === 0) {
       设置插题错误("请先选择至少一道题目。");
@@ -1603,28 +1843,12 @@ export default function App(props: AppProps) {
     }
     try {
       设置正在插题(true);
+      设置正在插入单题ID(null);
       设置插题错误("");
       设置插题成功提示("");
       设置删除题目错误("");
-      const 题目卡片字典 = new Map(
-        筛题结果卡片列表.map((题目卡片) => [题目卡片.id, 题目卡片] as const)
-      );
-      const 待插入题目列表 = await Promise.all(
-        已选题目ID列表.map(async (题目ID) => {
-          const 响应 = await fetch(构建题库接口路径(当前题库键, `/题目/${题目ID}/文件base64`));
-          if (!响应.ok) {
-            throw new Error(`题目 ${题目ID} 的原文件读取失败。`);
-          }
-          return {
-            题目ID,
-            文件Base64: await 响应.text(),
-            标题: 题目卡片字典.get(题目ID)?.标题 ?? "题目",
-          };
-        })
-      );
-      await 插入题目到当前文档(待插入题目列表);
-      设置已选题目ID列表([]);
-      设置插题成功提示(`已成功插入 ${待插入题目列表.length} 道题目。`);
+      const 已插入数量 = await 执行插题(已选题目ID列表, true);
+      设置插题成功提示(`已成功插入 ${已插入数量} 道题目。`);
     } catch (error) {
       console.error(error);
       设置插题错误(
@@ -1633,6 +1857,28 @@ export default function App(props: AppProps) {
       设置插题成功提示("");
     } finally {
       设置正在插题(false);
+      设置正在插入单题ID(null);
+    }
+  };
+
+  const 插入单个题目 = async (题目ID: number) => {
+    try {
+      设置正在插题(true);
+      设置正在插入单题ID(题目ID);
+      设置插题错误("");
+      设置插题成功提示("");
+      设置删除题目错误("");
+      await 执行插题([题目ID], false);
+      设置插题成功提示(`已成功插入题目 ${题目ID}。`);
+    } catch (error) {
+      console.error(error);
+      设置插题错误(
+        error instanceof Error && error.message.trim() !== "" ? error.message : "插入题目失败。"
+      );
+      设置插题成功提示("");
+    } finally {
+      设置正在插题(false);
+      设置正在插入单题ID(null);
     }
   };
 
@@ -2159,135 +2405,181 @@ export default function App(props: AppProps) {
     </div>
   );
 
-  const 渲染录题页 = () => (
-    <div className={styles.root}>
-      <div className={styles.container}>
-        <button type="button" className={styles.backButton} onClick={() => 设置当前页面("首页")}>
-          返回首页
-        </button>
-        <div className={styles.bankBanner}>当前题库：{当前题库前端显示名称}</div>
-        <h1 className={styles.title}>录入题目</h1>
-        <p className={styles.subtitle}>
-          先在 Word 中选中题目内容，再填写描述、选择题型和标签，然后从当前选区录入。
-        </p>
-        <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>题目描述</h2>
-          <textarea
-            className={styles.textArea}
-            value={录题描述}
-            onChange={(事件) => 设置录题描述(事件.target.value)}
-          />
-        </div>
-        <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>题型</h2>
-          {渲染题型选择(录题题型ID, 选择录题题型)}
-        </div>
-        <div className={styles.section}>
-          <div className={styles.selectedTagsCardHeader}>
-            <h2 className={styles.sectionTitle}>当前选择</h2>
-            <div className={styles.selectedTagsCardActions}>
-              <ToggleButton
-                checked={连续录入已开启}
-                appearance="outline"
-                className={styles.continuousToggle}
-                style={
-                  连续录入已开启
-                    ? {
-                        borderColor: "#c9952e",
-                        backgroundColor: "#fde8b2",
-                        color: "#5c3b00",
-                        boxShadow: "0 4px 10px rgba(160, 112, 9, 0.16)",
-                        fontWeight: 700,
-                      }
-                    : {
-                        borderColor: "#d8cfc0",
-                        backgroundColor: "#ffffff",
-                        color: "#5a544a",
-                        boxShadow: "none",
-                      }
-                }
-                onClick={() => 设置连续录入已开启((当前值) => !当前值)}
-              >
-                连续录入
-              </ToggleButton>
-              <button
-                type="button"
-                className={`${styles.button} ${styles.selectedTagsRecordButton}`}
-                onClick={录入当前选区题目}
-                disabled={正在录题 || 正在更新题目}
-              >
-                {录题按钮文本}
-              </button>
-              <button
-                type="button"
-                className={`${styles.secondaryButton} ${styles.selectedTagsRecordButton}`}
-                onClick={更新当前题目}
-                disabled={正在录题 || 正在更新题目}
-              >
-                {更新题目按钮文本}
-              </button>
-            </div>
-          </div>
-          <div className={styles.column}>
-            <div className={styles.column}>
-              <span className={styles.label}>当前题型</span>
-              {录题题型ID === null ? (
-                <p className={styles.noteText}>当前还没有选择题型。</p>
-              ) : (
-                <div className={styles.chipRow}>
-                  <TagBadge 文本={获取题型名称(录题题型ID)} 强调 onClick={() => 设置录题题型ID(null)} />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className={styles.section}>
-          <标签工作台
-            模式="录题"
-            标签种类列表={正式标签种类列表.map((标签种类) => ({
-              id: 标签种类.id,
-              名称: 标签种类.名称,
-              是否树形: 标签种类.是否树形,
-              是否允许多选: 标签种类.是否允许多选,
-            }))}
-            已选标签ID映射={录题标签选择}
-            标签搜索项列表={正式标签搜索项列表}
-            获取指定种类标签列表={(标签种类ID) => 获取指定种类标签列表(标签种类ID)}
-            获取标签显示文本={获取标签显示文本}
-            切换标签={切换录题标签}
-          通过搜索选择标签={通过搜索选择录题标签}
-          新增标签={新增录题工作台标签}
-          编辑标签={编辑录题工作台标签}
-          移动标签={移动当前题库标签}
-        />
-      </div>
-        <div className={styles.section}>
-          {录题错误 !== "" && <p className={styles.errorText}>{录题错误}</p>}
-          {录题成功提示 !== "" && <p className={styles.successText}>{录题成功提示}</p>}
-          {更新题目错误 !== "" && <p className={styles.errorText}>{更新题目错误}</p>}
-          {更新题目成功提示 !== "" && <p className={styles.successText}>{更新题目成功提示}</p>}
-          <div className={styles.row}>
+  const 渲染录题页 = () => {
+    const 录题标签工作台 = (
+      <标签工作台
+        模式="录题"
+        标签种类列表={录题工作台标签种类列表.map((标签种类) => ({
+          id: 标签种类.id,
+          名称: 标签种类.名称,
+          是否树形: 标签种类.是否树形,
+          是否允许多选: 标签种类.是否允许多选,
+        }))}
+        已选标签ID映射={录题标签选择}
+        标签搜索项列表={录题工作台标签搜索项列表}
+        获取指定种类标签列表={(标签种类ID) => 获取指定种类标签列表(标签种类ID)}
+        获取标签显示文本={获取标签显示文本}
+        切换标签={切换录题标签}
+        通过搜索选择标签={通过搜索选择录题标签}
+        新增标签={新增录题工作台标签}
+        编辑标签={编辑录题工作台标签}
+        移动标签={移动当前题库标签}
+      />
+    );
+
+    const 当前选择区 = (
+      <div className={styles.section}>
+        <div className={styles.selectedTagsCardHeader}>
+          <h2 className={styles.sectionTitle}>当前选择</h2>
+          <div className={styles.selectedTagsCardActions}>
+            <ToggleButton
+              checked={连续录入已开启}
+              appearance="outline"
+              className={styles.continuousToggle}
+              style={
+                连续录入已开启
+                  ? {
+                      borderColor: "#c9952e",
+                      backgroundColor: "#fde8b2",
+                      color: "#5c3b00",
+                      boxShadow: "0 4px 10px rgba(160, 112, 9, 0.16)",
+                      fontWeight: 700,
+                    }
+                  : {
+                      borderColor: "#d8cfc0",
+                      backgroundColor: "#ffffff",
+                      color: "#5a544a",
+                      boxShadow: "none",
+                    }
+              }
+              onClick={() => 设置连续录入已开启((当前值) => !当前值)}
+            >
+              连续录入
+            </ToggleButton>
             <button
               type="button"
-              className={styles.button}
-              onClick={录入当前选区题目}
-              disabled={正在录题 || 正在更新题目}
+              className={`${styles.button} ${styles.selectedTagsRecordButton}`}
+              onClick={识别并预览当前选区题目}
+              disabled={正在识别录题预览 || 正在录题 || 正在更新题目}
             >
               {录题按钮文本}
             </button>
             <button
               type="button"
-              className={styles.secondaryButton}
+              className={`${styles.secondaryButton} ${styles.selectedTagsRecordButton}`}
               onClick={更新当前题目}
-              disabled={正在录题 || 正在更新题目}
+              disabled={正在识别录题预览 || 正在录题 || 正在更新题目}
             >
               {更新题目按钮文本}
             </button>
           </div>
         </div>
+        <div className={styles.column}>
+          <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+            <div className={styles.column}>
+              <span className={styles.label}>题型</span>
+              {渲染题型选择(录题题型ID, 选择录题题型)}
+            </div>
+            <div className={styles.column}>
+              <span className={styles.label}>难度</span>
+              <SingleSelectChipGroup
+                选项列表={录题难度选项列表}
+                当前选中ID={当前录题难度ID}
+                选择选项={(id) => 选择录题难度(Number(id))}
+                空提示文本="当前没有可选难度。"
+              />
+              {当前录题难度ID !== null && (
+                <div className={styles.row}>
+                  <button type="button" className={styles.secondaryButton} onClick={() => 选择录题难度(null)}>
+                    清空难度
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+
+    return (
+      <div className={styles.root}>
+        <div className={styles.container}>
+          <button type="button" className={styles.backButton} onClick={() => 设置当前页面("首页")}>
+            返回首页
+          </button>
+          <div className={styles.bankBanner}>当前题库：{当前题库前端显示名称}</div>
+          <h1 className={styles.title}>录入题目</h1>
+          <p className={styles.subtitle}>
+            {录题预览结果 === null
+              ? "先在 Word 中选中题目内容，再填写描述、选择题型和标签，然后识别并预览。"
+              : "请确认预览、题型与标签，确认无误后再正式录入并插回当前文档。"}
+          </p>
+
+          {录题预览结果 === null ? (
+            <>
+              <div className={styles.section}>
+                <h2 className={styles.sectionTitle}>题目描述</h2>
+                <textarea
+                  className={styles.textArea}
+                  value={录题描述}
+                  onChange={(事件) => 设置录题描述(事件.target.value)}
+                />
+              </div>
+              {当前选择区}
+              <div className={styles.section}>{录题标签工作台}</div>
+              <div className={styles.section}>
+                {录题错误 !== "" && <p className={styles.errorText}>{录题错误}</p>}
+                {录题成功提示 !== "" && <p className={styles.successText}>{录题成功提示}</p>}
+                {更新题目错误 !== "" && <p className={styles.errorText}>{更新题目错误}</p>}
+                {更新题目成功提示 !== "" && <p className={styles.successText}>{更新题目成功提示}</p>}
+                <div className={styles.row}>
+                  <button
+                    type="button"
+                    className={styles.button}
+                    onClick={识别并预览当前选区题目}
+                    disabled={正在识别录题预览 || 正在录题 || 正在更新题目}
+                  >
+                    {录题按钮文本}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={更新当前题目}
+                    disabled={正在识别录题预览 || 正在录题 || 正在更新题目}
+                  >
+                    {更新题目按钮文本}
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {录题错误 !== "" && <p className={styles.errorText}>{录题错误}</p>}
+              {录题成功提示 !== "" && <p className={styles.successText}>{录题成功提示}</p>}
+              <题目录入确认面板
+                描述={录题描述}
+                更新描述={设置录题描述}
+                预览Html={录题预览结果.预览Html}
+                推荐题型名称={录题预览结果.推荐题型名称}
+                识别说明={录题预览结果.识别说明}
+                置信度={录题预览结果.置信度}
+                当前题型ID={录题题型ID}
+                题型列表={题型定义列表.map((题型) => ({ id: 题型.id, 名称: 题型.名称 }))}
+                选择题型={选择录题题型}
+                当前难度ID={当前录题难度ID}
+                难度选项列表={录题难度选项列表}
+                选择难度={选择录题难度}
+                标签检查区={录题标签工作台}
+                正在确认={正在录题}
+                确认录入={录入当前选区题目}
+                返回编辑={返回录题编辑}
+              />
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const 渲染筛题页 = () => (
     <div className={styles.root}>
@@ -2477,7 +2769,7 @@ export default function App(props: AppProps) {
               type="button"
               className={styles.button}
               onClick={插入已选题目}
-              disabled={正在插题 || 当前结果已选题目数量 === 0}
+              disabled={正在插题 || 当前结果可插入已选题目数量 === 0}
             >
               {正在插题 ? "正在插入..." : "插入已选题目"}
             </button>
@@ -2507,6 +2799,12 @@ export default function App(props: AppProps) {
                     预览Html={题目卡片.预览Html}
                     已选中={已选中}
                     切换选择={() => 切换题目选择状态(题目卡片.id)}
+                    正在插入={正在插入单题ID === 题目卡片.id}
+                    已插入={已插入题目ID列表.includes(题目卡片.id)}
+                    插入按钮已禁用={正在插题 || 已插入题目ID列表.includes(题目卡片.id)}
+                    点击插入按钮={() => {
+                      void 插入单个题目(题目卡片.id);
+                    }}
                     删除按钮阶段={
                       删除确认状态?.题目ID !== 题目卡片.id
                         ? "默认"

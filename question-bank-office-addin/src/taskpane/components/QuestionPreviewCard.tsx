@@ -1,4 +1,4 @@
-import * as React from "react";
+﻿import * as React from "react";
 import { makeStyles } from "@fluentui/react-components";
 import TagBadge from "./TagBadge";
 
@@ -12,6 +12,10 @@ interface QuestionPreviewCardProps {
   预览Html: string;
   已选中: boolean;
   切换选择: () => void;
+  正在插入: boolean;
+  已插入: boolean;
+  插入按钮已禁用?: boolean;
+  点击插入按钮: () => void;
   删除按钮阶段: 删除按钮阶段;
   正在删除: boolean;
   点击删除按钮: () => void;
@@ -70,7 +74,7 @@ const useStyles = makeStyles({
     fontSize: "11px",
     fontWeight: "700",
   },
-  deleteButton: {
+  actionButton: {
     padding: "6px 10px",
     borderRadius: "999px",
     border: "1px solid #d0c5b2",
@@ -80,6 +84,16 @@ const useStyles = makeStyles({
     fontWeight: 600,
     cursor: "pointer",
     transition: "background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease",
+  },
+  insertButton: {
+    border: "1px solid #d7b56a",
+    backgroundColor: "#fff8e7",
+    color: "#7a4b00",
+  },
+  insertedButton: {
+    border: "1px solid #c8bba4",
+    backgroundColor: "#f6f1e7",
+    color: "#7a7265",
   },
   deleteButtonConfirm: {
     border: "1px solid #d92d20",
@@ -147,6 +161,13 @@ function 获取删除按钮文本(阶段: 删除按钮阶段, 正在删除: bool
   return "删除题目";
 }
 
+function 获取插入按钮文本(正在插入: boolean, 已插入: boolean) {
+  if (已插入) {
+    return "已插入";
+  }
+  return 正在插入 ? "正在插入..." : "插入题目";
+}
+
 export default function QuestionPreviewCard(props: QuestionPreviewCardProps) {
   const styles = useStyles();
 
@@ -169,7 +190,21 @@ export default function QuestionPreviewCard(props: QuestionPreviewCardProps) {
           {props.已选中 && <span className={styles.selectedBadge}>已选中</span>}
           <button
             type="button"
-            className={`${styles.deleteButton} ${props.删除按钮阶段 === "确认" ? styles.deleteButtonConfirm : ""} ${
+            className={`${styles.actionButton} ${styles.insertButton} ${
+              props.已插入 ? styles.insertedButton : ""
+            }`}
+            onClick={(事件) => {
+              事件.preventDefault();
+              事件.stopPropagation();
+              props.点击插入按钮();
+            }}
+            disabled={props.插入按钮已禁用}
+          >
+            {获取插入按钮文本(props.正在插入, props.已插入)}
+          </button>
+          <button
+            type="button"
+            className={`${styles.actionButton} ${props.删除按钮阶段 === "确认" ? styles.deleteButtonConfirm : ""} ${
               props.删除按钮阶段 === "最终确认" ? styles.deleteButtonFinal : ""
             }`}
             onClick={(事件) => {
