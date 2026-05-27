@@ -23,6 +23,8 @@ namespace 题库核心.标签模块.契约
 
         bool 是否被题目引用(int 标签ID);
 
+        bool 是否被内容块引用(int 标签ID);
+
         int 获取同父同种类最大排序值(int 标签种类ID, int? parentId);
     }
 }

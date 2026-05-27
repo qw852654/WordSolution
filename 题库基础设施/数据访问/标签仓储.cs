@@ -123,6 +123,13 @@ namespace 题库基础设施.数据访问
                 .Any(关系 => 关系.标签ID == 标签ID);
         }
 
+        public bool 是否被内容块引用(int 标签ID)
+        {
+            return _题库DbContext.内容块标签关系表
+                .AsNoTracking()
+                .Any(关系 => 关系.标签ID == 标签ID);
+        }
+
         public int 获取同父同种类最大排序值(int 标签种类ID, int? parentId)
         {
             return _题库DbContext.标签表

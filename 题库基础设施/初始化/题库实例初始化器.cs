@@ -34,7 +34,11 @@ namespace 题库基础设施.初始化
             Directory.CreateDirectory(_题库路径提供器.获取Source目录(题库键));
             Directory.CreateDirectory(_题库路径提供器.获取Html目录(题库键));
             Directory.CreateDirectory(_题库路径提供器.获取Index目录(题库键));
+            Directory.CreateDirectory(Path.Combine(题库根目录, "content-blocks", "source"));
+            Directory.CreateDirectory(Path.Combine(题库根目录, "content-blocks", "html"));
+            Directory.CreateDirectory(Path.Combine(题库根目录, "handouts", "generated"));
             Directory.CreateDirectory(Path.Combine(题库根目录, "papers"));
+            Directory.CreateDirectory(Path.Combine(题库根目录, "temp", "edit-sessions"));
             Directory.CreateDirectory(Path.Combine(题库根目录, "temp", "import-sessions"));
 
             using var dbContext = _题库DbContext工厂.创建(题库键);
@@ -47,6 +51,16 @@ namespace 题库基础设施.初始化
             确保试卷源文件表存在(dbContext);
             确保知识点映射表存在(dbContext);
             确保试卷题目项表存在(dbContext);
+            确保内容块表存在(dbContext);
+            确保内容块表包含结构列(dbContext);
+            确保内容块版本表存在(dbContext);
+            确保内容块子项表存在(dbContext);
+            确保内容块标签关系表存在(dbContext);
+            确保小节表存在(dbContext);
+            确保小节项表存在(dbContext);
+            确保讲义表存在(dbContext);
+            确保讲义项表存在(dbContext);
+            确保讲义生成记录表存在(dbContext);
             初始化标签种类(dbContext);
             初始化难度种子数据(dbContext);
             初始化题型定义(dbContext, 题库键);
@@ -278,6 +292,160 @@ namespace 题库基础设施.初始化
                 "\"CreatedQuestionId\" INTEGER NULL);");
             dbContext.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_PaperQuestions_PaperId_Sequence\" ON \"PaperQuestions\" (\"PaperId\", \"Sequence\");");
             dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_PaperQuestions_PaperId_Status\" ON \"PaperQuestions\" (\"PaperId\", \"Status\");");
+        }
+
+        private void 确保内容块表存在(题库DbContext dbContext)
+        {
+            dbContext.Database.ExecuteSqlRaw(
+                "CREATE TABLE IF NOT EXISTS \"ContentBlocks\" (" +
+                "\"Id\" INTEGER NOT NULL CONSTRAINT \"PK_ContentBlocks\" PRIMARY KEY AUTOINCREMENT," +
+                "\"Title\" TEXT NOT NULL," +
+                "\"Summary\" TEXT NULL," +
+                "\"Type\" INTEGER NOT NULL," +
+                "\"Status\" INTEGER NOT NULL," +
+                "\"CurrentVersionId\" INTEGER NULL," +
+                "\"StructureType\" INTEGER NOT NULL DEFAULT 1," +
+                "\"AllowChildren\" INTEGER NOT NULL DEFAULT 0," +
+                "\"CreatedTime\" TEXT NOT NULL," +
+                "\"UpdateTime\" TEXT NOT NULL);");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_ContentBlocks_Type_Status\" ON \"ContentBlocks\" (\"Type\", \"Status\");");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_ContentBlocks_CurrentVersionId\" ON \"ContentBlocks\" (\"CurrentVersionId\");");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_ContentBlocks_StructureType_AllowChildren\" ON \"ContentBlocks\" (\"StructureType\", \"AllowChildren\");");
+        }
+
+        private void 确保内容块表包含结构列(题库DbContext dbContext)
+        {
+            if (!表列已存在(dbContext, "ContentBlocks", "StructureType"))
+            {
+                dbContext.Database.ExecuteSqlRaw("ALTER TABLE \"ContentBlocks\" ADD COLUMN \"StructureType\" INTEGER NOT NULL DEFAULT 1;");
+            }
+
+            if (!表列已存在(dbContext, "ContentBlocks", "AllowChildren"))
+            {
+                dbContext.Database.ExecuteSqlRaw("ALTER TABLE \"ContentBlocks\" ADD COLUMN \"AllowChildren\" INTEGER NOT NULL DEFAULT 0;");
+            }
+
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_ContentBlocks_StructureType_AllowChildren\" ON \"ContentBlocks\" (\"StructureType\", \"AllowChildren\");");
+        }
+
+        private void 确保内容块版本表存在(题库DbContext dbContext)
+        {
+            dbContext.Database.ExecuteSqlRaw(
+                "CREATE TABLE IF NOT EXISTS \"ContentBlockVersions\" (" +
+                "\"Id\" INTEGER NOT NULL CONSTRAINT \"PK_ContentBlockVersions\" PRIMARY KEY AUTOINCREMENT," +
+                "\"ContentBlockId\" INTEGER NOT NULL," +
+                "\"VersionNumber\" INTEGER NOT NULL," +
+                "\"DocxPath\" TEXT NOT NULL," +
+                "\"HtmlPreviewPath\" TEXT NOT NULL," +
+                "\"PlainText\" TEXT NULL," +
+                "\"CreatedTime\" TEXT NOT NULL," +
+                "\"IsCurrentVersion\" INTEGER NOT NULL);");
+            dbContext.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_ContentBlockVersions_ContentBlockId_VersionNumber\" ON \"ContentBlockVersions\" (\"ContentBlockId\", \"VersionNumber\");");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_ContentBlockVersions_ContentBlockId_IsCurrentVersion\" ON \"ContentBlockVersions\" (\"ContentBlockId\", \"IsCurrentVersion\");");
+        }
+
+        private void 确保内容块子项表存在(题库DbContext dbContext)
+        {
+            dbContext.Database.ExecuteSqlRaw(
+                "CREATE TABLE IF NOT EXISTS \"ContentBlockChildren\" (" +
+                "\"Id\" INTEGER NOT NULL CONSTRAINT \"PK_ContentBlockChildren\" PRIMARY KEY AUTOINCREMENT," +
+                "\"ParentBlockId\" INTEGER NOT NULL," +
+                "\"ChildBlockId\" INTEGER NOT NULL," +
+                "\"ChildVersionId\" INTEGER NULL," +
+                "\"ReferenceMode\" INTEGER NOT NULL," +
+                "\"Role\" TEXT NULL," +
+                "\"SortOrder\" INTEGER NOT NULL," +
+                "\"CreatedTime\" TEXT NOT NULL);");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_ContentBlockChildren_ParentBlockId_SortOrder\" ON \"ContentBlockChildren\" (\"ParentBlockId\", \"SortOrder\");");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_ContentBlockChildren_ChildBlockId\" ON \"ContentBlockChildren\" (\"ChildBlockId\");");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_ContentBlockChildren_ParentBlockId_ChildBlockId\" ON \"ContentBlockChildren\" (\"ParentBlockId\", \"ChildBlockId\");");
+        }
+
+        private void 确保内容块标签关系表存在(题库DbContext dbContext)
+        {
+            dbContext.Database.ExecuteSqlRaw(
+                "CREATE TABLE IF NOT EXISTS \"ContentBlockTags\" (" +
+                "\"ContentBlockId\" INTEGER NOT NULL," +
+                "\"TagId\" INTEGER NOT NULL," +
+                "CONSTRAINT \"PK_ContentBlockTags\" PRIMARY KEY (\"ContentBlockId\", \"TagId\"));");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_ContentBlockTags_ContentBlockId\" ON \"ContentBlockTags\" (\"ContentBlockId\");");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_ContentBlockTags_TagId\" ON \"ContentBlockTags\" (\"TagId\");");
+        }
+
+        private void 确保小节表存在(题库DbContext dbContext)
+        {
+            dbContext.Database.ExecuteSqlRaw(
+                "CREATE TABLE IF NOT EXISTS \"Sections\" (" +
+                "\"Id\" INTEGER NOT NULL CONSTRAINT \"PK_Sections\" PRIMARY KEY AUTOINCREMENT," +
+                "\"Title\" TEXT NOT NULL," +
+                "\"Summary\" TEXT NULL," +
+                "\"ChapterTagId\" INTEGER NULL," +
+                "\"Status\" INTEGER NOT NULL," +
+                "\"CreatedTime\" TEXT NOT NULL," +
+                "\"UpdateTime\" TEXT NOT NULL);");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_Sections_Status_ChapterTagId\" ON \"Sections\" (\"Status\", \"ChapterTagId\");");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_Sections_UpdateTime\" ON \"Sections\" (\"UpdateTime\");");
+        }
+
+        private void 确保小节项表存在(题库DbContext dbContext)
+        {
+            dbContext.Database.ExecuteSqlRaw(
+                "CREATE TABLE IF NOT EXISTS \"SectionItems\" (" +
+                "\"Id\" INTEGER NOT NULL CONSTRAINT \"PK_SectionItems\" PRIMARY KEY AUTOINCREMENT," +
+                "\"SectionId\" INTEGER NOT NULL," +
+                "\"ContentBlockId\" INTEGER NOT NULL," +
+                "\"ContentBlockVersionId\" INTEGER NULL," +
+                "\"ReferenceMode\" INTEGER NOT NULL," +
+                "\"Role\" TEXT NULL," +
+                "\"SortOrder\" INTEGER NOT NULL," +
+                "\"CreatedTime\" TEXT NOT NULL);");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_SectionItems_SectionId_SortOrder\" ON \"SectionItems\" (\"SectionId\", \"SortOrder\");");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_SectionItems_ContentBlockId\" ON \"SectionItems\" (\"ContentBlockId\");");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_SectionItems_SectionId_ContentBlockId\" ON \"SectionItems\" (\"SectionId\", \"ContentBlockId\");");
+        }
+
+        private void 确保讲义表存在(题库DbContext dbContext)
+        {
+            dbContext.Database.ExecuteSqlRaw(
+                "CREATE TABLE IF NOT EXISTS \"Handouts\" (" +
+                "\"Id\" INTEGER NOT NULL CONSTRAINT \"PK_Handouts\" PRIMARY KEY AUTOINCREMENT," +
+                "\"Title\" TEXT NOT NULL," +
+                "\"Summary\" TEXT NULL," +
+                "\"Status\" INTEGER NOT NULL," +
+                "\"CreatedTime\" TEXT NOT NULL," +
+                "\"UpdateTime\" TEXT NOT NULL);");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_Handouts_Status\" ON \"Handouts\" (\"Status\");");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_Handouts_UpdateTime\" ON \"Handouts\" (\"UpdateTime\");");
+        }
+
+        private void 确保讲义项表存在(题库DbContext dbContext)
+        {
+            dbContext.Database.ExecuteSqlRaw(
+                "CREATE TABLE IF NOT EXISTS \"HandoutItems\" (" +
+                "\"Id\" INTEGER NOT NULL CONSTRAINT \"PK_HandoutItems\" PRIMARY KEY AUTOINCREMENT," +
+                "\"HandoutId\" INTEGER NOT NULL," +
+                "\"TargetType\" INTEGER NOT NULL," +
+                "\"TargetId\" INTEGER NOT NULL," +
+                "\"ReferenceMode\" INTEGER NOT NULL," +
+                "\"LockedContentBlockVersionId\" INTEGER NULL," +
+                "\"Role\" TEXT NULL," +
+                "\"SortOrder\" INTEGER NOT NULL," +
+                "\"CreatedTime\" TEXT NOT NULL);");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_HandoutItems_HandoutId_SortOrder\" ON \"HandoutItems\" (\"HandoutId\", \"SortOrder\");");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_HandoutItems_TargetType_TargetId\" ON \"HandoutItems\" (\"TargetType\", \"TargetId\");");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_HandoutItems_HandoutId_TargetType_TargetId\" ON \"HandoutItems\" (\"HandoutId\", \"TargetType\", \"TargetId\");");
+        }
+
+        private void 确保讲义生成记录表存在(题库DbContext dbContext)
+        {
+            dbContext.Database.ExecuteSqlRaw(
+                "CREATE TABLE IF NOT EXISTS \"HandoutGenerations\" (" +
+                "\"Id\" INTEGER NOT NULL CONSTRAINT \"PK_HandoutGenerations\" PRIMARY KEY AUTOINCREMENT," +
+                "\"HandoutId\" INTEGER NOT NULL," +
+                "\"FilePath\" TEXT NOT NULL," +
+                "\"VersionManifestJson\" TEXT NULL," +
+                "\"GeneratedTime\" TEXT NOT NULL);");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_HandoutGenerations_HandoutId_GeneratedTime\" ON \"HandoutGenerations\" (\"HandoutId\", \"GeneratedTime\");");
         }
 
         private bool 表列已存在(题库DbContext dbContext, string 表名, string 列名)

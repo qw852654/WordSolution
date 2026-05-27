@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>引用审查</title>
+  <link rel="stylesheet" href="./references.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-block">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" role="img">
+            <path d="M8 7h8M8 12h8M8 17h5"></path>
+            <path d="M4 5a2 2 0 0 1 2-2h10l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"></path>
+            <path d="M16 3v5h5"></path>
+          </svg>
+        </div>
+        <div>
+          <h1>引用审查</h1>
+          <p>TEST</p>
+        </div>
+      </div>
+
+      <nav class="nav-stack" aria-label="模块导航">
+        <a class="nav-link" href="./cms.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 4.8A2.8 2.8 0 0 1 7.8 2H19v17.2A2.8 2.8 0 0 1 16.2 22H5V4.8Z"></path>
+            <path d="M8 6.5h7.5M8 10h7.5M8 13.5h4.5"></path>
+          </svg>
+          内容库
+        </a>
+        <a class="nav-link" href="./sections.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16.5A2.5 2.5 0 0 1 17.5 22H4V5.5Z"></path>
+            <path d="M8 7h8M8 11h8M8 15h5"></path>
+          </svg>
+          小节编辑器
+        </a>
+        <a class="nav-link" href="./handouts.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 4h16v16H4z"></path>
+            <path d="M8 8h8M8 12h8M8 16h5"></path>
+          </svg>
+          讲义编排器
+        </a>
+      </nav>
+
+      <section class="panel">
+        <div class="panel-title-row">
+          <h2>审查</h2>
+          <button class="icon-button" id="refreshButton" type="button" title="刷新" aria-label="刷新">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 12a9 9 0 1 1-2.64-6.36"></path>
+              <path d="M21 3v6h-6"></path>
+            </svg>
+          </button>
+        </div>
+        <label class="field">
+          <span>关键词</span>
+          <input id="keywordInput" type="search" autocomplete="off" placeholder="内容块 / 引用对象 / 链路">
+        </label>
+      </section>
+    </aside>
+
+    <main class="workspace">
+      <section class="panel header-panel">
+        <div>
+          <p class="eyebrow">版本引用</p>
+          <h2>旧版本锁定引用</h2>
+        </div>
+        <div class="status-chip" id="globalStatus">就绪</div>
+      </section>
+
+      <section class="stats-grid" id="statsGrid"></section>
+
+      <section class="panel table-panel">
+        <div class="panel-title-row">
+          <div>
+            <h2>引用列表</h2>
+            <p id="countText">0 条</p>
+          </div>
+        </div>
+        <div class="reference-list" id="referenceList"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./references.js"></script>
+</body>
+</html>

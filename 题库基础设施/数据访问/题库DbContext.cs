@@ -1,7 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using 题库核心.内容块模块.领域;
+using 题库核心.小节模块.领域;
 using 题库核心.标签模块.领域;
 using 题库核心.题目模块.领域;
 using 题库核心.试卷导入模块.领域;
+
+using 题库核心.讲义模块.领域;
 
 namespace 题库基础设施.数据访问
 {
@@ -29,9 +33,157 @@ namespace 题库基础设施.数据访问
 
         public DbSet<知识点映射> 知识点映射表 => Set<知识点映射>();
 
+        public DbSet<内容块> 内容块表 => Set<内容块>();
+
+        public DbSet<内容块版本> 内容块版本表 => Set<内容块版本>();
+
+        public DbSet<内容块子项> 内容块子项表 => Set<内容块子项>();
+
+        public DbSet<内容块标签关系> 内容块标签关系表 => Set<内容块标签关系>();
+
+        public DbSet<小节> 小节表 => Set<小节>();
+
+        public DbSet<小节项> 小节项表 => Set<小节项>();
+
+        public DbSet<讲义> 讲义表 => Set<讲义>();
+
+        public DbSet<讲义项> 讲义项表 => Set<讲义项>();
+
+        public DbSet<讲义生成记录> 讲义生成记录表 => Set<讲义生成记录>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<讲义>(builder =>
+            {
+                builder.ToTable("Handouts");
+                builder.HasKey(讲义 => 讲义.Id);
+                builder.Property(讲义 => 讲义.标题).HasColumnName("Title");
+                builder.Property(讲义 => 讲义.摘要).HasColumnName("Summary");
+                builder.Property(讲义 => 讲义.状态).HasColumnName("Status");
+                builder.Property(讲义 => 讲义.创建时间).HasColumnName("CreatedTime");
+                builder.Property(讲义 => 讲义.更新时间).HasColumnName("UpdateTime");
+                builder.HasIndex(讲义 => 讲义.状态);
+                builder.HasIndex(讲义 => 讲义.更新时间);
+            });
+
+            modelBuilder.Entity<讲义项>(builder =>
+            {
+                builder.ToTable("HandoutItems");
+                builder.HasKey(讲义项 => 讲义项.Id);
+                builder.Property(讲义项 => 讲义项.讲义ID).HasColumnName("HandoutId");
+                builder.Property(讲义项 => 讲义项.目标类型).HasColumnName("TargetType");
+                builder.Property(讲义项 => 讲义项.目标ID).HasColumnName("TargetId");
+                builder.Property(讲义项 => 讲义项.引用版本模式).HasColumnName("ReferenceMode");
+                builder.Property(讲义项 => 讲义项.锁定内容块版本ID).HasColumnName("LockedContentBlockVersionId");
+                builder.Property(讲义项 => 讲义项.角色).HasColumnName("Role");
+                builder.Property(讲义项 => 讲义项.排序).HasColumnName("SortOrder");
+                builder.Property(讲义项 => 讲义项.创建时间).HasColumnName("CreatedTime");
+                builder.HasIndex(讲义项 => new { 讲义项.讲义ID, 讲义项.排序 });
+                builder.HasIndex(讲义项 => new { 讲义项.目标类型, 讲义项.目标ID });
+                builder.HasIndex(讲义项 => new { 讲义项.讲义ID, 讲义项.目标类型, 讲义项.目标ID });
+            });
+
+            modelBuilder.Entity<讲义生成记录>(builder =>
+            {
+                builder.ToTable("HandoutGenerations");
+                builder.HasKey(记录 => 记录.Id);
+                builder.Property(记录 => 记录.讲义ID).HasColumnName("HandoutId");
+                builder.Property(记录 => 记录.文件路径).HasColumnName("FilePath");
+                builder.Property(记录 => 记录.版本清单Json).HasColumnName("VersionManifestJson");
+                builder.Property(记录 => 记录.生成时间).HasColumnName("GeneratedTime");
+                builder.HasIndex(记录 => new { 记录.讲义ID, 记录.生成时间 });
+            });
+
+            modelBuilder.Entity<小节>(builder =>
+            {
+                builder.ToTable("Sections");
+                builder.HasKey(小节 => 小节.Id);
+                builder.Property(小节 => 小节.标题).HasColumnName("Title");
+                builder.Property(小节 => 小节.摘要).HasColumnName("Summary");
+                builder.Property(小节 => 小节.章节标签ID).HasColumnName("ChapterTagId");
+                builder.Property(小节 => 小节.状态).HasColumnName("Status");
+                builder.Property(小节 => 小节.创建时间).HasColumnName("CreatedTime");
+                builder.Property(小节 => 小节.更新时间).HasColumnName("UpdateTime");
+                builder.HasIndex(小节 => new { 小节.状态, 小节.章节标签ID });
+                builder.HasIndex(小节 => 小节.更新时间);
+            });
+
+            modelBuilder.Entity<小节项>(builder =>
+            {
+                builder.ToTable("SectionItems");
+                builder.HasKey(小节项 => 小节项.Id);
+                builder.Property(小节项 => 小节项.小节ID).HasColumnName("SectionId");
+                builder.Property(小节项 => 小节项.内容块ID).HasColumnName("ContentBlockId");
+                builder.Property(小节项 => 小节项.内容块版本ID).HasColumnName("ContentBlockVersionId");
+                builder.Property(小节项 => 小节项.引用版本模式).HasColumnName("ReferenceMode");
+                builder.Property(小节项 => 小节项.角色).HasColumnName("Role");
+                builder.Property(小节项 => 小节项.排序).HasColumnName("SortOrder");
+                builder.Property(小节项 => 小节项.创建时间).HasColumnName("CreatedTime");
+                builder.HasIndex(小节项 => new { 小节项.小节ID, 小节项.排序 });
+                builder.HasIndex(小节项 => 小节项.内容块ID);
+                builder.HasIndex(小节项 => new { 小节项.小节ID, 小节项.内容块ID });
+            });
+
+            modelBuilder.Entity<内容块>(builder =>
+            {
+                builder.ToTable("ContentBlocks");
+                builder.HasKey(内容块 => 内容块.Id);
+                builder.Property(内容块 => 内容块.标题).HasColumnName("Title");
+                builder.Property(内容块 => 内容块.摘要).HasColumnName("Summary");
+                builder.Property(内容块 => 内容块.类型).HasColumnName("Type");
+                builder.Property(内容块 => 内容块.状态).HasColumnName("Status");
+                builder.Property(内容块 => 内容块.当前版本ID).HasColumnName("CurrentVersionId");
+                builder.Property(内容块 => 内容块.结构类型).HasColumnName("StructureType");
+                builder.Property(内容块 => 内容块.是否允许子块).HasColumnName("AllowChildren");
+                builder.Property(内容块 => 内容块.创建时间).HasColumnName("CreatedTime");
+                builder.Property(内容块 => 内容块.更新时间).HasColumnName("UpdateTime");
+                builder.HasIndex(内容块 => new { 内容块.类型, 内容块.状态 });
+                builder.HasIndex(内容块 => 内容块.当前版本ID);
+                builder.HasIndex(内容块 => new { 内容块.结构类型, 内容块.是否允许子块 });
+            });
+
+            modelBuilder.Entity<内容块版本>(builder =>
+            {
+                builder.ToTable("ContentBlockVersions");
+                builder.HasKey(版本 => 版本.Id);
+                builder.Property(版本 => 版本.内容块ID).HasColumnName("ContentBlockId");
+                builder.Property(版本 => 版本.版本号).HasColumnName("VersionNumber");
+                builder.Property(版本 => 版本.Docx路径).HasColumnName("DocxPath");
+                builder.Property(版本 => 版本.Html预览路径).HasColumnName("HtmlPreviewPath");
+                builder.Property(版本 => 版本.纯文本内容).HasColumnName("PlainText");
+                builder.Property(版本 => 版本.创建时间).HasColumnName("CreatedTime");
+                builder.Property(版本 => 版本.是否当前版本).HasColumnName("IsCurrentVersion");
+                builder.HasIndex(版本 => new { 版本.内容块ID, 版本.版本号 }).IsUnique();
+                builder.HasIndex(版本 => new { 版本.内容块ID, 版本.是否当前版本 });
+            });
+
+            modelBuilder.Entity<内容块子项>(builder =>
+            {
+                builder.ToTable("ContentBlockChildren");
+                builder.HasKey(子项 => 子项.Id);
+                builder.Property(子项 => 子项.父内容块ID).HasColumnName("ParentBlockId");
+                builder.Property(子项 => 子项.子内容块ID).HasColumnName("ChildBlockId");
+                builder.Property(子项 => 子项.子内容块版本ID).HasColumnName("ChildVersionId");
+                builder.Property(子项 => 子项.引用版本模式).HasColumnName("ReferenceMode");
+                builder.Property(子项 => 子项.角色).HasColumnName("Role");
+                builder.Property(子项 => 子项.排序).HasColumnName("SortOrder");
+                builder.Property(子项 => 子项.创建时间).HasColumnName("CreatedTime");
+                builder.HasIndex(子项 => new { 子项.父内容块ID, 子项.排序 });
+                builder.HasIndex(子项 => 子项.子内容块ID);
+                builder.HasIndex(子项 => new { 子项.父内容块ID, 子项.子内容块ID });
+            });
+
+            modelBuilder.Entity<内容块标签关系>(builder =>
+            {
+                builder.ToTable("ContentBlockTags");
+                builder.HasKey(关系 => new { 关系.内容块ID, 关系.标签ID });
+                builder.Property(关系 => 关系.内容块ID).HasColumnName("ContentBlockId");
+                builder.Property(关系 => 关系.标签ID).HasColumnName("TagId");
+                builder.HasIndex(关系 => 关系.内容块ID);
+                builder.HasIndex(关系 => 关系.标签ID);
+            });
 
             modelBuilder.Entity<题型定义>(builder =>
             {

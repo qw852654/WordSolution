@@ -1,0 +1,11 @@
+{
+  "solution": {
+    "path": "WordSolution.sln",
+    "projects": [
+      "题库核心\\题库核心.csproj",
+      "题库应用\\题库应用.csproj",
+      "题库基础设施\\题库基础设施.csproj",
+      "题库本地服务\\题库本地服务.csproj"
+    ]
+  }
+}

@@ -1,23 +1,9 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text.Json.Serialization;
-using Microsoft.EntityFrameworkCore;
-using 题库应用.标签模块;
-using 题库应用.筛选模块;
-using 题库应用.题目模块;
-using 题库应用.题目模块.题型识别;
-using 题库应用.题目模块.题型识别.题型特征;
-using 题库应用.试卷导入模块;
-using 题库应用.试卷导入模块.试卷解析;
 using 题库基础设施.Aspose;
-using 题库基础设施.数据访问;
-using 题库基础设施.文件存储;
-using 题库基础设施.初始化;
 using 题库基础设施.题库实例;
-using 题库基础设施.预览生成;
-using 题库核心.标签模块.契约;
-using 题库核心.题目模块.契约;
-using 题库核心.试卷导入模块.契约;
+using 题库本地服务.依赖注入;
 
 var builder = WebApplication.CreateBuilder(args);
 var 题库中心根目录 = @"E:\Desktop\题库中心";
@@ -56,77 +42,9 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddScoped(_ => 题库中心根目录);
-builder.Services.AddScoped<题库路径提供器>();
-builder.Services.AddScoped<题库DbContext工厂>();
-builder.Services.AddScoped<题库实例初始化器>();
-builder.Services.AddScoped<题库实例服务>();
-
-builder.Services.AddDbContext<题库DbContext>((服务提供器, options) =>
-{
-    var 题库路径提供器 = 服务提供器.GetRequiredService<题库路径提供器>();
-    var 当前题库键 = 题库路径提供器.获取当前请求题库键();
-    options.UseSqlite($"Data Source={题库路径提供器.获取数据库文件路径(当前题库键)}");
-});
-
-builder.Services.AddScoped(服务提供器 => new Aspose授权初始化器(Aspose授权文件路径));
-builder.Services.AddScoped<I题目仓储, 题目仓储>();
-builder.Services.AddScoped<I标签仓储, 标签仓储>();
-builder.Services.AddScoped<I标签种类仓储, 标签种类仓储>();
-builder.Services.AddScoped<I题型定义仓储, 题型定义仓储>();
-builder.Services.AddScoped<I试卷记录仓储, 试卷记录仓储>();
-builder.Services.AddScoped<I试卷源文件仓储, 试卷源文件仓储>();
-builder.Services.AddScoped<I试卷题目项仓储, 试卷题目项仓储>();
-builder.Services.AddScoped<I知识点映射仓储, 知识点映射仓储>();
-builder.Services.AddScoped<I题目文件存储, 题目文件存储>();
-builder.Services.AddScoped<I试卷源文件存储, 试卷源文件存储>();
-builder.Services.AddScoped<I导入会话存储, 导入会话文件存储>();
-builder.Services.AddScoped<I题目文档转换器, Aspose题目文档转换器>();
-builder.Services.AddScoped<I题目预览生成器, 题目预览生成器>();
-builder.Services.AddScoped<I题型识别器, 题型识别器>();
-
-builder.Services.AddScoped<题目标签规则校验器>();
-builder.Services.AddScoped<题型规则校验器>();
-builder.Services.AddScoped<录入题目用例>();
-builder.Services.AddScoped<录入Ooxml题目用例>();
-builder.Services.AddScoped<预览Ooxml题目用例>();
-builder.Services.AddScoped<根据ID获取题目详情用例>();
-builder.Services.AddScoped<获取题目文件Base64用例>();
-builder.Services.AddScoped<获取题目预览HTML用例>();
-builder.Services.AddScoped<根据标签筛选题目用例>();
-builder.Services.AddScoped<更新Ooxml题目用例>();
-builder.Services.AddScoped<删除题目用例>();
-builder.Services.AddScoped<更新题目题型用例>();
-builder.Services.AddScoped<获取下一道待识别题型题目用例>();
-builder.Services.AddScoped<根据Ooxml识别题型用例>();
-builder.Services.AddScoped<当前导入题目结果构建器>();
-builder.Services.AddScoped<列出试卷记录用例>();
-builder.Services.AddScoped<开始导入试卷用例>();
-builder.Services.AddScoped<获取当前导入题目用例>();
-builder.Services.AddScoped<确认导入题目用例>();
-builder.Services.AddScoped<跳过导入题目用例>();
-builder.Services.AddScoped<退出导入试卷用例>();
-builder.Services.AddScoped<试卷模板识别器>();
-builder.Services.AddScoped<当前模板试卷解析器>();
-builder.Services.AddScoped<题目边界识别器>();
-builder.Services.AddScoped<答案区识别器>();
-builder.Services.AddScoped<单题内容划分器>();
-builder.Services.AddScoped<试卷元信息提取器>();
-builder.Services.AddScoped<Ooxml题型特征提取器>();
-builder.Services.AddScoped<选择题规则>();
-builder.Services.AddScoped<填空题规则>();
-builder.Services.AddScoped<实验题规则>();
-builder.Services.AddScoped<解答题规则>();
-builder.Services.AddScoped<作图题规则>();
-builder.Services.AddScoped<获取标签树用例>();
-builder.Services.AddScoped<获取标签种类列表用例>();
-builder.Services.AddScoped<获取标签列表用例>();
-builder.Services.AddScoped<新增标签用例>();
-builder.Services.AddScoped<更新标签用例>();
-builder.Services.AddScoped<调整标签父级用例>();
-builder.Services.AddScoped<调整标签排序用例>();
-builder.Services.AddScoped<移动标签用例>();
-builder.Services.AddScoped<删除标签用例>();
+builder.Services.Add题库实例服务(题库中心根目录);
+builder.Services.Add题库基础设施服务(Aspose授权文件路径);
+builder.Services.Add题库应用用例();
 
 var app = builder.Build();
 

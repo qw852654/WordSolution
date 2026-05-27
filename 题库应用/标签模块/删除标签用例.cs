@@ -27,6 +27,11 @@ namespace 题库应用.标签模块
                 throw new InvalidOperationException("当前标签已被题目引用，不能删除。");
             }
 
+            if (_标签仓储.是否被内容块引用(标签ID))
+            {
+                throw new InvalidOperationException("当前标签已被内容块引用，不能删除。");
+            }
+
             _标签仓储.删除标签(标签);
         }
     }

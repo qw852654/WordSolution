@@ -12,11 +12,16 @@ namespace 题库基础设施.题库实例
 
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly string _题库中心根目录;
+        private readonly 当前题库上下文 _当前题库上下文;
 
-        public 题库路径提供器(IHttpContextAccessor httpContextAccessor, string 题库中心根目录)
+        public 题库路径提供器(
+            IHttpContextAccessor httpContextAccessor,
+            string 题库中心根目录,
+            当前题库上下文 当前题库上下文)
         {
             _httpContextAccessor = httpContextAccessor;
             _题库中心根目录 = 题库中心根目录;
+            _当前题库上下文 = 当前题库上下文;
         }
 
         public string 获取题库中心根目录()
@@ -27,7 +32,14 @@ namespace 题库基础设施.题库实例
         public string 获取当前请求题库键()
         {
             var 题库键 = _httpContextAccessor.HttpContext?.Request.RouteValues["题库键"]?.ToString();
-            return string.IsNullOrWhiteSpace(题库键) ? 默认测试题库键 : 规范化题库键(题库键);
+            if (!string.IsNullOrWhiteSpace(题库键))
+            {
+                return 规范化题库键(题库键);
+            }
+
+            return string.IsNullOrWhiteSpace(_当前题库上下文.题库键)
+                ? 默认测试题库键
+                : 规范化题库键(_当前题库上下文.题库键);
         }
 
         public string 规范化题库键(string 题库键)
