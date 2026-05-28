@@ -1,0 +1,215 @@
+:root {
+  --content-card-border: #8ea0b4;
+  --content-card-border-soft: #b8c4d2;
+  --content-card-title: #142033;
+  --content-card-muted: #536176;
+  --content-card-bg: #ffffff;
+  --content-card-panel: #f8fafc;
+}
+
+.content-block-card {
+  width: 100%;
+  display: grid;
+  gap: 8px;
+  text-align: left;
+  background: var(--content-card-bg);
+  border: 1px solid var(--content-card-border);
+  border-radius: 7px;
+  color: var(--content-card-title);
+  padding: 10px;
+  transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+button.content-block-card {
+  cursor: pointer;
+}
+
+button.content-block-card:disabled {
+  cursor: not-allowed;
+}
+
+.content-block-card:hover:not(:disabled) {
+  background: #eef8f7;
+  border-color: #5f7388;
+}
+
+.content-block-card.is-selected {
+  background: #e4f5f1;
+  border-color: #4b9388;
+  box-shadow: inset 3px 0 0 #1d5f73;
+}
+
+.content-block-card.is-disabled {
+  opacity: 0.62;
+}
+
+.content-block-card__top,
+.content-block-card__remark,
+.content-block-card__meta {
+  border: 1px solid var(--content-card-border-soft);
+  border-radius: 6px;
+  background: var(--content-card-bg);
+}
+
+.content-block-card__top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+}
+
+.content-block-card__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--content-card-title);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.content-block-card__right {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.content-block-card__type,
+.content-block-card__structure,
+.content-block-card__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.content-block-card__type {
+  min-width: 48px;
+}
+
+.content-block-card__structure {
+  min-width: 46px;
+  padding-inline: 6px;
+}
+
+.content-block-card__action {
+  min-width: 42px;
+  color: #164e5f;
+  background: #fff;
+}
+
+.content-block-card__type--knowledge {
+  color: #175b46;
+  background: #def4eb;
+}
+
+.content-block-card__type--example {
+  color: #2454a6;
+  background: #e5edff;
+}
+
+.content-block-card__type--exercise {
+  color: #875000;
+  background: #fff0d1;
+}
+
+.content-block-card__type--method {
+  color: #4e5f13;
+  background: #eef6cf;
+}
+
+.content-block-card__type--mistake {
+  color: #9b1c1c;
+  background: #ffe3e0;
+}
+
+.content-block-card__type--note {
+  color: #46546a;
+  background: #edf1f6;
+}
+
+.content-block-card__type--question {
+  color: #6a2b74;
+  background: #f4e4f7;
+}
+
+.content-block-card__type--group,
+.content-block-card__type--default {
+  color: #1b5966;
+  background: #e1f3f6;
+}
+
+.content-block-card__structure--atomic {
+  color: #115e59;
+  background: #dff7f3;
+}
+
+.content-block-card__structure--composite {
+  color: #5b3b91;
+  background: #eee7ff;
+}
+
+.content-block-card__remark {
+  padding: 8px 10px;
+  color: var(--content-card-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.content-block-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 10px;
+}
+
+.content-block-card__property {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 24px;
+  border: 1px solid #c8d1dc;
+  border-radius: 4px;
+  background: var(--content-card-panel);
+  color: var(--content-card-muted);
+  padding: 2px 7px;
+  font-size: 12px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.content-block-card__property-label {
+  color: #24364f;
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+@media (max-width: 640px) {
+  .content-block-card__top {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .content-block-card__right {
+    justify-content: flex-start;
+  }
+
+  .content-block-card__title {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

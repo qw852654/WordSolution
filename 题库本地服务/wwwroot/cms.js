@@ -100,6 +100,108 @@
     return prop(value, "名称", "name", "Name") || "";
   }
 
+  function tagList(block) {
+    const tags = block?.标签摘要;
+    if (Array.isArray(tags)) return tags.filter(Boolean).map(String);
+    return text(tags, "")
+      .split(/[、,，/]/)
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+  }
+
+  function tagText(block) {
+    const tags = tagList(block);
+    return tags.length > 0 ? tags.join(" / ") : "未标注";
+  }
+
+  function currentVersionId(block) {
+    return prop(block, "当前版本ID", "当前版本Id", "当前版本id", "CurrentVersionId", "currentVersionId");
+  }
+
+  function currentVersionNumber(block) {
+    return prop(block, "当前版本号", "CurrentVersionNumber", "currentVersionNumber");
+  }
+
+  function contentBlockTitle(block) {
+    return text(prop(block, "标题", "内容块标题", "子内容块标题", "名称", "Title", "title"), "未命名内容块");
+  }
+
+  function contentBlockType(block) {
+    return text(prop(block, "类型", "内容块类型", "子内容块类型", "内容类型", "ContentType", "contentType"), "内容块");
+  }
+
+  function contentBlockStatus(block) {
+    return text(prop(block, "状态", "内容块状态", "ContentStatus", "status"), "");
+  }
+
+  function contentBlockStructure(block) {
+    return text(prop(block, "结构类型", "内容块结构类型", "子内容块结构类型", "StructureType", "structureType"), "原子块");
+  }
+
+  function contentBlockRemark(block) {
+    return text(prop(block, "备注", "摘要", "说明", "Remark", "remark", "Summary", "summary"), "");
+  }
+
+  function contentBlockVersionStatus(block) {
+    return text(prop(block, "版本状态", "VersionStatus", "versionStatus"), "");
+  }
+
+  function contentBlockTypeClass(type) {
+    const map = {
+      知识点: "knowledge",
+      例题: "example",
+      练习: "exercise",
+      方法总结: "method",
+      易错点: "mistake",
+      普通说明: "note",
+      题目: "question",
+      题组: "group",
+    };
+    return map[type] || "default";
+  }
+
+  function contentBlockStructureClass(structureType) {
+    return structureType === "组合块" ? "composite" : "atomic";
+  }
+
+  function renderContentBlockCard(block, options = {}) {
+    const title = contentBlockTitle(block);
+    const type = contentBlockType(block);
+    const structureType = contentBlockStructure(block);
+    const status = contentBlockStatus(block);
+    const versionNumber = currentVersionNumber(block);
+    const versionText = versionNumber ? `v${text(versionNumber)}` : "无版本";
+    const versionStatus = contentBlockVersionStatus(block);
+    const remark = contentBlockRemark(block);
+    const action = options.actionLabel ? `<span class="content-block-card__action">${escapeHtml(options.actionLabel)}</span>` : "";
+    const properties = [
+      ["状态", status],
+      ["版本", versionText],
+      ["版本状态", versionStatus],
+      ["标签", tagText(block)],
+      ...(options.showUpdated ? [["更新", formatDate(block.更新时间)]] : []),
+    ].filter(([, value]) => value);
+    const propertyHtml = properties.map(([label, value]) => `
+      <span class="content-block-card__property">
+        <span class="content-block-card__property-label">${escapeHtml(label)}</span>
+        ${escapeHtml(value)}
+      </span>
+    `).join("");
+
+    return `
+      <div class="content-block-card__top">
+        <strong class="content-block-card__title" title="${escapeHtml(title)}">${escapeHtml(title)}</strong>
+        <span class="content-block-card__right">
+          <span class="content-block-card__type content-block-card__type--${contentBlockTypeClass(type)}">${escapeHtml(type)}</span>
+          <span class="content-block-card__structure content-block-card__structure--${contentBlockStructureClass(structureType)}">${escapeHtml(structureType)}</span>
+          ${action}
+        </span>
+      </div>
+      ${remark ? `<div class="content-block-card__remark">${escapeHtml(remark)}</div>` : ""}
+      <div class="content-block-card__meta">${propertyHtml}</div>
+    `;
+  }
+
   async function requestJson(url, options = {}) {
     const response = await fetch(url, {
       headers: {
@@ -165,21 +267,10 @@
       const blockId = idOf(block);
       const button = document.createElement("button");
       button.type = "button";
-      button.className = `content-item${blockId === state.selectedId ? " is-active" : ""}`;
+      button.className = `content-item content-block-card${blockId === state.selectedId ? " is-active is-selected" : ""}`;
       button.setAttribute("role", "listitem");
       button.dataset.id = blockId;
-      button.innerHTML = `
-        <div class="content-item-title">
-          <strong title="${escapeHtml(block.标题)}">${escapeHtml(block.标题)}</strong>
-          <span class="badge">v${text(block.当前版本号, "0")}</span>
-        </div>
-        <div class="content-item-meta">
-          <span>${escapeHtml(block.类型)}</span>
-          <span class="status-text status-${statusClass(block.状态)}">${escapeHtml(block.状态)}</span>
-          <span>${escapeHtml(block.结构类型)}</span>
-          <span>${formatDate(block.更新时间)}</span>
-        </div>
-      `;
+      button.innerHTML = renderContentBlockCard(block, { showUpdated: true });
       button.addEventListener("click", () => selectBlock(blockId));
       fragment.appendChild(button);
     }
@@ -223,7 +314,7 @@
     els.detailEyebrow.textContent = `ID ${idOf(block)}`;
     els.detailTitle.textContent = block.标题;
     els.editInWordButton.disabled = false;
-    els.reloadPreviewButton.disabled = !block.当前版本ID;
+    els.reloadPreviewButton.disabled = !currentVersionId(block);
     els.addChildButton.disabled = !block.是否允许子块;
     els.reloadVersionsButton.disabled = false;
     els.reloadReferencesButton.disabled = false;
@@ -418,7 +509,7 @@
   }
 
   function loadPreview(block) {
-    if (!block || !block.当前版本ID) {
+    if (!block || !currentVersionId(block)) {
       els.previewFrame.removeAttribute("src");
       els.emptyPreview.classList.remove("is-hidden");
       return;
@@ -712,7 +803,7 @@
     const candidates = state.pickerBlocks.filter((block) => {
       const blockId = idOf(block);
       if (blockId === selectedId) return false;
-      const haystack = [block.标题, block.摘要, block.类型, block.状态, block.结构类型]
+      const haystack = [contentBlockTitle(block), contentBlockRemark(block), contentBlockType(block), contentBlockStatus(block), contentBlockStructure(block), tagText(block)]
         .map((value) => text(value, "").toLowerCase())
         .join(" ");
       return !keyword || haystack.includes(keyword);
@@ -726,16 +817,12 @@
     els.childCandidateList.innerHTML = candidates.map((block) => {
       const blockId = idOf(block);
       const alreadyAdded = existingChildIds.has(blockId);
-      const lockedWithoutVersion = mode === "锁定版本" && !block.当前版本ID;
+      const lockedWithoutVersion = mode === "锁定版本" && !currentVersionId(block);
       const disabled = alreadyAdded || lockedWithoutVersion;
       const reason = alreadyAdded ? "已在子块列表中" : (lockedWithoutVersion ? "没有可锁定版本" : "添加");
       return `
-        <button class="candidate-item${disabled ? " is-disabled" : ""}" type="button" data-block-id="${blockId}" ${disabled ? "disabled" : ""}>
-          <div>
-            <strong title="${escapeHtml(block.标题)}">${escapeHtml(block.标题)}</strong>
-            <span>${escapeHtml(block.类型)} · ${escapeHtml(block.状态)} · ${escapeHtml(block.结构类型)} · v${text(block.当前版本号, "0")}</span>
-          </div>
-          <span class="candidate-action">${escapeHtml(reason)}</span>
+        <button class="candidate-item content-block-card${disabled ? " is-disabled" : ""}" type="button" data-block-id="${blockId}" ${disabled ? "disabled" : ""}>
+          ${renderContentBlockCard(block, { actionLabel: reason })}
         </button>
       `;
     }).join("");
@@ -757,11 +844,12 @@
     };
 
     if (mode === "锁定版本") {
-      if (!child?.当前版本ID) {
+      const versionId = currentVersionId(child);
+      if (!versionId) {
         alert("锁定版本模式需要子块已有当前版本。");
         return;
       }
-      body.子内容块版本ID = child.当前版本ID;
+      body.子内容块版本ID = versionId;
     }
 
     setGlobalStatus("添加子块");

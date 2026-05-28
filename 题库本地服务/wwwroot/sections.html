@@ -3,261 +3,115 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>小节编辑器</title>
+  <title>小节编排静态原型</title>
+  <link rel="stylesheet" href="./content-block-card.css">
   <link rel="stylesheet" href="./sections.css">
 </head>
 <body>
-  <div class="app-shell">
-    <aside class="sidebar">
-      <div class="brand-block">
-        <div class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" role="img">
-            <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16.5A2.5 2.5 0 0 1 17.5 22H4V5.5Z"></path>
-            <path d="M8 7h8M8 11h8M8 15h5"></path>
-          </svg>
-        </div>
-        <div>
-          <h1>小节编辑器</h1>
-          <p>TEST</p>
-        </div>
+  <div class="prototype-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">小节编排页面 · 静态原型</p>
+        <h1>机械能守恒</h1>
       </div>
+      <div class="topbar-actions">
+        <span class="status-chip">假数据</span>
+        <span class="status-chip muted">不接 API</span>
+      </div>
+    </header>
 
-      <a class="nav-link" href="./cms.html">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="m15 18-6-6 6-6"></path>
-        </svg>
-        内容库
-      </a>
-
-      <a class="nav-link" href="./handouts.html">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4 4h16v16H4z"></path>
-          <path d="M8 8h8M8 12h8M8 16h5"></path>
-        </svg>
-        讲义编排器
-      </a>
-
-      <a class="nav-link" href="./references.html">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M8 7h8M8 12h8M8 17h5"></path>
-          <path d="M4 5a2 2 0 0 1 2-2h10l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"></path>
-          <path d="M16 3v5h5"></path>
-        </svg>
-        引用审查
-      </a>
-
-      <section class="panel">
-        <div class="panel-title-row">
-          <h2>筛选</h2>
-          <button class="icon-button" id="refreshButton" type="button" title="刷新" aria-label="刷新">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M21 12a9 9 0 1 1-2.64-6.36"></path>
-              <path d="M21 3v6h-6"></path>
-            </svg>
+    <main class="section-composer" id="sectionComposer">
+      <aside class="section-tree-panel teaching-topic-nav" id="teachingTopicNav" aria-labelledby="sectionTreeTitle">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">左侧</p>
+            <h2 id="sectionTreeTitle">教学主题导航</h2>
+          </div>
+          <button class="icon-button nav-collapse-button" type="button" id="toggleTopicNavButton" aria-label="收起教学主题导航" aria-expanded="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
           </button>
         </div>
+        <nav class="section-tree teaching-tree" id="sectionTree" aria-label="教学主题导航"></nav>
+      </aside>
 
-        <label class="field">
-          <span>关键词</span>
-          <input id="keywordInput" type="search" autocomplete="off" placeholder="标题 / 摘要">
-        </label>
-
-        <label class="field">
-          <span>状态</span>
-          <select id="statusSelect">
-            <option value="">全部状态</option>
-            <option value="草稿">草稿</option>
-            <option value="待审查">待审查</option>
-            <option value="可复用">可复用</option>
-            <option value="需修订">需修订</option>
-            <option value="已废弃">已废弃</option>
-          </select>
-        </label>
-
-        <label class="field">
-          <span>章节</span>
-          <select id="chapterFilterSelect">
-            <option value="">全部章节</option>
-          </select>
-        </label>
-
-        <button class="primary-button full-button" id="searchButton" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="m21 21-4.34-4.34"></path>
-            <circle cx="11" cy="11" r="7"></circle>
-          </svg>
-          查询
-        </button>
-      </section>
-
-      <section class="panel">
-        <h2>新建小节</h2>
-        <label class="field">
-          <span>标题</span>
-          <input id="newTitleInput" type="text" autocomplete="off" placeholder="例如：动量定理">
-        </label>
-        <label class="field">
-          <span>章节</span>
-          <select id="newChapterSelect">
-            <option value="">未归属</option>
-          </select>
-        </label>
-        <button class="primary-button full-button" id="createSectionButton" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 5v14M5 12h14"></path>
-          </svg>
-          新建
-        </button>
-      </section>
-    </aside>
-
-    <main class="workspace">
-      <section class="list-column">
-        <div class="section-header">
+      <section class="composition-panel" aria-labelledby="workspaceTitle">
+        <div class="panel-heading">
           <div>
-            <h2>小节</h2>
-            <p id="sectionCountText">0 条</p>
+            <p class="eyebrow">中间</p>
+            <h2 id="workspaceTitle">当前小节的层级卡片工作区</h2>
           </div>
-          <div class="status-chip" id="globalStatus">就绪</div>
-        </div>
-        <div class="section-list" id="sectionList" role="list"></div>
-      </section>
-
-      <section class="detail-column">
-        <div class="detail-header">
-          <div>
-            <p class="eyebrow" id="detailEyebrow">未选择</p>
-            <h2 id="detailTitle">选择一个小节</h2>
-          </div>
-          <button class="secondary-button" id="openContentPickerButton" type="button" disabled>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 5v14M5 12h14"></path>
-            </svg>
-            添加内容块
+          <button class="secondary-button" type="button" data-placeholder="添加下级内容">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+            添加下级内容
           </button>
         </div>
+        <div class="section-summary" id="sectionSummary"></div>
+        <div class="card-workspace" id="cardWorkspace"></div>
+      </section>
 
-        <div class="stats-grid" id="statsGrid">
-          <div class="stat-card"><span>项目</span><strong>-</strong></div>
-          <div class="stat-card"><span>知识点</span><strong>-</strong></div>
-          <div class="stat-card"><span>例题</span><strong>-</strong></div>
-          <div class="stat-card"><span>练习</span><strong>-</strong></div>
+      <aside class="detail-panel" aria-labelledby="detailTitle">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">右侧</p>
+            <h2 id="detailTitle">选中卡片详情</h2>
+          </div>
         </div>
 
-        <section class="panel detail-panel">
-          <div class="panel-title-row">
-            <div>
-              <h3>基本信息</h3>
-              <p id="metadataMessageText" class="panel-hint">选择小节后可编辑标题、章节和状态。</p>
-            </div>
-            <button class="ghost-button" id="saveSectionButton" type="button" disabled>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path>
-                <path d="M17 21v-8H7v8"></path>
-                <path d="M7 3v5h8"></path>
-              </svg>
-              保存
-            </button>
+        <section class="detail-card" id="selectedDetail"></section>
+
+        <section class="detail-card">
+          <div class="detail-card-heading">
+            <h3>内容预览</h3>
+            <span class="status-chip muted">HTML 占位</span>
           </div>
-          <div class="metadata-form">
-            <label class="field">
-              <span>标题</span>
-              <input id="editTitleInput" type="text" autocomplete="off" disabled>
-            </label>
-            <label class="field">
-              <span>章节</span>
-              <select id="editChapterSelect" disabled>
-                <option value="">未归属</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>状态</span>
-              <select id="editStatusSelect" disabled>
-                <option value="草稿">草稿</option>
-                <option value="待审查">待审查</option>
-                <option value="可复用">可复用</option>
-                <option value="需修订">需修订</option>
-                <option value="已废弃">已废弃</option>
-              </select>
-            </label>
-            <label class="field summary-field">
-              <span>摘要</span>
-              <textarea id="editSummaryInput" rows="3" disabled></textarea>
-            </label>
-          </div>
+          <div class="preview-surface" id="previewSurface"></div>
         </section>
 
-        <section class="panel">
-          <div class="panel-title-row">
-            <div>
-              <h3>小节项目</h3>
-              <p id="itemsMessageText" class="panel-hint">按知识点、例题、练习组织内容块。</p>
-            </div>
+        <section class="detail-card">
+          <div class="detail-card-heading">
+            <h3>操作入口</h3>
+            <span class="status-chip muted">占位</span>
           </div>
-          <div class="item-list" id="itemList"></div>
-        </section>
-
-        <section class="panel preview-panel">
-          <div class="panel-title-row">
-            <h3>整体预览</h3>
-            <button class="ghost-button" id="reloadPreviewButton" type="button" disabled>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M21 12a9 9 0 1 1-2.64-6.36"></path>
-                <path d="M21 3v6h-6"></path>
-              </svg>
-              刷新
+          <div class="detail-actions">
+            <button class="primary-button" type="button" data-placeholder="Word 编辑">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4z"></path><path d="M8 8h8M8 12h8M8 16h5"></path></svg>
+              Word 编辑
+            </button>
+            <button class="secondary-button" type="button" data-placeholder="从资源库插入">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 21l-4.3-4.3"></path><circle cx="11" cy="11" r="7"></circle></svg>
+              从资源库插入
+            </button>
+            <button class="ghost-button" type="button" data-placeholder="添加下级内容">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+              添加下级内容
             </button>
           </div>
-          <div class="preview-frame-wrap">
-            <iframe id="previewFrame" title="小节整体预览"></iframe>
-            <div class="empty-preview" id="emptyPreview">暂无预览</div>
-          </div>
+          <p class="action-message" id="actionMessage">本轮所有按钮只展示入口，不调用 Word，不写入后端。</p>
         </section>
-      </section>
+      </aside>
     </main>
   </div>
 
-  <div class="modal-backdrop is-hidden" id="contentPickerBackdrop" role="presentation">
-    <section class="content-picker" role="dialog" aria-modal="true" aria-labelledby="contentPickerTitle">
-      <div class="panel-title-row">
+  <div class="resource-drawer is-hidden" id="resourceDrawer" role="dialog" aria-modal="true" aria-labelledby="resourceDrawerTitle">
+    <section class="resource-dialog">
+      <div class="panel-heading">
         <div>
-          <h2 id="contentPickerTitle">添加内容块</h2>
-          <p class="panel-hint">选择已有内容块加入当前小节。</p>
+          <p class="eyebrow">添加卡片</p>
+          <h2 id="resourceDrawerTitle">搜索内容资源</h2>
         </div>
-        <button class="icon-button" id="closeContentPickerButton" type="button" title="关闭" aria-label="关闭">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M18 6 6 18"></path>
-            <path d="m6 6 12 12"></path>
-          </svg>
+        <button class="icon-button" type="button" id="closeResourceDrawerButton" aria-label="关闭">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
         </button>
       </div>
-
-      <div class="picker-controls">
-        <label class="field">
-          <span>搜索</span>
-          <input id="contentSearchInput" type="search" autocomplete="off" placeholder="标题 / 类型 / 摘要">
-        </label>
-        <label class="field">
-          <span>角色</span>
-          <select id="itemRoleSelect">
-            <option value="">跟随内容块类型</option>
-            <option value="知识点">知识点</option>
-            <option value="例题">例题</option>
-            <option value="练习">练习</option>
-            <option value="题组">题组</option>
-            <option value="说明">说明</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>引用模式</span>
-          <select id="referenceModeSelect">
-            <option value="跟随最新">跟随最新</option>
-            <option value="锁定版本">锁定当前版本</option>
-          </select>
-        </label>
+      <label class="search-field">
+        <span>关键词</span>
+        <input id="resourceSearchInput" type="search" autocomplete="off" placeholder="搜索知识点、例题、练习或组合块">
+      </label>
+      <div class="resource-results" id="resourceResults"></div>
+      <div class="resource-placeholder">
+        <strong>静态占位</strong>
+        <p>本轮只展示卡片搜索框与候选样式，不执行真实搜索，不写入小节。</p>
       </div>
-
-      <div class="candidate-list" id="candidateList"></div>
     </section>
   </div>
 
