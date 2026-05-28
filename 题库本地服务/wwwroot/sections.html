@@ -3,70 +3,64 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>小节编排静态原型</title>
+  <title>教学主题与小节编排静态原型</title>
+  <link rel="stylesheet" href="./shared-tree.css">
   <link rel="stylesheet" href="./content-block-card.css">
   <link rel="stylesheet" href="./sections.css">
 </head>
 <body>
   <div class="prototype-shell">
     <header class="topbar">
-      <div>
-        <p class="eyebrow">小节编排页面 · 静态原型</p>
-        <h1>机械能守恒</h1>
+      <div class="topbar-main">
+        <p class="eyebrow" id="pageEyebrow">教学主题工作台 · 静态原型</p>
+        <h1 id="pageTitle">机械能守恒</h1>
+        <div class="breadcrumb" id="breadcrumb">功能关系 / 机械能守恒</div>
       </div>
       <div class="topbar-actions">
+        <button class="secondary-button" type="button" id="backToTopicButton" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+          返回主题工作台
+        </button>
         <span class="status-chip">假数据</span>
-        <span class="status-chip muted">不接 API</span>
+        <span class="status-chip muted" id="modeStatus">不接 API</span>
       </div>
     </header>
 
-    <main class="section-composer" id="sectionComposer">
-      <aside class="section-tree-panel teaching-topic-nav" id="teachingTopicNav" aria-labelledby="sectionTreeTitle">
+    <main class="ia-layout" id="iaLayout">
+      <aside class="topic-nav-panel teaching-topic-nav" id="topicNavPanel" aria-labelledby="topicNavTitle">
         <div class="panel-heading">
           <div>
-            <p class="eyebrow">左侧</p>
-            <h2 id="sectionTreeTitle">教学主题导航</h2>
+            <p class="eyebrow">全局定位</p>
+            <h2 id="topicNavTitle">教学主题导航</h2>
           </div>
-          <button class="icon-button nav-collapse-button" type="button" id="toggleTopicNavButton" aria-label="收起教学主题导航" aria-expanded="true">
+          <button class="icon-button" type="button" id="topicNavToggleButton" title="展开或收起教学主题导航" aria-label="展开或收起教学主题导航" aria-expanded="true">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
           </button>
         </div>
-        <nav class="section-tree teaching-tree" id="sectionTree" aria-label="教学主题导航"></nav>
+        <nav class="topic-tree-wrap" id="topicTree" aria-label="教学主题导航"></nav>
       </aside>
 
-      <section class="composition-panel" aria-labelledby="workspaceTitle">
+      <aside class="object-outline-panel" id="objectOutlinePanel" hidden aria-labelledby="objectOutlineTitle">
         <div class="panel-heading">
           <div>
-            <p class="eyebrow">中间</p>
-            <h2 id="workspaceTitle">当前小节的层级卡片工作区</h2>
+            <p class="eyebrow" id="objectOutlineEyebrow">当前对象</p>
+            <h2 id="objectOutlineTitle">结构树</h2>
           </div>
-          <button class="secondary-button" type="button" data-placeholder="添加下级内容">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
-            添加下级内容
-          </button>
         </div>
-        <div class="section-summary" id="sectionSummary"></div>
-        <div class="card-workspace" id="cardWorkspace"></div>
-      </section>
+        <div class="object-outline-tree" id="objectOutlineTree"></div>
+      </aside>
 
-      <aside class="detail-panel" aria-labelledby="detailTitle">
+      <section class="main-stage" id="mainStage" aria-live="polite"></section>
+
+      <aside class="detail-panel" id="detailPanel" hidden aria-labelledby="detailTitle">
         <div class="panel-heading">
           <div>
             <p class="eyebrow">右侧</p>
-            <h2 id="detailTitle">选中卡片详情</h2>
+            <h2 id="detailTitle">选中块详情</h2>
           </div>
         </div>
-
         <section class="detail-card" id="selectedDetail"></section>
-
-        <section class="detail-card">
-          <div class="detail-card-heading">
-            <h3>内容预览</h3>
-            <span class="status-chip muted">HTML 占位</span>
-          </div>
-          <div class="preview-surface" id="previewSurface"></div>
-        </section>
-
+        <section class="detail-card" id="detailPreviewCard"></section>
         <section class="detail-card">
           <div class="detail-card-heading">
             <h3>操作入口</h3>
@@ -96,7 +90,7 @@
     <section class="resource-dialog">
       <div class="panel-heading">
         <div>
-          <p class="eyebrow">添加卡片</p>
+          <p class="eyebrow">资源插入 · 静态占位</p>
           <h2 id="resourceDrawerTitle">搜索内容资源</h2>
         </div>
         <button class="icon-button" type="button" id="closeResourceDrawerButton" aria-label="关闭">
@@ -109,12 +103,13 @@
       </label>
       <div class="resource-results" id="resourceResults"></div>
       <div class="resource-placeholder">
-        <strong>静态占位</strong>
-        <p>本轮只展示卡片搜索框与候选样式，不执行真实搜索，不写入小节。</p>
+        <strong>本地假交互</strong>
+        <p>点击候选只更新页面提示，不创建内容块，不写入小节或讲义。</p>
       </div>
     </section>
   </div>
 
+  <script src="./shared-tree.js"></script>
   <script src="./sections.js"></script>
 </body>
 </html>

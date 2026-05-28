@@ -21,6 +21,14 @@ namespace 题库基础设施.讲义模块
             return Path.Combine(目录, 文件名);
         }
 
+        public string 获取小节导出文件路径(int 小节ID, string 文件名)
+        {
+            var 当前题库键 = _题库路径提供器.获取当前请求题库键();
+            var 目录 = Path.Combine(_题库路径提供器.获取题库根目录(当前题库键), "sections", "exported", 小节ID.ToString());
+            Directory.CreateDirectory(目录);
+            return Path.Combine(目录, 文件名);
+        }
+
         public byte[]? 读取生成文件(string 文件路径)
         {
             if (string.IsNullOrWhiteSpace(文件路径) || !File.Exists(文件路径))

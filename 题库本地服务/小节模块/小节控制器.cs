@@ -19,6 +19,7 @@ namespace 题库本地服务.小节模块
         private readonly 调整小节项排序用例 _调整小节项排序用例;
         private readonly 移除小节项用例 _移除小节项用例;
         private readonly 获取小节预览HTML用例 _获取小节预览HTML用例;
+        private readonly 导出小节Word用例 _导出小节Word用例;
 
         public 小节控制器(
             获取小节列表用例 获取小节列表用例,
@@ -29,7 +30,8 @@ namespace 题库本地服务.小节模块
             添加小节项用例 添加小节项用例,
             调整小节项排序用例 调整小节项排序用例,
             移除小节项用例 移除小节项用例,
-            获取小节预览HTML用例 获取小节预览HTML用例)
+            获取小节预览HTML用例 获取小节预览HTML用例,
+            导出小节Word用例 导出小节Word用例)
         {
             _获取小节列表用例 = 获取小节列表用例;
             _获取小节详情用例 = 获取小节详情用例;
@@ -40,6 +42,7 @@ namespace 题库本地服务.小节模块
             _调整小节项排序用例 = 调整小节项排序用例;
             _移除小节项用例 = 移除小节项用例;
             _获取小节预览HTML用例 = 获取小节预览HTML用例;
+            _导出小节Word用例 = 导出小节Word用例;
         }
 
         [HttpGet]
@@ -178,6 +181,28 @@ namespace 题库本地服务.小节模块
             }
 
             return Content(HTML内容, "text/html; charset=utf-8");
+        }
+
+        [HttpPost("{id:int}/导出Word")]
+        public ActionResult 导出小节Word(int id)
+        {
+            try
+            {
+                var 导出结果 = _导出小节Word用例.执行(id);
+                if (导出结果 == null)
+                {
+                    return NotFound();
+                }
+
+                return File(
+                    导出结果.文件内容,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    导出结果.文件名);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
 }

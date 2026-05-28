@@ -123,8 +123,10 @@ namespace 题库本地服务.依赖注入
             services.AddScoped<调整小节项排序用例>();
             services.AddScoped<移除小节项用例>();
             services.AddScoped<获取小节预览HTML用例>();
+            services.AddScoped<导出小节Word用例>();
 
             services.AddScoped<讲义结果构建器>();
+            services.AddScoped<内容块Word展开服务>();
             services.AddScoped<获取讲义列表用例>();
             services.AddScoped<获取讲义详情用例>();
             services.AddScoped<新建讲义用例>();
