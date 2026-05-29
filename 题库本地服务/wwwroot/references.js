@@ -1,7 +1,4 @@
 (function () {
-  const bankKey = "TEST";
-  const apiBase = `/api/题库实例/${encodeURIComponent(bankKey)}`;
-
   const state = {
     references: [],
   };
@@ -14,6 +11,10 @@
     countText: document.getElementById("countText"),
     referenceList: document.getElementById("referenceList"),
   };
+
+  function apiBase() {
+    return window.QuestionBankContext.apiBase();
+  }
 
   async function requestJson(url) {
     const response = await fetch(url, {
@@ -29,7 +30,7 @@
   async function loadReferences() {
     els.globalStatus.textContent = "加载中";
     try {
-      state.references = await requestJson(`${apiBase}/引用关系/旧版本引用`);
+      state.references = await requestJson(`${apiBase()}/引用关系/旧版本引用`);
       render();
       els.globalStatus.textContent = "就绪";
     } catch (error) {
@@ -107,7 +108,17 @@
       .replace(/'/g, "&#039;");
   }
 
-  els.refreshButton.addEventListener("click", loadReferences);
-  els.keywordInput.addEventListener("input", render);
-  loadReferences();
+  async function reloadForCurrentQuestionBank() {
+    state.references = [];
+    render();
+    await loadReferences();
+  }
+
+  async function init() {
+    els.refreshButton.addEventListener("click", loadReferences);
+    els.keywordInput.addEventListener("input", render);
+    await window.QuestionBankContext.initSwitcher({ onChange: reloadForCurrentQuestionBank });
+  }
+
+  init();
 })();

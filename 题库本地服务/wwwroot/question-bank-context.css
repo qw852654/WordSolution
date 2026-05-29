@@ -1,0 +1,106 @@
+.question-bank-switcher {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid var(--border, var(--line, #d8dee8));
+  border-radius: 8px;
+  background: var(--panel, #ffffff);
+}
+
+.question-bank-switcher__row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  align-items: end;
+  gap: 7px;
+}
+
+.question-bank-switcher__field {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.question-bank-switcher__field span {
+  color: var(--muted, #5c687a);
+  font-size: 12px;
+}
+
+.question-bank-switcher select,
+.question-bank-switcher input {
+  width: 100%;
+  min-height: 32px;
+  border: 1px solid var(--border, var(--line, #d8dee8));
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text, #142033);
+  padding: 0 8px;
+}
+
+.question-bank-switcher__icon,
+.question-bank-switcher__create button {
+  min-height: 32px;
+  border: 1px solid var(--border, var(--line, #d8dee8));
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text, #142033);
+  display: inline-grid;
+  place-items: center;
+}
+
+.question-bank-switcher__icon:hover,
+.question-bank-switcher__create button:hover {
+  background: var(--panel-strong, var(--panel-soft, #f8fafc));
+  border-color: #c6ceda;
+}
+
+.question-bank-switcher__icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.question-bank-switcher__create {
+  min-width: 0;
+}
+
+.question-bank-switcher__create summary {
+  width: fit-content;
+  color: var(--primary, #1d5f73);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.question-bank-switcher__create-grid {
+  display: grid;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.question-bank-switcher__create button {
+  padding: 0 10px;
+  font-weight: 700;
+}
+
+.question-bank-switcher__message {
+  margin: 0;
+  color: var(--muted, #5c687a);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.question-bank-switcher__message.is-warning {
+  color: var(--danger, #b42318);
+}
+
+.topbar-actions .question-bank-switcher {
+  min-width: 260px;
+}
+
+@media (max-width: 920px) {
+  .topbar-actions .question-bank-switcher {
+    width: 100%;
+    min-width: 0;
+  }
+}

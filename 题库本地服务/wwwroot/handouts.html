@@ -6,6 +6,7 @@
   <title>讲义编排器</title>
   <link rel="stylesheet" href="./shared-tree.css?v=20260526-tree-main-2">
   <link rel="stylesheet" href="./handouts.css?v=20260526-tree-main-2">
+  <link rel="stylesheet" href="./question-bank-context.css">
 </head>
 <body>
   <div class="app-shell">
@@ -19,9 +20,10 @@
         </div>
         <div>
           <h1>讲义编排器</h1>
-          <p>TEST</p>
+          <p data-current-question-bank-label>当前题库：加载中</p>
         </div>
       </div>
+      <div data-question-bank-switcher></div>
 
       <nav class="nav-stack" aria-label="模块导航">
         <a class="nav-link" href="./cms.html">
@@ -285,6 +287,7 @@
   </div>
 
   <script src="./shared-tree.js?v=20260526-tree-main-2"></script>
+  <script src="./question-bank-context.js"></script>
   <script src="./handouts.js?v=20260526-tree-main-2"></script>
 </body>
 </html>

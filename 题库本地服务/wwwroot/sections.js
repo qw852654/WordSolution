@@ -1,8 +1,4 @@
-(function () {
-  const bankKey = "TEST";
-  const apiBase = `/api/题库实例/${encodeURIComponent(bankKey)}`;
-  const sectionApiRoot = `${apiBase}/小节`;
-
+﻿(function () {
   const topicTree = {
     id: "topic-function-relation",
     title: "功能关系",
@@ -407,6 +403,14 @@
     insertContext: null,
     exportingSectionWord: false,
   };
+
+  function apiBase() {
+    return window.QuestionBankContext.apiBase();
+  }
+
+  function sectionApiRoot() {
+    return `${apiBase()}/小节`;
+  }
 
   function render() {
     updateShell();
@@ -1040,7 +1044,7 @@
         throw new Error("未找到可导出的真实小节。请先在真实小节列表中创建或选择对应小节。");
       }
 
-      const response = await fetch(`${sectionApiRoot}/${encodeURIComponent(sectionId)}/导出Word`, {
+      const response = await fetch(`${sectionApiRoot()}/${encodeURIComponent(sectionId)}/导出Word`, {
         method: "POST",
       });
 
@@ -1067,7 +1071,7 @@
       return sectionEditor.apiSectionId;
     }
 
-    const response = await fetch(`${sectionApiRoot}?关键词=${encodeURIComponent(sectionEditor.apiKeyword || sectionEditor.topicTitle)}`);
+    const response = await fetch(`${sectionApiRoot()}?关键词=${encodeURIComponent(sectionEditor.apiKeyword || sectionEditor.topicTitle)}`);
     if (!response.ok) {
       const message = await response.text();
       throw new Error(message || "读取小节列表失败，无法确认要导出的小节。");
@@ -1213,10 +1217,15 @@
     });
   }
 
-  function init() {
+  async function init() {
     bindEvents();
-    render();
     renderResourceResults();
+    await window.QuestionBankContext.initSwitcher({ onChange: handleQuestionBankChanged });
+  }
+
+  async function handleQuestionBankChanged() {
+    sectionEditor.apiSectionId = null;
+    render();
   }
 
   init();

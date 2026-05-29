@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="./shared-tree.css">
   <link rel="stylesheet" href="./content-block-card.css">
   <link rel="stylesheet" href="./cms.css">
+  <link rel="stylesheet" href="./question-bank-context.css">
 </head>
 <body>
   <div class="app-shell">
@@ -20,9 +21,10 @@
         </div>
         <div>
           <h1>题库内容库</h1>
-          <p>TEST</p>
+          <p data-current-question-bank-label>当前题库：加载中</p>
         </div>
       </div>
+      <div data-question-bank-switcher></div>
 
       <a class="nav-link" href="./sections.html">
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -445,6 +447,7 @@
   </div>
 
   <script src="./shared-tree.js"></script>
+  <script src="./question-bank-context.js"></script>
   <script src="./cms.js"></script>
 </body>
 </html>

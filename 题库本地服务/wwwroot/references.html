@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>引用审查</title>
   <link rel="stylesheet" href="./references.css">
+  <link rel="stylesheet" href="./question-bank-context.css">
 </head>
 <body>
   <div class="app-shell">
@@ -19,9 +20,10 @@
         </div>
         <div>
           <h1>引用审查</h1>
-          <p>TEST</p>
+          <p data-current-question-bank-label>当前题库：加载中</p>
         </div>
       </div>
+      <div data-question-bank-switcher></div>
 
       <nav class="nav-stack" aria-label="模块导航">
         <a class="nav-link" href="./cms.html">
@@ -87,6 +89,7 @@
     </main>
   </div>
 
+  <script src="./question-bank-context.js"></script>
   <script src="./references.js"></script>
 </body>
 </html>

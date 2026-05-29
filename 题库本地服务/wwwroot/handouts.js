@@ -1,9 +1,4 @@
-(function () {
-  const bankKey = "TEST";
-  const apiBase = `/api/题库实例/${encodeURIComponent(bankKey)}`;
-  const handoutRoot = `${apiBase}/讲义`;
-  const sectionRoot = `${apiBase}/小节`;
-  const contentRoot = `${apiBase}/内容块`;
+﻿(function () {
   const finalSessionStates = new Set(["已同步", "无变化", "失败", "已取消"]);
 
   const state = {
@@ -19,6 +14,22 @@
     activeSession: null,
     pollTimer: null,
   };
+
+  function apiBase() {
+    return window.QuestionBankContext.apiBase();
+  }
+
+  function handoutRoot() {
+    return `${apiBase()}/讲义`;
+  }
+
+  function sectionRoot() {
+    return `${apiBase()}/小节`;
+  }
+
+  function contentRoot() {
+    return `${apiBase()}/内容块`;
+  }
 
   const els = {
     keywordInput: document.getElementById("keywordInput"),
@@ -111,7 +122,7 @@
   async function loadHandouts() {
     setGlobalStatus("加载中");
     try {
-      const handouts = await requestJson(`${handoutRoot}${buildHandoutQuery()}`, { method: "GET" });
+      const handouts = await requestJson(`${handoutRoot()}${buildHandoutQuery()}`, { method: "GET" });
       state.handouts = Array.isArray(handouts) ? handouts : [];
       renderHandoutList();
       setGlobalStatus("就绪");
@@ -169,7 +180,7 @@
     setGlobalStatus("读取讲义");
 
     try {
-      const handout = await requestJson(`${handoutRoot}/${id}`, { method: "GET" });
+      const handout = await requestJson(`${handoutRoot()}/${id}`, { method: "GET" });
       state.selectedHandout = handout;
       renderHandoutDetail(handout);
       await Promise.allSettled([loadGenerations(), loadArrangementTree()]);
@@ -224,7 +235,7 @@
     }
 
     try {
-      const created = await requestJson(handoutRoot, {
+      const created = await requestJson(handoutRoot(), {
         method: "POST",
         body: JSON.stringify({
           标题: title,
@@ -242,7 +253,7 @@
   async function saveHandout() {
     if (!state.selectedId) return;
     try {
-      const updated = await requestJson(`${handoutRoot}/${state.selectedId}`, {
+      const updated = await requestJson(`${handoutRoot()}/${state.selectedId}`, {
         method: "PUT",
         body: JSON.stringify({
           标题: els.editTitleInput.value.trim(),
@@ -267,7 +278,7 @@
     els.arrangementTreeMessageText.textContent = "正在读取编排树。";
     els.arrangementTree.innerHTML = "<div class=\"empty-state\">正在读取编排树</div>";
     try {
-      state.treeRoot = await requestJson(`${handoutRoot}/${state.selectedId}/结构树`, { method: "GET" });
+      state.treeRoot = await requestJson(`${handoutRoot()}/${state.selectedId}/结构树`, { method: "GET" });
       const nextNode = findNodeById(state.treeRoot, preferredNodeId)
         || state.treeRoot
         || null;
@@ -605,7 +616,7 @@
 
     setGlobalStatus("保存小节");
     try {
-      await requestJson(`${sectionRoot}/${node.目标ID}`, {
+      await requestJson(`${sectionRoot()}/${node.目标ID}`, {
         method: "PUT",
         body: JSON.stringify({
           标题: title,
@@ -629,8 +640,8 @@
     }
 
     const url = node.节点类型 === "小节"
-      ? `${sectionRoot}/${node.目标ID}/预览html?t=${Date.now()}`
-      : `${contentRoot}/${node.目标ID}/预览html?t=${Date.now()}`;
+      ? `${sectionRoot()}/${node.目标ID}/预览html?t=${Date.now()}`
+      : `${contentRoot()}/${node.目标ID}/预览html?t=${Date.now()}`;
 
     els.reloadContextPreviewButton.style.display = node.节点类型 === "小节" ? "inline-flex" : els.reloadContextPreviewButton.style.display;
     els.reloadContextPreviewButton.disabled = false;
@@ -660,12 +671,12 @@
     setGlobalStatus("调整排序");
     try {
       if (node.来源类型 === "讲义项") {
-        await requestJson(`${handoutRoot}/${state.selectedId}/项目排序`, {
+        await requestJson(`${handoutRoot()}/${state.selectedId}/项目排序`, {
           method: "PUT",
           body: JSON.stringify({ 讲义项ID列表: nextSiblings.map((item) => Number(item.来源ID)) }),
         });
       } else if (node.来源类型 === "小节项") {
-        await requestJson(`${sectionRoot}/${node.父目标ID}/项目排序`, {
+        await requestJson(`${sectionRoot()}/${node.父目标ID}/项目排序`, {
           method: "PUT",
           body: JSON.stringify({
             项目排序列表: nextSiblings.map((item, order) => ({
@@ -675,7 +686,7 @@
           }),
         });
       } else if (node.来源类型 === "内容块子项") {
-        await requestJson(`${contentRoot}/${node.父目标ID}/子块排序`, {
+        await requestJson(`${contentRoot()}/${node.父目标ID}/子块排序`, {
           method: "PUT",
           body: JSON.stringify({
             子项排序列表: nextSiblings.map((item, order) => ({
@@ -702,11 +713,11 @@
     setGlobalStatus("移除引用");
     try {
       if (node.来源类型 === "讲义项") {
-        await requestJson(`${handoutRoot}/${state.selectedId}/项目/${node.来源ID}`, { method: "DELETE" });
+        await requestJson(`${handoutRoot()}/${state.selectedId}/项目/${node.来源ID}`, { method: "DELETE" });
       } else if (node.来源类型 === "小节项") {
-        await requestJson(`${sectionRoot}/${node.父目标ID}/项目/${node.来源ID}`, { method: "DELETE" });
+        await requestJson(`${sectionRoot()}/${node.父目标ID}/项目/${node.来源ID}`, { method: "DELETE" });
       } else if (node.来源类型 === "内容块子项") {
-        await requestJson(`${contentRoot}/${node.父目标ID}/子块/${node.来源ID}`, { method: "DELETE" });
+        await requestJson(`${contentRoot()}/${node.父目标ID}/子块/${node.来源ID}`, { method: "DELETE" });
       }
 
       const nextSelectedId = findParentNode(state.treeRoot, node.节点ID)?.节点ID || null;
@@ -721,7 +732,7 @@
 
   async function loadGenerations() {
     if (!state.selectedId) return;
-    state.generations = await requestJson(`${handoutRoot}/${state.selectedId}/生成记录`, { method: "GET" });
+    state.generations = await requestJson(`${handoutRoot()}/${state.selectedId}/生成记录`, { method: "GET" });
     renderGenerations();
   }
 
@@ -734,7 +745,7 @@
 
     els.generationList.innerHTML = state.generations.map((record) => {
       const recordId = idOf(record);
-      const href = `${handoutRoot}/${state.selectedId}/生成记录/${recordId}/文件`;
+      const href = `${handoutRoot()}/${state.selectedId}/生成记录/${recordId}/文件`;
       return `
         <div class="generation-card">
           <div class="generation-row">
@@ -751,11 +762,11 @@
     setGlobalStatus("生成中");
     els.generateButton.disabled = true;
     try {
-      const record = await requestJson(`${handoutRoot}/${state.selectedId}/生成`, { method: "POST" });
+      const record = await requestJson(`${handoutRoot()}/${state.selectedId}/生成`, { method: "POST" });
       await loadGenerations();
       await loadHandouts();
       setGlobalStatus("已生成");
-      const href = `${handoutRoot}/${state.selectedId}/生成记录/${idOf(record)}/文件`;
+      const href = `${handoutRoot()}/${state.selectedId}/生成记录/${idOf(record)}/文件`;
       window.open(href, "_blank");
     } catch (error) {
       setGlobalStatus("生成失败");
@@ -810,7 +821,7 @@
     const params = new URLSearchParams();
     if (keyword) params.set("关键词", keyword);
     const query = params.toString() ? `?${params.toString()}` : "";
-    const url = targetType === "小节" ? `${sectionRoot}${query}` : `${contentRoot}${query}`;
+    const url = targetType === "小节" ? `${sectionRoot()}${query}` : `${contentRoot()}${query}`;
 
     try {
       state.candidates = await requestJson(url, { method: "GET" });
@@ -859,7 +870,7 @@
           目标ID: candidateId,
         };
         if (targetType === "内容块") applyContentReference(body, currentVersionId, "锁定内容块版本ID");
-        await requestJson(`${handoutRoot}/${state.selectedId}/项目`, {
+        await requestJson(`${handoutRoot()}/${state.selectedId}/项目`, {
           method: "POST",
           body: JSON.stringify(body),
         });
@@ -869,7 +880,7 @@
           角色: roleValue(),
         };
         applyContentReference(body, currentVersionId, "内容块版本ID");
-        await requestJson(`${sectionRoot}/${context.parentNode.目标ID}/项目`, {
+        await requestJson(`${sectionRoot()}/${context.parentNode.目标ID}/项目`, {
           method: "POST",
           body: JSON.stringify(body),
         });
@@ -879,7 +890,7 @@
           角色: roleValue(),
         };
         applyContentReference(body, currentVersionId, "子内容块版本ID");
-        await requestJson(`${contentRoot}/${context.parentNode.目标ID}/子块`, {
+        await requestJson(`${contentRoot()}/${context.parentNode.目标ID}/子块`, {
           method: "POST",
           body: JSON.stringify(body),
         });
@@ -916,7 +927,7 @@
 
     setGlobalStatus("创建会话");
     try {
-      const session = await requestJson(`${contentRoot}/${node.目标ID}/编辑会话`, {
+      const session = await requestJson(`${contentRoot()}/${node.目标ID}/编辑会话`, {
         method: "POST",
         body: JSON.stringify({ 是否打开Word: true }),
       });
@@ -962,7 +973,7 @@
 
   async function pollContextSession(sessionId) {
     try {
-      const session = await requestJson(`${contentRoot}/编辑会话/${encodeURIComponent(sessionId)}`, { method: "GET" });
+      const session = await requestJson(`${contentRoot()}/编辑会话/${encodeURIComponent(sessionId)}`, { method: "GET" });
       setContextSession(session);
       if (session.状态 === "已同步" || session.状态 === "无变化") {
         await loadArrangementTree(state.selectedNodeId);
@@ -1056,12 +1067,32 @@
   }
 
   bindEvents();
-  function init() {
+  async function init() {
     els.keywordInput.value = "";
     els.statusSelect.value = "";
     setDetailDisabled(true);
     renderNodeDetail(null);
-    loadHandouts();
+    await window.QuestionBankContext.initSwitcher({ onChange: reloadForCurrentQuestionBank });
+  }
+
+  async function reloadForCurrentQuestionBank() {
+    clearPoll();
+    state.handouts = [];
+    state.selectedId = null;
+    state.selectedHandout = null;
+    state.treeRoot = null;
+    state.selectedNodeId = null;
+    state.selectedNode = null;
+    state.generations = [];
+    state.candidates = [];
+    state.pickerContext = null;
+    state.activeSession = null;
+    closePicker();
+    renderHandoutList();
+    setDetailDisabled(true);
+    renderNodeDetail(null);
+    setContextSession(null);
+    await loadHandouts();
   }
 
   if (document.readyState === "loading") {

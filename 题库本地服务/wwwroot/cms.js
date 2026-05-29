@@ -1,7 +1,4 @@
-(function () {
-  const bankKey = "TEST";
-  const apiBase = `/api/题库实例/${encodeURIComponent(bankKey)}`;
-  const apiRoot = `/api/题库实例/${encodeURIComponent(bankKey)}/内容块`;
+﻿(function () {
   const compositeTypes = new Set(["题组", "小节", "练习组", "专题片段"]);
   const finalSessionStates = new Set(["已同步", "无变化", "失败", "已取消"]);
 
@@ -20,6 +17,14 @@
     activeSession: null,
     pollTimer: null,
   };
+
+  function apiBase() {
+    return window.QuestionBankContext.apiBase();
+  }
+
+  function apiRoot() {
+    return `${apiBase()}/内容块`;
+  }
 
   const els = {
     keywordInput: document.getElementById("keywordInput"),
@@ -241,7 +246,7 @@
   async function loadBlocks() {
     setGlobalStatus("加载中");
     try {
-      state.blocks = await requestJson(`${apiRoot}${buildQuery()}`, { method: "GET" });
+      state.blocks = await requestJson(`${apiRoot()}${buildQuery()}`, { method: "GET" });
       renderList();
       setGlobalStatus("就绪");
     } catch (error) {
@@ -293,7 +298,7 @@
 
     setGlobalStatus("读取详情");
     try {
-      const block = await requestJson(`${apiRoot}/${id}`, { method: "GET" });
+      const block = await requestJson(`${apiRoot()}/${id}`, { method: "GET" });
       state.selectedBlock = block;
       renderDetail(block);
       loadPreview(block);
@@ -359,11 +364,11 @@
 
   async function loadTagCatalog() {
     try {
-      const kinds = await requestJson(`${apiBase}/标签种类`, { method: "GET" });
+      const kinds = await requestJson(`${apiBase()}/标签种类`, { method: "GET" });
       state.tagKinds = (kinds || []).filter((kind) => prop(kind, "是否在正式工作流中可见") !== false);
       const tagEntries = await Promise.all(state.tagKinds.map(async (kind) => {
         const kindId = idOf(kind);
-        const tags = await requestJson(`${apiBase}/标签?标签种类ID=${encodeURIComponent(kindId)}`, { method: "GET" });
+        const tags = await requestJson(`${apiBase()}/标签?标签种类ID=${encodeURIComponent(kindId)}`, { method: "GET" });
         return [kindId, flattenTagNodes(tags || [])];
       }));
 
@@ -420,7 +425,7 @@
     }
 
     try {
-      const tags = await requestJson(`${apiRoot}/${idOf(block)}/标签`, { method: "GET" });
+      const tags = await requestJson(`${apiRoot()}/${idOf(block)}/标签`, { method: "GET" });
       state.selectedTagIds = new Set((tags || []).map((tag) => idOf(tag)));
       renderTags();
     } catch (error) {
@@ -492,7 +497,7 @@
     setGlobalStatus("保存标签");
     els.tagMessageText.textContent = "保存中";
     try {
-      const tags = await requestJson(`${apiRoot}/${state.selectedId}/标签`, {
+      const tags = await requestJson(`${apiRoot()}/${state.selectedId}/标签`, {
         method: "PUT",
         body: JSON.stringify({ 标签ID列表: selectedIds }),
       });
@@ -516,7 +521,7 @@
     }
 
     els.emptyPreview.classList.add("is-hidden");
-    els.previewFrame.src = `${apiRoot}/${idOf(block)}/预览html?t=${Date.now()}`;
+    els.previewFrame.src = `${apiRoot()}/${idOf(block)}/预览html?t=${Date.now()}`;
   }
 
   async function loadStructure(block) {
@@ -543,8 +548,8 @@
     try {
       const blockId = idOf(block);
       const [children, tree] = await Promise.all([
-        requestJson(`${apiRoot}/${blockId}/子块`, { method: "GET" }),
-        requestJson(`${apiRoot}/${blockId}/结构树`, { method: "GET" }),
+        requestJson(`${apiRoot()}/${blockId}/子块`, { method: "GET" }),
+        requestJson(`${apiRoot()}/${blockId}/结构树`, { method: "GET" }),
       ]);
       state.children = children || [];
       state.structureTree = tree;
@@ -571,7 +576,7 @@
 
     els.reloadVersionsButton.disabled = false;
     try {
-      state.versions = await requestJson(`${apiRoot}/${idOf(block)}/版本`, { method: "GET" });
+      state.versions = await requestJson(`${apiRoot()}/${idOf(block)}/版本`, { method: "GET" });
       renderVersions();
     } catch (error) {
       state.versions = [];
@@ -611,7 +616,7 @@
 
     els.reloadReferencesButton.disabled = false;
     try {
-      state.references = await requestJson(`${apiRoot}/${idOf(block)}/引用`, { method: "GET" });
+      state.references = await requestJson(`${apiRoot()}/${idOf(block)}/引用`, { method: "GET" });
       renderReferences();
     } catch (error) {
       state.references = null;
@@ -781,7 +786,7 @@
     els.childSearchInput.focus();
     setGlobalStatus("读取候选");
     try {
-      state.pickerBlocks = await requestJson(apiRoot, { method: "GET" });
+      state.pickerBlocks = await requestJson(apiRoot(), { method: "GET" });
       renderChildCandidates();
       setGlobalStatus("就绪");
     } catch (error) {
@@ -854,7 +859,7 @@
 
     setGlobalStatus("添加子块");
     try {
-      await requestJson(`${apiRoot}/${state.selectedId}/子块`, {
+      await requestJson(`${apiRoot()}/${state.selectedId}/子块`, {
         method: "POST",
         body: JSON.stringify(body),
       });
@@ -885,7 +890,7 @@
 
     setGlobalStatus("调整排序");
     try {
-      state.children = await requestJson(`${apiRoot}/${state.selectedId}/子块排序`, {
+      state.children = await requestJson(`${apiRoot()}/${state.selectedId}/子块排序`, {
         method: "PUT",
         body: JSON.stringify(body),
       });
@@ -905,7 +910,7 @@
 
     setGlobalStatus("移除子块");
     try {
-      await requestJson(`${apiRoot}/${state.selectedId}/子块/${childId}`, { method: "DELETE" });
+      await requestJson(`${apiRoot()}/${state.selectedId}/子块/${childId}`, { method: "DELETE" });
       await loadStructure(state.selectedBlock);
       await loadReferences(state.selectedBlock);
       setGlobalStatus("就绪");
@@ -937,7 +942,7 @@
     setGlobalStatus("保存信息");
     els.metadataMessageText.textContent = "保存中";
     try {
-      const block = await requestJson(`${apiRoot}/${state.selectedId}`, {
+      const block = await requestJson(`${apiRoot()}/${state.selectedId}`, {
         method: "PUT",
         body: JSON.stringify(body),
       });
@@ -989,7 +994,7 @@
 
     setGlobalStatus("创建会话");
     try {
-      const session = await requestJson(`${apiRoot}/编辑会话`, {
+      const session = await requestJson(`${apiRoot()}/编辑会话`, {
         method: "POST",
         body: JSON.stringify(body),
       });
@@ -1011,7 +1016,7 @@
 
     setGlobalStatus("创建会话");
     try {
-      const session = await requestJson(`${apiRoot}/${idOf(state.selectedBlock)}/编辑会话`, {
+      const session = await requestJson(`${apiRoot()}/${idOf(state.selectedBlock)}/编辑会话`, {
         method: "POST",
         body: JSON.stringify({ 是否打开Word: true }),
       });
@@ -1064,7 +1069,7 @@
 
   async function pollSession(sessionId) {
     try {
-      const session = await requestJson(`${apiRoot}/编辑会话/${encodeURIComponent(sessionId)}`, { method: "GET" });
+      const session = await requestJson(`${apiRoot()}/编辑会话/${encodeURIComponent(sessionId)}`, { method: "GET" });
       setSession(session);
       if (session.状态 === "已同步" || session.状态 === "无变化") {
         await loadBlocks();
@@ -1083,7 +1088,7 @@
     if (!state.activeSession) return;
     setGlobalStatus("同步中");
     try {
-      const session = await requestJson(`${apiRoot}/编辑会话/${encodeURIComponent(state.activeSession.会话ID)}/同步`, {
+      const session = await requestJson(`${apiRoot()}/编辑会话/${encodeURIComponent(state.activeSession.会话ID)}/同步`, {
         method: "POST",
         body: "{}",
       });
@@ -1104,7 +1109,7 @@
     if (!state.activeSession) return;
     setGlobalStatus("取消中");
     try {
-      const session = await requestJson(`${apiRoot}/编辑会话/${encodeURIComponent(state.activeSession.会话ID)}/取消`, {
+      const session = await requestJson(`${apiRoot()}/编辑会话/${encodeURIComponent(state.activeSession.会话ID)}/取消`, {
         method: "POST",
         body: "{}",
       });
@@ -1200,6 +1205,45 @@
     renderNoStructure("选择一个内容块后查看组合结构。");
     renderVersions();
     renderReferences();
+    await window.QuestionBankContext.initSwitcher({ onChange: reloadForCurrentQuestionBank });
+  }
+
+  async function reloadForCurrentQuestionBank() {
+    clearPoll();
+    state.blocks = [];
+    state.pickerBlocks = [];
+    state.selectedId = null;
+    state.selectedBlock = null;
+    state.children = [];
+    state.structureTree = null;
+    state.versions = [];
+    state.references = null;
+    state.tagKinds = [];
+    state.tagsByKind = {};
+    state.selectedTagIds = new Set();
+    state.activeSession = null;
+    els.detailEyebrow.textContent = "未选择";
+    els.detailTitle.textContent = "选择一个内容块";
+    els.editInWordButton.disabled = true;
+    els.reloadPreviewButton.disabled = true;
+    els.addChildButton.disabled = true;
+    els.reloadVersionsButton.disabled = true;
+    els.reloadReferencesButton.disabled = true;
+    els.metaGrid.innerHTML = ["类型", "状态", "结构", "版本"].map((label) => `
+      <div class="meta-card">
+        <span>${label}</span>
+        <strong>-</strong>
+      </div>
+    `).join("");
+    els.previewFrame.removeAttribute("src");
+    els.emptyPreview.hidden = false;
+    renderList();
+    renderMetadataForm(null);
+    renderTags();
+    renderNoStructure("选择一个内容块后查看组合结构。");
+    renderVersions();
+    renderReferences();
+    setSession(null);
     await loadTagCatalog();
     await loadBlocks();
   }

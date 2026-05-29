@@ -372,3 +372,41 @@ renderTreeNode(node, level)
 - `handout-workspace-card`：显示当前教学主题下的关联讲义，提供进入讲义编辑器和新建讲义入口。
 
 主题工作台的次级信息可以包括内容资源摘要、引用关系摘要、最近编辑记录、旧版本引用提醒，但这些信息不应抢占小节/讲义两个主卡片区，也不应做成右侧常驻详情面板。
+
+## 8. 题库实例切换器
+
+`question-bank-switcher` 用于浏览器管理端切换当前题库实例。它是跨页面共享组件，不属于某一个业务页面。
+
+当前共享文件：
+
+```text
+题库本地服务/wwwroot/question-bank-context.css
+题库本地服务/wwwroot/question-bank-context.js
+```
+
+职责：
+
+- 调用 `GET /api/题库实例` 读取题库实例列表。
+- 默认使用 `TEST` 题库。
+- 将用户当前选择保存到 `localStorage` 的 `wordSolution.currentQuestionBankKey`。
+- 暴露 `QuestionBankContext.getCurrentQuestionBankKey()` 和 `QuestionBankContext.apiBase()`，页面 API 路径必须从这里读取当前题库键。
+- 提供最小新建题库入口，调用 `POST /api/题库实例`。
+- 切换题库后通知当前页面刷新数据。
+
+DOM 挂载点：
+
+```html
+<div data-question-bank-switcher></div>
+```
+
+当前题库文本可以通过以下占位同步：
+
+```html
+<p data-current-question-bank-label>当前题库：加载中</p>
+```
+
+禁止事项：
+
+- 不要在 `cms.js`、`sections.js`、`handouts.js`、`references.js` 等页面脚本中直接写死题库键。
+- 不要在各页面重复实现一套题库列表读取、localStorage 保存和创建题库逻辑。
+- 不要把题库实例切换器和教学主题导航树混用；题库实例是数据源上下文，教学主题树是业务定位结构。
