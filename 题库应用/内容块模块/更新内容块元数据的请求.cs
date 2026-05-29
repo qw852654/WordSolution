@@ -15,5 +15,17 @@ namespace 题库应用.内容块模块
         public 内容块结构类型? 内容块结构类型 { get; set; }
 
         public bool? 是否允许子块 { get; set; }
+
+        public int? RoleOptionId { get; set; }
+
+        public int? DifficultyOptionId { get; set; }
+
+        public int? UsageOptionId { get; set; }
+
+        public int? QuestionTypeOptionId { get; set; }
+
+        public bool? DefaultIncluded { get; set; }
+
+        public string? Note { get; set; }
     }
 }

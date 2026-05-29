@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using 题库应用.内容块模块;
 using 题库核心.内容块模块.契约;
 using 题库核心.内容块模块.领域;
 using 题库核心.讲义模块.契约;
@@ -17,15 +18,18 @@ namespace 题库应用.讲义模块
         private readonly I讲义仓储 _讲义仓储;
         private readonly I小节仓储 _小节仓储;
         private readonly I内容块仓储 _内容块仓储;
+        private readonly 内容块元数据选项帮助类 _内容块元数据选项帮助类;
 
         public 获取讲义结构树用例(
             I讲义仓储 讲义仓储,
             I小节仓储 小节仓储,
-            I内容块仓储 内容块仓储)
+            I内容块仓储 内容块仓储,
+            内容块元数据选项帮助类 内容块元数据选项帮助类)
         {
             _讲义仓储 = 讲义仓储;
             _小节仓储 = 小节仓储;
             _内容块仓储 = 内容块仓储;
+            _内容块元数据选项帮助类 = 内容块元数据选项帮助类;
         }
 
         public 讲义结构树结果? 执行(int 讲义ID)
@@ -161,6 +165,7 @@ namespace 题库应用.讲义模块
             }
 
             var 引用版本 = 获取引用版本(内容块.Id, 引用版本模式, 锁定版本ID);
+            var 元数据选项字典 = _内容块元数据选项帮助类.获取内容块选项字典(内容块);
             var 节点 = new 讲义结构树结果
             {
                 节点ID = $"{来源类型}-{来源ID}",
@@ -172,6 +177,16 @@ namespace 题库应用.讲义模块
                 内容类型 = 内容块.类型.ToString(),
                 结构类型 = 内容块.结构类型.ToString(),
                 是否允许子块 = 内容块.是否允许子块,
+                RoleOptionId = 内容块.RoleOptionId,
+                RoleOptionName = 获取选项名称(内容块.RoleOptionId, 元数据选项字典),
+                DifficultyOptionId = 内容块.DifficultyOptionId,
+                DifficultyOptionName = 获取选项名称(内容块.DifficultyOptionId, 元数据选项字典),
+                UsageOptionId = 内容块.UsageOptionId,
+                UsageOptionName = 获取选项名称(内容块.UsageOptionId, 元数据选项字典),
+                QuestionTypeOptionId = 内容块.QuestionTypeOptionId,
+                QuestionTypeOptionName = 获取选项名称(内容块.QuestionTypeOptionId, 元数据选项字典),
+                DefaultIncluded = 内容块.DefaultIncluded,
+                Note = 内容块.Note,
                 当前版本ID = 内容块.当前版本ID,
                 当前版本号 = _内容块仓储.获取当前版本(内容块.Id)?.版本号,
                 来源类型 = 来源类型,
@@ -281,6 +296,16 @@ namespace 题库应用.讲义模块
                 错误信息 = 错误信息,
                 可执行操作 = new List<string> { "移除" },
             };
+        }
+
+        private static string? 获取选项名称(int? 选项ID, IReadOnlyDictionary<int, 元数据选项> 元数据选项字典)
+        {
+            if (!选项ID.HasValue)
+            {
+                return null;
+            }
+
+            return 元数据选项字典.TryGetValue(选项ID.Value, out var 选项) ? 选项.Name : null;
         }
     }
 }

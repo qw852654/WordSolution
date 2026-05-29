@@ -404,6 +404,13 @@
     exportingSectionWord: false,
   };
 
+  const fixedMetadataOptions = {
+    Role: ["未指定", "知识点", "例题", "变式题", "练习", "方法总结", "知识点组", "例题组", "练习组", "其他"],
+    Difficulty: ["未设置", "基础", "中档", "提高", "压轴"],
+    Usage: ["未设置", "课堂讲解", "课堂练习", "课后练习", "一轮复习", "专题突破", "考试训练"],
+    QuestionType: ["未设置", "选择题", "填空题", "计算题", "实验题", "图像题", "综合题"],
+  };
+
   function apiBase() {
     return window.QuestionBankContext.apiBase();
   }
@@ -849,6 +856,7 @@
       return;
     }
 
+    const metadata = itemFixedMetadata(item);
     els.selectedDetail.innerHTML = `
       <h3 class="selected-title">${escapeHtml(item.title)}</h3>
       <div class="node-meta">
@@ -857,9 +865,29 @@
         <span><strong>来源</strong>${escapeHtml(item.source)}</span>
         <span><strong>引用方式</strong>${escapeHtml(item.referenceMode)}</span>
         <span><strong>版本状态</strong>${escapeHtml(item.versionStatus)}</span>
+        <span><strong>内容角色</strong>${escapeHtml(metadata.Role)}</span>
+        <span><strong>难度</strong>${escapeHtml(metadata.Difficulty)}</span>
+        <span><strong>用途</strong>${escapeHtml(metadata.Usage)}</span>
+        <span><strong>题型</strong>${escapeHtml(metadata.QuestionType)}</span>
+        <span><strong>默认选入</strong>${metadata.DefaultIncluded ? "是" : "否"}</span>
       </div>
       <p class="selected-summary">${escapeHtml(item.detail)}</p>
       ${item.isReferenceView ? `<p class="reference-detail-note">讲义直接拥有的是 HandoutItem；这里展开的小节内容只是引用预览，调整讲义不会反向修改源小节结构。</p>` : ""}
+      <div class="detail-metadata-form" data-detail-metadata-form>
+        ${metadataSelect("Role", "内容角色", metadata.Role)}
+        ${metadataSelect("Difficulty", "难度", metadata.Difficulty)}
+        ${metadataSelect("Usage", "用途", metadata.Usage)}
+        ${metadataSelect("QuestionType", "题型", metadata.QuestionType)}
+        <label class="detail-checkbox">
+          <span>默认选入</span>
+          <input type="checkbox" data-detail-field="DefaultIncluded" ${metadata.DefaultIncluded ? "checked" : ""}>
+        </label>
+        <label class="detail-note-field">
+          <span>备注</span>
+          <textarea rows="2" data-detail-field="Note" placeholder="本地原型备注">${escapeHtml(metadata.Note)}</textarea>
+        </label>
+        <button class="secondary-button" type="button" data-detail-action="save-fixed-metadata">保存字段（本地）</button>
+      </div>
     `;
 
     els.detailPreviewCard.innerHTML = `
@@ -873,6 +901,63 @@
     `;
 
     bindPlaceholderButtons(els.detailPanel);
+    bindDetailMetadataEditor(item);
+  }
+
+  function itemFixedMetadata(item) {
+    return {
+      Role: item.Role || item.role || roleFromType(item.type),
+      Difficulty: item.Difficulty || item.difficulty || "未设置",
+      Usage: item.Usage || item.usage || usageFromType(item.type),
+      QuestionType: item.QuestionType || item.questionType || questionTypeFromType(item.type),
+      DefaultIncluded: item.DefaultIncluded !== false,
+      Note: item.Note || item.note || item.remark || "",
+    };
+  }
+
+  function roleFromType(type) {
+    if (type === "例题组") return "例题组";
+    if (type === "知识点" || type === "例题" || type === "练习" || type === "方法总结") return type;
+    return "其他";
+  }
+
+  function usageFromType(type) {
+    if (type === "练习") return "课堂练习";
+    if (type === "例题" || type === "例题组") return "课堂讲解";
+    return "未设置";
+  }
+
+  function questionTypeFromType(type) {
+    return type === "例题" || type === "练习" ? "计算题" : "未设置";
+  }
+
+  function metadataSelect(field, label, value) {
+    const options = fixedMetadataOptions[field] || [];
+    return `
+      <label class="detail-field">
+        <span>${escapeHtml(label)}</span>
+        <select data-detail-field="${escapeHtml(field)}">
+          ${options.map((option) => `<option value="${escapeHtml(option)}"${option === value ? " selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+        </select>
+      </label>
+    `;
+  }
+
+  function bindDetailMetadataEditor(item) {
+    const button = els.selectedDetail.querySelector("[data-detail-action=\"save-fixed-metadata\"]");
+    if (!button) return;
+    button.addEventListener("click", () => {
+      const form = els.selectedDetail.querySelector("[data-detail-metadata-form]");
+      if (!form) return;
+      item.Role = form.querySelector("[data-detail-field=\"Role\"]")?.value || null;
+      item.Difficulty = form.querySelector("[data-detail-field=\"Difficulty\"]")?.value || null;
+      item.Usage = form.querySelector("[data-detail-field=\"Usage\"]")?.value || null;
+      item.QuestionType = form.querySelector("[data-detail-field=\"QuestionType\"]")?.value || null;
+      item.DefaultIncluded = form.querySelector("[data-detail-field=\"DefaultIncluded\"]")?.checked !== false;
+      item.Note = form.querySelector("[data-detail-field=\"Note\"]")?.value.trim() || "";
+      setActionMessage("固定字段已在本地原型中更新；本页不会调用真实保存接口。");
+      renderDetail(item);
+    });
   }
 
   function renderContentBlockCard(block) {

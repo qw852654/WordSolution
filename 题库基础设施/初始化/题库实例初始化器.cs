@@ -4,6 +4,7 @@ using System.Data.Common;
 using System.IO;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
+using 题库核心.内容块模块.领域;
 using 题库基础设施.数据访问;
 using 题库基础设施.题库实例;
 using 题库核心.标签模块.领域;
@@ -53,15 +54,18 @@ namespace 题库基础设施.初始化
             确保试卷题目项表存在(dbContext);
             确保内容块表存在(dbContext);
             确保内容块表包含结构列(dbContext);
+            确保内容块表包含固定元数据列(dbContext);
             确保内容块版本表存在(dbContext);
             确保内容块子项表存在(dbContext);
             确保内容块标签关系表存在(dbContext);
+            确保元数据选项表存在(dbContext);
             确保小节表存在(dbContext);
             确保小节项表存在(dbContext);
             确保讲义表存在(dbContext);
             确保讲义项表存在(dbContext);
             确保讲义生成记录表存在(dbContext);
             初始化标签种类(dbContext);
+            初始化元数据选项(dbContext);
             初始化难度种子数据(dbContext);
             初始化题型定义(dbContext, 题库键);
             迁移旧试卷题型标签(dbContext, 题库键);
@@ -77,6 +81,69 @@ namespace 题库基础设施.初始化
             确保标签种类存在(dbContext, 系统标签种类.来源, "来源", false, false, true, true);
             确保标签种类存在(dbContext, 系统标签种类.待整理, "待整理", true, true, true, false);
             dbContext.SaveChanges();
+        }
+
+        private void 初始化元数据选项(题库DbContext dbContext)
+        {
+            确保元数据选项类别存在(dbContext, 元数据选项类别.Role, new[]
+            {
+                "知识点",
+                "例题",
+                "变式题",
+                "练习",
+                "方法总结",
+                "知识点组",
+                "例题组",
+                "变式题组",
+                "练习组",
+                "其他",
+            });
+
+            确保元数据选项类别存在(dbContext, 元数据选项类别.Difficulty, new[]
+            {
+                "未设置",
+                "基础",
+                "中档",
+                "提高",
+                "压轴",
+            });
+
+            确保元数据选项类别存在(dbContext, 元数据选项类别.Usage, new[]
+            {
+                "未设置",
+                "课堂讲解",
+                "课堂练习",
+                "课后练习",
+                "一轮复习",
+                "专题突破",
+                "考试训练",
+            });
+
+            确保元数据选项类别存在(dbContext, 元数据选项类别.QuestionType, new[]
+            {
+                "未设置",
+                "选择题",
+                "填空题",
+                "计算题",
+                "实验题",
+                "图像题",
+                "综合题",
+            });
+
+            dbContext.SaveChanges();
+        }
+
+        private static void 确保元数据选项类别存在(题库DbContext dbContext, 元数据选项类别 category, IReadOnlyList<string> 默认名称列表)
+        {
+            if (dbContext.元数据选项表.Any(选项 => 选项.Category == category))
+            {
+                return;
+            }
+
+            for (var i = 0; i < 默认名称列表.Count; i++)
+            {
+                dbContext.元数据选项表.Add(元数据选项.创建(category, 默认名称列表[i], i));
+            }
         }
 
         private void 初始化难度种子数据(题库DbContext dbContext)
@@ -326,6 +393,54 @@ namespace 题库基础设施.初始化
             }
 
             dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_ContentBlocks_StructureType_AllowChildren\" ON \"ContentBlocks\" (\"StructureType\", \"AllowChildren\");");
+        }
+
+        private void 确保内容块表包含固定元数据列(题库DbContext dbContext)
+        {
+            if (!表列已存在(dbContext, "ContentBlocks", "RoleOptionId"))
+            {
+                dbContext.Database.ExecuteSqlRaw("ALTER TABLE \"ContentBlocks\" ADD COLUMN \"RoleOptionId\" INTEGER NULL;");
+            }
+
+            if (!表列已存在(dbContext, "ContentBlocks", "DifficultyOptionId"))
+            {
+                dbContext.Database.ExecuteSqlRaw("ALTER TABLE \"ContentBlocks\" ADD COLUMN \"DifficultyOptionId\" INTEGER NULL;");
+            }
+
+            if (!表列已存在(dbContext, "ContentBlocks", "UsageOptionId"))
+            {
+                dbContext.Database.ExecuteSqlRaw("ALTER TABLE \"ContentBlocks\" ADD COLUMN \"UsageOptionId\" INTEGER NULL;");
+            }
+
+            if (!表列已存在(dbContext, "ContentBlocks", "QuestionTypeOptionId"))
+            {
+                dbContext.Database.ExecuteSqlRaw("ALTER TABLE \"ContentBlocks\" ADD COLUMN \"QuestionTypeOptionId\" INTEGER NULL;");
+            }
+
+            if (!表列已存在(dbContext, "ContentBlocks", "DefaultIncluded"))
+            {
+                dbContext.Database.ExecuteSqlRaw("ALTER TABLE \"ContentBlocks\" ADD COLUMN \"DefaultIncluded\" INTEGER NOT NULL DEFAULT 1;");
+            }
+
+            if (!表列已存在(dbContext, "ContentBlocks", "Note"))
+            {
+                dbContext.Database.ExecuteSqlRaw("ALTER TABLE \"ContentBlocks\" ADD COLUMN \"Note\" TEXT NULL;");
+            }
+        }
+
+        private void 确保元数据选项表存在(题库DbContext dbContext)
+        {
+            dbContext.Database.ExecuteSqlRaw(
+                "CREATE TABLE IF NOT EXISTS \"MetadataOptions\" (" +
+                "\"Id\" INTEGER NOT NULL CONSTRAINT \"PK_MetadataOptions\" PRIMARY KEY AUTOINCREMENT," +
+                "\"Category\" INTEGER NOT NULL," +
+                "\"Name\" TEXT NOT NULL," +
+                "\"SortOrder\" INTEGER NOT NULL," +
+                "\"IsActive\" INTEGER NOT NULL DEFAULT 1," +
+                "\"CreatedTime\" TEXT NOT NULL," +
+                "\"UpdatedTime\" TEXT NOT NULL);");
+            dbContext.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS \"IX_MetadataOptions_Category_SortOrder\" ON \"MetadataOptions\" (\"Category\", \"SortOrder\");");
+            dbContext.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_MetadataOptions_Category_Name\" ON \"MetadataOptions\" (\"Category\", \"Name\");");
         }
 
         private void 确保内容块版本表存在(题库DbContext dbContext)

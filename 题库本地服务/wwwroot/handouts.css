@@ -438,6 +438,14 @@ svg {
   font-size: 12px;
 }
 
+.context-summary .context-note {
+  border: 1px solid var(--border-soft);
+  border-radius: 7px;
+  background: var(--panel-strong);
+  padding: 7px 8px;
+  color: var(--text);
+}
+
 .context-meta {
   display: flex;
   flex-wrap: wrap;

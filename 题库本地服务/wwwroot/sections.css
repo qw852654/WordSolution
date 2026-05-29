@@ -936,6 +936,52 @@ svg {
   margin: 10px 0 0;
 }
 
+.detail-metadata-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.detail-field,
+.detail-note-field,
+.detail-checkbox {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.detail-field select,
+.detail-note-field textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--text);
+  padding: 7px 8px;
+  font: inherit;
+}
+
+.detail-note-field {
+  grid-column: 1 / -1;
+}
+
+.detail-checkbox {
+  align-content: end;
+}
+
+.detail-checkbox input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.detail-metadata-form .secondary-button {
+  justify-content: center;
+}
+
 .reference-detail-note {
   margin: 10px 0 0;
   border: 1px solid #cbbaf0;

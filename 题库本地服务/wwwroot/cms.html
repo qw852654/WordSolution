@@ -149,12 +149,60 @@
             <option value="组合块">组合块</option>
           </select>
         </label>
+        <label class="field">
+          <span>内容角色</span>
+          <select id="newRoleOptionSelect"></select>
+        </label>
+        <label class="field">
+          <span>难度</span>
+          <select id="newDifficultyOptionSelect"></select>
+        </label>
+        <label class="field">
+          <span>用途</span>
+          <select id="newUsageOptionSelect"></select>
+        </label>
+        <label class="field">
+          <span>题型</span>
+          <select id="newQuestionTypeOptionSelect"></select>
+        </label>
+        <label class="field checkbox-field">
+          <span>默认选入</span>
+          <input id="newDefaultIncludedInput" type="checkbox" checked>
+        </label>
+        <label class="field">
+          <span>备注</span>
+          <textarea id="newNoteInput" rows="2" placeholder="内部备注，可留空"></textarea>
+        </label>
         <button class="primary-button full-button" id="createAndEditButton" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 5v14M5 12h14"></path>
           </svg>
           新建并编辑
         </button>
+      </section>
+
+      <section class="panel metadata-options-panel" aria-labelledby="metadataOptionsTitle">
+        <div class="panel-title-row">
+          <div>
+            <h2 id="metadataOptionsTitle">字段选项</h2>
+            <p class="panel-hint">固定字段的选项配置</p>
+          </div>
+        </div>
+        <label class="field">
+          <span>字段</span>
+          <select id="metadataOptionCategorySelect">
+            <option value="Role">内容角色</option>
+            <option value="Difficulty">难度</option>
+            <option value="Usage">用途</option>
+            <option value="QuestionType">题型</option>
+          </select>
+        </label>
+        <div class="metadata-option-list" id="metadataOptionList"></div>
+        <div class="metadata-option-create">
+          <input id="metadataOptionNameInput" type="text" autocomplete="off" placeholder="新增选项名称">
+          <button class="secondary-button" id="addMetadataOptionButton" type="button">新增</button>
+        </div>
+        <p class="panel-hint" id="metadataOptionMessageText">停用不会影响已有内容显示。</p>
       </section>
     </aside>
 
@@ -228,6 +276,10 @@
               <span>摘要</span>
               <textarea id="editSummaryInput" rows="3" placeholder="简短说明这个内容块的用途" disabled></textarea>
             </label>
+            <label class="field summary-field">
+              <span>备注</span>
+              <textarea id="editNoteInput" rows="2" placeholder="内部备注，可留空" disabled></textarea>
+            </label>
             <label class="field">
               <span>类型</span>
               <select id="editTypeSelect" disabled>
@@ -260,6 +312,26 @@
                 <option value="原子块">原子块</option>
                 <option value="组合块">组合块</option>
               </select>
+            </label>
+            <label class="field">
+              <span>内容角色</span>
+              <select id="editRoleOptionSelect" disabled></select>
+            </label>
+            <label class="field">
+              <span>难度</span>
+              <select id="editDifficultyOptionSelect" disabled></select>
+            </label>
+            <label class="field">
+              <span>用途</span>
+              <select id="editUsageOptionSelect" disabled></select>
+            </label>
+            <label class="field">
+              <span>题型</span>
+              <select id="editQuestionTypeOptionSelect" disabled></select>
+            </label>
+            <label class="field checkbox-field">
+              <span>默认选入</span>
+              <input id="editDefaultIncludedInput" type="checkbox" disabled>
             </label>
           </div>
         </section>

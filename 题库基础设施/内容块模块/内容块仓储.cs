@@ -216,6 +216,12 @@ namespace 题库基础设施.内容块模块
                 内容块数据.当前版本ID,
                 内容块数据.结构类型,
                 内容块数据.是否允许子块,
+                内容块数据.RoleOptionId,
+                内容块数据.DifficultyOptionId,
+                内容块数据.UsageOptionId,
+                内容块数据.QuestionTypeOptionId,
+                内容块数据.DefaultIncluded,
+                内容块数据.Note,
                 内容块数据.创建时间,
                 内容块数据.更新时间);
         }

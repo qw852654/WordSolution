@@ -56,6 +56,7 @@ namespace 题库本地服务.依赖注入
             services.AddSingleton<I内容块编辑会话存储, 内存内容块编辑会话存储>();
             services.AddScoped<I内容块仓储, 内容块仓储>();
             services.AddScoped<I内容块标签仓储, 内容块标签仓储>();
+            services.AddScoped<I元数据选项仓储, 元数据选项仓储>();
             services.AddScoped<I内容块文件存储, 内容块文件存储>();
             services.AddScoped<I内容块文档转换器, Aspose内容块文档转换器>();
             services.AddScoped<I内容块预览生成器, 内容块预览生成器>();
@@ -88,6 +89,11 @@ namespace 题库本地服务.依赖注入
         public static IServiceCollection Add题库应用用例(this IServiceCollection services)
         {
             services.AddScoped<新建内容块用例>();
+            services.AddScoped<内容块元数据选项帮助类>();
+            services.AddScoped<获取元数据选项列表用例>();
+            services.AddScoped<新增元数据选项用例>();
+            services.AddScoped<更新元数据选项用例>();
+            services.AddScoped<设置元数据选项启用状态用例>();
             services.AddScoped<更新内容块元数据用例>();
             services.AddScoped<录入Ooxml内容块用例>();
             services.AddScoped<更新Ooxml内容块用例>();

@@ -13,6 +13,7 @@
     references: null,
     tagKinds: [],
     tagsByKind: {},
+    metadataOptions: [],
     selectedTagIds: new Set(),
     activeSession: null,
     pollTimer: null,
@@ -37,7 +38,18 @@
     newTitleInput: document.getElementById("newTitleInput"),
     newTypeSelect: document.getElementById("newTypeSelect"),
     newStructureSelect: document.getElementById("newStructureSelect"),
+    newRoleOptionSelect: document.getElementById("newRoleOptionSelect"),
+    newDifficultyOptionSelect: document.getElementById("newDifficultyOptionSelect"),
+    newUsageOptionSelect: document.getElementById("newUsageOptionSelect"),
+    newQuestionTypeOptionSelect: document.getElementById("newQuestionTypeOptionSelect"),
+    newDefaultIncludedInput: document.getElementById("newDefaultIncludedInput"),
+    newNoteInput: document.getElementById("newNoteInput"),
     createAndEditButton: document.getElementById("createAndEditButton"),
+    metadataOptionCategorySelect: document.getElementById("metadataOptionCategorySelect"),
+    metadataOptionList: document.getElementById("metadataOptionList"),
+    metadataOptionNameInput: document.getElementById("metadataOptionNameInput"),
+    addMetadataOptionButton: document.getElementById("addMetadataOptionButton"),
+    metadataOptionMessageText: document.getElementById("metadataOptionMessageText"),
     contentList: document.getElementById("contentList"),
     listCountText: document.getElementById("listCountText"),
     globalStatus: document.getElementById("globalStatus"),
@@ -46,9 +58,15 @@
     metaGrid: document.getElementById("metaGrid"),
     editTitleInput: document.getElementById("editTitleInput"),
     editSummaryInput: document.getElementById("editSummaryInput"),
+    editNoteInput: document.getElementById("editNoteInput"),
     editTypeSelect: document.getElementById("editTypeSelect"),
     editStatusSelect: document.getElementById("editStatusSelect"),
     editStructureSelect: document.getElementById("editStructureSelect"),
+    editRoleOptionSelect: document.getElementById("editRoleOptionSelect"),
+    editDifficultyOptionSelect: document.getElementById("editDifficultyOptionSelect"),
+    editUsageOptionSelect: document.getElementById("editUsageOptionSelect"),
+    editQuestionTypeOptionSelect: document.getElementById("editQuestionTypeOptionSelect"),
+    editDefaultIncludedInput: document.getElementById("editDefaultIncludedInput"),
     saveMetaButton: document.getElementById("saveMetaButton"),
     metadataMessageText: document.getElementById("metadataMessageText"),
     saveTagsButton: document.getElementById("saveTagsButton"),
@@ -105,6 +123,38 @@
     return prop(value, "名称", "name", "Name") || "";
   }
 
+  const metadataCategoryLabels = {
+    Role: "内容角色",
+    Difficulty: "难度",
+    Usage: "用途",
+    QuestionType: "题型",
+  };
+
+  function metadataOptionId(block, prefix) {
+    const lowerPrefix = prefix.charAt(0).toLowerCase() + prefix.slice(1);
+    return prop(block, `${prefix}OptionId`, `${lowerPrefix}OptionId`, `${prefix}OptionID`, `${lowerPrefix}OptionID`, `${prefix}选项ID`);
+  }
+
+  function metadataOptionName(block, prefix) {
+    const lowerPrefix = prefix.charAt(0).toLowerCase() + prefix.slice(1);
+    return text(prop(block, `${prefix}OptionName`, `${lowerPrefix}OptionName`, `${prefix}Name`, `${lowerPrefix}Name`, `${prefix}Option`, `${lowerPrefix}Option`), "");
+  }
+
+  function metadataCategoryOptions(category) {
+    return state.metadataOptions
+      .filter((option) => prop(option, "Category", "category") === category)
+      .sort((a, b) => Number(prop(a, "SortOrder", "sortOrder") || 0) - Number(prop(b, "SortOrder", "sortOrder") || 0));
+  }
+
+  function isOptionActive(option) {
+    return prop(option, "IsActive", "isActive") !== false;
+  }
+
+  function metadataDisplayName(block, prefix) {
+    const name = metadataOptionName(block, prefix);
+    return name && name !== "未设置" ? name : "";
+  }
+
   function tagList(block) {
     const tags = block?.标签摘要;
     if (Array.isArray(tags)) return tags.filter(Boolean).map(String);
@@ -144,7 +194,7 @@
   }
 
   function contentBlockRemark(block) {
-    return text(prop(block, "备注", "摘要", "说明", "Remark", "remark", "Summary", "summary"), "");
+    return text(prop(block, "Note", "note", "备注", "摘要", "说明", "Remark", "remark", "Summary", "summary"), "");
   }
 
   function contentBlockVersionStatus(block) {
@@ -181,6 +231,11 @@
     const action = options.actionLabel ? `<span class="content-block-card__action">${escapeHtml(options.actionLabel)}</span>` : "";
     const properties = [
       ["状态", status],
+      ["角色", metadataDisplayName(block, "Role")],
+      ["难度", metadataDisplayName(block, "Difficulty")],
+      ["用途", metadataDisplayName(block, "Usage")],
+      ["题型", metadataDisplayName(block, "QuestionType")],
+      ...(prop(block, "DefaultIncluded", "defaultIncluded") === false ? [["默认选入", "否"]] : []),
       ["版本", versionText],
       ["版本状态", versionStatus],
       ["标签", tagText(block)],
@@ -230,6 +285,133 @@
 
   function setGlobalStatus(message) {
     els.globalStatus.textContent = message;
+  }
+
+  async function loadMetadataOptions() {
+    try {
+      state.metadataOptions = await requestJson(`${apiBase()}/元数据选项`, { method: "GET" }) || [];
+      renderMetadataOptionControls();
+      renderMetadataOptionsPanel();
+      renderMetadataForm(state.selectedBlock);
+    } catch (error) {
+      state.metadataOptions = [];
+      renderMetadataOptionControls();
+      renderMetadataOptionsPanel();
+      els.metadataOptionMessageText.textContent = `字段选项读取失败：${error.message}`;
+    }
+  }
+
+  function renderMetadataOptionControls() {
+    renderMetadataOptionSelect(els.newRoleOptionSelect, "Role", null);
+    renderMetadataOptionSelect(els.newDifficultyOptionSelect, "Difficulty", null);
+    renderMetadataOptionSelect(els.newUsageOptionSelect, "Usage", null);
+    renderMetadataOptionSelect(els.newQuestionTypeOptionSelect, "QuestionType", null);
+
+    const block = state.selectedBlock;
+    renderMetadataOptionSelect(els.editRoleOptionSelect, "Role", metadataOptionId(block, "Role"));
+    renderMetadataOptionSelect(els.editDifficultyOptionSelect, "Difficulty", metadataOptionId(block, "Difficulty"));
+    renderMetadataOptionSelect(els.editUsageOptionSelect, "Usage", metadataOptionId(block, "Usage"));
+    renderMetadataOptionSelect(els.editQuestionTypeOptionSelect, "QuestionType", metadataOptionId(block, "QuestionType"));
+  }
+
+  function renderMetadataOptionSelect(select, category, selectedId) {
+    if (!select) return;
+    const normalizedSelectedId = selectedId ? String(selectedId) : "";
+    const options = metadataCategoryOptions(category)
+      .filter((option) => isOptionActive(option) || String(idOf(option)) === normalizedSelectedId);
+    const emptyLabel = category === "Role" ? "不指定" : "未设置";
+    select.innerHTML = `<option value="">${escapeHtml(emptyLabel)}</option>` + options.map((option) => {
+      const optionId = String(idOf(option));
+      const inactiveText = isOptionActive(option) ? "" : "（已停用）";
+      return `<option value="${escapeHtml(optionId)}"${optionId === normalizedSelectedId ? " selected" : ""}>${escapeHtml(prop(option, "Name", "name") || "")}${inactiveText}</option>`;
+    }).join("");
+    select.value = normalizedSelectedId;
+  }
+
+  function renderMetadataOptionsPanel() {
+    const category = els.metadataOptionCategorySelect.value || "Role";
+    const options = metadataCategoryOptions(category);
+    if (options.length === 0) {
+      els.metadataOptionList.innerHTML = "<div class=\"empty-state\">这个字段还没有选项</div>";
+      return;
+    }
+
+    els.metadataOptionList.innerHTML = options.map((option) => {
+      const optionId = idOf(option);
+      const isActive = isOptionActive(option);
+      return `
+        <div class="metadata-option-row${isActive ? "" : " is-inactive"}" data-metadata-option-id="${escapeHtml(optionId)}">
+          <input class="metadata-option-row__name" type="text" value="${escapeHtml(prop(option, "Name", "name") || "")}" aria-label="选项名称">
+          <input class="metadata-option-row__sort" type="number" value="${escapeHtml(prop(option, "SortOrder", "sortOrder") || 0)}" aria-label="排序">
+          <span class="metadata-option-row__state">${isActive ? "启用" : "停用"}</span>
+          <button class="ghost-button" type="button" data-metadata-option-action="save">保存</button>
+          <button class="ghost-button" type="button" data-metadata-option-action="${isActive ? "disable" : "enable"}">${isActive ? "停用" : "启用"}</button>
+        </div>
+      `;
+    }).join("");
+
+    els.metadataOptionList.querySelectorAll("[data-metadata-option-action]").forEach((button) => {
+      button.addEventListener("click", () => handleMetadataOptionAction(button));
+    });
+  }
+
+  async function handleMetadataOptionAction(button) {
+    const row = button.closest("[data-metadata-option-id]");
+    const optionId = row?.dataset.metadataOptionId;
+    if (!optionId) return;
+
+    const action = button.dataset.metadataOptionAction;
+    try {
+      if (action === "save") {
+        await requestJson(`${apiBase()}/元数据选项/${encodeURIComponent(optionId)}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            Name: row.querySelector(".metadata-option-row__name")?.value.trim(),
+            SortOrder: Number(row.querySelector(".metadata-option-row__sort")?.value || 0),
+          }),
+        });
+        els.metadataOptionMessageText.textContent = "字段选项已保存。";
+      } else {
+        await requestJson(`${apiBase()}/元数据选项/${encodeURIComponent(optionId)}/${action === "disable" ? "停用" : "启用"}`, {
+          method: "POST",
+          body: "{}",
+        });
+        els.metadataOptionMessageText.textContent = action === "disable" ? "字段选项已停用。" : "字段选项已启用。";
+      }
+
+      await loadMetadataOptions();
+      await loadBlocks();
+      if (state.selectedId) {
+        await selectBlock(state.selectedId);
+      }
+    } catch (error) {
+      els.metadataOptionMessageText.textContent = error.message;
+      alert(error.message);
+    }
+  }
+
+  async function addMetadataOption() {
+    const name = els.metadataOptionNameInput.value.trim();
+    if (!name) {
+      els.metadataOptionNameInput.focus();
+      return;
+    }
+
+    try {
+      await requestJson(`${apiBase()}/元数据选项`, {
+        method: "POST",
+        body: JSON.stringify({
+          Category: els.metadataOptionCategorySelect.value || "Role",
+          Name: name,
+        }),
+      });
+      els.metadataOptionNameInput.value = "";
+      els.metadataOptionMessageText.textContent = "字段选项已新增。";
+      await loadMetadataOptions();
+    } catch (error) {
+      els.metadataOptionMessageText.textContent = error.message;
+      alert(error.message);
+    }
   }
 
   function buildQuery() {
@@ -330,6 +512,11 @@
       ["状态", block.状态],
       ["结构", block.结构类型],
       ["版本", block.当前版本号 ? `v${block.当前版本号}` : "无"],
+      ["内容角色", metadataOptionName(block, "Role") || "未指定"],
+      ["难度", metadataOptionName(block, "Difficulty") || "未设置"],
+      ["用途", metadataOptionName(block, "Usage") || "未设置"],
+      ["题型", metadataOptionName(block, "QuestionType") || "未设置"],
+      ["默认选入", prop(block, "DefaultIncluded", "defaultIncluded") === false ? "否" : "是"],
     ];
 
     els.metaGrid.innerHTML = values.map(([label, value]) => `
@@ -348,9 +535,15 @@
     els.editTypeSelect.value = block?.类型 || "知识点";
     els.editStatusSelect.value = block?.状态 || "草稿";
     els.editStructureSelect.value = block?.结构类型 || "原子块";
+    els.editNoteInput.value = prop(block, "Note", "note") || "";
+    els.editDefaultIncludedInput.checked = prop(block, "DefaultIncluded", "defaultIncluded") !== false;
+    renderMetadataOptionSelect(els.editRoleOptionSelect, "Role", metadataOptionId(block, "Role"));
+    renderMetadataOptionSelect(els.editDifficultyOptionSelect, "Difficulty", metadataOptionId(block, "Difficulty"));
+    renderMetadataOptionSelect(els.editUsageOptionSelect, "Usage", metadataOptionId(block, "Usage"));
+    renderMetadataOptionSelect(els.editQuestionTypeOptionSelect, "QuestionType", metadataOptionId(block, "QuestionType"));
     els.metadataMessageText.textContent = hasBlock
       ? "元数据保存不会生成 Word 内容版本。"
-      : "选择内容块后可编辑标题、摘要、类型和状态。";
+      : "选择内容块后可编辑标题、摘要、类型、状态和固定字段。";
   }
 
   function setMetadataDisabled(disabled) {
@@ -359,6 +552,12 @@
     els.editTypeSelect.disabled = disabled;
     els.editStatusSelect.disabled = disabled;
     els.editStructureSelect.disabled = disabled;
+    els.editNoteInput.disabled = disabled;
+    els.editRoleOptionSelect.disabled = disabled;
+    els.editDifficultyOptionSelect.disabled = disabled;
+    els.editUsageOptionSelect.disabled = disabled;
+    els.editQuestionTypeOptionSelect.disabled = disabled;
+    els.editDefaultIncludedInput.disabled = disabled;
     els.saveMetaButton.disabled = disabled;
   }
 
@@ -937,6 +1136,12 @@
       内容块状态: els.editStatusSelect.value,
       内容块结构类型: structure,
       是否允许子块: structure === "组合块",
+      RoleOptionId: els.editRoleOptionSelect.value ? Number(els.editRoleOptionSelect.value) : null,
+      DifficultyOptionId: els.editDifficultyOptionSelect.value ? Number(els.editDifficultyOptionSelect.value) : null,
+      UsageOptionId: els.editUsageOptionSelect.value ? Number(els.editUsageOptionSelect.value) : null,
+      QuestionTypeOptionId: els.editQuestionTypeOptionSelect.value ? Number(els.editQuestionTypeOptionSelect.value) : null,
+      DefaultIncluded: els.editDefaultIncludedInput.checked,
+      Note: els.editNoteInput.value.trim() || null,
     };
 
     setGlobalStatus("保存信息");
@@ -990,6 +1195,12 @@
       内容块结构类型: structure,
       是否允许子块: structure === "组合块",
       是否打开Word: true,
+      RoleOptionId: els.newRoleOptionSelect.value ? Number(els.newRoleOptionSelect.value) : null,
+      DifficultyOptionId: els.newDifficultyOptionSelect.value ? Number(els.newDifficultyOptionSelect.value) : null,
+      UsageOptionId: els.newUsageOptionSelect.value ? Number(els.newUsageOptionSelect.value) : null,
+      QuestionTypeOptionId: els.newQuestionTypeOptionSelect.value ? Number(els.newQuestionTypeOptionSelect.value) : null,
+      DefaultIncluded: els.newDefaultIncludedInput.checked,
+      Note: els.newNoteInput.value.trim() || null,
     };
 
     setGlobalStatus("创建会话");
@@ -999,6 +1210,8 @@
         body: JSON.stringify(body),
       });
       els.newTitleInput.value = "";
+      els.newNoteInput.value = "";
+      els.newDefaultIncludedInput.checked = true;
       setSession(session);
       await loadBlocks();
       await selectBlock(session.内容块ID);
@@ -1172,6 +1385,11 @@
       loadBlocks();
     });
     els.tagFilterSelect.addEventListener("change", loadBlocks);
+    els.metadataOptionCategorySelect.addEventListener("change", renderMetadataOptionsPanel);
+    els.addMetadataOptionButton.addEventListener("click", addMetadataOption);
+    els.metadataOptionNameInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") addMetadataOption();
+    });
     els.newTypeSelect.addEventListener("change", updateCreateDefaults);
     els.editTypeSelect.addEventListener("change", updateMetadataStructureDefault);
     els.saveMetaButton.addEventListener("click", saveMetadata);
@@ -1200,6 +1418,8 @@
   async function init() {
     bindEvents();
     updateCreateDefaults();
+    renderMetadataOptionControls();
+    renderMetadataOptionsPanel();
     renderMetadataForm(null);
     renderTags();
     renderNoStructure("选择一个内容块后查看组合结构。");
@@ -1220,6 +1440,7 @@
     state.references = null;
     state.tagKinds = [];
     state.tagsByKind = {};
+    state.metadataOptions = [];
     state.selectedTagIds = new Set();
     state.activeSession = null;
     els.detailEyebrow.textContent = "未选择";
@@ -1229,7 +1450,7 @@
     els.addChildButton.disabled = true;
     els.reloadVersionsButton.disabled = true;
     els.reloadReferencesButton.disabled = true;
-    els.metaGrid.innerHTML = ["类型", "状态", "结构", "版本"].map((label) => `
+    els.metaGrid.innerHTML = ["类型", "状态", "结构", "版本", "内容角色", "难度", "用途", "题型", "默认选入"].map((label) => `
       <div class="meta-card">
         <span>${label}</span>
         <strong>-</strong>
@@ -1240,11 +1461,13 @@
     renderList();
     renderMetadataForm(null);
     renderTags();
+    renderMetadataOptionControls();
+    renderMetadataOptionsPanel();
     renderNoStructure("选择一个内容块后查看组合结构。");
     renderVersions();
     renderReferences();
     setSession(null);
-    await loadTagCatalog();
+    await Promise.all([loadMetadataOptions(), loadTagCatalog()]);
     await loadBlocks();
   }
 

@@ -7,10 +7,14 @@ namespace 题库应用.内容块模块
     public class 更新内容块元数据用例
     {
         private readonly I内容块仓储 _内容块仓储;
+        private readonly 内容块元数据选项帮助类 _内容块元数据选项帮助类;
 
-        public 更新内容块元数据用例(I内容块仓储 内容块仓储)
+        public 更新内容块元数据用例(
+            I内容块仓储 内容块仓储,
+            内容块元数据选项帮助类 内容块元数据选项帮助类)
         {
             _内容块仓储 = 内容块仓储;
+            _内容块元数据选项帮助类 = 内容块元数据选项帮助类;
         }
 
         public 内容块详情结果? 执行(int 内容块ID, 更新内容块元数据的请求 请求)
@@ -32,6 +36,12 @@ namespace 题库应用.内容块模块
             var 结构类型 = 请求.内容块结构类型 ?? 内容块.结构类型;
             var 是否允许子块 = 请求.是否允许子块 ?? 内容块.是否允许子块;
 
+            _内容块元数据选项帮助类.校验内容块选项(
+                请求.RoleOptionId,
+                请求.DifficultyOptionId,
+                请求.UsageOptionId,
+                请求.QuestionTypeOptionId);
+
             if ((结构类型 == 内容块结构类型.原子块 || !是否允许子块)
                 && _内容块仓储.获取子项列表(内容块ID).Count > 0)
             {
@@ -44,11 +54,20 @@ namespace 题库应用.内容块模块
                 类型,
                 状态,
                 结构类型,
-                是否允许子块);
+                是否允许子块,
+                请求.RoleOptionId,
+                请求.DifficultyOptionId,
+                请求.UsageOptionId,
+                请求.QuestionTypeOptionId,
+                请求.DefaultIncluded,
+                请求.Note);
 
             _内容块仓储.保存内容块(内容块);
 
-            return 内容块详情结果.从内容块(内容块, _内容块仓储.获取当前版本(内容块ID));
+            return 内容块详情结果.从内容块(
+                内容块,
+                _内容块仓储.获取当前版本(内容块ID),
+                _内容块元数据选项帮助类.获取内容块选项字典(内容块));
         }
     }
 }

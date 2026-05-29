@@ -17,6 +17,12 @@ namespace 题库核心.内容块模块.领域
             int? 当前版本ID,
             内容块结构类型 结构类型,
             bool 是否允许子块,
+            int? roleOptionId,
+            int? difficultyOptionId,
+            int? usageOptionId,
+            int? questionTypeOptionId,
+            bool defaultIncluded,
+            string? note,
             DateTime 创建时间,
             DateTime 更新时间)
         {
@@ -28,6 +34,12 @@ namespace 题库核心.内容块模块.领域
             this.当前版本ID = 当前版本ID;
             this.结构类型 = 结构类型;
             this.是否允许子块 = 是否允许子块;
+            RoleOptionId = roleOptionId;
+            DifficultyOptionId = difficultyOptionId;
+            UsageOptionId = usageOptionId;
+            QuestionTypeOptionId = questionTypeOptionId;
+            DefaultIncluded = defaultIncluded;
+            Note = 修整可空文本(note);
             this.创建时间 = 创建时间;
             this.更新时间 = 更新时间;
         }
@@ -48,6 +60,18 @@ namespace 题库核心.内容块模块.领域
 
         public bool 是否允许子块 { get; private set; }
 
+        public int? RoleOptionId { get; private set; }
+
+        public int? DifficultyOptionId { get; private set; }
+
+        public int? UsageOptionId { get; private set; }
+
+        public int? QuestionTypeOptionId { get; private set; }
+
+        public bool DefaultIncluded { get; private set; } = true;
+
+        public string? Note { get; private set; }
+
         public DateTime 创建时间 { get; private set; }
 
         public DateTime 更新时间 { get; private set; }
@@ -58,11 +82,21 @@ namespace 题库核心.内容块模块.领域
             内容块类型 类型,
             内容块状态 状态,
             内容块结构类型? 结构类型 = null,
-            bool? 是否允许子块 = null)
+            bool? 是否允许子块 = null,
+            int? roleOptionId = null,
+            int? difficultyOptionId = null,
+            int? usageOptionId = null,
+            int? questionTypeOptionId = null,
+            bool defaultIncluded = true,
+            string? note = null)
         {
             校验标题(标题);
             校验枚举值(类型, nameof(类型));
             校验枚举值(状态, nameof(状态));
+            校验选项ID(roleOptionId, nameof(roleOptionId));
+            校验选项ID(difficultyOptionId, nameof(difficultyOptionId));
+            校验选项ID(usageOptionId, nameof(usageOptionId));
+            校验选项ID(questionTypeOptionId, nameof(questionTypeOptionId));
             var 实际结构类型 = 结构类型 ?? 获取默认结构类型(类型);
             校验结构规则(类型, 实际结构类型, 是否允许子块);
 
@@ -76,6 +110,12 @@ namespace 题库核心.内容块模块.领域
                 null,
                 实际结构类型,
                 是否允许子块 ?? 实际结构类型 == 内容块结构类型.组合块,
+                roleOptionId,
+                difficultyOptionId,
+                usageOptionId,
+                questionTypeOptionId,
+                defaultIncluded,
+                note,
                 now,
                 now);
         }
@@ -89,10 +129,32 @@ namespace 题库核心.内容块模块.领域
             int? 当前版本ID,
             内容块结构类型 结构类型,
             bool 是否允许子块,
+            int? roleOptionId,
+            int? difficultyOptionId,
+            int? usageOptionId,
+            int? questionTypeOptionId,
+            bool defaultIncluded,
+            string? note,
             DateTime 创建时间,
             DateTime 更新时间)
         {
-            return new 内容块(id, 标题, 摘要, 类型, 状态, 当前版本ID, 结构类型, 是否允许子块, 创建时间, 更新时间);
+            return new 内容块(
+                id,
+                标题,
+                摘要,
+                类型,
+                状态,
+                当前版本ID,
+                结构类型,
+                是否允许子块,
+                roleOptionId,
+                difficultyOptionId,
+                usageOptionId,
+                questionTypeOptionId,
+                defaultIncluded,
+                note,
+                创建时间,
+                更新时间);
         }
 
         public void 修改元数据(
@@ -101,11 +163,21 @@ namespace 题库核心.内容块模块.领域
             内容块类型 类型,
             内容块状态 状态,
             内容块结构类型? 结构类型 = null,
-            bool? 是否允许子块 = null)
+            bool? 是否允许子块 = null,
+            int? roleOptionId = null,
+            int? difficultyOptionId = null,
+            int? usageOptionId = null,
+            int? questionTypeOptionId = null,
+            bool? defaultIncluded = null,
+            string? note = null)
         {
             校验标题(标题);
             校验枚举值(类型, nameof(类型));
             校验枚举值(状态, nameof(状态));
+            校验选项ID(roleOptionId, nameof(roleOptionId));
+            校验选项ID(difficultyOptionId, nameof(difficultyOptionId));
+            校验选项ID(usageOptionId, nameof(usageOptionId));
+            校验选项ID(questionTypeOptionId, nameof(questionTypeOptionId));
             var 实际结构类型 = 结构类型 ?? this.结构类型;
             var 实际是否允许子块 = 是否允许子块 ?? this.是否允许子块;
             校验结构规则(类型, 实际结构类型, 实际是否允许子块);
@@ -116,6 +188,12 @@ namespace 题库核心.内容块模块.领域
             this.状态 = 状态;
             this.结构类型 = 实际结构类型;
             this.是否允许子块 = 实际是否允许子块;
+            RoleOptionId = roleOptionId;
+            DifficultyOptionId = difficultyOptionId;
+            UsageOptionId = usageOptionId;
+            QuestionTypeOptionId = questionTypeOptionId;
+            DefaultIncluded = defaultIncluded ?? DefaultIncluded;
+            Note = 修整可空文本(note);
             更新时间 = DateTime.Now;
         }
 
@@ -145,6 +223,19 @@ namespace 题库核心.内容块模块.领域
             {
                 throw new ArgumentOutOfRangeException(参数名);
             }
+        }
+
+        private static void 校验选项ID(int? 选项ID, string 参数名)
+        {
+            if (选项ID.HasValue && 选项ID.Value <= 0)
+            {
+                throw new ArgumentOutOfRangeException(参数名);
+            }
+        }
+
+        private static string? 修整可空文本(string? 文本)
+        {
+            return string.IsNullOrWhiteSpace(文本) ? null : 文本.Trim();
         }
 
         private static 内容块结构类型 获取默认结构类型(内容块类型 类型)

@@ -27,6 +27,26 @@ namespace 题库应用.讲义模块
 
         public bool 是否允许子块 { get; set; }
 
+        public int? RoleOptionId { get; set; }
+
+        public string? RoleOptionName { get; set; }
+
+        public int? DifficultyOptionId { get; set; }
+
+        public string? DifficultyOptionName { get; set; }
+
+        public int? UsageOptionId { get; set; }
+
+        public string? UsageOptionName { get; set; }
+
+        public int? QuestionTypeOptionId { get; set; }
+
+        public string? QuestionTypeOptionName { get; set; }
+
+        public bool DefaultIncluded { get; set; } = true;
+
+        public string? Note { get; set; }
+
         public int? 当前版本ID { get; set; }
 
         public int? 当前版本号 { get; set; }

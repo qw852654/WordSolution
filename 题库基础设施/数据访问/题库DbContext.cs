@@ -41,6 +41,8 @@ namespace 题库基础设施.数据访问
 
         public DbSet<内容块标签关系> 内容块标签关系表 => Set<内容块标签关系>();
 
+        public DbSet<元数据选项> 元数据选项表 => Set<元数据选项>();
+
         public DbSet<小节> 小节表 => Set<小节>();
 
         public DbSet<小节项> 小节项表 => Set<小节项>();
@@ -137,11 +139,31 @@ namespace 题库基础设施.数据访问
                 builder.Property(内容块 => 内容块.当前版本ID).HasColumnName("CurrentVersionId");
                 builder.Property(内容块 => 内容块.结构类型).HasColumnName("StructureType");
                 builder.Property(内容块 => 内容块.是否允许子块).HasColumnName("AllowChildren");
+                builder.Property(内容块 => 内容块.RoleOptionId).HasColumnName("RoleOptionId");
+                builder.Property(内容块 => 内容块.DifficultyOptionId).HasColumnName("DifficultyOptionId");
+                builder.Property(内容块 => 内容块.UsageOptionId).HasColumnName("UsageOptionId");
+                builder.Property(内容块 => 内容块.QuestionTypeOptionId).HasColumnName("QuestionTypeOptionId");
+                builder.Property(内容块 => 内容块.DefaultIncluded).HasColumnName("DefaultIncluded");
+                builder.Property(内容块 => 内容块.Note).HasColumnName("Note");
                 builder.Property(内容块 => 内容块.创建时间).HasColumnName("CreatedTime");
                 builder.Property(内容块 => 内容块.更新时间).HasColumnName("UpdateTime");
                 builder.HasIndex(内容块 => new { 内容块.类型, 内容块.状态 });
                 builder.HasIndex(内容块 => 内容块.当前版本ID);
                 builder.HasIndex(内容块 => new { 内容块.结构类型, 内容块.是否允许子块 });
+            });
+
+            modelBuilder.Entity<元数据选项>(builder =>
+            {
+                builder.ToTable("MetadataOptions");
+                builder.HasKey(选项 => 选项.Id);
+                builder.Property(选项 => 选项.Category).HasColumnName("Category");
+                builder.Property(选项 => 选项.Name).HasColumnName("Name");
+                builder.Property(选项 => 选项.SortOrder).HasColumnName("SortOrder");
+                builder.Property(选项 => 选项.IsActive).HasColumnName("IsActive");
+                builder.Property(选项 => 选项.CreatedTime).HasColumnName("CreatedTime");
+                builder.Property(选项 => 选项.UpdatedTime).HasColumnName("UpdatedTime");
+                builder.HasIndex(选项 => new { 选项.Category, 选项.SortOrder });
+                builder.HasIndex(选项 => new { 选项.Category, 选项.Name }).IsUnique();
             });
 
             modelBuilder.Entity<内容块版本>(builder =>

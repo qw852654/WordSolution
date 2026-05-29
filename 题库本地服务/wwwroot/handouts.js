@@ -84,6 +84,22 @@
     return value === null || value === undefined || value === "" ? fallback : String(value);
   }
 
+  function metadataText(node, key, fallback = "") {
+    const lowerKey = key.charAt(0).toLowerCase() + key.slice(1);
+    const value = node?.[`${key}OptionName`] || node?.[`${lowerKey}OptionName`];
+    return value && value !== "未设置" ? String(value) : fallback;
+  }
+
+  function buildContentMetadata(node) {
+    return [
+      metadataText(node, "Role"),
+      metadataText(node, "Difficulty"),
+      metadataText(node, "Usage"),
+      metadataText(node, "QuestionType"),
+      (node?.DefaultIncluded ?? node?.defaultIncluded) === false ? "默认不选入" : "",
+    ].filter(Boolean);
+  }
+
   function setGlobalStatus(message) {
     els.globalStatus.textContent = message;
   }
@@ -384,6 +400,7 @@
       text(node.角色, "内容块"),
       text(node.内容类型, "内容块"),
       text(node.结构类型, "原子块"),
+      ...buildContentMetadata(node),
       `${text(node.引用版本模式, "跟随最新")} · v${text(node.引用版本号, "0")}`,
       `排序 ${Number(node.排序 || 0) + 1}`,
     ];
@@ -564,11 +581,13 @@
     els.contextSummary.innerHTML = `
       <strong title="${escapeHtml(node.标题)}">${escapeHtml(node.标题)}</strong>
       <p>${escapeHtml(node.摘要 || "暂无摘要")}</p>
+      ${node.Note || node.note ? `<p class="context-note">${escapeHtml(node.Note || node.note)}</p>` : ""}
       <div class="context-meta">
         <span>ID ${escapeHtml(node.目标ID)}</span>
         <span>${escapeHtml(node.内容类型 || "内容块")}</span>
         <span>${escapeHtml(node.状态 || "草稿")}</span>
         <span>${escapeHtml(node.结构类型 || "原子块")}</span>
+        ${buildContentMetadata(node).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
         <span>${node.当前版本号 ? `当前 v${escapeHtml(node.当前版本号)}` : "无当前版本"}</span>
         <span>${escapeHtml(text(node.引用版本模式, "跟随最新"))} · v${escapeHtml(text(node.引用版本号, "0"))}</span>
       </div>
