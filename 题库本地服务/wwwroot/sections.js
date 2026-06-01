@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   const topicTree = {
     id: "topic-function-relation",
     title: "功能关系",
@@ -19,352 +19,19 @@
 
   const topicWorkspace = {
     topicId: "topic-mechanical-energy",
-    sectionPlans: [
-      {
-        id: "section-basic",
-        title: "基础讲解版",
-        status: "静态原型",
-        summary: "先建立机械能守恒条件，再用例题组和练习巩固。",
-        metrics: ["知识点 1", "例题组 1", "练习 1", "下级模型 3"],
-      },
-      {
-        id: "section-advanced",
-        title: "提高班版",
-        status: "待设计",
-        summary: "强化约束关系、速度关联和复杂能量方程。",
-        metrics: ["模型迁移", "综合例题", "拓展练习"],
-      },
-      {
-        id: "section-review",
-        title: "一轮复习版",
-        status: "待设计",
-        summary: "面向复习课，突出判断流程和易错点纠偏。",
-        metrics: ["方法总结", "易错点", "分层训练"],
-      },
-    ],
-    handouts: [
-      {
-        id: "handout-special",
-        title: "机械能守恒专题讲义",
-        status: "静态原型",
-        summary: "围绕机械能守恒条件、例题组、圆轨道模型形成专题材料。",
-        metrics: ["引用小节 1", "内容块 3", "可生成入口占位"],
-      },
-      {
-        id: "handout-unit-review",
-        title: "功能关系单元复习讲义",
-        status: "待设计",
-        summary: "面向单元复习，把机械能守恒与功、能量变化串联。",
-        metrics: ["跨主题", "复习讲义", "引用展开"],
-      },
-    ],
-    resources: [
-      {
-        id: "resource-knowledge",
-        title: "机械能守恒知识点",
-        type: "知识点",
-        structureType: "原子块",
-        remark: "判断守恒条件，区分系统内外力做功。",
-        meta: ["当前版本 v3", "标签 功能关系 / 机械能"],
-      },
-      {
-        id: "resource-circle-group",
-        title: "圆轨道例题组",
-        type: "例题组",
-        structureType: "组合块",
-        remark: "由临界速度和最高点受力两道例题组成。",
-        meta: ["组合渲染", "标签 圆轨道 / 模型迁移"],
-      },
-      {
-        id: "resource-class-practice",
-        title: "课堂练习",
-        type: "练习",
-        structureType: "原子块",
-        remark: "三道递进题，用于课堂即时巩固。",
-        meta: ["当前版本 v2", "标签 基础巩固"],
-      },
-    ],
     secondary: {
-      references: ["2 份讲义引用机械能守恒基础小节", "1 个组合块引用圆轨道例题组", "暂无旧版本锁定提醒"],
-      recent: ["今天更新：机械能守恒知识点 v3", "昨天编排：机械能守恒专题讲义草稿", "本轮页面为静态 IA 原型"],
+      references: [
+        "教学主题树当前仍是独立的 UI 原型导航数据。",
+        "小节卡片和讲义卡片已经切到真实 API。",
+        "当前阶段尚未接入真实教学主题模型。"
+      ],
+      recent: [
+        "点击主题进入主题工作台。",
+        "点击真实小节卡片进入小节编辑器。",
+        "展开教学主题树不会重置当前编辑器。"
+      ],
     },
   };
-
-  const sectionEditor = {
-    id: "section-basic",
-    title: "机械能守恒 - 基础讲解版",
-    topicTitle: "机械能守恒",
-    status: "静态原型",
-    summary: "这个小节回答：机械能守恒这个教学主题应该怎么讲。",
-    apiSectionId: null,
-    apiKeyword: "机械能守恒",
-    items: [
-      {
-        id: "sec-knowledge",
-        title: "机械能守恒的条件与表达",
-        type: "知识点",
-        structureType: "原子块",
-        source: "内容块：机械能守恒知识点",
-        referenceMode: "跟随最新",
-        versionStatus: "当前版本 v3",
-        detail: "用于小节开头建立判断标准。",
-        html: `
-          <h4>机械能守恒的条件</h4>
-          <p>当系统内只有重力或弹力做功，其他力不做功或做功代数和为零时，系统机械能保持不变。</p>
-          <p>解题时先选择研究系统，再判断非保守力做功，最后列初末状态能量方程。</p>
-          <div class="doc-equation">E_k1 + E_p1 = E_k2 + E_p2</div>
-        `,
-      },
-      {
-        id: "sec-example-group",
-        title: "机械能守恒例题组",
-        type: "例题组",
-        structureType: "组合块",
-        source: "组合内容块：机械能守恒例题组",
-        referenceMode: "锁定当前版本",
-        versionStatus: "组合渲染 v2",
-        detail: "用两道例题串起守恒条件和速度、高度关系。",
-        html: `
-          <h4>例题组说明</h4>
-          <p>由两道例题组成，先判断守恒条件，再处理速度与高度关系。</p>
-        `,
-        children: [
-          {
-            id: "sec-example-1",
-            title: "例题 1：光滑斜面下滑",
-            type: "例题",
-            structureType: "原子块",
-            source: "内容块：光滑斜面下滑",
-            referenceMode: "跟随最新",
-            versionStatus: "当前版本 v1",
-            detail: "从高度差出发建立机械能守恒方程。",
-            html: `
-              <h4>例题 1</h4>
-              <p>质量为 m 的滑块从光滑斜面高 h 处由静止释放，求到达底端时速度大小。</p>
-              <div class="doc-equation">mgh = 1/2 mv^2</div>
-            `,
-          },
-          {
-            id: "sec-example-2",
-            title: "例题 2：弹簧最大压缩量",
-            type: "例题",
-            structureType: "原子块",
-            source: "内容块：弹簧最大压缩量",
-            referenceMode: "跟随最新",
-            versionStatus: "待审查 v1",
-            detail: "把重力势能转化为弹性势能，强调最大压缩位置。",
-            html: `
-              <h4>例题 2</h4>
-              <p>小球从高度 h 处释放后压缩水平弹簧，忽略摩擦，求弹簧最大压缩量。</p>
-              <div class="doc-equation">mgh = 1/2 kx^2</div>
-            `,
-          },
-        ],
-      },
-      {
-        id: "sec-practice",
-        title: "机械能守恒三题练习",
-        type: "练习",
-        structureType: "原子块",
-        source: "内容块：课堂练习",
-        referenceMode: "跟随最新",
-        versionStatus: "当前版本 v4",
-        detail: "用于讲解后即时练习和反馈。",
-        html: `
-          <h4>课堂练习</h4>
-          <p>1. 判断下列过程机械能是否守恒。</p>
-          <p>2. 已知高度差求末速度。</p>
-          <p>3. 含弹簧模型中求最大形变量。</p>
-        `,
-      },
-      {
-        id: "sec-model-entry",
-        title: "下级模型入口",
-        type: "模型",
-        structureType: "入口卡片",
-        source: "教学主题入口",
-        referenceMode: "不适用",
-        versionStatus: "静态入口",
-        detail: "用于继续进入更细的模型主题，不是内容块版本。",
-        html: `
-          <h4>下级模型</h4>
-          <p>这些入口帮助从机械能守恒进入更具体的教学主题。</p>
-        `,
-        children: [
-          {
-            id: "sec-model-circle",
-            title: "竖直圆轨道",
-            type: "模型",
-            structureType: "主题入口",
-            source: "教学主题：竖直圆轨道",
-            referenceMode: "不适用",
-            versionStatus: "无版本",
-            detail: "最低点、最高点、临界速度。",
-            html: "<p>进入竖直圆轨道模型，继续处理临界条件与受力关系。</p>",
-          },
-          {
-            id: "sec-model-rod",
-            title: "杆模型",
-            type: "模型",
-            structureType: "主题入口",
-            source: "教学主题：杆模型",
-            referenceMode: "不适用",
-            versionStatus: "无版本",
-            detail: "轻杆约束、端点速度关系。",
-            html: "<p>进入杆模型，处理约束关系与能量方程。</p>",
-          },
-          {
-            id: "sec-model-ball",
-            title: "球模型",
-            type: "模型",
-            structureType: "主题入口",
-            source: "教学主题：球模型",
-            referenceMode: "不适用",
-            versionStatus: "无版本",
-            detail: "轨道、小球、弹簧组合。",
-            html: "<p>进入球模型，处理小球、轨道和弹簧组合问题。</p>",
-          },
-        ],
-      },
-    ],
-  };
-
-  const handoutEditor = {
-    id: "handout-special",
-    title: "机械能守恒专题讲义",
-    topicTitle: "机械能守恒",
-    status: "静态原型",
-    summary: "这个讲义回答：这份材料应该怎么输出。",
-    items: [
-      {
-        id: "handout-intro",
-        title: "导入",
-        type: "讲义项",
-        structureType: "独立内容",
-        source: "讲义直接拥有",
-        referenceMode: "讲义内顺序",
-        versionStatus: "静态草稿",
-        detail: "从功能关系切入机械能守恒。",
-        html: `
-          <h4>导入</h4>
-          <p>从“力做功改变能量”切入，提出什么时候可以只看初末状态。</p>
-        `,
-      },
-      {
-        id: "handout-section-basic",
-        title: "机械能守恒基础小节",
-        type: "小节引用",
-        structureType: "引用展开",
-        source: "引用小节：机械能守恒 - 基础讲解版",
-        referenceMode: "跟随小节结构",
-        versionStatus: "引用展开视图",
-        detail: "讲义直接拥有的是这个小节引用，下面展开的是源小节预览。",
-        isReferenceView: true,
-        referenceNote: "引用展开视图：展开内容来自源小节，不是讲义自己真实拥有的子节点。",
-        html: `
-          <h4>小节引用</h4>
-          <p>讲义中移除该小节时，只删除讲义引用，不删除源小节。</p>
-        `,
-        children: [
-          {
-            id: "handout-ref-knowledge",
-            title: "知识点",
-            type: "知识点",
-            structureType: "原子块",
-            source: "来自源小节：机械能守恒 - 基础讲解版",
-            referenceMode: "引用展开预览",
-            versionStatus: "当前版本 v3",
-            detail: "源内容块预览；编辑时编辑源内容块。",
-            isReferenceView: true,
-            referenceNote: "引用展开视图：这是源小节中的内容块预览。",
-            html: sectionEditor.items[0].html,
-          },
-          {
-            id: "handout-ref-example-group",
-            title: "例题组",
-            type: "例题组",
-            structureType: "组合块",
-            source: "来自源小节：机械能守恒 - 基础讲解版",
-            referenceMode: "引用展开预览",
-            versionStatus: "组合渲染 v2",
-            detail: "源小节内的组合块展开预览。",
-            isReferenceView: true,
-            referenceNote: "引用展开视图：调整讲义结构不会反向修改源小节结构。",
-            html: sectionEditor.items[1].html,
-          },
-          {
-            id: "handout-ref-practice",
-            title: "练习",
-            type: "练习",
-            structureType: "原子块",
-            source: "来自源小节：机械能守恒 - 基础讲解版",
-            referenceMode: "引用展开预览",
-            versionStatus: "当前版本 v4",
-            detail: "源小节中的练习内容预览。",
-            isReferenceView: true,
-            referenceNote: "引用展开视图：讲义当前阶段不生成局部副本。",
-            html: sectionEditor.items[2].html,
-          },
-        ],
-      },
-      {
-        id: "handout-circle-model",
-        title: "竖直圆轨道模型",
-        type: "内容块",
-        structureType: "组合块",
-        source: "讲义直接引用内容块",
-        referenceMode: "锁定当前版本",
-        versionStatus: "组合渲染 v1",
-        detail: "作为讲义中的模型专题补充。",
-        html: `
-          <h4>竖直圆轨道模型</h4>
-          <p>最高点临界条件：轻绳模型要求速度不小于临界速度，轻杆模型可以提供支持力。</p>
-          <div class="doc-equation">v_min = sqrt(gR)</div>
-        `,
-      },
-      {
-        id: "handout-class-practice",
-        title: "课堂练习",
-        type: "内容块",
-        structureType: "原子块",
-        source: "讲义直接引用内容块",
-        referenceMode: "跟随最新",
-        versionStatus: "当前版本 v2",
-        detail: "讲义尾部练习，用于课堂检测。",
-        html: topicWorkspace.resources[2].remark ? `
-          <h4>课堂练习</h4>
-          <p>围绕守恒条件、速度表达和模型迁移设置三道题。</p>
-        ` : "<p>课堂练习占位。</p>",
-      },
-    ],
-  };
-
-  const resourceCandidates = [
-    {
-      id: "candidate-circle",
-      title: "竖直圆轨道临界条件",
-      type: "知识点",
-      structureType: "原子块",
-      remark: "整理最高点压力为零和杆模型临界条件的差异。",
-      meta: ["圆轨道", "临界速度", "当前版本 v2"],
-    },
-    {
-      id: "candidate-spring",
-      title: "弹簧能量转化例题",
-      type: "例题",
-      structureType: "原子块",
-      remark: "从释放点到最大压缩位置列能量方程。",
-      meta: ["弹簧", "守恒", "当前版本 v1"],
-    },
-    {
-      id: "candidate-practice",
-      title: "机械能守恒分层练习",
-      type: "练习",
-      structureType: "组合块",
-      remark: "基础判断、公式代入、模型迁移三组题。",
-      meta: ["练习", "分层", "待审查"],
-    },
-  ];
 
   const els = {
     iaLayout: document.getElementById("iaLayout"),
@@ -389,27 +56,33 @@
     closeResourceDrawerButton: document.getElementById("closeResourceDrawerButton"),
     resourceSearchInput: document.getElementById("resourceSearchInput"),
     resourceResults: document.getElementById("resourceResults"),
+    dataStatusChip: document.querySelector(".topbar-actions .status-chip:not(.muted)"),
+    detailActionCard: document.querySelectorAll(".detail-panel .detail-card")[2] || null,
   };
 
   const state = {
     mode: "topic",
-    selectedTopicId: "topic-mechanical-energy",
-    selectedSectionPlanId: "section-basic",
-    selectedHandoutId: "handout-special",
-    selectedSectionNodeId: "sec-knowledge",
-    selectedHandoutNodeId: "handout-intro",
+    selectedTopicId: topicWorkspace.topicId,
+    selectedSectionPlanId: null,
+    selectedSectionNodeId: null,
     topicNavExpanded: true,
     collapsedCardIds: new Set(),
     insertContext: null,
     exportingSectionWord: false,
+    loadingWorkspace: false,
+    loadingSection: false,
+    sections: [],
+    handouts: [],
+    sectionDetail: null,
+    sectionItems: [],
+    sectionEditor: null,
+    selectedItem: null,
+    candidates: [],
+    activeSession: null,
+    pollTimer: null,
   };
 
-  const fixedMetadataOptions = {
-    Role: ["未指定", "知识点", "例题", "变式题", "练习", "方法总结", "知识点组", "例题组", "练习组", "其他"],
-    Difficulty: ["未设置", "基础", "中档", "提高", "压轴"],
-    Usage: ["未设置", "课堂讲解", "课堂练习", "课后练习", "一轮复习", "专题突破", "考试训练"],
-    QuestionType: ["未设置", "选择题", "填空题", "计算题", "实验题", "图像题", "综合题"],
-  };
+  const finalSessionStates = new Set(["已同步", "无变化", "失败", "已取消"]);
 
   function apiBase() {
     return window.QuestionBankContext.apiBase();
@@ -417,6 +90,53 @@
 
   function sectionApiRoot() {
     return `${apiBase()}/小节`;
+  }
+
+  function handoutApiRoot() {
+    return `${apiBase()}/讲义`;
+  }
+
+  function contentApiRoot() {
+    return `${apiBase()}/内容块`;
+  }
+
+  async function requestJson(url, options = {}) {
+    const response = await fetch(url, {
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        ...(options.headers || {}),
+      },
+      ...options,
+    });
+
+    if (!response.ok) {
+      const message = await response.text();
+      throw new Error(message || `请求失败：${response.status}`);
+    }
+
+    if (response.status === 204) {
+      return null;
+    }
+
+    return response.json();
+  }
+
+  async function requestBlob(url, options = {}) {
+    const response = await fetch(url, {
+      cache: "no-store",
+      ...options,
+    });
+
+    if (!response.ok) {
+      const message = await response.text();
+      throw new Error(message || `请求失败：${response.status}`);
+    }
+
+    return {
+      blob: await response.blob(),
+      fileName: getDownloadFileName(response.headers.get("content-disposition")),
+    };
   }
 
   function render() {
@@ -433,10 +153,10 @@
 
   function updateShell() {
     const editor = currentEditor();
-    const isEditorMode = state.mode !== "topic";
+    const isEditorMode = state.mode === "section";
     els.iaLayout.classList.toggle("is-topic-mode", state.mode === "topic");
     els.iaLayout.classList.toggle("is-editor-mode", isEditorMode);
-    els.iaLayout.classList.toggle("is-topic-nav-expanded", state.topicNavExpanded);
+    els.iaLayout.classList.toggle("is-topic-nav-expanded", isEditorMode && state.topicNavExpanded);
     els.iaLayout.classList.toggle("is-topic-nav-compact", !state.topicNavExpanded);
     els.topicNavPanel.classList.toggle("is-compact", !state.topicNavExpanded);
     els.objectOutlinePanel.hidden = !isEditorMode;
@@ -449,23 +169,27 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="${state.topicNavExpanded ? "m15 18-6-6 6-6" : "m9 18 6-6-6-6"}"></path></svg>
     `;
 
+    if (els.dataStatusChip) {
+      els.dataStatusChip.textContent = "真实 API";
+    }
+
     if (state.mode === "topic") {
       const topic = findTopic(state.selectedTopicId) || findTopic(topicWorkspace.topicId);
-      els.pageEyebrow.textContent = "教学主题工作台 · 静态原型";
+      els.pageEyebrow.textContent = "教学主题工作台 · 原型 UI";
       els.pageTitle.textContent = topic.title;
       els.breadcrumb.textContent = topicPath(topic.id).join(" / ");
       els.modeStatus.textContent = "主题工作台无右侧详情面板";
       return;
     }
 
-    els.pageEyebrow.textContent = state.mode === "section" ? "小节编辑器 · 静态原型" : "讲义编辑器 · 静态原型";
-    els.pageTitle.textContent = editor.title;
-    els.breadcrumb.textContent = `功能关系 / ${editor.topicTitle} / ${editor.title}`;
+    els.pageEyebrow.textContent = "小节编辑器 · 真实 API";
+    els.pageTitle.textContent = editor?.title || "小节编辑器";
+    els.breadcrumb.textContent = `功能关系 / ${(editor?.topicTitle || "机械能守恒")} / ${(editor?.title || "未选择小节")}`;
     els.modeStatus.textContent = state.topicNavExpanded
       ? "教学主题树已展开，点击主题才导航"
-      : (state.mode === "section" ? "编辑 Section / SectionItem 占位" : "编辑 Handout / HandoutItem 占位");
-    els.objectOutlineEyebrow.textContent = state.mode === "section" ? "小节结构树" : "讲义结构树";
-    els.objectOutlineTitle.textContent = state.mode === "section" ? "当前小节结构" : "当前讲义结构";
+      : "真实编辑 Section / SectionItem";
+    els.objectOutlineEyebrow.textContent = "小节结构树";
+    els.objectOutlineTitle.textContent = "当前小节结构";
   }
 
   function renderTopicTree() {
@@ -474,6 +198,7 @@
       selectedId: state.selectedTopicId,
       emptyHtml: "<div class=\"empty-state\">暂无教学主题</div>",
     });
+
     window.ContentTree.bind(els.topicTree, {
       onSelect(dataset) {
         selectTopic(dataset.nodeId || dataset.treeNodeId);
@@ -523,13 +248,13 @@
               <p class="eyebrow">回答：这个主题应该怎么讲</p>
               <h3>小节编排</h3>
             </div>
-            <button class="secondary-button" type="button" data-placeholder="新建小节方案">
+            <button class="secondary-button" type="button" data-create-section>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
-              新建小节方案
+              新建小节
             </button>
           </div>
           <div class="workspace-plan-list">
-            ${topicWorkspace.sectionPlans.map((plan) => renderWorkspacePlanCard(plan, "section")).join("")}
+            ${renderSectionPlanCards()}
           </div>
         </section>
 
@@ -539,13 +264,13 @@
               <p class="eyebrow">回答：这份材料应该怎么输出</p>
               <h3>讲义编排</h3>
             </div>
-            <button class="secondary-button" type="button" data-placeholder="新建讲义">
+            <button class="secondary-button" type="button" data-open-handouts-page>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
-              新建讲义
+              前往讲义页
             </button>
           </div>
           <div class="workspace-plan-list">
-            ${topicWorkspace.handouts.map((plan) => renderWorkspacePlanCard(plan, "handout")).join("")}
+            ${renderHandoutCards()}
           </div>
         </section>
       </div>
@@ -555,11 +280,13 @@
           <div class="workspace-lane-heading">
             <div>
               <p class="eyebrow">次级信息</p>
-              <h3>内容资源摘要</h3>
+              <h3>接入说明</h3>
             </div>
           </div>
-          <div class="resource-summary-grid">
-            ${topicWorkspace.resources.map((resource) => renderContentBlockCard(resource)).join("")}
+          <div class="summary-list">
+            <span>教学主题树当前仍是原型导航数据，与真实小节数据隔离。</span>
+            <span>当前主题下的小节卡片已接入真实小节 API。</span>
+            <span>当前主题下的讲义卡片已接入真实讲义 API。</span>
           </div>
         </section>
 
@@ -579,22 +306,69 @@
           <div class="workspace-lane-heading">
             <div>
               <p class="eyebrow">次级信息</p>
-              <h3>最近编辑</h3>
+              <h3>当前题库状态</h3>
             </div>
           </div>
           <div class="summary-list">
-            ${topicWorkspace.secondary.recent.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
+            <span>${state.loadingWorkspace ? "正在加载小节和讲义..." : `小节 ${state.sections.length} 个`}</span>
+            <span>${state.loadingWorkspace ? "正在加载..." : `讲义 ${state.handouts.length} 个`}</span>
+            <span>当前题库：${escapeHtml(window.QuestionBankContext.getCurrentQuestionBankKey())}</span>
           </div>
         </section>
       </div>
     `;
   }
 
+  function renderSectionPlanCards() {
+    if (state.loadingWorkspace) {
+      return "<div class=\"empty-state\">正在读取小节列表...</div>";
+    }
+
+    if (state.sections.length === 0) {
+      return "<div class=\"empty-state\">当前题库还没有小节。</div>";
+    }
+
+    return state.sections.map((section) => renderWorkspacePlanCard({
+      id: String(idOf(section)),
+      title: textOf(section.标题),
+      status: textOf(section.状态),
+      summary: textOf(section.摘要, "暂无摘要"),
+      metrics: [
+        `项目 ${Number(section.项目数量 || 0)}`,
+        `知识点 ${Number(section.知识点数量 || 0)}`,
+        `例题 ${Number(section.例题数量 || 0)}`,
+        formatDate(section.更新时间),
+      ],
+    }, "section")).join("");
+  }
+
+  function renderHandoutCards() {
+    if (state.loadingWorkspace) {
+      return "<div class=\"empty-state\">正在读取讲义列表...</div>";
+    }
+
+    if (state.handouts.length === 0) {
+      return "<div class=\"empty-state\">当前题库还没有讲义。</div>";
+    }
+
+    return state.handouts.map((handout) => renderWorkspacePlanCard({
+      id: String(idOf(handout)),
+      title: textOf(handout.标题),
+      status: textOf(handout.状态),
+      summary: textOf(handout.摘要, "暂无摘要"),
+      metrics: [
+        `项目 ${Number(handout.项目数量 || 0)}`,
+        handout.最新生成时间 ? "已有生成记录" : "未生成",
+        formatDate(handout.更新时间),
+      ],
+    }, "handout")).join("");
+  }
+
   function renderTopicPlaceholder(topic) {
     return `
       <div class="topic-empty-state">
         <h3>${escapeHtml(topic.title)} 仍是下级教学主题入口</h3>
-        <p>本轮假数据只展开“机械能守恒”的主题工作台，不把小节方案、讲义方案或版本记录混入教学主题树。</p>
+        <p>当前阶段只把“机械能守恒”接成完整工作台。教学主题树 UI 仍保留，用于后续接入真实教学主题 API。</p>
         <button class="secondary-button" type="button" data-select-main-topic>查看机械能守恒工作台</button>
       </div>
     `;
@@ -620,28 +394,32 @@
 
   function bindTopicWorkspace() {
     els.mainStage.querySelectorAll("[data-open-section-plan]").forEach((button) => {
-      button.addEventListener("click", () => openSectionEditor(button.dataset.openSectionPlan));
+      button.addEventListener("click", () => openSectionEditor(Number(button.dataset.openSectionPlan)));
     });
 
     els.mainStage.querySelectorAll("[data-open-handout]").forEach((button) => {
-      button.addEventListener("click", () => openHandoutEditor(button.dataset.openHandout));
+      button.addEventListener("click", () => openHandoutEditor(Number(button.dataset.openHandout)));
+    });
+
+    els.mainStage.querySelector("[data-create-section]")?.addEventListener("click", createSectionFromWorkspace);
+    els.mainStage.querySelector("[data-open-handouts-page]")?.addEventListener("click", () => {
+      window.location.href = "./handouts.html";
     });
 
     const mainTopicButton = els.mainStage.querySelector("[data-select-main-topic]");
     if (mainTopicButton) {
-      mainTopicButton.addEventListener("click", () => {
+      mainTopicButton.addEventListener("click", async () => {
         state.selectedTopicId = topicWorkspace.topicId;
+        await loadTopicWorkspaceData();
         render();
       });
     }
-
-    bindPlaceholderButtons(els.mainStage);
   }
 
   function renderEditor() {
     const editor = currentEditor();
     const selectedId = selectedNodeId();
-    const selectedItem = findItem(editor.items, selectedId) || editor.items[0];
+    const selectedItem = findItem(editor.items, selectedId) || editor.items[0] || null;
     const rootNode = buildRootOutlineNode(editor);
 
     els.objectOutlineTree.innerHTML = window.ContentTree.render([rootNode], {
@@ -655,37 +433,31 @@
     });
 
     els.mainStage.innerHTML = `
-      <section class="editor-workspace ${state.mode === "handout" ? "is-handout-editor" : "is-section-editor"}">
+      <section class="editor-workspace is-section-editor">
         <div class="editor-header">
           <div>
-            <p class="eyebrow">${state.mode === "section" ? "小节展开内容区" : "讲义展开内容区"}</p>
+            <p class="eyebrow">小节展开内容区</p>
             <h2>${escapeHtml(editor.title)}</h2>
             <p>${escapeHtml(editor.summary)}</p>
           </div>
           <div class="editor-header-actions">
-            ${state.mode === "section" ? `
-              <button class="primary-button" type="button" data-export-section-word ${state.exportingSectionWord ? "disabled" : ""}>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"></path><path d="M14 3v5h5M9 15h6M9 18h6"></path></svg>
-                ${state.exportingSectionWord ? "正在导出..." : "导出当前小节 Word"}
-              </button>
-            ` : ""}
-            ${state.mode === "handout" ? `
-              <button class="primary-button" type="button" data-placeholder="生成 Word">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"></path><path d="M14 3v5h5M9 15h6M9 18h6"></path></svg>
-                生成 Word
-              </button>
-            ` : ""}
-            <button class="secondary-button" type="button" data-placeholder="从资源库插入">
+            <button class="primary-button" type="button" data-export-section-word ${state.exportingSectionWord ? "disabled" : ""}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"></path><path d="M14 3v5h5M9 15h6M9 18h6"></path></svg>
+              ${state.exportingSectionWord ? "正在导出..." : "导出当前小节 Word"}
+            </button>
+            <button class="secondary-button" type="button" data-open-picker-root>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 21l-4.3-4.3"></path><circle cx="11" cy="11" r="7"></circle></svg>
               从资源库插入
             </button>
           </div>
         </div>
         <div class="expanded-content-list">
-          ${editor.items.map((item, index) => `
-            ${renderInsertZone(`before-${item.id}`, index === 0 ? "添加到最前" : "插入到此处")}
-            ${renderComposerItem(item, 0)}
-          `).join("")}
+          ${editor.items.length
+            ? editor.items.map((item, index) => `
+              ${renderInsertZone(`before-${item.id}`, index === 0 ? "添加到最前" : "插入到此处")}
+              ${renderComposerItem(item, 0)}
+            `).join("")
+            : "<div class=\"empty-state\">当前小节还没有内容块。先从资源库插入已有内容块。</div>"}
           ${renderInsertZone("end", "添加到末尾")}
         </div>
       </section>
@@ -696,15 +468,12 @@
   }
 
   function buildRootOutlineNode(editor) {
-    const rootTitle = state.mode === "section"
-      ? `小节：${editor.title}`
-      : `讲义：${editor.title}`;
     return {
-      id: `${state.mode}-root`,
-      title: rootTitle,
-      badge: state.mode === "section" ? "小节方案" : "讲义",
-      meta: [editor.status],
-      data: { nodeId: `${state.mode}-root`, treeKind: "object-outline-tree" },
+      id: "section-root",
+      title: `小节：${editor.title}`,
+      badge: editor.status,
+      meta: [editor.items.length > 0 ? `${editor.items.length} 项` : "空小节"],
+      data: { nodeId: "section-root", treeKind: "object-outline-tree" },
       children: editor.items.map(mapOutlineNode),
     };
   }
@@ -714,10 +483,7 @@
       id: item.id,
       title: item.title,
       badge: item.type,
-      meta: [
-        item.structureType,
-        item.isReferenceView ? "引用展开视图" : "",
-      ].filter(Boolean),
+      meta: [item.structureType, item.versionStatus].filter(Boolean),
       data: { nodeId: item.id, treeKind: "object-outline-tree" },
       children: (item.children || []).map(mapOutlineNode),
     };
@@ -773,25 +539,24 @@
   }
 
   function renderCardActions(item) {
-    const allowChildren = item.structureType === "组合块" || item.structureType === "引用展开" || item.type === "模型" || item.type === "小节引用";
+    const index = state.sectionEditor?.items.findIndex((candidate) => candidate.id === item.id) ?? -1;
+    const canMoveUp = index > 0;
+    const canMoveDown = index >= 0 && index < state.sectionEditor.items.length - 1;
     return `
       <div class="section-content-card__actions" aria-label="${escapeHtml(item.title)} 操作">
-        <button class="section-action-button" type="button" data-placeholder="Word 编辑" title="Word 编辑" aria-label="Word 编辑">
+        <button class="section-action-button" type="button" data-action="word" data-item-id="${escapeHtml(item.id)}" title="Word 编辑" aria-label="Word 编辑">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4z"></path><path d="M8 8h8M8 12h8M8 16h5"></path></svg>
         </button>
-        <button class="section-action-button" type="button" data-placeholder="添加下级内容" title="添加下级内容" aria-label="添加下级内容" ${allowChildren ? "" : "disabled"}>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
-        </button>
-        <button class="section-action-button" type="button" data-placeholder="从资源库插入" title="从资源库插入" aria-label="从资源库插入">
+        <button class="section-action-button" type="button" data-action="insert" data-item-id="${escapeHtml(item.id)}" title="从资源库插入" aria-label="从资源库插入">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 21l-4.3-4.3"></path><circle cx="11" cy="11" r="7"></circle></svg>
         </button>
-        <button class="section-action-button" type="button" data-placeholder="上移" title="上移" aria-label="上移">
+        <button class="section-action-button" type="button" data-action="move-up" data-item-id="${escapeHtml(item.id)}" title="上移" aria-label="上移" ${canMoveUp ? "" : "disabled"}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"></path></svg>
         </button>
-        <button class="section-action-button" type="button" data-placeholder="下移" title="下移" aria-label="下移">
+        <button class="section-action-button" type="button" data-action="move-down" data-item-id="${escapeHtml(item.id)}" title="下移" aria-label="下移" ${canMoveDown ? "" : "disabled"}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
         </button>
-        <button class="section-action-button is-danger" type="button" data-placeholder="移除" title="移除" aria-label="移除">
+        <button class="section-action-button is-danger" type="button" data-action="remove" data-item-id="${escapeHtml(item.id)}" title="移除" aria-label="移除">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
         </button>
       </div>
@@ -834,29 +599,29 @@
     els.mainStage.querySelectorAll("[data-insert-action]").forEach((button) => {
       button.addEventListener("click", (event) => {
         event.stopPropagation();
-        openResourceSearch({
-          action: button.dataset.insertAction,
-          position: button.dataset.insertPosition,
-        });
+        handleInsertAction(button.dataset.insertAction, button.dataset.insertPosition);
       });
     });
 
-    const exportButton = els.mainStage.querySelector("[data-export-section-word]");
-    if (exportButton) {
-      exportButton.addEventListener("click", exportCurrentSectionWord);
-    }
+    els.mainStage.querySelector("[data-export-section-word]")?.addEventListener("click", exportCurrentSectionWord);
+    els.mainStage.querySelector("[data-open-picker-root]")?.addEventListener("click", () => openResourceSearch({ position: "end" }));
 
-    bindPlaceholderButtons(els.mainStage);
+    els.mainStage.querySelectorAll("[data-action]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        handleCardAction(button.dataset.action, button.dataset.itemId);
+      });
+    });
   }
 
   function renderDetail(item) {
     if (!item) {
       els.selectedDetail.innerHTML = "<div class=\"empty-state\">选择一个内容块</div>";
       els.detailPreviewCard.innerHTML = "";
+      bindDetailActionButtons(null);
       return;
     }
 
-    const metadata = itemFixedMetadata(item);
     els.selectedDetail.innerHTML = `
       <h3 class="selected-title">${escapeHtml(item.title)}</h3>
       <div class="node-meta">
@@ -865,99 +630,63 @@
         <span><strong>来源</strong>${escapeHtml(item.source)}</span>
         <span><strong>引用方式</strong>${escapeHtml(item.referenceMode)}</span>
         <span><strong>版本状态</strong>${escapeHtml(item.versionStatus)}</span>
-        <span><strong>内容角色</strong>${escapeHtml(metadata.Role)}</span>
-        <span><strong>难度</strong>${escapeHtml(metadata.Difficulty)}</span>
-        <span><strong>用途</strong>${escapeHtml(metadata.Usage)}</span>
-        <span><strong>题型</strong>${escapeHtml(metadata.QuestionType)}</span>
-        <span><strong>默认选入</strong>${metadata.DefaultIncluded ? "是" : "否"}</span>
+        <span><strong>内容角色</strong>${escapeHtml(item.Role || "未设置")}</span>
+        <span><strong>难度</strong>${escapeHtml(item.Difficulty || "未设置")}</span>
+        <span><strong>用途</strong>${escapeHtml(item.Usage || "未设置")}</span>
+        <span><strong>题型</strong>${escapeHtml(item.QuestionType || "未设置")}</span>
+        <span><strong>默认选入</strong>${item.DefaultIncluded ? "是" : "否"}</span>
       </div>
-      <p class="selected-summary">${escapeHtml(item.detail)}</p>
-      ${item.isReferenceView ? `<p class="reference-detail-note">讲义直接拥有的是 HandoutItem；这里展开的小节内容只是引用预览，调整讲义不会反向修改源小节结构。</p>` : ""}
-      <div class="detail-metadata-form" data-detail-metadata-form>
-        ${metadataSelect("Role", "内容角色", metadata.Role)}
-        ${metadataSelect("Difficulty", "难度", metadata.Difficulty)}
-        ${metadataSelect("Usage", "用途", metadata.Usage)}
-        ${metadataSelect("QuestionType", "题型", metadata.QuestionType)}
-        <label class="detail-checkbox">
-          <span>默认选入</span>
-          <input type="checkbox" data-detail-field="DefaultIncluded" ${metadata.DefaultIncluded ? "checked" : ""}>
-        </label>
-        <label class="detail-note-field">
-          <span>备注</span>
-          <textarea rows="2" data-detail-field="Note" placeholder="本地原型备注">${escapeHtml(metadata.Note)}</textarea>
-        </label>
-        <button class="secondary-button" type="button" data-detail-action="save-fixed-metadata">保存字段（本地）</button>
-      </div>
+      <p class="selected-summary">${escapeHtml(item.detail || "暂无摘要")}</p>
+      ${item.Note ? `<p class="reference-detail-note">${escapeHtml(item.Note)}</p>` : ""}
     `;
 
     els.detailPreviewCard.innerHTML = `
       <div class="detail-card-heading">
-        <h3>${state.mode === "handout" ? "预览" : "内容预览"}</h3>
-        <span class="status-chip muted">${item.isReferenceView ? "引用展开" : "静态 HTML"}</span>
+        <h3>内容预览</h3>
+        <span class="status-chip muted">${escapeHtml(item.versionStatus || "预览")}</span>
       </div>
-      <div class="preview-surface">
-        <div class="preview-document">${item.html}</div>
-      </div>
+      <div class="preview-surface">${item.html}</div>
     `;
 
-    bindPlaceholderButtons(els.detailPanel);
-    bindDetailMetadataEditor(item);
+    bindDetailActionButtons(item);
+    setActionMessage(sessionMessage() || `已选中：${item.title}`);
   }
 
-  function itemFixedMetadata(item) {
-    return {
-      Role: item.Role || item.role || roleFromType(item.type),
-      Difficulty: item.Difficulty || item.difficulty || "未设置",
-      Usage: item.Usage || item.usage || usageFromType(item.type),
-      QuestionType: item.QuestionType || item.questionType || questionTypeFromType(item.type),
-      DefaultIncluded: item.DefaultIncluded !== false,
-      Note: item.Note || item.note || item.remark || "",
-    };
-  }
+  function bindDetailActionButtons(item) {
+    const detailRoot = els.detailActionCard || els.detailPanel;
+    if (!detailRoot) return;
 
-  function roleFromType(type) {
-    if (type === "例题组") return "例题组";
-    if (type === "知识点" || type === "例题" || type === "练习" || type === "方法总结") return type;
-    return "其他";
-  }
-
-  function usageFromType(type) {
-    if (type === "练习") return "课堂练习";
-    if (type === "例题" || type === "例题组") return "课堂讲解";
-    return "未设置";
-  }
-
-  function questionTypeFromType(type) {
-    return type === "例题" || type === "练习" ? "计算题" : "未设置";
-  }
-
-  function metadataSelect(field, label, value) {
-    const options = fixedMetadataOptions[field] || [];
-    return `
-      <label class="detail-field">
-        <span>${escapeHtml(label)}</span>
-        <select data-detail-field="${escapeHtml(field)}">
-          ${options.map((option) => `<option value="${escapeHtml(option)}"${option === value ? " selected" : ""}>${escapeHtml(option)}</option>`).join("")}
-        </select>
-      </label>
-    `;
-  }
-
-  function bindDetailMetadataEditor(item) {
-    const button = els.selectedDetail.querySelector("[data-detail-action=\"save-fixed-metadata\"]");
-    if (!button) return;
-    button.addEventListener("click", () => {
-      const form = els.selectedDetail.querySelector("[data-detail-metadata-form]");
-      if (!form) return;
-      item.Role = form.querySelector("[data-detail-field=\"Role\"]")?.value || null;
-      item.Difficulty = form.querySelector("[data-detail-field=\"Difficulty\"]")?.value || null;
-      item.Usage = form.querySelector("[data-detail-field=\"Usage\"]")?.value || null;
-      item.QuestionType = form.querySelector("[data-detail-field=\"QuestionType\"]")?.value || null;
-      item.DefaultIncluded = form.querySelector("[data-detail-field=\"DefaultIncluded\"]")?.checked !== false;
-      item.Note = form.querySelector("[data-detail-field=\"Note\"]")?.value.trim() || "";
-      setActionMessage("固定字段已在本地原型中更新；本页不会调用真实保存接口。");
-      renderDetail(item);
+    detailRoot.querySelectorAll("[data-placeholder]").forEach((button) => {
+      if (button.dataset.boundRealAction === "true") {
+        button.replaceWith(button.cloneNode(true));
+      }
     });
+
+    const wordButton = detailRoot.querySelector("[data-placeholder=\"Word 编辑\"]");
+    const insertButton = detailRoot.querySelector("[data-placeholder=\"从资源库插入\"]");
+    const childButton = detailRoot.querySelector("[data-placeholder=\"添加下级内容\"]");
+
+    if (wordButton) {
+      wordButton.disabled = !item;
+      wordButton.addEventListener("click", () => {
+        if (!item) return;
+        editContentInWord(item);
+      });
+      wordButton.dataset.boundRealAction = "true";
+    }
+
+    if (insertButton) {
+      insertButton.disabled = state.mode !== "section";
+      insertButton.addEventListener("click", () => openResourceSearch({ position: "end" }));
+      insertButton.dataset.boundRealAction = "true";
+    }
+
+    if (childButton) {
+      childButton.addEventListener("click", () => {
+        setActionMessage("当前阶段仍只支持向小节插入已有内容块，不在本页新建下级内容。");
+      });
+      childButton.dataset.boundRealAction = "true";
+    }
   }
 
   function renderContentBlockCard(block) {
@@ -972,90 +701,272 @@
         </div>
         ${block.remark ? `<div class="content-block-card__remark">${escapeHtml(block.remark)}</div>` : ""}
         <div class="content-block-card__meta">
-          ${(block.meta || []).map((item) => `<span class="content-block-card__property">${escapeHtml(item)}</span>`).join("")}
+          ${(block.meta || []).map((meta) => `<span class="content-block-card__property">${escapeHtml(meta)}</span>`).join("")}
         </div>
       </article>
     `;
   }
 
   function renderResourceResults() {
-    const keyword = els.resourceSearchInput.value.trim().toLowerCase();
-    const results = resourceCandidates.filter((item) => {
-      const haystack = `${item.title} ${item.type} ${item.structureType} ${item.remark} ${(item.meta || []).join(" ")}`.toLowerCase();
-      return !keyword || haystack.includes(keyword);
-    });
+    const referenceMode = state.insertContext?.referenceMode || "跟随最新";
+    if (!Array.isArray(state.candidates) || state.candidates.length === 0) {
+      els.resourceResults.innerHTML = `
+        <div class="resource-picker-toolbar">
+          <label>
+            <span>引用模式</span>
+            <select data-reference-mode>
+              <option value="跟随最新"${referenceMode === "跟随最新" ? " selected" : ""}>跟随最新</option>
+              <option value="锁定版本"${referenceMode === "锁定版本" ? " selected" : ""}>锁定当前版本</option>
+            </select>
+          </label>
+        </div>
+        <p class="resource-empty">没有匹配的内容块。</p>
+      `;
+      bindResourceToolbar();
+      return;
+    }
 
-    els.resourceResults.innerHTML = results.length
-      ? results.map((item) => `
-        <button class="content-block-card resource-picker-card" type="button" data-resource-id="${escapeHtml(item.id)}">
-          <span class="content-block-card__top">
-            <strong class="content-block-card__title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</strong>
-            <span class="content-block-card__right">
-              <span class="content-block-card__type content-block-card__type--${typeClass(item.type)}">${escapeHtml(item.type)}</span>
-              <span class="content-block-card__structure content-block-card__structure--${structureClass(item.structureType)}">${escapeHtml(item.structureType)}</span>
+    els.resourceResults.innerHTML = `
+      <div class="resource-picker-toolbar">
+        <label>
+          <span>引用模式</span>
+          <select data-reference-mode>
+            <option value="跟随最新"${referenceMode === "跟随最新" ? " selected" : ""}>跟随最新</option>
+            <option value="锁定版本"${referenceMode === "锁定版本" ? " selected" : ""}>锁定当前版本</option>
+          </select>
+        </label>
+      </div>
+      <div class="resource-candidate-list">
+        ${state.candidates.map((item) => `
+          <button class="content-block-card resource-picker-card${item.状态 === "已废弃" ? " is-disabled" : ""}" type="button" data-resource-id="${escapeHtml(String(idOf(item)))}" ${item.状态 === "已废弃" ? "disabled" : ""}>
+            <span class="content-block-card__top">
+              <strong class="content-block-card__title" title="${escapeHtml(item.标题)}">${escapeHtml(item.标题)}</strong>
+              <span class="content-block-card__right">
+                <span class="content-block-card__type content-block-card__type--${typeClass(item.类型)}">${escapeHtml(item.类型)}</span>
+                <span class="content-block-card__structure content-block-card__structure--${structureClass(item.结构类型)}">${escapeHtml(item.结构类型)}</span>
+              </span>
             </span>
-          </span>
-          ${item.remark ? `<span class="content-block-card__remark">${escapeHtml(item.remark)}</span>` : ""}
-          <span class="content-block-card__meta">
-            ${(item.meta || []).map((meta) => `<span class="content-block-card__property">${escapeHtml(meta)}</span>`).join("")}
-          </span>
-        </button>
-      `).join("")
-      : "<p class=\"resource-empty\">没有匹配的静态候选。</p>";
+            ${item.Note ? `<span class="content-block-card__remark">${escapeHtml(item.Note)}</span>` : ""}
+            <span class="content-block-card__meta">
+              ${buildCandidateMeta(item).map((meta) => `<span class="content-block-card__property">${escapeHtml(meta)}</span>`).join("")}
+            </span>
+          </button>
+        `).join("")}
+      </div>
+    `;
 
+    bindResourceToolbar();
     els.resourceResults.querySelectorAll("[data-resource-id]").forEach((button) => {
       button.addEventListener("click", () => {
-        const item = resourceCandidates.find((candidate) => candidate.id === button.dataset.resourceId);
-        closeResourceSearch();
-        setActionMessage(`已选择静态候选：${item?.title || "未知内容"}。本轮只更新提示，不写入任何对象。`);
+        const item = state.candidates.find((candidate) => String(idOf(candidate)) === button.dataset.resourceId);
+        if (item) {
+          addBlockToSection(item);
+        }
       });
     });
   }
 
-  function selectTopic(topicId) {
+  function bindResourceToolbar() {
+    els.resourceResults.querySelector("[data-reference-mode]")?.addEventListener("change", (event) => {
+      if (!state.insertContext) return;
+      state.insertContext.referenceMode = event.currentTarget.value;
+    });
+  }
+
+  function buildCandidateMeta(item) {
+    return [
+      textOf(item.状态),
+      item.当前版本号 ? `当前版本 v${item.当前版本号}` : "无当前版本",
+      item.RoleOptionName || "未设角色",
+      item.DifficultyOptionName || "未设难度",
+      item.UsageOptionName || "未设用途",
+    ];
+  }
+
+  async function selectTopic(topicId) {
     const topic = findTopic(topicId);
     if (!topic) return;
+
     state.selectedTopicId = topic.id;
     state.mode = "topic";
     state.topicNavExpanded = true;
+    clearPoll();
+
+    if (topic.id === topicWorkspace.topicId) {
+      await loadTopicWorkspaceData();
+    }
+
     render();
   }
 
-  function openSectionEditor(planId) {
-    state.selectedSectionPlanId = planId || sectionEditor.id;
+  async function loadTopicWorkspaceData() {
+    state.loadingWorkspace = true;
+    render();
+
+    try {
+      const [sections, handouts] = await Promise.all([
+        requestJson(sectionApiRoot()),
+        requestJson(handoutApiRoot()),
+      ]);
+      state.sections = Array.isArray(sections) ? sections : [];
+      state.handouts = Array.isArray(handouts) ? handouts : [];
+    } catch (error) {
+      state.sections = [];
+      state.handouts = [];
+      setActionMessage(error instanceof Error ? error.message : "读取主题工作台数据失败。");
+    } finally {
+      state.loadingWorkspace = false;
+      render();
+    }
+  }
+
+  async function openSectionEditor(planId) {
+    const sectionId = Number(planId);
+    if (!Number.isInteger(sectionId) || sectionId <= 0) {
+      return;
+    }
+
     state.mode = "section";
+    state.selectedSectionPlanId = sectionId;
     state.topicNavExpanded = false;
-    state.selectedSectionNodeId = state.selectedSectionNodeId || sectionEditor.items[0].id;
-    setActionMessage("已进入小节编辑器静态原型。");
+    setActionMessage("正在加载真实小节...");
+    await loadSectionEditorData(sectionId);
     render();
   }
 
   function openHandoutEditor(handoutId) {
-    state.selectedHandoutId = handoutId || handoutEditor.id;
-    state.mode = "handout";
-    state.topicNavExpanded = false;
-    state.selectedHandoutNodeId = state.selectedHandoutNodeId || handoutEditor.items[0].id;
-    setActionMessage("已进入讲义编辑器静态原型。");
+    const target = Number(handoutId);
+    window.location.href = `./handouts.html${Number.isInteger(target) && target > 0 ? `?id=${encodeURIComponent(target)}` : ""}`;
+  }
+
+  async function loadSectionEditorData(sectionId, preferredNodeId = null) {
+    state.loadingSection = true;
     render();
+
+    try {
+      const [sectionDetail, sectionItems] = await Promise.all([
+        requestJson(`${sectionApiRoot()}/${encodeURIComponent(sectionId)}`),
+        requestJson(`${sectionApiRoot()}/${encodeURIComponent(sectionId)}/项目`),
+      ]);
+
+      state.sectionDetail = sectionDetail;
+      state.sectionItems = Array.isArray(sectionItems) ? sectionItems : [];
+      state.sectionEditor = buildSectionEditorModel(sectionDetail, state.sectionItems);
+      state.selectedSectionNodeId = preferredNodeId || state.sectionEditor.items[0]?.id || null;
+      state.selectedItem = findItem(state.sectionEditor.items, state.selectedSectionNodeId) || state.sectionEditor.items[0] || null;
+      state.collapsedCardIds.clear();
+      state.activeSession = null;
+    } catch (error) {
+      state.sectionDetail = null;
+      state.sectionItems = [];
+      state.sectionEditor = buildSectionEditorModel(null, []);
+      state.selectedSectionNodeId = null;
+      state.selectedItem = null;
+      setActionMessage(error instanceof Error ? error.message : "读取小节详情失败。");
+    } finally {
+      state.loadingSection = false;
+    }
+  }
+
+  function buildSectionEditorModel(sectionDetail, sectionItems) {
+    const items = sectionItems
+      .slice()
+      .sort((left, right) => Number(left.排序 || 0) - Number(right.排序 || 0))
+      .map(mapSectionItemToEditorItem);
+
+    return {
+      id: sectionDetail ? `section-${idOf(sectionDetail)}` : "section-empty",
+      title: sectionDetail ? textOf(sectionDetail.标题) : "未选择小节",
+      topicTitle: "机械能守恒",
+      status: sectionDetail ? textOf(sectionDetail.状态) : "空状态",
+      summary: sectionDetail
+        ? textOf(sectionDetail.摘要, "这个小节回答：当前教学主题应该怎么讲。")
+        : "当前小节尚未加载。",
+      sectionId: sectionDetail ? idOf(sectionDetail) : null,
+      items,
+    };
+  }
+
+  function mapSectionItemToEditorItem(item) {
+    const contentBlockId = Number(item.内容块ID || 0);
+    const currentVersion = item.引用版本号 || item.内容块当前版本号 || item.当前版本号;
+    const currentVersionId = item.引用版本ID || item.内容块版本ID || item.内容块当前版本ID;
+    const note = textOf(item.Note, "");
+    const summary = textOf(item.内容块摘要, "");
+    const structureType = textOf(item.内容块结构类型, "原子块");
+    const previewHtml = currentVersionId
+      ? `<iframe class="detail-preview-frame" src="${contentPreviewUrl(contentBlockId)}" title="${escapeHtml(textOf(item.内容块标题))} 预览"></iframe>`
+      : "<div class=\"empty-state\">这个内容块没有当前版本，暂无预览。</div>";
+
+    return {
+      id: `section-item-${item.Id}`,
+      itemId: Number(item.Id),
+      contentBlockId,
+      title: textOf(item.内容块标题),
+      type: textOf(item.RoleOptionName || item.角色 || item.内容块类型),
+      rawType: textOf(item.内容块类型),
+      structureType,
+      source: `内容块 #${contentBlockId}`,
+      referenceMode: textOf(item.引用版本模式),
+      versionStatus: currentVersion ? `v${currentVersion}` : "无当前版本",
+      detail: summary || note || "暂无摘要",
+      html: previewHtml,
+      previewUrl: currentVersionId ? contentPreviewUrl(contentBlockId) : "",
+      Role: textOf(item.RoleOptionName, "未设置"),
+      Difficulty: textOf(item.DifficultyOptionName, "未设置"),
+      Usage: textOf(item.UsageOptionName, "未设置"),
+      QuestionType: textOf(item.QuestionTypeOptionName, "未设置"),
+      DefaultIncluded: item.DefaultIncluded !== false,
+      Note: note,
+      isReferenceView: false,
+      children: [],
+    };
+  }
+
+  function contentPreviewUrl(contentBlockId) {
+    return `${contentApiRoot()}/${encodeURIComponent(contentBlockId)}/预览html?t=${Date.now()}`;
+  }
+
+  function createSectionFromWorkspace() {
+    const title = window.prompt("请输入小节标题");
+    if (!title || !title.trim()) {
+      return;
+    }
+
+    createSection(title.trim());
+  }
+
+  async function createSection(title) {
+    try {
+      const created = await requestJson(sectionApiRoot(), {
+        method: "POST",
+        body: JSON.stringify({
+          标题: title,
+          摘要: null,
+          状态: "草稿",
+        }),
+      });
+      await loadTopicWorkspaceData();
+      await openSectionEditor(idOf(created));
+    } catch (error) {
+      setActionMessage(error instanceof Error ? error.message : "新建小节失败。");
+    }
   }
 
   function selectEditorNode(nodeId, options = {}) {
     if (!nodeId) return;
 
-    if (nodeId.endsWith("-root")) {
+    if (nodeId === "section-root") {
       const first = currentEditor().items[0];
       nodeId = first?.id || nodeId;
     }
 
-    if (state.mode === "section") {
-      state.selectedSectionNodeId = nodeId;
-    } else {
-      state.selectedHandoutNodeId = nodeId;
-    }
-
+    state.selectedSectionNodeId = nodeId;
+    state.selectedItem = findItem(currentEditor().items, nodeId) || null;
     renderEditor();
-    const item = findItem(currentEditor().items, nodeId);
-    setActionMessage(`已选中：${item?.title || "结构节点"}。右侧详情面板已更新。`);
+    if (state.selectedItem) {
+      setActionMessage(`已选中：${state.selectedItem.title}。右侧详情面板已更新。`);
+    }
 
     if (options.scroll) {
       window.setTimeout(() => scrollToContent(nodeId), 0);
@@ -1071,12 +982,23 @@
     renderEditor();
   }
 
+  function handleInsertAction(action, position) {
+    if (action === "create") {
+      setActionMessage("本轮只把小节接入真实 API，不在这里新建内容块。");
+      return;
+    }
+
+    openResourceSearch({ position });
+  }
+
   function openResourceSearch(context = {}) {
-    state.insertContext = context;
+    state.insertContext = {
+      position: context.position || "end",
+      referenceMode: "跟随最新",
+    };
     els.resourceDrawer.classList.remove("is-hidden");
     renderResourceResults();
-    const action = context.action === "create" ? "新建卡片" : "插入卡片";
-    setActionMessage(`已打开静态资源选择器：${action}，位置：${context.position || "当前选中块"}。`);
+    loadContentCandidates();
     window.setTimeout(() => els.resourceSearchInput.focus(), 0);
   }
 
@@ -1084,38 +1006,249 @@
     els.resourceDrawer.classList.add("is-hidden");
   }
 
-  function scrollToContent(nodeId) {
-    const node = document.getElementById(`content-${nodeId}`);
-    if (node) {
-      node.scrollIntoView({ behavior: "smooth", block: "center" });
+  async function loadContentCandidates() {
+    const keyword = els.resourceSearchInput.value.trim();
+    const params = new URLSearchParams();
+    if (keyword) {
+      params.set("关键词", keyword);
+    }
+
+    try {
+      const candidates = await requestJson(`${contentApiRoot()}${params.toString() ? `?${params}` : ""}`);
+      state.candidates = Array.isArray(candidates) ? candidates : [];
+    } catch (error) {
+      state.candidates = [];
+      setActionMessage(error instanceof Error ? error.message : "读取内容块候选失败。");
+    }
+
+    renderResourceResults();
+  }
+
+  async function addBlockToSection(candidate) {
+    if (!state.sectionDetail) {
+      return;
+    }
+
+    const referenceMode = state.insertContext?.referenceMode || "跟随最新";
+    const body = {
+      内容块ID: idOf(candidate),
+      引用版本模式: referenceMode,
+    };
+
+    if (referenceMode === "锁定版本") {
+      const currentVersionId = Number(candidate.当前版本ID || 0);
+      if (!currentVersionId) {
+        setActionMessage("这个内容块没有当前版本，不能锁定当前版本。");
+        return;
+      }
+      body.内容块版本ID = currentVersionId;
+    }
+
+    try {
+      const addedItem = await requestJson(`${sectionApiRoot()}/${encodeURIComponent(idOf(state.sectionDetail))}/项目`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+
+      const newItemNodeId = `section-item-${addedItem.Id}`;
+      const orderedIds = reorderItemIdsAfterInsert(addedItem.Id, state.insertContext?.position || "end");
+      if (orderedIds) {
+        await saveItemOrder(orderedIds);
+      }
+
+      closeResourceSearch();
+      await loadSectionEditorData(idOf(state.sectionDetail), newItemNodeId);
+      await loadTopicWorkspaceData();
+      render();
+      window.setTimeout(() => scrollToContent(newItemNodeId), 0);
+      setActionMessage(`已加入小节：${textOf(candidate.标题)}`);
+    } catch (error) {
+      setActionMessage(error instanceof Error ? error.message : "添加内容块失败。");
     }
   }
 
-  function bindPlaceholderButtons(root = document) {
-    if (!root) return;
-    root.querySelectorAll("[data-placeholder]").forEach((button) => {
-      if (button.dataset.boundPlaceholder === "true") return;
-      button.dataset.boundPlaceholder = "true";
-      button.addEventListener("click", (event) => {
-        event.stopPropagation();
-        const action = button.dataset.placeholder;
-        if (action === "从资源库插入" || action === "添加下级内容") {
-          openResourceSearch({ action: "insert", position: selectedNodeId() || "当前对象" });
-          return;
-        }
-        setActionMessage(`${action} 是静态占位，本轮不调用真实逻辑。`);
-      });
+  function reorderItemIdsAfterInsert(newItemId, position) {
+    const currentIds = state.sectionItems
+      .slice()
+      .sort((left, right) => Number(left.排序 || 0) - Number(right.排序 || 0))
+      .map((item) => Number(item.Id));
+
+    if (position === "end") {
+      return null;
+    }
+
+    const targetIndex = resolveInsertIndex(position, currentIds.length);
+    if (targetIndex === null) {
+      return null;
+    }
+
+    currentIds.push(Number(newItemId));
+    const withoutNew = currentIds.filter((id) => id !== Number(newItemId));
+    withoutNew.splice(targetIndex, 0, Number(newItemId));
+    return withoutNew;
+  }
+
+  function resolveInsertIndex(position, length) {
+    if (!position || position === "end") {
+      return null;
+    }
+
+    if (position.startsWith("before-")) {
+      const nodeId = position.slice("before-".length);
+      const index = currentEditor().items.findIndex((item) => item.id === nodeId);
+      return index >= 0 ? index : null;
+    }
+
+    return length;
+  }
+
+  async function saveItemOrder(itemIds) {
+    if (!state.sectionDetail) {
+      return;
+    }
+
+    await requestJson(`${sectionApiRoot()}/${encodeURIComponent(idOf(state.sectionDetail))}/项目排序`, {
+      method: "PUT",
+      body: JSON.stringify({
+        项目排序列表: itemIds.map((itemId, index) => ({
+          小节项ID: Number(itemId),
+          排序: index,
+        })),
+      }),
     });
   }
 
-  function setActionMessage(message) {
-    if (els.actionMessage) {
-      els.actionMessage.textContent = message;
+  async function handleCardAction(action, nodeId) {
+    const item = findItem(currentEditor().items, nodeId);
+    if (!item) {
+      return;
+    }
+
+    if (action === "word") {
+      await editContentInWord(item);
+      return;
+    }
+
+    if (action === "insert") {
+      openResourceSearch({ position: `before-${item.id}` });
+      return;
+    }
+
+    if (action === "move-up" || action === "move-down") {
+      await moveSectionItem(item, action === "move-up" ? -1 : 1);
+      return;
+    }
+
+    if (action === "remove") {
+      await removeSectionItem(item);
     }
   }
 
+  async function moveSectionItem(item, direction) {
+    const items = currentEditor().items.slice();
+    const index = items.findIndex((candidate) => candidate.id === item.id);
+    const targetIndex = index + direction;
+    if (index < 0 || targetIndex < 0 || targetIndex >= items.length || !state.sectionDetail) {
+      return;
+    }
+
+    const ordered = items.map((candidate) => candidate.itemId);
+    const [moved] = ordered.splice(index, 1);
+    ordered.splice(targetIndex, 0, moved);
+
+    try {
+      await saveItemOrder(ordered);
+      await loadSectionEditorData(idOf(state.sectionDetail), item.id);
+      render();
+      window.setTimeout(() => scrollToContent(item.id), 0);
+      setActionMessage(`已调整顺序：${item.title}`);
+    } catch (error) {
+      setActionMessage(error instanceof Error ? error.message : "调整排序失败。");
+    }
+  }
+
+  async function removeSectionItem(item) {
+    if (!state.sectionDetail) {
+      return;
+    }
+
+    const confirmed = window.confirm(`只移除当前小节中的引用，不删除源内容块：${item.title}。确认继续？`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await requestJson(`${sectionApiRoot()}/${encodeURIComponent(idOf(state.sectionDetail))}/项目/${encodeURIComponent(item.itemId)}`, {
+        method: "DELETE",
+      });
+      await loadSectionEditorData(idOf(state.sectionDetail));
+      await loadTopicWorkspaceData();
+      render();
+      setActionMessage(`已从小节移除：${item.title}`);
+    } catch (error) {
+      setActionMessage(error instanceof Error ? error.message : "移除小节项失败。");
+    }
+  }
+
+  async function editContentInWord(item) {
+    try {
+      const session = await requestJson(`${contentApiRoot()}/${encodeURIComponent(item.contentBlockId)}/编辑会话`, {
+        method: "POST",
+        body: JSON.stringify({ 是否打开Word: true }),
+      });
+      setSession(session);
+      startPoll(session.会话ID);
+      setActionMessage(session.消息 || "已创建 Word 编辑会话。");
+    } catch (error) {
+      setActionMessage(error instanceof Error ? error.message : "创建编辑会话失败。");
+    }
+  }
+
+  function setSession(session) {
+    state.activeSession = session;
+    if (session && finalSessionStates.has(session.状态)) {
+      clearPoll();
+    }
+  }
+
+  function startPoll(sessionId) {
+    clearPoll();
+    state.pollTimer = window.setInterval(() => pollSession(sessionId), 2000);
+  }
+
+  function clearPoll() {
+    if (state.pollTimer) {
+      window.clearInterval(state.pollTimer);
+      state.pollTimer = null;
+    }
+  }
+
+  async function pollSession(sessionId) {
+    try {
+      const session = await requestJson(`${contentApiRoot()}/编辑会话/${encodeURIComponent(sessionId)}`);
+      setSession(session);
+      setActionMessage(sessionMessage());
+
+      if ((session.状态 === "已同步" || session.状态 === "无变化") && state.sectionDetail) {
+        await loadSectionEditorData(idOf(state.sectionDetail), selectedNodeId());
+        render();
+      }
+    } catch (error) {
+      clearPoll();
+      setActionMessage(error instanceof Error ? error.message : "同步编辑会话失败。");
+    }
+  }
+
+  function sessionMessage() {
+    if (!state.activeSession) {
+      return "";
+    }
+
+    return state.activeSession.消息 || state.activeSession.错误信息 || `编辑会话状态：${state.activeSession.状态 || "-"}`;
+  }
+
   async function exportCurrentSectionWord() {
-    if (state.mode !== "section" || state.exportingSectionWord) {
+    if (state.mode !== "section" || state.exportingSectionWord || !state.sectionDetail) {
       return;
     }
 
@@ -1124,24 +1257,11 @@
     setActionMessage("正在导出当前小节整体 Word，不会改变当前选中块。");
 
     try {
-      const sectionId = await resolveExportSectionId();
-      if (!sectionId) {
-        throw new Error("未找到可导出的真实小节。请先在真实小节列表中创建或选择对应小节。");
-      }
-
-      const response = await fetch(`${sectionApiRoot()}/${encodeURIComponent(sectionId)}/导出Word`, {
+      const result = await requestBlob(`${sectionApiRoot()}/${encodeURIComponent(idOf(state.sectionDetail))}/导出Word`, {
         method: "POST",
       });
-
-      if (!response.ok) {
-        const message = await response.text();
-        throw new Error(message || `导出失败：HTTP ${response.status}`);
-      }
-
-      const blob = await response.blob();
-      const fileName = getDownloadFileName(response.headers.get("content-disposition"))
-        || `${sectionEditor.title}-${formatTimestamp(new Date())}.docx`;
-      downloadBlob(blob, fileName);
+      const fileName = result.fileName || `${textOf(state.sectionDetail.标题)}-${formatTimestamp(new Date())}.docx`;
+      downloadBlob(result.blob, fileName);
       setActionMessage(`已导出当前小节整体 Word：${fileName}`);
     } catch (error) {
       setActionMessage(error instanceof Error ? error.message : "导出当前小节 Word 失败。");
@@ -1149,28 +1269,6 @@
       state.exportingSectionWord = false;
       renderEditor();
     }
-  }
-
-  async function resolveExportSectionId() {
-    if (Number.isInteger(sectionEditor.apiSectionId) && sectionEditor.apiSectionId > 0) {
-      return sectionEditor.apiSectionId;
-    }
-
-    const response = await fetch(`${sectionApiRoot()}?关键词=${encodeURIComponent(sectionEditor.apiKeyword || sectionEditor.topicTitle)}`);
-    if (!response.ok) {
-      const message = await response.text();
-      throw new Error(message || "读取小节列表失败，无法确认要导出的小节。");
-    }
-
-    const sections = await response.json();
-    const matched = Array.isArray(sections)
-      ? sections.find((section) => {
-        const title = textOf(section.标题 ?? section.title ?? section.Title);
-        return title.includes(sectionEditor.topicTitle) || title.includes("机械能守恒");
-      }) || sections[0]
-      : null;
-
-    return idOf(matched);
   }
 
   function downloadBlob(blob, fileName) {
@@ -1191,31 +1289,16 @@
       return decodeURIComponent(utf8Match[1].replaceAll("\"", ""));
     }
 
-    const fallbackMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+    const fallbackMatch = contentDisposition.match(/filename=\"?([^\";]+)\"?/i);
     return fallbackMatch ? fallbackMatch[1] : "";
   }
 
-  function idOf(value) {
-    const raw = value?.Id ?? value?.id;
-    const id = Number(raw);
-    return Number.isInteger(id) && id > 0 ? id : null;
-  }
-
-  function textOf(value) {
-    return String(value ?? "");
-  }
-
-  function formatTimestamp(date) {
-    const pad = (value) => String(value).padStart(2, "0");
-    return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
-  }
-
   function currentEditor() {
-    return state.mode === "handout" ? handoutEditor : sectionEditor;
+    return state.sectionEditor || buildSectionEditorModel(null, []);
   }
 
   function selectedNodeId() {
-    return state.mode === "handout" ? state.selectedHandoutNodeId : state.selectedSectionNodeId;
+    return state.selectedSectionNodeId;
   }
 
   function findTopic(topicId, node = topicTree, path = []) {
@@ -1243,6 +1326,13 @@
     return null;
   }
 
+  function scrollToContent(nodeId) {
+    const node = document.getElementById(`content-${nodeId}`);
+    if (node) {
+      node.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
+
   function typeClass(type) {
     return {
       知识点: "knowledge",
@@ -1252,11 +1342,11 @@
       易错点: "mistake",
       普通说明: "note",
       题目: "question",
+      题组: "group",
       例题组: "group",
+      练习组: "group",
+      小节: "group",
       模型: "method",
-      小节引用: "group",
-      讲义项: "note",
-      内容块: "default",
     }[type] || "default";
   }
 
@@ -1276,15 +1366,59 @@
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
       .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
+      .replaceAll("\"", "&quot;")
       .replaceAll("'", "&#039;");
   }
 
+  function idOf(value) {
+    const raw = value?.Id ?? value?.id ?? value?.ID;
+    const number = Number(raw);
+    return Number.isInteger(number) && number > 0 ? number : null;
+  }
+
+  function textOf(value, fallback = "-") {
+    return value === null || value === undefined || value === "" ? fallback : String(value);
+  }
+
+  function formatDate(value) {
+    if (!value) {
+      return "未知时间";
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return "未知时间";
+    }
+
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  }
+
+  function formatTimestamp(date) {
+    const pad = (value) => String(value).padStart(2, "0");
+    return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+  }
+
+  function setActionMessage(message) {
+    if (els.actionMessage) {
+      els.actionMessage.textContent = message;
+    }
+  }
+
+  function debounce(fn, delay = 220) {
+    let timer = null;
+    return (...args) => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => fn(...args), delay);
+    };
+  }
+
   function bindEvents() {
-    els.backToTopicButton.addEventListener("click", () => {
+    els.backToTopicButton.addEventListener("click", async () => {
       state.mode = "topic";
-      state.selectedTopicId = topicWorkspace.topicId;
       state.topicNavExpanded = true;
+      if (state.selectedTopicId === topicWorkspace.topicId) {
+        await loadTopicWorkspaceData();
+      }
       render();
     });
 
@@ -1293,7 +1427,7 @@
       render();
     });
 
-    els.resourceSearchInput.addEventListener("input", renderResourceResults);
+    els.resourceSearchInput.addEventListener("input", debounce(loadContentCandidates));
     els.closeResourceDrawerButton.addEventListener("click", closeResourceSearch);
     els.resourceDrawer.addEventListener("click", (event) => {
       if (event.target === els.resourceDrawer) {
@@ -1304,12 +1438,28 @@
 
   async function init() {
     bindEvents();
-    renderResourceResults();
+    render();
     await window.QuestionBankContext.initSwitcher({ onChange: handleQuestionBankChanged });
   }
 
   async function handleQuestionBankChanged() {
-    sectionEditor.apiSectionId = null;
+    state.sections = [];
+    state.handouts = [];
+    state.sectionDetail = null;
+    state.sectionItems = [];
+    state.sectionEditor = buildSectionEditorModel(null, []);
+    state.selectedSectionNodeId = null;
+    state.activeSession = null;
+    clearPoll();
+
+    if (state.selectedTopicId === topicWorkspace.topicId) {
+      await loadTopicWorkspaceData();
+    }
+
+    if (state.mode === "section" && state.selectedSectionPlanId) {
+      await loadSectionEditorData(state.selectedSectionPlanId);
+    }
+
     render();
   }
 

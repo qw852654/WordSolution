@@ -999,6 +999,22 @@ svg {
   overflow: auto;
 }
 
+.preview-surface iframe,
+.section-content-card__html iframe {
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.preview-surface iframe {
+  min-height: 420px;
+}
+
+.section-content-card__html iframe {
+  min-height: 220px;
+}
+
 .preview-document {
   display: grid;
   gap: 10px;
@@ -1075,6 +1091,42 @@ svg {
   gap: 8px;
   max-height: min(42vh, 360px);
   overflow: auto;
+}
+
+.resource-picker-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  padding: 10px;
+}
+
+.resource-picker-toolbar label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.resource-picker-toolbar select {
+  min-height: 34px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--text);
+  padding: 0 10px;
+  font: inherit;
+}
+
+.resource-candidate-list {
+  display: grid;
+  gap: 8px;
 }
 
 .resource-picker-card {
@@ -1156,6 +1208,11 @@ svg {
     justify-content: space-between;
     padding-bottom: 11px;
     border-bottom: 1px solid var(--line);
+  }
+
+  .resource-picker-toolbar {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 

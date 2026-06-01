@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>教学主题与小节编排静态原型</title>
+  <title>教学主题与小节编排</title>
   <link rel="stylesheet" href="./shared-tree.css">
   <link rel="stylesheet" href="./content-block-card.css">
   <link rel="stylesheet" href="./sections.css">
@@ -23,7 +23,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
           返回主题工作台
         </button>
-        <span class="status-chip">假数据</span>
+        <span class="status-chip">原型 UI</span>
         <span class="status-chip muted" id="modeStatus">不接 API</span>
       </div>
     </header>
@@ -82,7 +82,7 @@
               添加下级内容
             </button>
           </div>
-          <p class="action-message" id="actionMessage">本轮所有按钮只展示入口，不调用 Word，不写入后端。</p>
+          <p class="action-message" id="actionMessage">选择内容块后，这里会显示当前可执行的真实操作。</p>
         </section>
       </aside>
     </main>
@@ -92,7 +92,7 @@
     <section class="resource-dialog">
       <div class="panel-heading">
         <div>
-          <p class="eyebrow">资源插入 · 静态占位</p>
+          <p class="eyebrow">资源插入</p>
           <h2 id="resourceDrawerTitle">搜索内容资源</h2>
         </div>
         <button class="icon-button" type="button" id="closeResourceDrawerButton" aria-label="关闭">
@@ -105,8 +105,8 @@
       </label>
       <div class="resource-results" id="resourceResults"></div>
       <div class="resource-placeholder">
-        <strong>本地假交互</strong>
-        <p>点击候选只更新页面提示，不创建内容块，不写入小节或讲义。</p>
+        <strong>真实小节引用</strong>
+        <p>点击候选会把已有内容块作为引用插入当前小节，不复制源内容块。</p>
       </div>
     </section>
   </div>
