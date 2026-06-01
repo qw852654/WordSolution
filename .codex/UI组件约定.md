@@ -410,3 +410,95 @@ DOM 挂载点：
 - 不要在 `cms.js`、`sections.js`、`handouts.js`、`references.js` 等页面脚本中直接写死题库键。
 - 不要在各页面重复实现一套题库列表读取、localStorage 保存和创建题库逻辑。
 - 不要把题库实例切换器和教学主题导航树混用；题库实例是数据源上下文，教学主题树是业务定位结构。
+
+## 9. 小节文档流编辑工作台组件
+
+小节编排页进入真实编辑器后，优先使用这一组轻量组件构建 UI。它们对应当前真实小节编辑器的页面结构，页面脚本负责 API 和状态，组件负责渲染和交互语义。
+
+当前接入位置：
+
+```text
+题库本地服务/wwwroot/sections.html
+题库本地服务/wwwroot/sections.css
+题库本地服务/wwwroot/sections.js
+```
+
+### 9.1 workspace-shell
+
+`section-workspace-shell` 是小节编辑器外壳：
+
+```text
+顶部：固定工具栏
+左侧：object-outline-tree 小节结构树
+中间：document-flow 小节展开内容
+右侧：inspector-panel 选中块详情
+左侧边缘：topic-drawer-tab 教学主题抽屉入口
+```
+
+约束：
+
+- `body` 不是主滚动容器。
+- 顶部工具栏固定在页面外壳顶部。
+- 左侧结构树、中间文档流、右侧检查器分别独立滚动。
+- 教学主题入口不放在顶部工具栏中。
+
+### 9.2 topic-drawer
+
+`topic-drawer` 是教学主题导航树在编辑器页面中的悬浮抽屉形态。
+
+约束：
+
+- 关闭状态只显示一个左侧小标签 `topic-drawer-tab`。
+- 打开时以浮层覆盖当前工作区，不挤占左侧结构树、中间文档流或右侧检查器。
+- 点击“展开教学主题树”只展开抽屉，不重置当前小节编辑器。
+- 点击具体教学主题节点后，才允许进入对应主题工作台。
+
+### 9.3 document-flow
+
+`document-flow` 是小节正文展开区。它显示 `Section -> SectionItem -> ContentBlock` 的展开结果，不显示伪造的小节结构。
+
+节点组件为 `content-node`：
+
+```html
+<article class="content-node">
+  <div class="node-fold-cell"></div>
+  <div class="node-body">
+    <div class="node-header"></div>
+    <div class="node-preview"></div>
+    <div class="node-quick-meta"></div>
+  </div>
+  <div class="node-actions"></div>
+</article>
+```
+
+约束：
+
+- 中间区域以正文预览为主，只显示必要的标题、角色、难度、题型、版本等轻量信息。
+- 详细字段放到右侧 `inspector-panel`。
+- 组合块使用 `content-node-group` 包裹父子节点，父子结构必须在一个整体框内。
+- 操作按钮默认弱化，悬停或选中时再明显显示。
+- 折叠状态由同一份 `collapsedBlockIds` 同步给左侧结构树和中间文档流。
+
+### 9.4 inline-insert-handle
+
+`insert-handle` 是卡片之间和组合块子块之间的插入入口。
+
+约束：
+
+- 默认只是一条透明间隔，不抢占正文视觉。
+- 鼠标停留约 1 秒后才变为彩色长条并显示操作。
+- 操作固定为 `插入卡片` 和 `新建卡片`。
+- `插入卡片` 表示选择已有内容块并建立引用。
+- `新建卡片` 表示创建新的 `ContentBlock` 后插入当前位置。
+
+### 9.5 inspector-panel
+
+`inspector-panel` 是右侧选中块详情面板。
+
+职责：
+
+- 显示选中内容块的显示名、类型、结构、角色、难度、用途、题型、默认选入、版本和备注。
+- 显示当前节点来源是小节引用还是组合块子项引用。
+- 提供 Word 编辑、插入子块、新建子块、打开内容库、移除引用等操作。
+
+禁止把“小节级导出 Word”放到 `inspector-panel` 中；它属于顶部小节级操作。

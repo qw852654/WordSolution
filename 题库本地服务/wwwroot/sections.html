@@ -3,113 +3,164 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>教学主题与小节编排</title>
+  <title>小节编排</title>
   <link rel="stylesheet" href="./shared-tree.css">
   <link rel="stylesheet" href="./content-block-card.css">
-  <link rel="stylesheet" href="./sections.css">
   <link rel="stylesheet" href="./question-bank-context.css">
+  <link rel="stylesheet" href="./sections.css">
 </head>
 <body>
-  <div class="prototype-shell">
-    <header class="topbar">
-      <div class="topbar-main">
-        <p class="eyebrow" id="pageEyebrow">教学主题工作台 · 静态原型</p>
-        <h1 id="pageTitle">机械能守恒</h1>
-        <div class="breadcrumb" id="breadcrumb">功能关系 / 机械能守恒</div>
+  <div class="section-workspace-shell">
+    <header class="editor-topbar">
+      <div class="topbar-title">
+        <p class="eyebrow" id="pageEyebrow">小节编辑器 · 真实 API</p>
+        <h1 id="pageTitle">小节编排</h1>
+        <p class="breadcrumb" id="pageBreadcrumb">请选择一个小节</p>
       </div>
-      <div class="topbar-actions">
+
+      <div class="topbar-controls">
+        <label class="section-picker">
+          <span>当前小节</span>
+          <select id="sectionSelect" aria-label="选择当前小节"></select>
+        </label>
+        <button class="secondary-button" type="button" id="refreshButton">刷新</button>
+        <button class="secondary-button" type="button" id="newSectionButton">新建小节</button>
+        <button class="primary-button" type="button" id="exportSectionButton">导出当前小节 Word</button>
         <div data-question-bank-switcher></div>
-        <button class="secondary-button" type="button" id="backToTopicButton" hidden>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
-          返回主题工作台
-        </button>
-        <span class="status-chip">原型 UI</span>
-        <span class="status-chip muted" id="modeStatus">不接 API</span>
       </div>
     </header>
 
-    <main class="ia-layout" id="iaLayout">
-      <aside class="topic-nav-panel teaching-topic-nav" id="topicNavPanel" aria-labelledby="topicNavTitle">
-        <div class="panel-heading">
+    <main class="editor-workspace" id="workspaceShell">
+      <button class="topic-drawer-tab" type="button" id="topicDrawerTab" aria-controls="topicDrawer" aria-expanded="false">
+        <span>教学主题</span>
+      </button>
+
+      <aside class="outline-pane" aria-labelledby="outlineTitle">
+        <div class="pane-heading">
           <div>
-            <p class="eyebrow">全局定位</p>
-            <h2 id="topicNavTitle">教学主题导航</h2>
+            <p class="eyebrow">Object Outline Tree</p>
+            <h2 id="outlineTitle">小节结构树</h2>
           </div>
-          <button class="icon-button" type="button" id="topicNavToggleButton" title="展开或收起教学主题导航" aria-label="展开或收起教学主题导航" aria-expanded="true">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
-          </button>
+          <span class="mini-chip" id="outlineCount">0 项</span>
         </div>
-        <nav class="topic-tree-wrap" id="topicTree" aria-label="教学主题导航"></nav>
+        <div class="outline-scroll" id="objectOutlineTree"></div>
       </aside>
 
-      <aside class="object-outline-panel" id="objectOutlinePanel" hidden aria-labelledby="objectOutlineTitle">
-        <div class="panel-heading">
+      <section class="document-pane" aria-labelledby="documentTitle">
+        <div class="document-toolbar">
           <div>
-            <p class="eyebrow" id="objectOutlineEyebrow">当前对象</p>
-            <h2 id="objectOutlineTitle">结构树</h2>
+            <p class="eyebrow">Document Flow</p>
+            <h2 id="documentTitle">小节展开内容</h2>
+          </div>
+          <div class="document-toolbar-actions">
+            <button class="secondary-button" type="button" id="insertAtEndButton">插入内容</button>
+            <button class="ghost-button" type="button" id="newAtEndButton">新增卡片</button>
           </div>
         </div>
-        <div class="object-outline-tree" id="objectOutlineTree"></div>
-      </aside>
+        <div class="document-scroll" id="documentFlow"></div>
+      </section>
 
-      <section class="main-stage" id="mainStage" aria-live="polite"></section>
-
-      <aside class="detail-panel" id="detailPanel" hidden aria-labelledby="detailTitle">
-        <div class="panel-heading">
+      <aside class="inspector-pane" aria-labelledby="inspectorTitle">
+        <div class="pane-heading">
           <div>
-            <p class="eyebrow">右侧</p>
-            <h2 id="detailTitle">选中块详情</h2>
+            <p class="eyebrow">Inspector Panel</p>
+            <h2 id="inspectorTitle">选中块详情</h2>
           </div>
+          <span class="mini-chip" id="inspectorKind">未选择</span>
         </div>
-        <section class="detail-card" id="selectedDetail"></section>
-        <section class="detail-card" id="detailPreviewCard"></section>
-        <section class="detail-card">
-          <div class="detail-card-heading">
-            <h3>操作入口</h3>
-            <span class="status-chip muted">占位</span>
-          </div>
-          <div class="detail-actions">
-            <button class="primary-button" type="button" data-placeholder="Word 编辑">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4z"></path><path d="M8 8h8M8 12h8M8 16h5"></path></svg>
-              Word 编辑
-            </button>
-            <button class="secondary-button" type="button" data-placeholder="从资源库插入">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 21l-4.3-4.3"></path><circle cx="11" cy="11" r="7"></circle></svg>
-              从资源库插入
-            </button>
-            <button class="ghost-button" type="button" data-placeholder="添加下级内容">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
-              添加下级内容
-            </button>
-          </div>
-          <p class="action-message" id="actionMessage">选择内容块后，这里会显示当前可执行的真实操作。</p>
-        </section>
+        <div class="inspector-scroll" id="inspectorPanel"></div>
       </aside>
     </main>
+
+    <footer class="status-bar" id="statusBar">正在初始化...</footer>
   </div>
 
-  <div class="resource-drawer is-hidden" id="resourceDrawer" role="dialog" aria-modal="true" aria-labelledby="resourceDrawerTitle">
-    <section class="resource-dialog">
-      <div class="panel-heading">
+  <div class="topic-drawer-backdrop is-hidden" id="topicDrawerBackdrop" aria-hidden="true"></div>
+  <aside class="topic-drawer is-hidden" id="topicDrawer" aria-labelledby="topicDrawerTitle" aria-modal="true" role="dialog">
+    <div class="drawer-heading">
+      <div>
+        <p class="eyebrow">Teaching Topic Nav</p>
+        <h2 id="topicDrawerTitle">教学主题导航</h2>
+      </div>
+      <button class="icon-button" type="button" id="closeTopicDrawerButton" aria-label="关闭教学主题导航">×</button>
+    </div>
+    <nav class="topic-tree" id="topicTree" aria-label="教学主题树"></nav>
+    <p class="drawer-note">当前教学主题树仍是临时导航适配层，只负责定位 UI；真实小节数据来自当前题库 API。</p>
+  </aside>
+
+  <div class="modal-layer is-hidden" id="resourceModal" role="dialog" aria-modal="true" aria-labelledby="resourceModalTitle">
+    <section class="modal-card resource-modal-card">
+      <div class="modal-heading">
         <div>
-          <p class="eyebrow">资源插入</p>
-          <h2 id="resourceDrawerTitle">搜索内容资源</h2>
+          <p class="eyebrow">插入已有内容块</p>
+          <h2 id="resourceModalTitle">从资源库插入</h2>
         </div>
-        <button class="icon-button" type="button" id="closeResourceDrawerButton" aria-label="关闭">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
-        </button>
+        <button class="icon-button" type="button" id="closeResourceModalButton" aria-label="关闭">×</button>
       </div>
-      <label class="search-field">
-        <span>关键词</span>
-        <input id="resourceSearchInput" type="search" autocomplete="off" placeholder="搜索知识点、例题、练习或组合块">
-      </label>
+      <div class="resource-toolbar">
+        <label>
+          <span>关键词</span>
+          <input id="resourceSearchInput" type="search" autocomplete="off" placeholder="搜索标题、备注、摘要">
+        </label>
+        <label>
+          <span>引用模式</span>
+          <select id="referenceModeSelect">
+            <option value="跟随最新">跟随最新</option>
+            <option value="锁定版本">锁定当前版本</option>
+          </select>
+        </label>
+      </div>
       <div class="resource-results" id="resourceResults"></div>
-      <div class="resource-placeholder">
-        <strong>真实小节引用</strong>
-        <p>点击候选会把已有内容块作为引用插入当前小节，不复制源内容块。</p>
-      </div>
     </section>
   </div>
+
+  <div class="modal-layer is-hidden" id="createModal" role="dialog" aria-modal="true" aria-labelledby="createModalTitle">
+    <form class="modal-card create-modal-card" id="createBlockForm">
+      <div class="modal-heading">
+        <div>
+          <p class="eyebrow">新增并插入</p>
+          <h2 id="createModalTitle">新建内容块卡片</h2>
+        </div>
+        <button class="icon-button" type="button" id="closeCreateModalButton" aria-label="关闭">×</button>
+      </div>
+      <label class="form-field">
+        <span>显示名称 / 标题</span>
+        <input id="createBlockTitleInput" type="text" autocomplete="off" required placeholder="例如：圆轨道临界问题">
+      </label>
+      <div class="form-grid">
+        <label class="form-field">
+          <span>内容类型</span>
+          <select id="createBlockTypeSelect">
+            <option value="知识点">知识点</option>
+            <option value="例题">例题</option>
+            <option value="练习">练习</option>
+            <option value="方法总结">方法总结</option>
+            <option value="普通说明">普通说明</option>
+            <option value="题组">题组</option>
+            <option value="练习组">练习组</option>
+            <option value="专题片段">专题片段</option>
+          </select>
+        </label>
+        <label class="form-field">
+          <span>块类型</span>
+          <select id="createBlockStructureSelect">
+            <option value="原子块">原子块</option>
+            <option value="组合块">组合块</option>
+          </select>
+        </label>
+      </div>
+      <label class="form-field">
+        <span>备注</span>
+        <textarea id="createBlockNoteInput" rows="3" placeholder="可选，后续会显示为内容块备注"></textarea>
+      </label>
+      <div class="modal-actions">
+        <button class="ghost-button" type="button" id="cancelCreateBlockButton">取消</button>
+        <button class="primary-button" type="submit">新建并插入</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="block-more-menu is-hidden" id="blockMoreMenu" role="menu"></div>
 
   <script src="./shared-tree.js"></script>
   <script src="./question-bank-context.js"></script>
