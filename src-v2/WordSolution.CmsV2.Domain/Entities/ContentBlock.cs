@@ -1,0 +1,63 @@
+using WordSolution.CmsV2.Domain.Enums;
+using WordSolution.CmsV2.Domain.Exceptions;
+using WordSolution.CmsV2.Domain.Rules;
+using QuestionTypeEnum = WordSolution.CmsV2.Domain.Enums.QuestionType;
+
+namespace WordSolution.CmsV2.Domain.Entities;
+
+public sealed class ContentBlock
+{
+    public ContentBlock(
+        string title,
+        ContentBlockType blockType,
+        string? summary = null,
+        Difficulty difficulty = Difficulty.Unset,
+        QuestionType? questionType = null,
+        ContentBlockStatus status = ContentBlockStatus.Draft,
+        int? currentVersionId = null,
+        DateTimeOffset? updatedTime = null)
+    {
+        DomainGuard.NotWhiteSpace(title, nameof(Title));
+        DomainGuard.ValidEnum(blockType, nameof(BlockType));
+        DomainGuard.ValidEnum(difficulty, nameof(Difficulty));
+        DomainGuard.ValidEnum(status, nameof(Status));
+        DomainGuard.PositiveOrNull(currentVersionId, nameof(CurrentVersionId));
+
+        if (questionType.HasValue)
+        {
+            DomainGuard.ValidEnum(questionType.Value, nameof(QuestionType));
+        }
+
+        if (blockType != ContentBlockType.Question && questionType.HasValue && questionType.Value != QuestionTypeEnum.Unset)
+        {
+            throw new DomainException("QuestionType can only be set when BlockType is Question.");
+        }
+
+        Title = title.Trim();
+        Summary = summary?.Trim();
+        BlockType = blockType;
+        Difficulty = difficulty;
+        QuestionType = blockType == ContentBlockType.Question ? questionType ?? QuestionTypeEnum.Unset : null;
+        Status = status;
+        CurrentVersionId = currentVersionId;
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+    }
+
+    public int Id { get; private set; }
+
+    public string Title { get; private set; }
+
+    public string? Summary { get; private set; }
+
+    public ContentBlockType BlockType { get; private set; }
+
+    public Difficulty Difficulty { get; private set; }
+
+    public QuestionType? QuestionType { get; private set; }
+
+    public ContentBlockStatus Status { get; private set; }
+
+    public int? CurrentVersionId { get; private set; }
+
+    public DateTimeOffset UpdatedTime { get; private set; }
+}
