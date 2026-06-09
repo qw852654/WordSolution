@@ -65,4 +65,12 @@ public sealed class ContentBlock
     public int? CurrentVersionId { get; private set; }
 
     public DateTimeOffset UpdatedTime { get; private set; }
+
+    public void SetCurrentVersion(int contentBlockVersionId, DateTimeOffset? updatedTime = null)
+    {
+        DomainGuard.Positive(contentBlockVersionId, nameof(contentBlockVersionId));
+
+        CurrentVersionId = contentBlockVersionId;
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+    }
 }

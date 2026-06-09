@@ -46,4 +46,16 @@ public sealed class ContentBlockVersion
     public bool IsCurrent { get; private set; }
 
     public DateTimeOffset UpdatedTime { get; private set; }
+
+    public void MarkCurrent(DateTimeOffset? updatedTime = null)
+    {
+        IsCurrent = true;
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+    }
+
+    public void MarkNotCurrent(DateTimeOffset? updatedTime = null)
+    {
+        IsCurrent = false;
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+    }
 }
