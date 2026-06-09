@@ -5,6 +5,10 @@ namespace WordSolution.CmsV2.Domain.Entities;
 
 public sealed class AtomicSectionItem
 {
+    private AtomicSectionItem()
+    {
+    }
+
     public AtomicSectionItem(
         int atomicSectionId,
         int contentBlockId,
@@ -48,4 +52,3 @@ public sealed class AtomicSectionItem
 
     public DateTimeOffset UpdatedTime { get; private set; }
 }
-

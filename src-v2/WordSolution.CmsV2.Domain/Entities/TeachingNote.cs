@@ -5,6 +5,12 @@ namespace WordSolution.CmsV2.Domain.Entities;
 
 public sealed class TeachingNote
 {
+    private TeachingNote()
+    {
+        Title = string.Empty;
+        Content = string.Empty;
+    }
+
     public TeachingNote(
         TeachingNoteTargetType targetType,
         int targetId,

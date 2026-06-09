@@ -7,6 +7,11 @@ namespace WordSolution.CmsV2.Domain.Entities;
 
 public sealed class ContentBlock
 {
+    private ContentBlock()
+    {
+        Title = string.Empty;
+    }
+
     public ContentBlock(
         string title,
         ContentBlockType blockType,

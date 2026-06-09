@@ -5,6 +5,11 @@ namespace WordSolution.CmsV2.Domain.Entities;
 
 public sealed class OutputForm
 {
+    private OutputForm()
+    {
+        Title = string.Empty;
+    }
+
     public OutputForm(
         int handoutVersionId,
         int outputTemplateId,
@@ -56,4 +61,3 @@ public sealed class OutputForm
 
     public DateTimeOffset UpdatedTime { get; private set; }
 }
-

@@ -4,6 +4,11 @@ namespace WordSolution.CmsV2.Domain.Entities;
 
 public sealed class ContentBlockVersion
 {
+    private ContentBlockVersion()
+    {
+        DocxPath = string.Empty;
+    }
+
     public ContentBlockVersion(
         int contentBlockId,
         int versionNumber,
@@ -42,4 +47,3 @@ public sealed class ContentBlockVersion
 
     public DateTimeOffset UpdatedTime { get; private set; }
 }
-

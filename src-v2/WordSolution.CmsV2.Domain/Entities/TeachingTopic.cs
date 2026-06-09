@@ -5,6 +5,11 @@ namespace WordSolution.CmsV2.Domain.Entities;
 
 public sealed class TeachingTopic
 {
+    private TeachingTopic()
+    {
+        Name = string.Empty;
+    }
+
     public TeachingTopic(
         string name,
         string? description = null,
@@ -40,4 +45,3 @@ public sealed class TeachingTopic
 
     public DateTimeOffset UpdatedTime { get; private set; }
 }
-

@@ -4,6 +4,10 @@ namespace WordSolution.CmsV2.Domain.Entities;
 
 public sealed class SectionVariantItem
 {
+    private SectionVariantItem()
+    {
+    }
+
     public SectionVariantItem(
         int sectionVariantId,
         int sectionItemId,
@@ -34,4 +38,3 @@ public sealed class SectionVariantItem
 
     public DateTimeOffset UpdatedTime { get; private set; }
 }
-

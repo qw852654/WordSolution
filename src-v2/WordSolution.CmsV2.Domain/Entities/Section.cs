@@ -5,6 +5,11 @@ namespace WordSolution.CmsV2.Domain.Entities;
 
 public sealed class Section
 {
+    private Section()
+    {
+        Title = string.Empty;
+    }
+
     public Section(
         int teachingTopicId,
         string title,
@@ -50,4 +55,3 @@ public sealed class Section
 
     public DateTimeOffset UpdatedTime { get; private set; }
 }
-

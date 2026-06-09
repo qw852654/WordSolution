@@ -5,6 +5,12 @@ namespace WordSolution.CmsV2.Domain.Entities;
 
 public sealed class OutputTemplate
 {
+    private OutputTemplate()
+    {
+        Title = string.Empty;
+        TemplateDocxPath = string.Empty;
+    }
+
     public OutputTemplate(
         string title,
         string templateDocxPath,
@@ -35,4 +41,3 @@ public sealed class OutputTemplate
 
     public DateTimeOffset UpdatedTime { get; private set; }
 }
-

@@ -6,6 +6,10 @@ namespace WordSolution.CmsV2.Domain.Entities;
 
 public sealed class HandoutVersionItem
 {
+    private HandoutVersionItem()
+    {
+    }
+
     public HandoutVersionItem(
         int handoutVersionId,
         HandoutVersionItemTargetType targetType,
@@ -50,4 +54,3 @@ public sealed class HandoutVersionItem
 
     public DateTimeOffset UpdatedTime { get; private set; }
 }
-

@@ -6,6 +6,10 @@ namespace WordSolution.CmsV2.Domain.Entities;
 
 public sealed class SectionItem
 {
+    private SectionItem()
+    {
+    }
+
     public SectionItem(
         int sectionId,
         SectionItemTargetType targetType,
@@ -90,4 +94,3 @@ public sealed class SectionItem
 
     public DateTimeOffset UpdatedTime { get; private set; }
 }
-

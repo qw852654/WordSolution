@@ -5,6 +5,11 @@ namespace WordSolution.CmsV2.Domain.Entities;
 
 public sealed class Handout
 {
+    private Handout()
+    {
+        Title = string.Empty;
+    }
+
     public Handout(
         string title,
         string? description = null,
@@ -30,4 +35,3 @@ public sealed class Handout
 
     public DateTimeOffset UpdatedTime { get; private set; }
 }
-

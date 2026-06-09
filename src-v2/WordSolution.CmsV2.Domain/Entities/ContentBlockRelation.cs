@@ -6,6 +6,10 @@ namespace WordSolution.CmsV2.Domain.Entities;
 
 public sealed class ContentBlockRelation
 {
+    private ContentBlockRelation()
+    {
+    }
+
     public ContentBlockRelation(
         int parentBlockId,
         int childBlockId,
@@ -54,4 +58,3 @@ public sealed class ContentBlockRelation
 
     public DateTimeOffset UpdatedTime { get; private set; }
 }
-

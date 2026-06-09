@@ -4,6 +4,12 @@ namespace WordSolution.CmsV2.Domain.Entities;
 
 public sealed class GeneratedFile
 {
+    private GeneratedFile()
+    {
+        FilePath = string.Empty;
+        VersionManifestJson = string.Empty;
+    }
+
     public GeneratedFile(
         int outputFormId,
         string filePath,
@@ -30,4 +36,3 @@ public sealed class GeneratedFile
 
     public DateTimeOffset GeneratedTime { get; private set; }
 }
-

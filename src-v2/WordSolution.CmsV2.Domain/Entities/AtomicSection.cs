@@ -5,6 +5,11 @@ namespace WordSolution.CmsV2.Domain.Entities;
 
 public sealed class AtomicSection
 {
+    private AtomicSection()
+    {
+        Title = string.Empty;
+    }
+
     public AtomicSection(
         string title,
         string? description = null,
@@ -35,4 +40,3 @@ public sealed class AtomicSection
 
     public DateTimeOffset UpdatedTime { get; private set; }
 }
-
