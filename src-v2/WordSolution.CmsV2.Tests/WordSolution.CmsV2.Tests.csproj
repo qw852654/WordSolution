@@ -19,6 +19,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="Aspose.Words">
+      <HintPath>..\..\lib\Aspose.Words.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\WordSolution.CmsV2.Domain\WordSolution.CmsV2.Domain.csproj" />
     <ProjectReference Include="..\WordSolution.CmsV2.Application\WordSolution.CmsV2.Application.csproj" />
     <ProjectReference Include="..\WordSolution.CmsV2.Infrastructure\WordSolution.CmsV2.Infrastructure.csproj" />

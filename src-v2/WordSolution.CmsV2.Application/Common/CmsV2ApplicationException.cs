@@ -6,4 +6,9 @@ public sealed class CmsV2ApplicationException : Exception
         : base(message)
     {
     }
+
+    public CmsV2ApplicationException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+    }
 }
