@@ -2,6 +2,10 @@
 
 ## 当前架构依据
 
+当前主线已经切换到 CMS V2。
+
+第一版前端与第一版后端都视为历史实现，不再作为当前开发依据。后续新前端只能对接 V2 后端。
+
 本仓库当前主线以 `.codex/内容管理系统详细架构.md` 和 `.codex/内容管理系统升级路线.md` 为准。
 
 历史 `TagRunner`、`Core/Data/Index/Tools` 分层、`TagRunner.Tests`、`src/TagRunner.*` 迁移脚本等描述不再作为当前 WordSolution 的开发依据。除非任务明确要求迁移历史代码，不要新增 `TagRunner.*` 项目、命名空间或目录。
@@ -10,14 +14,21 @@
 
 当前主线项目是：
 
+- `src-v2/WordSolution.CmsV2.Domain`
+- `src-v2/WordSolution.CmsV2.Application`
+- `src-v2/WordSolution.CmsV2.Infrastructure`
+- `src-v2/WordSolution.CmsV2.Api`
+- `src-v2/WordSolution.CmsV2.Tests`
+- 经确认后新增的 V2 前端项目目录
+
+保留但不作为新内容管理系统核心架构组成部分：
+
 - `题库核心`
 - `题库应用`
 - `题库基础设施`
 - `题库本地服务`
+- `题库本地服务/wwwroot`
 - `question-bank-office-addin`
-
-保留但不作为新内容管理系统核心架构组成部分：
-
 - `VSTO`
 - `Word本地文件操作核心库`
 - `Core.QuestionBank`
@@ -30,22 +41,27 @@
 当前依赖方向保持为：
 
 ```text
-题库本地服务
-  -> 题库应用
-  -> 题库核心
+V2 Frontend
+  -> WordSolution.CmsV2.Api
+  -> WordSolution.CmsV2.Application
+  -> WordSolution.CmsV2.Domain
 
-题库本地服务
-  -> 题库基础设施
-  -> 题库核心
+WordSolution.CmsV2.Api
+  -> WordSolution.CmsV2.Application
+  -> WordSolution.CmsV2.Infrastructure
+  -> WordSolution.CmsV2.Domain
+
+WordSolution.CmsV2.Infrastructure
+  -> WordSolution.CmsV2.Domain
 ```
 
 约束：
 
-- `题库核心` 放领域模型和接口契约，不依赖应用层、基础设施层或本地服务。
-- `题库应用` 承载用例和业务编排，默认只引用 `题库核心`。
-- `题库基础设施` 实现 `题库核心` 中的接口契约，负责 SQLite、文件存储、预览生成、Aspose/OpenXML 封装等实现细节。
-- `题库本地服务` 是 API 入口和依赖注入组合根，负责把应用用例与基础设施实现注册到容器。
-- 不要给 `题库应用` 新增对 `题库基础设施` 的项目引用。需要基础设施能力时，先在 `题库核心` 定义契约，再由 `题库基础设施` 实现，并在 `题库本地服务` 注册。
+- `WordSolution.CmsV2.Domain` 放领域模型和接口契约，不依赖应用层、基础设施层或 API。
+- `WordSolution.CmsV2.Application` 承载用例和业务编排，默认只引用 `WordSolution.CmsV2.Domain`。
+- `WordSolution.CmsV2.Infrastructure` 实现 `WordSolution.CmsV2.Domain` 中的接口契约，负责 SQLite、文件存储、预览生成、Aspose/OpenXML 封装等实现细节。
+- `WordSolution.CmsV2.Api` 是 API 入口和依赖注入组合根，负责把应用用例与基础设施实现注册到容器。
+- 不要给 `WordSolution.CmsV2.Application` 新增对 `WordSolution.CmsV2.Infrastructure` 的项目引用。需要基础设施能力时，先在 `WordSolution.CmsV2.Domain` 定义契约，再由 `WordSolution.CmsV2.Infrastructure` 实现，并在 `WordSolution.CmsV2.Api` 注册。
 
 现有 `题库应用/试卷导入模块/试卷解析` 中直接使用 Aspose 的历史实现暂时保留。不要把这个历史例外扩散到新的内容块、讲义或浏览器管理端能力中，也不要为了清理它发起无关重构。
 
@@ -57,12 +73,13 @@
 
 - 阶段 0 只整理主线和辅助项目边界，不重构旧项目。
 - 阶段 1 的内容块能力只做最小底座，不提前实现完整引用关系、锁定版本、讲义快照或 Word 深度编辑回存。
-- 阶段 2 的浏览器管理端优先复用现有 `question-bank-office-addin` 构建链路或 `题库本地服务/wwwroot` 静态托管方式。没有明确决策前，不新增独立前端项目。
+- V2 浏览器管理端按独立前端项目建设，不再继续扩展 `题库本地服务/wwwroot` 的旧静态页面。
+- 新前端只能对接 `/api/cms-v2`，不再对接 `/api/题库实例/...` 等旧接口。
 - 阶段 8 才处理 Word 深度集成，例如网页点击在 Word 中编辑、编辑后保存回系统、内容控件标记 `内容块ID`。
 
 ## 文件存储边界
 
-当前 `题库路径提供器` 已围绕以下结构工作：
+历史 `题库路径提供器` 已围绕以下结构工作：
 
 ```text
 {题库根目录}
@@ -71,7 +88,7 @@
   html\
 ```
 
-新增内容块目录时，不要改变现有 `source` 和 `html` 的语义，不要破坏题目录入、题目预览、试卷导入等已有流程。需要新目录时，新增专用路径方法，而不是替换已有方法。
+上述结构只作为历史参考，不再作为 CMS V2 新前端和新后端的实现目标。V2 以 `cms-v2.db` 与 `src-v2` 后端为准。
 
 `E:\Desktop\题库中心` 暂时保持硬编码。除非任务明确要求配置化，否则不要改成配置文件。
 
@@ -101,8 +118,8 @@
 
 为减少 Codex 后续误改范围，默认遵守：
 
-- 优先保留现有结构。
+- 优先保留现有 V2 结构。
 - 优先补充说明和小范围修正。
 - 不因远期架构目标提前实现后续阶段能力。
-- 不把保留项目当作新主线。
+- 不把 V1 保留项目当作新主线。
 - 不为追求“更干净”而迁移大量历史代码。

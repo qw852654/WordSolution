@@ -5,7 +5,17 @@
 
 ## 1. 项目定位
 
-本仓库正在从旧题库系统升级为“讲义内容管理系统”。
+本仓库当前主线已经切换到 CMS V2。
+
+第一版前端与第一版后端都视为已废弃的历史实现，不再作为当前开发依据。
+
+当前目标是：
+
+- 以 V2 后端为唯一后端主线。
+- 以独立重建的 V2 前端为唯一浏览器前端主线。
+- 从项目结构开始逐步建设新的前后端工作台。
+
+旧题库系统与旧静态页面只作为历史参考，不再承接新需求。
 
 目标形态：
 
@@ -35,23 +45,35 @@
 8. `docs/ui/i18n.md`
 9. `docs/ui/codex-workflow.md`
 
+### 涉及 CMS V2 后端 / 前后端接口边界 / V2 数据模型的任务必须额外读取
+
+10. `docs/cms-v2/backend/后端重建阶段计划.md`
+11. `docs/cms-v2/backend/后端数据模型开发文档.md`
+12. `docs/cms-v2/backend/领域模型结构说明.md`
+
 如果任务说明和上述文档冲突，必须先停止并说明冲突，不要自行选择其中一个继续实现。
 
 ## 3. 当前主线项目
 
-新增主线功能默认只能进入以下项目：
+新增主线功能默认只能进入以下项目或目录：
 
-- `题库核心`
-- `题库应用`
-- `题库基础设施`
-- `题库本地服务`
-- `question-bank-office-addin`
-- 经确认后新增的浏览器管理端相关文件
+- `src-v2/WordSolution.CmsV2.Domain`
+- `src-v2/WordSolution.CmsV2.Application`
+- `src-v2/WordSolution.CmsV2.Infrastructure`
+- `src-v2/WordSolution.CmsV2.Api`
+- `src-v2/WordSolution.CmsV2.Tests`
+- 经确认后新增的 V2 前端项目目录
 
 ## 4. 非主线项目限制
 
 以下项目或目录只作为历史代码参考，默认不接收新主线功能：
 
+- `题库核心`
+- `题库应用`
+- `题库基础设施`
+- `题库本地服务`
+- `题库本地服务/wwwroot`
+- `question-bank-office-addin`
 - `Core.QuestionBank`
 - `TagRunner`
 - `tools/旧题库迁移工具`
@@ -69,18 +91,24 @@
 必须保持以下依赖方向：
 
 ```text
-浏览器管理端 / Word 加载项
-    -> 题库本地服务
-        -> 题库应用
-            -> 题库核心
+V2 前端
+    -> WordSolution.CmsV2.Api
+        -> WordSolution.CmsV2.Application
+            -> WordSolution.CmsV2.Domain
 
-题库基础设施 -> 题库核心
-题库本地服务 -> 题库应用 + 题库基础设施
+WordSolution.CmsV2.Infrastructure -> WordSolution.CmsV2.Domain
+WordSolution.CmsV2.Api -> WordSolution.CmsV2.Application + WordSolution.CmsV2.Infrastructure
 ```
 
 ## 6. UI 组件复用规则
 
 涉及 UI / 前端 / 页面 / 交互 / 布局 / 样式的任务，必须优先查看并遵守 `docs/ui/component-rules.md` 中的组件分层、状态归属、API 调用和演示验证规则。
+
+同时必须遵守：
+
+- 新前端不得继续构建在 `题库本地服务/wwwroot` 的 V1 静态页面上。
+- 新前端只能对接 CMS V2 后端，不得再新增对 V1 后端接口的依赖。
+- 若文档中仍出现 `cms.html`、`sections.html`、`handouts.html`、`references.html`、`/api/题库实例/...` 等旧入口，应视为历史记录，不得作为新实现目标。
 
 后续开发中：
 
