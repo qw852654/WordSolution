@@ -41,7 +41,7 @@ const en = {
     openTopics: 'Open Topics',
     checklist: {
       router: 'Placeholder routes are wired.',
-      i18n: 'English i18n resources are active.',
+      i18n: 'Vue I18n resources are active.',
       mock: 'Mock component data is available for validation.',
       api: 'The CMS V2 API base remains reserved for later integrations.',
     },
