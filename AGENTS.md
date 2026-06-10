@@ -28,8 +28,12 @@
 
 ### 涉及 UI / 前端 / 页面 / 交互 / 布局 / 样式的任务必须额外读取
 
-4. `.codex/UI.md`
-5. `.codex/UI组件约定.md`
+4. `docs/ui/ui-architecture.md`
+5. `docs/ui/component-rules.md`
+6. `docs/ui/section-page.md`
+7. `docs/ui/focus-tree.md`
+8. `docs/ui/i18n.md`
+9. `docs/ui/codex-workflow.md`
 
 如果任务说明和上述文档冲突，必须先停止并说明冲突，不要自行选择其中一个继续实现。
 
@@ -76,13 +80,13 @@
 
 ## 6. UI 组件复用规则
 
-涉及 UI / 前端 / 页面 / 交互 / 布局 / 样式的任务，必须优先查看并复用 `.codex/UI组件约定.md` 中已经抽象出来的组件。
+涉及 UI / 前端 / 页面 / 交互 / 布局 / 样式的任务，必须优先查看并遵守 `docs/ui/component-rules.md` 中的组件分层、状态归属、API 调用和演示验证规则。
 
 后续开发中：
 
 - 同一业务对象不要重复设计多套卡片、列表项或状态标签样式。
-- 内容块展示优先使用 `content-block-card` 组件结构和 `题库本地服务/wwwroot/content-block-card.css`。
-- 每次新增或抽象 UI 组件时，必须同步写入或更新 `.codex/UI组件约定.md`。
+- 内容块展示优先按 `docs/ui/component-rules.md` 中的 `ContentBlockCard` 业务组件规则实现。
+- 每次新增或抽象 UI 组件时，必须同步写入或更新 `docs/ui/component-rules.md`。
 - 如果现有组件无法满足新场景，优先扩展组件文档和共享样式，再在页面中使用。
 - 不要在单个页面里临时复制一套近似组件，除非任务明确要求做一次性实验原型。
 
