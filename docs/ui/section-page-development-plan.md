@@ -1,5 +1,10 @@
 # SectionPage UI Development Plan
 
+说明：
+
+- 本文档描述的是阶段 2 之后的 SectionPage 开发路径。
+- 当前全局阶段 1 只做文档清理，不执行本计划中的任何工程或页面实现。
+
 ## Phase 1: V2 前端基础结构扫描与缺口确认
 
 前提：
