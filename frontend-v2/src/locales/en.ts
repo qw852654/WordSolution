@@ -130,6 +130,40 @@ const en = {
       itemCount: 'Items',
       open: 'Open',
     },
+    sectionItemView: {
+      containerLabel: 'SectionItemView container',
+      actionRailLabel: 'SectionItemView action rail placeholder',
+      targetType: 'Target type',
+      position: 'Structure position',
+      sortOrder: 'Order',
+      level: 'Level',
+      referenceMode: 'Reference mode',
+      lockedVersion: 'Locked version',
+      atomicSectionReference: 'AtomicSection reference',
+      noLockedVersion: 'No locked version',
+      insertBefore: 'Insert before',
+      insertAfter: 'Insert after',
+      moveUp: 'Move up',
+      moveDown: 'Move down',
+      indent: 'Indent',
+      outdent: 'Outdent',
+      remove: 'Remove',
+      openWord: 'Word edit',
+      preview: 'Preview',
+    },
+    sectionInspector: {
+      emptyTitle: 'Select a Section node',
+      emptyDescription:
+        'The inspector shows details after a SectionItem or AtomicSection is selected.',
+      currentSelection: 'Current selection',
+      status: 'Status',
+      position: 'Structure position',
+      referenceMode: 'Reference mode',
+      lockedVersion: 'Locked version',
+      note: 'Note',
+      preview: 'Preview',
+      openWord: 'Word edit',
+    },
     focusTree: {
       expand: 'Expand node',
       collapse: 'Collapse node',
@@ -142,46 +176,71 @@ const en = {
     eyebrow: 'Component validation',
     title: 'Component Lab',
     description:
-      'Reusable UI pieces must be verified here with mock data before they enter real pages.',
-    summaryTitle: 'Lab ready',
-    summaryDescription:
-      'The lab route hosts foundation components and mock business components for review.',
+      'Only the mock scenarios for the current development round are shown here.',
     backHome: 'Back to Home',
-    previewAction: 'Preview',
     scenarioCount: 'Scenario count:',
-    selectedNodeLabel: 'Selected node:',
-    statusPillTitle: 'Status pill states',
-    status: {
-      ready: 'Ready',
-      neutral: 'Neutral',
-      muted: 'Muted',
-      danger: 'Blocked',
-    },
-    checks: {
-      router: 'Router integration is active.',
-      i18n: 'Visible text is served through Vue I18n.',
-      mock: 'Mock data entry is connected.',
-      api: 'CMS V2 client placeholder is connected.',
-    },
     sections: {
-      presentation: {
-        title: 'Presentation components',
-        description: 'Validate neutral, reusable UI pieces before using them in pages.',
-      },
-      contentBlockCard: {
-        title: 'ContentBlockCard',
+      sectionWorkspace: {
+        title: 'SectionWorkspace skeleton',
         description:
-          'Validate default, selected, disabled, and long-title content block card states.',
+          'Validate the compact info area, document flow area, and reserved TeachingNoteColumn structure.',
       },
-      sectionVariantCard: {
-        title: 'SectionVariantCard',
+      sectionItemView: {
+        title: 'SectionItemView',
         description:
-          'Validate section variant cards with item counts, status, and disabled state.',
+          'Validate SectionItemView as a pure container: nested children, no default border, and hover-revealed action rail.',
       },
-      focusTree: {
-        title: 'FocusTree',
-        description:
-          'Validate a compact tree with selection, disabled nodes, and expandable levels.',
+    },
+  },
+  sectionPage: {
+    eyebrow: 'SectionPage minimal shell',
+    description:
+      'This round validates layout only. It does not connect APIs or render real SectionItemView document flow.',
+    toolbar: {
+      areaLabel: 'Section page control area',
+      backToTopic: 'Back to topic workspace',
+      refresh: 'Refresh',
+      save: 'Save structure',
+    },
+    meta: {
+      section: 'Section',
+      sectionId: 'Section ID',
+      teachingTopic: 'TeachingTopic',
+      status: 'Status',
+    },
+    structure: {
+      title: 'SectionStructurePanel',
+      description: 'Left shell area reserved for the current Section structure tree.',
+      emptyTitle: 'Structure tree pending',
+      emptyDescription:
+        'SectionItem structure, selection, and location behavior are intentionally not implemented in this round.',
+    },
+    workspace: {
+      title: 'SectionWorkspace',
+      description: 'Center shell area reserved for the SectionItemView document flow.',
+      mainColumnLabel: 'Section document flow main column',
+      teachingNoteColumnLabel: 'TeachingNoteColumn reserved area',
+      teachingNoteColumnDescription:
+        'Teaching Note Mode will show contextual notes beside content later. This is not the right-side Inspector.',
+      emptyTitle: 'SectionItemView document flow pending',
+      emptyDescription:
+        'This round does not render fake body content, ContentBlockDisplay, AtomicSectionBlock, or InsertPoint.',
+      mock: {
+        contentBlockPlaceholderTitle: 'ContentBlockDisplay placeholder',
+        contentBlockPlaceholderDescription:
+          'This content is passed through the slot by SectionWorkspace. SectionItemView itself does not display titles, status, or versions.',
+        atomicSectionPlaceholderTitle: 'AtomicSectionBlock placeholder',
+        atomicSectionPlaceholderDescription:
+          'This validates a parent SectionItemView carrying child SectionItemView containers.',
+        childKnowledgePlaceholderTitle: 'Child ContentBlockDisplay placeholder',
+        childKnowledgePlaceholderDescription:
+          'A child SectionItemView inside the parent container, used to validate hierarchy and hover actions.',
+        childExamplePlaceholderTitle: 'Child example display placeholder',
+        childExamplePlaceholderDescription:
+          'The child still stays as a pure container; ContentBlockDisplay will provide the real content later.',
+        disabledPlaceholderTitle: 'Disabled container placeholder',
+        disabledPlaceholderDescription:
+          'Used to validate muted state and disabled right-side action buttons.',
       },
     },
   },

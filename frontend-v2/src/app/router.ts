@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import ComponentLabPage from '@/pages/ComponentLabPage.vue'
 import HomePage from '@/pages/HomePage.vue'
 import PlaceholderPage from '@/pages/PlaceholderPage.vue'
+import SectionPage from '@/pages/SectionPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -15,6 +16,9 @@ const router = createRouter({
       path: '/lab',
       name: 'lab',
       component: ComponentLabPage,
+      meta: {
+        layout: 'standalone',
+      },
     },
     {
       path: '/topics',
@@ -30,15 +34,10 @@ const router = createRouter({
     },
     {
       path: '/sections/:sectionId',
-      name: 'section-placeholder',
-      component: PlaceholderPage,
-      props: {
-        eyebrowKey: 'routes.sections.eyebrow',
-        titleKey: 'routes.sections.title',
-        descriptionKey: 'routes.sections.description',
-        emptyTitleKey: 'routes.sections.emptyTitle',
-        emptyDescriptionKey: 'routes.sections.emptyDescription',
-        paramName: 'sectionId',
+      name: 'section-page',
+      component: SectionPage,
+      meta: {
+        layout: 'standalone',
       },
     },
     {

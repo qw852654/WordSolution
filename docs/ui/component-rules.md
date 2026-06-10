@@ -45,7 +45,7 @@ FieldLabel
 ```text
 ContentBlockCard
 AtomicSectionCard
-SectionItemCard
+SectionItemView
 SectionVariantCard
 HandoutItemCard
 OutputFormCard
@@ -147,6 +147,40 @@ Connect API
 - 如果视觉细节不确定，先保持简洁中性，不自行补充装饰。
 - 所有可复用组件必须先在 ComponentLabPage 中以 mock 数据验收，再进入真实页面。
 
+### 3.1.1 Theme Token Rule
+
+后续所有业务组件，包括：
+
+- `ContentBlockDisplay`
+- `AtomicSectionBlock`
+- `CompositeBlock`
+- `SectionTree`
+- `SectionInspector`
+- `Toolbar`
+- `StatusTag`
+
+禁止直接写死颜色。
+
+统一通过 Theme Token 引用颜色。
+
+如果当前缺少 Token：
+
+- 先提出需要新增什么 Token。
+- 不要直接写颜色值。
+
+## 3.2 新组件开发前确认
+
+每次新增或抽象 UI 组件前，必须先向用户做简要对齐，内容包括：
+
+- 组件名称。
+- 组件职责。
+- 组件不负责什么。
+- 输入数据或 mock 数据范围。
+- 对外 emits / 事件边界。
+- 需要放入 ComponentLabPage 的验收场景。
+
+用户确认后才能开始实现该组件。
+
 ## 4. ComponentLabPage
 
 建议路由：
@@ -176,15 +210,17 @@ UI Verification
 优先验证组件：
 
 ```text
-ContentBlockCard
-AtomicSectionCard
-SectionItemCard
-FocusTree
-SectionTree
-SectionStructurePanel
-SectionInspector
-ContentBlockPicker
+当前开发轮次相关组件
 ```
+
+说明：
+
+- ComponentLabPage 是当前开发轮次的验收入口，不是永久组件展览馆。
+- 每一轮只保留本轮需要验收的组件和 mock 场景。
+- 上一轮无关组件应从当前 ComponentLabPage 视图中移除。
+- ComponentLabPage 必须作为独立页面渲染，不应包在主应用 AppShell、主导航或左侧导航中。
+- 页面级功能验收时，可以在 ComponentLabPage 中放入完整页面 mock，而不只展示孤立组件。
+- 每轮交付时必须说明 ComponentLabPage 中具体放入了什么、用户需要验收哪些区域、哪些按钮或数据仍是占位。
 
 ## 5. 核心业务组件职责
 
@@ -225,22 +261,96 @@ ContentBlockPicker
 - AtomicSection 组织 ContentBlock。
 - AtomicSection 自身不承载可编辑正文。
 
-### SectionItemCard
+### SectionItemView
 
-表示小节结构中的一个引用项。
+表示 SectionItem 在 SectionWorkspace 中的可视化表现。
 
-必须展示：
+当前已确认口径：
 
-- 目标标题。
-- 目标类型。
-- 引用模式。
-- 锁定版本标识。
-- 排序和层级。
+- SectionItemView 是上层容器，不是资源卡片。
+- SectionItemView 不展示标题、类型、状态、版本、备注、引用模式或摘要。
+- SectionItemView 只负责承载未来的 ContentBlockDisplay / AtomicSectionBlock / CompositeBlock 等具体内容组件。
+- SectionItemView 的宽度应弹性填满横向区域。
+- SectionItemView 的高度由内部实际渲染内容自动撑开。
+- SectionItemView 允许子级 SectionItemView，用于表达 SectionItem 的父子层级。
+- SectionItemView 默认不显示边框。
+- SectionItemView 的右侧纵向操作区默认隐藏。
+- 鼠标 hover 到 SectionItemView 的正文区域时，不显示边框，也不显示操作图标。
+- 只有鼠标进入右侧纵向操作热区，或键盘 focus 进入右侧操作区时，右侧操作图标和 SectionItemView 容器边框才一起显现。
 
 语义：
 
 - 修改它只修改小节结构引用。
 - 不直接修改源 ContentBlock 或 AtomicSection。
+- SectionItemView 是上层概念，具体内容由 ContentBlockDisplay / AtomicSectionBlock / CompositeBlock 承载。
+- 实现必须先在 ComponentLabPage 中用 Mock Data 验收默认、选中、禁用、横向填满、内容自适应高度、子级结构和 hover 操作区显隐。
+- 组件只通过 emits 暴露选择、前插、后插、上移、下移、缩进、反缩进、移除和 Word 编辑入口。
+- 组件不调用 API，不读取 Pinia，不持有 SectionPage 页面状态。
+
+### SectionPage Skeleton Components
+
+当前最小骨架包含：
+
+- `SectionTopToolbar`
+- `SectionStructurePanel`
+- `SectionWorkspace`
+- `SectionInspector`
+
+职责：
+
+- `SectionTopToolbar` 只作为右侧顶部的紧凑工具控件区，不显示页面标题。
+- `SectionStructurePanel` 只保留左侧结构树区域和空状态。
+- `SectionWorkspace` 保留低高度 Section 信息条、SectionItemView 文档流主列、未来 TeachingNoteColumn 分栏预留和空状态，并在竖直方向占满页面主工作区高度。
+- `SectionWorkspace` 文档流主滚动区使用 `WeakScrollArea`，避免默认粗滚动条抢占内容注意力。
+- `SectionInspector` 只保留右侧选中对象检查区域和空状态。
+
+边界：
+
+- 不接 API。
+- 不写入数据。
+- 不实现 SectionTree、FocusTree 联动、真实 SectionItemView 列表、ContentBlockDisplay、AtomicSectionBlock 或真实 InsertPoint 交互。
+- 本轮 ComponentLabPage 只展示这些骨架组件。
+
+### WeakScrollArea
+
+表示弱视觉滚动容器。
+
+职责：
+
+- 统一承载页面中需要竖向滚动的局部区域。
+- 使用轻量轨道和弱视觉滑块，降低默认滚动条对内容区的视觉干扰。
+- 优先用于 SectionWorkspace 文档流、TeachingNoteColumn、SectionStructurePanel、SectionInspector，以及后续 HandoutPage 的类似滚动区域。
+
+边界：
+
+- 不理解 CMS 业务语义。
+- 不调用 API。
+- 不读取 Pinia。
+- 不管理滚动区域内部内容状态。
+- 不替代页面布局容器，只负责滚动外壳。
+
+### SectionInspector
+
+表示 SectionPage 右侧当前选中节点检查面板。
+
+必须展示：
+
+- 当前选中标题。
+- 目标类型。
+- 状态。
+- 排序和层级。
+- 引用模式。
+- 锁定版本。
+- 摘要。
+- 备注。
+
+语义：
+
+- 只显示当前选中的 SectionItem / AtomicSection / ContentBlock 引用信息。
+- 不直接修改 Section 结构。
+- 不直接修改源 ContentBlock 或 AtomicSection。
+- 第一轮只提供预览和 Word 编辑入口事件，不调用 API。
+- 必须在 ComponentLabPage 中同时展示空状态和选中状态。
 
 ### SectionVariantCard
 

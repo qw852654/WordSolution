@@ -206,8 +206,14 @@ API 封装统一放在 `src/apis/`。页面和 composable 不直接散落 `fetch
   输出形式和生成记录。
 
 /lab
-  ComponentLabPage，用于组件开发和 mock 验证。
+  ComponentLabPage，作为独立验收页面，用于当前开发轮次的组件、页面和 mock 验证。
 ```
+
+说明：
+
+- `/lab` 不属于业务工作台主导航，不应包在主应用 AppShell 或左侧导航中。
+- `/lab` 用于让用户直接验收本轮开发内容；每轮只保留本轮需要确认的组件、页面或完整页面 mock。
+- 真实业务页面仍使用正常应用外壳；ComponentLabPage 只负责开发验收，不承担业务导航职责。
 
 ## 7. 视觉方向
 

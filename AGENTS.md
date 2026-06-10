@@ -138,6 +138,27 @@ WordSolution.CmsV2.Api -> WordSolution.CmsV2.Application + WordSolution.CmsV2.In
 - 如果现有组件无法满足新场景，优先扩展组件文档和共享样式，再在页面中使用。
 - 不要在单个页面里临时复制一套近似组件，除非任务明确要求做一次性实验原型。
 
+### 6.1 Theme Token Rule
+
+后续所有业务组件，包括：
+
+- `ContentBlockDisplay`
+- `AtomicSectionBlock`
+- `CompositeBlock`
+- `SectionTree`
+- `SectionInspector`
+- `Toolbar`
+- `StatusTag`
+
+禁止直接写死颜色。
+
+统一通过 Theme Token 引用颜色。
+
+如果当前缺少 Token：
+
+- 先提出需要新增什么 Token。
+- 不要直接写颜色值。
+
 ## 7. Git 工作流规则
 
 ### 7.1 主线保护

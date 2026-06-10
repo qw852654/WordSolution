@@ -130,6 +130,40 @@ const zhCN = {
       itemCount: '项目数',
       open: '打开',
     },
+    sectionItemView: {
+      containerLabel: 'SectionItemView 容器',
+      actionRailLabel: 'SectionItemView 右侧操作占位',
+      targetType: '目标类型',
+      position: '结构位置',
+      sortOrder: '顺序',
+      level: '层级',
+      referenceMode: '引用模式',
+      lockedVersion: '锁定版本',
+      atomicSectionReference: 'AtomicSection 引用',
+      noLockedVersion: '不锁定版本',
+      insertBefore: '前插',
+      insertAfter: '后插',
+      moveUp: '上移',
+      moveDown: '下移',
+      indent: '缩进',
+      outdent: '反缩进',
+      remove: '移除',
+      openWord: 'Word 编辑',
+      preview: '预览',
+    },
+    sectionInspector: {
+      emptyTitle: '请选择一个 Section 节点',
+      emptyDescription:
+        '选中 SectionItem 或 AtomicSection 后，这里会显示右侧检查信息。',
+      currentSelection: '当前选中',
+      status: '状态',
+      position: '结构位置',
+      referenceMode: '引用模式',
+      lockedVersion: '锁定版本',
+      note: '备注',
+      preview: '预览',
+      openWord: 'Word 编辑',
+    },
     focusTree: {
       expand: '展开节点',
       collapse: '折叠节点',
@@ -142,46 +176,71 @@ const zhCN = {
     eyebrow: '组件验收',
     title: 'ComponentLab',
     description:
-      '可复用 UI 组件必须先在这里用 Mock Data 验收，再进入真实页面。',
-    summaryTitle: 'Lab 已就绪',
-    summaryDescription:
-      '这里集中展示基础组件和业务组件的 Mock Data 场景。',
+      '这里仅保留当前开发轮次需要验收的 Mock Data 场景。',
     backHome: '返回首页',
-    previewAction: '预览',
     scenarioCount: '场景数：',
-    selectedNodeLabel: '选中节点：',
-    statusPillTitle: 'StatusPill 状态',
-    status: {
-      ready: '就绪',
-      neutral: '普通',
-      muted: '弱化',
-      danger: '阻塞',
-    },
-    checks: {
-      router: 'Vue Router 已接入。',
-      i18n: '可见文案通过 Vue I18n 提供。',
-      mock: 'Mock Data 入口已接入。',
-      api: 'CMS V2 API client 占位已接入。',
-    },
     sections: {
-      presentation: {
-        title: 'Presentation components',
-        description: '验证中性的可复用 UI 组件，再放入页面使用。',
-      },
-      contentBlockCard: {
-        title: 'ContentBlockCard',
+      sectionWorkspace: {
+        title: 'SectionWorkspace skeleton',
         description:
-          '验证默认、选中、禁用和长标题等 ContentBlockCard 状态。',
+          '本轮验收 SectionWorkspace 的短信息区、文档流区域，以及未来 TeachingNoteColumn 的结构预留。',
       },
-      sectionVariantCard: {
-        title: 'SectionVariantCard',
+      sectionItemView: {
+        title: 'SectionItemView',
         description:
-          '验证 SectionVariantCard 的项目数、状态和禁用状态。',
+          '本轮验收 SectionItemView 作为纯容器的表现：允许子级、默认无边框、hover 后显示右侧操作区。',
       },
-      focusTree: {
-        title: 'FocusTree',
-        description:
-          '验证紧凑树结构、选中态、禁用节点和多层级展开。',
+    },
+  },
+  sectionPage: {
+    eyebrow: 'SectionPage 最小骨架',
+    description:
+      '本轮只验证页面结构，不接 API，不展示真实 SectionItemView 文档流。',
+    toolbar: {
+      areaLabel: 'Section 页面工具控件区',
+      backToTopic: '返回主题工作台',
+      refresh: '刷新',
+      save: '保存结构',
+    },
+    meta: {
+      section: 'Section',
+      sectionId: 'Section ID',
+      teachingTopic: 'TeachingTopic',
+      status: '状态',
+    },
+    structure: {
+      title: 'SectionStructurePanel',
+      description: '左侧结构区空壳，后续用于承载当前 Section 的结构树。',
+      emptyTitle: '结构树待接入',
+      emptyDescription:
+        '后续会在这里显示 SectionItem 结构。本轮不实现树节点、选中或定位。',
+    },
+    workspace: {
+      title: 'SectionWorkspace',
+      description: '中间工作区骨架，后续用于承载 SectionItemView 文档流。',
+      mainColumnLabel: 'Section 文档流主列',
+      teachingNoteColumnLabel: 'TeachingNoteColumn 预留区',
+      teachingNoteColumnDescription:
+        '后续 Teaching Note Mode 会在这里显示与内容块并排的教学备注；它不是右侧 Inspector。',
+      emptyTitle: 'SectionItemView 文档流待接入',
+      emptyDescription:
+        '本轮不展示假正文、不实现 ContentBlockDisplay、AtomicSectionBlock 或 InsertPoint。',
+      mock: {
+        contentBlockPlaceholderTitle: 'ContentBlockDisplay 占位',
+        contentBlockPlaceholderDescription:
+          '这段内容由 SectionWorkspace 通过 slot 放入；SectionItemView 本身不展示标题、状态或版本。',
+        atomicSectionPlaceholderTitle: 'AtomicSectionBlock 占位',
+        atomicSectionPlaceholderDescription:
+          '这里用于验收父级 SectionItemView 承载子级 SectionItemView 的结构。',
+        childKnowledgePlaceholderTitle: '子级 ContentBlockDisplay 占位',
+        childKnowledgePlaceholderDescription:
+          '这是父级容器中的子级 SectionItemView，用来验收层级显示和 hover 操作区。',
+        childExamplePlaceholderTitle: '子级例题显示占位',
+        childExamplePlaceholderDescription:
+          '子级仍然保持纯容器语义，具体内容后续由 ContentBlockDisplay 承载。',
+        disabledPlaceholderTitle: '禁用态容器占位',
+        disabledPlaceholderDescription:
+          '用于验收弱化状态和右侧操作按钮禁用状态。',
       },
     },
   },

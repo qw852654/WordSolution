@@ -5,6 +5,54 @@
 - 这些问题属于阶段 2 之后的 V2 前端与 SectionPage 设计问题。
 - 当前全局阶段 1 只做文档清理，不进入这些实现决策。
 
+## 0. 已确认共识，不再作为开放问题
+
+### Section 与 SectionVariant
+
+```text
+TeachingTopic
+↓
+Section（上帝小节 / 完整知识池 / 完整教学结构）
+├── SectionVariant（基础讲解版）
+├── SectionVariant（提高版）
+├── SectionVariant（一轮复习版）
+└── SectionVariant（冲刺版）
+```
+
+已确认：
+
+- Section 本身就是上帝小节。
+- SectionVariant 是从 Section 派生出的教学用途方案。
+- SectionVariant 是 Section 的子级。
+- 不再把“上帝小节”理解为一个 SectionVariant。
+
+### SectionItemView
+
+已确认统一使用：
+
+```text
+SectionItemView
+```
+
+说明：
+
+- SectionItemView 表示 SectionItem 在 SectionWorkspace 中的可视化表现。
+- SectionItemView 是上层概念。
+- `ContentBlockDisplay`、`AtomicSectionBlock`、`CompositeBlock` 是具体组件。
+- 后续文档、组件树、开发计划和命名说明不再使用 `SectionItemCard` 表示工作区里的 SectionItem。
+
+### ComponentLab
+
+已确认：
+
+- ComponentLab 是当前开发轮次的验收入口。
+- ComponentLab 不是永久组件展览馆。
+- 每一轮开发结束后，只保留本轮需要验收的组件。
+- 上一轮无关组件应移出当前 ComponentLab 视图。
+- ComponentLab 应作为独立验收页面，不应包在主应用 AppShell、主导航或左侧导航中。
+- 页面级开发可以把完整页面 mock 放入 ComponentLab，让用户直接确认本轮结果。
+- 每轮交付时，必须说明本轮开发内容和 ComponentLab 中的具体验收区域。
+
 ## 1. 新前端工程目录如何落地？
 
 当前结论：
@@ -17,17 +65,16 @@
 - 是否按 `docs/ui/ui-architecture.md` 新建独立 V2 前端工程？
 - 目录名是否继续采用建议名 `frontend-v2/`？
 
-## 2. ComponentLabPage 是否已存在？
+## 2. ComponentLabPage 是否独立于主应用外壳？
 
 当前结论：
 
-- 不存在 `/lab`
-- 不存在 `src/labs/`
-- 不存在 `ComponentLabPage`
+- `/lab`、`src/labs/` 和 `ComponentLabPage` 已作为 V2 前端基础能力存在。
+- 后续需要确保 `/lab` 是独立验收页面，不包在 AppShell 主导航中。
 
 需确认：
 
-- 是否把 `/lab` 作为 SectionPage 前置基础能力？
+- 是否在下一轮把 `/lab` 从主应用 AppShell 中拆出，作为独立验收路由？
 
 ## 3. ContentBlockDisplay 与 ContentBlockCard 的命名边界是否要补入 component-rules？
 

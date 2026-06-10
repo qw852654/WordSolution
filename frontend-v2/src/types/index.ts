@@ -38,3 +38,37 @@ export interface FocusTreeNode {
   expanded?: boolean
   children?: FocusTreeNode[]
 }
+
+export type SectionNodeTargetType = 'ContentBlock' | 'AtomicSection'
+
+export type SectionReferenceMode = 'FollowLatest' | 'LockedVersion'
+
+export interface SectionNodeModel {
+  id: string
+  title: string
+  targetType: SectionNodeTargetType
+  status: string
+  referenceMode?: SectionReferenceMode
+  lockedVersionLabel?: string
+  sortOrder: number
+  level: number
+  summary: string
+  note?: string
+  disabled?: boolean
+}
+
+export interface SectionItemViewShellModel {
+  id: string
+  placeholderTitleKey: string
+  placeholderDescriptionKey: string
+  selected?: boolean
+  disabled?: boolean
+  children?: SectionItemViewShellModel[]
+}
+
+export interface SectionPageShellModel {
+  sectionId: string
+  title: string
+  teachingTopicTitle: string
+  status: string
+}

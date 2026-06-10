@@ -4,6 +4,12 @@
 
 - 本文档描述的是阶段 2 之后的 SectionPage 开发路径。
 - 当前全局阶段 1 只做文档清理，不执行本计划中的任何工程或页面实现。
+- Section 与 SectionVariant 的关系固定为：Section 是上帝小节 / 完整知识池 / 完整教学结构，SectionVariant 是从 Section 派生出的教学用途方案。
+- SectionWorkspace 中统一使用 `SectionItemView` 表示 SectionItem 的可视化表现，不再使用 `SectionItemCard` 命名。
+- ComponentLabPage 是当前开发轮次的验收入口，不是永久组件展览馆；每一轮只保留本轮需要验收的组件。
+- ComponentLabPage 必须作为独立验收页面使用，不应包在带主导航或左侧导航的 AppShell 中。
+- SectionPage 后续每轮只完成计划中的最小开发目标，不顺手扩展后续组件、后续交互或真实 API 能力。
+- 每轮新增组件前，必须先确认组件职责、边界、输入数据、事件和 ComponentLab 验收场景。
 
 ## Phase 1: V2 前端基础结构扫描与缺口确认
 
@@ -85,7 +91,7 @@ Lab 验收方式：
 Mock Data：
 
 - `mockContentBlocks`
-- `mockSectionFlowItems`
+- `mockSectionItemViews`
 - `mockTreeNodes`
 
 Lab 验收方式：
@@ -361,7 +367,7 @@ Lab 验收方式：
 
 - 建立统一顺序流
 - 不分裂成多个 list
-- 插入点、块展示、AtomicSection、CompositeBlock 在同一流里工作
+- 插入点、SectionItemView、ContentBlockDisplay、AtomicSectionBlock、CompositeBlock 在同一流里工作
 
 前置依赖：
 
@@ -371,7 +377,7 @@ Lab 验收方式：
 
 新增文件：
 
-- `frontend-v2/src/components/business/SectionFlowItem.vue`
+- `frontend-v2/src/components/business/SectionItemView.vue`
 - `frontend-v2/src/components/containers/SectionWorkspace.vue`
 - `frontend-v2/src/labs/section-workspace/*`
 
@@ -381,10 +387,11 @@ Lab 验收方式：
 
 Mock Data：
 
-- `mockSectionFlowItems`
+- `mockSectionItemViews`
 
 Lab 验收方式：
 
+- ComponentLabPage 只展示本轮 SectionWorkspace / SectionItemView 相关验收内容
 - 单块
 - 多块
 - AtomicSection 中嵌块
@@ -533,3 +540,4 @@ Lab 验收方式：
 - `FocusTree`、`InsertPoint`、`StructuredContainer` 是 SectionPage 的公共底层，必须先在 Lab 验稳。
 - 文档流和 Inspector 必须在 mock 下先跑通，否则一接 API 就会把“组件边界问题”和“数据问题”混在一起。
 - 当前后端写入接口明显不完整，因此第一轮应先以 mock 和真实只读接口为界。
+- 以上顺序不把 ComponentLabPage 当作永久组件展览馆；每个阶段只在 ComponentLabPage 中保留当前阶段需要验收的组件。

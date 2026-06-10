@@ -40,9 +40,9 @@ frontend-v2/
 
 当前仓库实际情况：
 
-- 不存在 `frontend-v2/`
-- 存在 `src-v2/`
-- `src-v2/` 当前只包含：
+- 已存在 `frontend-v2/`
+- 已存在 `src-v2/`
+- `src-v2/` 包含：
   - `WordSolution.CmsV2.Api`
   - `WordSolution.CmsV2.Application`
   - `WordSolution.CmsV2.Domain`
@@ -52,8 +52,9 @@ frontend-v2/
 结论：
 
 - V2 后端已经开始建设。
-- V2 Vue 前端工作区尚未落地。
-- `ComponentLabPage`、`src/mocks/`、`src/labs/`、`src/locales/`、`src/apis/` 等前端基础目录当前均不存在。
+- V2 Vue 前端工作区已经落地基础骨架。
+- `ComponentLabPage`、`src/mocks/`、`src/labs/`、`src/locales/`、`src/apis/` 等前端基础目录已经存在。
+- 当前待校正点是：`/lab` 应作为独立验收页面，不应包在主应用 AppShell 或左侧导航中。
 
 ### 2.2 前端技术栈落地情况
 
@@ -72,18 +73,18 @@ lucide-vue-next
 
 当前仓库扫描结果：
 
-- 未发现 `frontend-v2/package.json`
-- 未发现 `vite.config.ts`
-- 未发现 `tailwind.config.ts`
-- 未发现 V2 前端 `router.ts`
-- 未发现 V2 前端 `pinia.ts`
-- 未发现 V2 前端 `i18n.ts`
-- 未发现 V2 前端 `labs/` 路由或页面
+- 已发现 `frontend-v2/package.json`
+- 已发现 `vite.config.ts`
+- 已发现 `tailwind.config.ts`
+- 已发现 V2 前端 `router.ts`
+- 已发现 V2 前端 `pinia.ts`
+- 已发现 V2 前端 `i18n.ts`
+- 已发现 V2 前端 `labs/` 和 `ComponentLabPage`
 
 结论：
 
-- 当前任务必须先把前端骨架缺口写入开发计划。
-- SectionPage 不具备“在现有 V2 前端上直接增量实现”的条件。
+- V2 前端基础骨架已具备继续推进 SectionPage 的条件。
+- 后续 SectionPage 开发仍必须按最小轮次推进，先在 ComponentLab 中验收，再进入真实页面。
 
 ### 2.3 现有旧前端关系
 
@@ -102,6 +103,46 @@ lucide-vue-next
 
 ## 3. SectionPage 页面组件树
 
+### 3.1 已确认领域关系
+
+Section 与 SectionVariant 的关系固定理解为：
+
+```text
+TeachingTopic
+↓
+Section（上帝小节 / 完整知识池 / 完整教学结构）
+├── SectionVariant（基础讲解版）
+├── SectionVariant（提高版）
+├── SectionVariant（一轮复习版）
+└── SectionVariant（冲刺版）
+```
+
+规则：
+
+- Section 本身就是上帝小节。
+- Section 不是 SectionVariant 的子级。
+- SectionVariant 是从 Section 派生出的教学用途方案。
+- SectionVariant 是 Section 的子级，不是 Section 的父级，也不是 Section 本体。
+
+### 3.2 命名校准
+
+工作区中不再使用 `SectionItemCard` 命名。
+
+统一使用：
+
+```text
+SectionItemView
+```
+
+含义：
+
+- SectionItemView 表示 SectionItem 在 SectionWorkspace 中的可视化表现。
+- SectionItemView 是上层概念。
+- 具体实现可以由 `ContentBlockDisplay`、`AtomicSectionBlock`、`CompositeBlock` 等组件承载。
+- SectionItem 本质是 Section 中的一条引用项，不是资源卡片。
+
+### 3.3 页面组件树
+
 建议页面树：
 
 ```text
@@ -116,7 +157,7 @@ SectionPage
 │   ├── SectionWorkspace
 │   │   ├── SectionWorkspaceHeader
 │   │   ├── SectionDocumentFlow
-│   │   │   ├── SectionFlowItem
+│   │   │   ├── SectionItemView
 │   │   │   │   ├── ContentBlockDisplay
 │   │   │   │   ├── AtomicSectionBlock
 │   │   │   │   └── CompositeBlock
@@ -145,7 +186,8 @@ SectionPage
 | `CompositeBlock` | Business | 理解 CompositeBlock 语义 |
 | `SectionTreeNode` | Business | 理解 Section 结构树节点语义 |
 | `SectionInspectorPanel` | Business | 理解当前选中对象的上下文属性 |
-| `SectionDocumentFlow` | Business | 理解 SectionItem 顺序流 |
+| `SectionItemView` | Business | SectionItem 在 SectionWorkspace 中的上层可视化概念，具体可由 ContentBlockDisplay / AtomicSectionBlock / CompositeBlock 承载 |
+| `SectionDocumentFlow` | Business | 理解 SectionItemView 顺序流 |
 | `FocusTree` | Business | 通用业务交互能力，不理解 CMS 业务对象 |
 | `ContentBlockPicker` | Container | 负责加载候选数据、管理筛选与选择 |
 | `AtomicSectionPicker` | Container | 负责加载可选 AtomicSection |
@@ -348,10 +390,10 @@ type FocusTreeNodeVm = {
 }
 ```
 
-#### SectionFlowItemVm
+#### SectionItemViewVm
 
 ```ts
-type SectionFlowItemVm = {
+type SectionItemViewVm = {
   id: string
   itemType: "contentBlock" | "atomicSection" | "compositeBlock"
   sectionItemId?: number | null
@@ -367,7 +409,7 @@ type SectionFlowItemVm = {
   currentVersionId?: number | null
   htmlPreviewState: "ready" | "loading" | "empty" | "error"
   htmlPreview?: string | null
-  children?: SectionFlowItemVm[]
+  children?: SectionItemViewVm[]
   note?: string | null
 }
 ```
@@ -417,7 +459,7 @@ type InsertContextVm = {
 - `mockContentBlockHtmlPreviews`
 - `mockTeachingNotes`
 - `mockFocusTreeNodes`
-- `mockSectionFlowItems`
+- `mockSectionItemViews`
 - `mockInspectorStates`
 - `mockInsertContexts`
 - `mockEditSessionsByContentBlockId`
@@ -656,7 +698,18 @@ type InsertContextVm = {
 
 ## 13. ComponentLab 验收组件清单
 
-第一批必须进入 `/lab` 的组件：
+ComponentLab 的定位是当前开发轮次的验收入口，不是永久组件展览馆。
+
+规则：
+
+- 每一轮开发结束后，只保留本轮需要验收的组件。
+- 上一轮无关组件应从当前 ComponentLab 视图中移除。
+- 用户打开 ComponentLab 时，应直接看到当前正在开发和验收的内容。
+- ComponentLab 应作为独立验收页面使用，不应包在主应用 AppShell、主导航或左侧导航中。
+- SectionPage 的页面级 mock 也可以放入 ComponentLab，用完整页面让用户确认，而不是只展示孤立组件。
+- 每轮交付时，应明确告知用户本轮开发了什么、在 ComponentLab 中验收什么、哪些能力仍是占位。
+
+以下清单只表示 SectionPage 开发过程中可能进入 `/lab` 的候选组件，不表示同一时间全部长期保留：
 
 - `InsertPoint`
 - `StructuredContainer`

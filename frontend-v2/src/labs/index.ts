@@ -1,6 +1,4 @@
 export const componentLabScenarios = [
-  { id: 'presentation', state: 'ready' },
-  { id: 'contentBlockCard', state: 'ready' },
-  { id: 'sectionVariantCard', state: 'ready' },
-  { id: 'focusTree', state: 'ready' },
+  { id: 'sectionWorkspace', state: 'ready' },
+  { id: 'sectionItemView', state: 'ready' },
 ] as const
