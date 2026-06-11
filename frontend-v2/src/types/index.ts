@@ -72,3 +72,40 @@ export interface SectionPageShellModel {
   teachingTopicTitle: string
   status: string
 }
+
+export type HtmlPreviewState = 'ready' | 'loading' | 'empty' | 'error'
+
+export interface ContentBlockDisplayModel {
+  id: string
+  title: string
+  role: string
+  blockType: string
+  difficulty: string
+  status: string
+  referenceMode: SectionReferenceMode
+  versionLabel: string
+  htmlPreviewState: HtmlPreviewState
+  htmlPreview?: string | null
+  selected?: boolean
+  disabled?: boolean
+}
+
+export type StructuredBlockKind = 'AtomicSection' | 'CompositeBlock'
+
+export interface StructuredBlockModel {
+  id: string
+  title: string
+  blockKind: StructuredBlockKind
+  status: string
+  difficulty: string
+  summary: string
+  children: ContentBlockDisplayModel[]
+  selected?: boolean
+  disabled?: boolean
+}
+
+export interface InsertPointModel {
+  id: string
+  label: string
+  disabled?: boolean
+}

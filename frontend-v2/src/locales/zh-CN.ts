@@ -151,6 +151,33 @@ const zhCN = {
       openWord: 'Word 编辑',
       preview: '预览',
     },
+    contentBlockDisplay: {
+      difficulty: '难度',
+      openWord: 'Word 编辑',
+      refreshPreview: '刷新预览',
+      more: '更多',
+      previewState: {
+        ready: '预览已就绪',
+        loading: '预览加载中',
+        empty: '暂无 HTML 预览',
+        error: '预览加载失败',
+      },
+    },
+    structuredBlock: {
+      atomicSection: 'AtomicSection',
+      compositeBlock: 'CompositeBlock',
+      collapse: '折叠',
+      more: '更多',
+      emptyTitle: '暂无子内容',
+      atomicEmptyDescription: '这个 AtomicSection 还没有放入 ContentBlock。',
+      compositeEmptyDescription: '这个 CompositeBlock 还没有放入 ContentBlock。',
+    },
+    insertPoint: {
+      insert: '插入',
+      contentBlock: 'ContentBlock',
+      atomicSection: 'AtomicSection',
+      compositeBlock: 'CompositeBlock',
+    },
     sectionInspector: {
       emptyTitle: '请选择一个 Section 节点',
       emptyDescription:
@@ -180,15 +207,25 @@ const zhCN = {
     backHome: '返回首页',
     scenarioCount: '场景数：',
     sections: {
-      sectionWorkspace: {
-        title: 'SectionWorkspace skeleton',
+      contentBlockDisplay: {
+        title: 'ContentBlockDisplay',
         description:
-          '本轮验收 SectionWorkspace 的短信息区、文档流区域，以及未来 TeachingNoteColumn 的结构预留。',
+          '验收文档流里的 ContentBlock 正文展示：无标题、无版本、难度小点、正文预览、长正文、无预览和禁用态。',
       },
-      sectionItemView: {
-        title: 'SectionItemView',
+      structuredBlocks: {
+        title: 'AtomicSectionBlock / CompositeBlock',
         description:
-          '本轮验收 SectionItemView 作为纯容器的表现：允许子级、默认无边框、hover 后显示右侧操作区。',
+          '验收两个结构块是否共用弱边框容器，标题和操作区是否贴在线框上。',
+      },
+      insertPoint: {
+        title: 'InsertPoint',
+        description:
+          '验收插入点默认弱化，鼠标悬停或键盘聚焦后显示插入入口。',
+      },
+      sectionItemComposition: {
+        title: 'SectionItemView composition',
+        description:
+          '验收 SectionItemView 作为外层容器承载 ContentBlockDisplay、AtomicSectionBlock 和 CompositeBlock。',
       },
     },
   },

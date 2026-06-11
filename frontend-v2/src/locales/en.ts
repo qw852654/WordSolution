@@ -151,6 +151,33 @@ const en = {
       openWord: 'Word edit',
       preview: 'Preview',
     },
+    contentBlockDisplay: {
+      difficulty: 'Difficulty',
+      openWord: 'Word edit',
+      refreshPreview: 'Refresh preview',
+      more: 'More',
+      previewState: {
+        ready: 'Preview ready',
+        loading: 'Preview loading',
+        empty: 'No HTML preview',
+        error: 'Preview failed',
+      },
+    },
+    structuredBlock: {
+      atomicSection: 'AtomicSection',
+      compositeBlock: 'CompositeBlock',
+      collapse: 'Collapse',
+      more: 'More',
+      emptyTitle: 'No child content',
+      atomicEmptyDescription: 'This AtomicSection does not contain ContentBlock items yet.',
+      compositeEmptyDescription: 'This CompositeBlock does not contain ContentBlock items yet.',
+    },
+    insertPoint: {
+      insert: 'Insert',
+      contentBlock: 'ContentBlock',
+      atomicSection: 'AtomicSection',
+      compositeBlock: 'CompositeBlock',
+    },
     sectionInspector: {
       emptyTitle: 'Select a Section node',
       emptyDescription:
@@ -180,15 +207,25 @@ const en = {
     backHome: 'Back to Home',
     scenarioCount: 'Scenario count:',
     sections: {
-      sectionWorkspace: {
-        title: 'SectionWorkspace skeleton',
+      contentBlockDisplay: {
+        title: 'ContentBlockDisplay',
         description:
-          'Validate the compact info area, document flow area, and reserved TeachingNoteColumn structure.',
+          'Validate the document-flow ContentBlock body preview without title or version, plus difficulty dot, long content, empty preview, and disabled state.',
       },
-      sectionItemView: {
-        title: 'SectionItemView',
+      structuredBlocks: {
+        title: 'AtomicSectionBlock / CompositeBlock',
         description:
-          'Validate SectionItemView as a pure container: nested children, no default border, and hover-revealed action rail.',
+          'Validate shared weak container styling, inline border title, and action placement.',
+      },
+      insertPoint: {
+        title: 'InsertPoint',
+        description:
+          'Validate the weak default state and hover or keyboard focus insert affordance.',
+      },
+      sectionItemComposition: {
+        title: 'SectionItemView composition',
+        description:
+          'Validate SectionItemView as the outer container for ContentBlockDisplay, AtomicSectionBlock, and CompositeBlock.',
       },
     },
   },

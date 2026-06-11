@@ -228,6 +228,17 @@ UI Verification
 
 表示一个可复用内容资产。
 
+使用范围：
+
+- 资源库。
+- 内容选择器。
+- 其他需要“选择内容资产”的列表或网格。
+
+不用于：
+
+- SectionWorkspace 文档流正文展示。
+- SectionItemView 内部正文内容。
+
 必须展示：
 
 - 标题。
@@ -243,6 +254,83 @@ UI Verification
 - 打开详情。
 - 打开 Word 编辑入口。
 - 查看 HTML 预览。
+
+### ContentBlockDisplay
+
+表示 ContentBlock 在 SectionWorkspace 文档流中的正文展示。
+
+职责：
+
+- 展示 ContentBlock 的正文 HTML 预览。
+- 不显示 ContentBlock 标题。
+- 不显示版本信息。
+- 正文预览区域不显示边框，尽量贴近文档流。
+- 不显示 ContentBlock 类型、可用状态、引用模式等文字元信息。
+- 只显示难度，难度只用左侧顶部的小颜色点表示；具体颜色值后续由用户确认后再固定。
+- 自身上下左右 padding 为 0，间距由外层 SectionItemView 控制。
+- 鼠标 hover 到 ContentBlockDisplay 时不显示边框。
+- 提供轻量动作入口：Word 编辑、刷新预览、更多。
+- 可以作为 SectionItemView 的 slot 内容。
+- 可以作为 AtomicSectionBlock / CompositeBlock 的子内容。
+
+边界：
+
+- 不作为资源库卡片使用。
+- 不使用 `StructuredContainer`。
+- 不直接调用 API。
+- 不直接实现 Word 编辑会话轮询。
+- 不持有 SectionPage 页面状态。
+
+ComponentLabPage 验收：
+
+- 默认状态。
+- 选中状态。
+- LockedVersion。
+- 无 HTML 预览。
+- 长正文。
+- 禁用状态。
+- 不显示标题和版本。
+- 不显示 ContentBlock 类型和状态。
+
+### InsertPoint
+
+表示文档流中“这里可以插入”的交互位置。
+
+职责：
+
+- 出现在两个 flow item 之间。
+- 默认弱化显示。
+- 高度保持紧凑。
+- 鼠标停留约 0.5 秒后显示插入入口。
+- 键盘 focus 后应显示插入入口。
+- 中间提供 slot，用于展示当前位置允许插入的全部内容类型。
+- 通过 `insert` 事件把插入点 id 交给父组件。
+
+边界：
+
+- 不决定可以插入哪些业务对象。
+- 不调用 API。
+- 不写死插入菜单选项。
+- 不修改 Section 数据。
+
+### StructuredContainer / InlineBorderHeader
+
+表示 AtomicSectionBlock 和 CompositeBlock 共享的弱边框结构容器。
+
+职责：
+
+- `StructuredContainer` 负责弱边框容器和 body slot。
+- `InlineBorderHeader` 负责边框线上的标题和 actions slot。
+- 支持长标题和多个操作入口。
+- AtomicSectionBlock / CompositeBlock 内部子块不使用左侧竖线。
+- AtomicSectionBlock / CompositeBlock 内部的每个 ContentBlockDisplay 必须先由子级 SectionItemView 包裹，再承载正文展示。
+
+边界：
+
+- 不理解 CMS 业务语义。
+- 不调用 API。
+- 不用于 ContentBlockDisplay。
+- 不持有展开、选中或写入状态。
 
 ### AtomicSectionCard
 
@@ -275,6 +363,8 @@ UI Verification
 - SectionItemView 允许子级 SectionItemView，用于表达 SectionItem 的父子层级。
 - SectionItemView 默认不显示边框。
 - SectionItemView 的右侧纵向操作区默认隐藏。
+- SectionItemView 的右侧纵向操作区必须脱离正常布局流，不允许撑高 SectionItemView。
+- 多个 SectionItemView 连续出现时默认竖直贴合，不在外层额外添加 gap / margin。
 - 鼠标 hover 到 SectionItemView 的正文区域时，不显示边框，也不显示操作图标。
 - 只有鼠标进入右侧纵向操作热区，或键盘 focus 进入右侧操作区时，右侧操作图标和 SectionItemView 容器边框才一起显现。
 

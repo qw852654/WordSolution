@@ -83,7 +83,7 @@ function emitIfEnabled(
 <template>
   <article
     :class="[
-      'section-item-view grid w-full grid-cols-[minmax(0,1fr)_2.5rem] overflow-hidden rounded-md border border-transparent bg-background transition-colors',
+      'section-item-view relative w-full overflow-visible rounded-md border border-transparent bg-background transition-colors',
       selected ? 'bg-muted/30' : '',
       disabled ? 'opacity-60' : '',
     ]"
@@ -98,7 +98,7 @@ function emitIfEnabled(
     </div>
 
     <div
-      class="section-item-view-actions flex flex-col items-center gap-1 border-l border-transparent bg-muted/20 p-1 opacity-0 transition-opacity"
+      class="section-item-view-actions absolute right-0 top-0 z-10 flex min-h-full w-10 flex-col items-center gap-1 overflow-visible border-l border-transparent bg-muted/20 p-1 opacity-0 transition-opacity"
       :aria-label="t('components.sectionItemView.actionRailLabel')"
     >
       <Button

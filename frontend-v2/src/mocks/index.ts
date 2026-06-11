@@ -1,10 +1,13 @@
 import type {
   ContentBlockCardModel,
+  ContentBlockDisplayModel,
   FocusTreeNode,
+  InsertPointModel,
   SectionItemViewShellModel,
   SectionNodeModel,
   SectionPageShellModel,
   SectionVariantCardModel,
+  StructuredBlockModel,
 } from '@/types'
 
 export const scaffoldChecks = [
@@ -208,6 +211,117 @@ export const mockSectionNodes: SectionNodeModel[] = [
     sortOrder: 4,
     level: 1,
     summary: '用于验证禁用状态、按钮不可用和弱化显示。',
+    disabled: true,
+  },
+]
+
+export const mockContentBlockDisplays: ContentBlockDisplayModel[] = [
+  {
+    id: 'display-energy-law',
+    title: '机械能守恒的条件与表达',
+    role: '知识点',
+    blockType: 'ContentBlock',
+    difficulty: '基础',
+    status: '可用',
+    referenceMode: 'FollowLatest',
+    versionLabel: 'v3',
+    htmlPreviewState: 'ready',
+    htmlPreview:
+      '<p>当系统内只有重力或弹力做功，其他力不做功或做功代数和为零时，系统机械能保持不变。</p><p><strong>E_k1 + E_p1 = E_k2 + E_p2</strong></p>',
+    selected: true,
+  },
+  {
+    id: 'display-locked-example',
+    title: '圆轨道临界问题：从能量关系判断最高点速度条件的长标题示例',
+    role: '例题',
+    blockType: 'ContentBlock',
+    difficulty: '提高',
+    status: '可用',
+    referenceMode: 'LockedVersion',
+    versionLabel: 'v2',
+    htmlPreviewState: 'ready',
+    htmlPreview:
+      '<p>先确定研究对象和零势能面，再使用机械能守恒得到速度关系。最高点恰好通过时，支持力为零。</p><ol><li>列出最低点到最高点的能量方程。</li><li>结合向心力条件判断临界速度。</li></ol>',
+  },
+  {
+    id: 'display-empty-preview',
+    title: '无 HTML 预览的课堂练习',
+    role: '练习',
+    blockType: 'ContentBlock',
+    difficulty: '中档',
+    status: '待补预览',
+    referenceMode: 'FollowLatest',
+    versionLabel: 'v1',
+    htmlPreviewState: 'empty',
+    htmlPreview: null,
+  },
+  {
+    id: 'display-long-preview',
+    title: '长正文预览：机械能守恒综合应用',
+    role: '方法总结',
+    blockType: 'ContentBlock',
+    difficulty: '压轴',
+    status: '可用',
+    referenceMode: 'FollowLatest',
+    versionLabel: 'v4',
+    htmlPreviewState: 'ready',
+    htmlPreview:
+      '<p>处理综合题时，先判断是否能使用机械能守恒，再决定是否需要引入动能定理或牛顿第二定律。若过程中存在非保守力做功，应把非保守力做功单独列入能量变化。</p><p>常见检查顺序：系统选择、外力做功、势能零点、初末状态、隐含约束。每一步都要避免把局部对象的能量方程误写成系统能量方程。</p><p>对于含弹簧、圆轨道、绳杆模型的题目，应优先画出关键状态图，再决定能量方程的起点和终点。</p>',
+  },
+  {
+    id: 'display-disabled',
+    title: '已停用旧题讲解',
+    role: '例题',
+    blockType: 'ContentBlock',
+    difficulty: '基础',
+    status: '停用',
+    referenceMode: 'LockedVersion',
+    versionLabel: 'v1',
+    htmlPreviewState: 'ready',
+    htmlPreview: '<p>该内容仅用于验证禁用状态，不应进入真实工作流。</p>',
+    disabled: true,
+  },
+]
+
+export const mockStructuredBlocks: StructuredBlockModel[] = [
+  {
+    id: 'atomic-energy-basics',
+    title: '机械能守恒基础讲解片段',
+    blockKind: 'AtomicSection',
+    status: '草稿',
+    difficulty: '基础',
+    summary: '用于组织概念条件和基础例题，不直接承载正文。',
+    children: mockContentBlockDisplays.slice(0, 2),
+    selected: true,
+  },
+  {
+    id: 'composite-circular-track',
+    title: '圆轨道临界例题组：速度、支持力与能量关系的连续模型训练',
+    blockKind: 'CompositeBlock',
+    status: '可用',
+    difficulty: '提高',
+    summary: '组合两个 ContentBlock，用于表达同一模型下的连续例题。',
+    children: mockContentBlockDisplays.slice(1, 4),
+  },
+  {
+    id: 'atomic-empty',
+    title: '空 AtomicSection 验收样例',
+    blockKind: 'AtomicSection',
+    status: '空状态',
+    difficulty: '未设置',
+    summary: '用于确认结构容器没有子块时的占位效果。',
+    children: [],
+  },
+]
+
+export const mockInsertPoints: InsertPointModel[] = [
+  {
+    id: 'insert-before-law',
+    label: '在此插入 SectionItem',
+  },
+  {
+    id: 'insert-disabled',
+    label: '当前位置不可插入',
     disabled: true,
   },
 ]
