@@ -198,6 +198,20 @@ const en = {
       emptyDescription:
         'The FocusTree can render an empty state before real structure data is available.',
     },
+    sectionTree: {
+      title: 'SectionTree',
+      description: 'Section structure tree for the left structure area.',
+      emptyTitle: 'No Section structure',
+      emptyDescription: 'There are no SectionItem nodes to show in this mock state.',
+      nodeCount: '{count} root nodes',
+      itemCount: '{count} items',
+      kind: {
+        Section: 'Section',
+        AtomicSection: 'AtomicSection',
+        CompositeBlock: 'CompositeBlock',
+        ContentBlock: 'ContentBlock',
+      },
+    },
   },
   lab: {
     eyebrow: 'Component validation',
@@ -226,6 +240,12 @@ const en = {
         title: 'SectionItemView composition',
         description:
           'Validate SectionItemView as the outer container for ContentBlockDisplay, AtomicSectionBlock, and CompositeBlock.',
+      },
+      sectionTree: {
+        title: 'SectionTree',
+        description:
+          'Validate the left Section structure tree with hierarchy, collapse controls, selected state, disabled node, long title, and empty state.',
+        selectedTitle: 'Selected node',
       },
     },
   },

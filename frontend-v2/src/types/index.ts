@@ -39,6 +39,19 @@ export interface FocusTreeNode {
   children?: FocusTreeNode[]
 }
 
+export type SectionTreeNodeKind = 'Section' | 'AtomicSection' | 'CompositeBlock' | 'ContentBlock'
+
+export interface SectionTreeNodeModel {
+  id: string
+  title: string
+  kind: SectionTreeNodeKind
+  status?: string
+  itemCount?: number
+  disabled?: boolean
+  expanded?: boolean
+  children?: SectionTreeNodeModel[]
+}
+
 export type SectionNodeTargetType = 'ContentBlock' | 'AtomicSection'
 
 export type SectionReferenceMode = 'FollowLatest' | 'LockedVersion'

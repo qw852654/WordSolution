@@ -377,6 +377,37 @@ ComponentLabPage 验收：
 - 组件只通过 emits 暴露选择、前插、后插、上移、下移、缩进、反缩进、移除和 Word 编辑入口。
 - 组件不调用 API，不读取 Pinia，不持有 SectionPage 页面状态。
 
+### SectionTree
+
+表示 SectionStructurePanel 中的当前 Section 结构树。
+
+职责：
+
+- 展示当前 Section 内部的 SectionItem 结构。
+- 节点可以表达 Section、AtomicSection、CompositeBlock、ContentBlock 等 Section 内部结构对象。
+- 展示层级、展开 / 折叠、选中态、禁用态和节点类型摘要。
+- 点击节点只通过事件把节点 id 交给父级，由父级决定是否滚动工作区、更新 Inspector 或触发其他页面状态。
+- 复用 FocusTree 的通用展开 / 折叠和树语义能力。
+
+边界：
+
+- 不调用 API。
+- 不读取 Pinia。
+- 不持有 SectionPage 页面级 selectedNodeId。
+- 不直接滚动 SectionWorkspace。
+- 不直接修改 SectionItem 顺序、层级或引用关系。
+- 不混入 TeachingTopic、Handout、GeneratedFile 或 ContentBlockVersion。
+- 不把 FocusTree 机制写成 Section 专用规则。
+
+ComponentLabPage 验收：
+
+- 默认层级树。
+- 折叠 / 展开按钮。
+- 选中态。
+- 禁用节点。
+- 长标题。
+- 空状态。
+
 ### SectionPage Skeleton Components
 
 当前最小骨架包含：

@@ -6,6 +6,7 @@ import type {
   SectionItemViewShellModel,
   SectionNodeModel,
   SectionPageShellModel,
+  SectionTreeNodeModel,
   SectionVariantCardModel,
   StructuredBlockModel,
 } from '@/types'
@@ -168,6 +169,69 @@ export const mockFocusTreeNodes: FocusTreeNode[] = [
 ]
 
 export const emptyFocusTreeNodes: FocusTreeNode[] = []
+
+export const mockSectionTreeNodes: SectionTreeNodeModel[] = [
+  {
+    id: 'section-tree-root',
+    title: '机械能守恒',
+    kind: 'Section',
+    status: '编辑中',
+    itemCount: 5,
+    expanded: true,
+    children: [
+      {
+        id: 'section-tree-law',
+        title: '机械能守恒条件',
+        kind: 'ContentBlock',
+        status: 'FollowLatest',
+      },
+      {
+        id: 'section-tree-atomic-basics',
+        title: '基础讲解 AtomicSection',
+        kind: 'AtomicSection',
+        status: '可用',
+        itemCount: 2,
+        expanded: true,
+        children: [
+          {
+            id: 'section-tree-example-one',
+            title: '单物体机械能守恒例题',
+            kind: 'ContentBlock',
+            status: 'LockedVersion',
+          },
+          {
+            id: 'section-tree-example-two',
+            title: '圆轨道临界问题例题',
+            kind: 'ContentBlock',
+            status: 'FollowLatest',
+          },
+        ],
+      },
+      {
+        id: 'section-tree-composite',
+        title: '圆轨道模型 CompositeBlock',
+        kind: 'CompositeBlock',
+        status: '可用',
+        itemCount: 3,
+      },
+      {
+        id: 'section-tree-long-title',
+        title: '长标题验证：带弹簧、圆轨道和多状态能量方程的综合讲解节点',
+        kind: 'ContentBlock',
+        status: 'FollowLatest',
+      },
+      {
+        id: 'section-tree-disabled',
+        title: '已停用旧练习',
+        kind: 'ContentBlock',
+        status: '停用',
+        disabled: true,
+      },
+    ],
+  },
+]
+
+export const emptySectionTreeNodes: SectionTreeNodeModel[] = []
 
 export const mockSectionNodes: SectionNodeModel[] = [
   {

@@ -198,6 +198,20 @@ const zhCN = {
       emptyDescription:
         'FocusTree 可以在真实结构数据接入前显示空状态。',
     },
+    sectionTree: {
+      title: 'SectionTree',
+      description: '左侧 structure 区域使用的 Section 结构树。',
+      emptyTitle: '暂无 Section 结构',
+      emptyDescription: '当前 Mock Data 中没有可展示的 SectionItem 节点。',
+      nodeCount: '{count} 个根节点',
+      itemCount: '{count} 项',
+      kind: {
+        Section: 'Section',
+        AtomicSection: 'AtomicSection',
+        CompositeBlock: 'CompositeBlock',
+        ContentBlock: 'ContentBlock',
+      },
+    },
   },
   lab: {
     eyebrow: '组件验收',
@@ -226,6 +240,12 @@ const zhCN = {
         title: 'SectionItemView composition',
         description:
           '验收 SectionItemView 作为外层容器承载 ContentBlockDisplay、AtomicSectionBlock 和 CompositeBlock。',
+      },
+      sectionTree: {
+        title: 'SectionTree',
+        description:
+          '验收左侧 Section 结构树的层级、折叠按钮、选中态、禁用节点、长标题和空状态。',
+        selectedTitle: '当前选中节点',
       },
     },
   },
