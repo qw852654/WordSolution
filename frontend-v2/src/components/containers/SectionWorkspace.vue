@@ -1,26 +1,89 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { PanelsTopLeft } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
+import AtomicSectionBlock from '@/components/business/AtomicSectionBlock.vue'
+import CompositeBlock from '@/components/business/CompositeBlock.vue'
+import ContentBlockDisplay from '@/components/business/ContentBlockDisplay.vue'
 import SectionItemView from '@/components/business/SectionItemView.vue'
 import EmptyState from '@/components/presentation/EmptyState.vue'
 import StatusPill from '@/components/presentation/StatusPill.vue'
 import WeakScrollArea from '@/components/presentation/WeakScrollArea.vue'
 import { Card } from '@/components/ui/card'
-import type { SectionItemViewShellModel, SectionPageShellModel } from '@/types'
+import type {
+  ContentBlockDisplayModel,
+  SectionPageShellModel,
+  StructuredBlockModel,
+} from '@/types'
 
 const { t } = useI18n()
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     section: SectionPageShellModel
-    items?: SectionItemViewShellModel[]
+    contentBlocks?: ContentBlockDisplayModel[]
+    structuredBlocks?: StructuredBlockModel[]
     teachingNoteMode?: boolean
   }>(),
   {
-    items: () => [],
+    contentBlocks: () => [],
+    structuredBlocks: () => [],
     teachingNoteMode: false,
   },
 )
+
+type WorkspaceFlowItem =
+  | {
+      kind: 'ContentBlock'
+      id: string
+      selected?: boolean
+      disabled?: boolean
+      block: ContentBlockDisplayModel
+    }
+  | {
+      kind: 'AtomicSection' | 'CompositeBlock'
+      id: string
+      selected?: boolean
+      disabled?: boolean
+      block: StructuredBlockModel
+    }
+
+const flowItems = computed<WorkspaceFlowItem[]>(() => {
+  const [firstContentBlock, ...remainingContentBlocks] = props.contentBlocks
+  const items: WorkspaceFlowItem[] = []
+
+  if (firstContentBlock) {
+    items.push({
+      kind: 'ContentBlock',
+      id: firstContentBlock.id,
+      selected: firstContentBlock.selected,
+      disabled: firstContentBlock.disabled,
+      block: firstContentBlock,
+    })
+  }
+
+  for (const block of props.structuredBlocks) {
+    items.push({
+      kind: block.blockKind,
+      id: block.id,
+      selected: block.selected,
+      disabled: block.disabled,
+      block,
+    })
+  }
+
+  for (const block of remainingContentBlocks) {
+    items.push({
+      kind: 'ContentBlock',
+      id: block.id,
+      selected: block.selected,
+      disabled: block.disabled,
+      block,
+    })
+  }
+
+  return items
+})
 </script>
 
 <template>
@@ -37,36 +100,26 @@ withDefaults(
       :class="teachingNoteMode ? 'lg:grid-cols-[minmax(0,1fr)_260px]' : 'grid-cols-[minmax(0,1fr)]'"
     >
       <WeakScrollArea class="rounded-md border bg-background p-3" :aria-label="t('sectionPage.workspace.mainColumnLabel')">
-        <div v-if="items.length" class="space-y-2">
+        <div v-if="flowItems.length" class="space-y-0">
           <SectionItemView
-            v-for="item in items"
+            v-for="item in flowItems"
             :key="item.id"
             :item-id="item.id"
             :selected="item.selected"
             :disabled="item.disabled"
           >
-            <div class="rounded-md border border-dashed bg-muted/20 px-3 py-2">
-              <p class="text-sm font-medium">{{ t(item.placeholderTitleKey) }}</p>
-              <p class="mt-1 text-sm leading-6 text-muted-foreground">
-                {{ t(item.placeholderDescriptionKey) }}
-              </p>
-            </div>
-            <div v-if="item.children?.length" class="mt-2 space-y-2 border-l pl-3">
-              <SectionItemView
-                v-for="child in item.children"
-                :key="child.id"
-                :item-id="child.id"
-                :selected="child.selected"
-                :disabled="child.disabled"
-              >
-                <div class="rounded-md border border-dashed bg-muted/20 px-3 py-2">
-                  <p class="text-sm font-medium">{{ t(child.placeholderTitleKey) }}</p>
-                  <p class="mt-1 text-sm leading-6 text-muted-foreground">
-                    {{ t(child.placeholderDescriptionKey) }}
-                  </p>
-                </div>
-              </SectionItemView>
-            </div>
+            <ContentBlockDisplay
+              v-if="item.kind === 'ContentBlock'"
+              :block="item.block"
+            />
+            <AtomicSectionBlock
+              v-else-if="item.kind === 'AtomicSection'"
+              :block="item.block"
+            />
+            <CompositeBlock
+              v-else
+              :block="item.block"
+            />
           </SectionItemView>
         </div>
 

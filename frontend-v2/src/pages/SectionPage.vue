@@ -1,14 +1,20 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import SectionInspector from '@/components/business/SectionInspector.vue'
 import SectionStructurePanel from '@/components/containers/SectionStructurePanel.vue'
 import SectionTopToolbar from '@/components/containers/SectionTopToolbar.vue'
 import SectionWorkspace from '@/components/containers/SectionWorkspace.vue'
-import { mockSectionItemViewShells, mockSectionPageShells } from '@/mocks'
+import {
+  mockContentBlockDisplays,
+  mockSectionPageShells,
+  mockSectionTreeNodes,
+  mockStructuredBlocks,
+} from '@/mocks'
 import type { SectionPageShellModel } from '@/types'
 
 const route = useRoute()
+const selectedStructureNodeId = ref('section-tree-atomic-basics')
 
 const sectionId = computed(() => {
   const value = route.params.sectionId
@@ -31,8 +37,16 @@ const sectionShell = computed<SectionPageShellModel>(() => {
 <template>
   <main class="min-h-screen bg-background text-foreground xl:h-screen xl:overflow-hidden">
     <section class="grid min-h-screen grid-cols-[minmax(0,1fr)] gap-3 p-3 xl:h-full xl:min-h-0 xl:grid-cols-[240px_minmax(0,1fr)_280px]">
-      <SectionStructurePanel />
-      <SectionWorkspace :section="sectionShell" :items="mockSectionItemViewShells" />
+      <SectionStructurePanel
+        :nodes="mockSectionTreeNodes"
+        :selected-node-id="selectedStructureNodeId"
+        @select-node="selectedStructureNodeId = $event"
+      />
+      <SectionWorkspace
+        :section="sectionShell"
+        :content-blocks="mockContentBlockDisplays"
+        :structured-blocks="mockStructuredBlocks"
+      />
 
       <aside class="flex min-h-0 flex-col gap-3">
         <SectionTopToolbar />

@@ -29,12 +29,10 @@ const zhCN = {
     description:
       '当前 V2 前端已经具备稳定的应用外壳、占位路由、Vue I18n、Mock Data 和组件验收入口。',
     statusTitle: '基础状态',
-    statusDescription:
-      '本阶段为后续 SectionPage 和 HandoutPage 实现准备稳定结构。',
+    statusDescription: '本阶段为后续 SectionPage 和 HandoutPage 实现准备稳定结构。',
     apiBaseLabel: 'API 基准路径',
     boundaryTitle: '阶段边界',
-    boundaryDescription:
-      '当前阶段不接真实业务 API，也不实现编辑器工作流。',
+    boundaryDescription: '当前阶段不接真实业务 API，也不实现编辑器工作流。',
     boundaryBody:
       '可以通过教学主题入口和 ComponentLab 检查路由、布局和可复用组件基础。',
     openLab: '打开 ComponentLab',
@@ -59,32 +57,26 @@ const zhCN = {
       description:
         '这里将承载教学主题工作台，然后再进入 Section 或讲义编辑器。',
       emptyTitle: '教学主题工作台占位',
-      emptyDescription:
-        '真实教学主题数据和工作台操作会在后续阶段接入。',
+      emptyDescription: '真实教学主题数据和工作台操作会在后续阶段接入。',
     },
     sections: {
       eyebrow: 'Section 编辑器',
       title: 'Section 占位页',
-      description:
-        '这里预留给后续 SectionPage，不在当前阶段实现工作流。',
+      description: '这里预留给后续 SectionPage，不在当前阶段实现工作流。',
       emptyTitle: 'Section 编辑器基础入口已就绪',
-      emptyDescription:
-        '该路由接收 section id，等待阶段 4 SectionPage 实现。',
+      emptyDescription: '该路由接收 section id，等待阶段 4 SectionPage 实现。',
     },
     handouts: {
       eyebrow: '讲义编辑器',
       title: '讲义占位页',
-      description:
-        '这里预留给后续 HandoutPage，不在当前阶段实现讲义工作流。',
+      description: '这里预留给后续 HandoutPage，不在当前阶段实现讲义工作流。',
       emptyTitle: '讲义编辑器基础入口已就绪',
-      emptyDescription:
-        '该路由接收 handout version id，等待阶段 5 HandoutPage 实现。',
+      emptyDescription: '该路由接收 handout version id，等待阶段 5 HandoutPage 实现。',
     },
     contentBlocks: {
       eyebrow: '内容资产库',
       title: 'ContentBlock',
-      description:
-        '这里预留给后续可复用内容资产工作流。',
+      description: '这里预留给后续可复用内容资产工作流。',
       emptyTitle: '内容库占位页',
       emptyDescription:
         'ContentBlock 列表、筛选和详情工作流会在编辑器基础阶段之后加入。',
@@ -92,27 +84,22 @@ const zhCN = {
     contentBlockDetail: {
       eyebrow: 'ContentBlock 详情',
       title: 'ContentBlock 占位页',
-      description:
-        '这里预留给 ContentBlock 详情视图和编辑入口。',
+      description: '这里预留给 ContentBlock 详情视图和编辑入口。',
       emptyTitle: 'ContentBlock 详情入口已就绪',
-      emptyDescription:
-        '该路由接收 content block id，等待内容工作流阶段接入。',
+      emptyDescription: '该路由接收 content block id，等待内容工作流阶段接入。',
     },
     outputs: {
       eyebrow: '输出形式',
       title: '输出占位页',
-      description:
-        '这里预留给输出形式和生成文件。',
+      description: '这里预留给输出形式和生成文件。',
       emptyTitle: '输出工作流占位页',
-      emptyDescription:
-        'Word 生成、输出形式和生成文件当前阶段不实现。',
+      emptyDescription: 'Word 生成、输出形式和生成文件当前阶段不实现。',
     },
   },
   emptyState: {
     lab: {
       title: 'EmptyState 组件',
-      description:
-        '这里验证中性空状态、可选图标和操作入口。',
+      description: '这里验收中性空状态、可选图标和操作入口。',
       action: 'Mock 操作',
     },
   },
@@ -191,12 +178,11 @@ const zhCN = {
       preview: '预览',
       openWord: 'Word 编辑',
     },
-    focusTree: {
+    basicTree: {
       expand: '展开节点',
       collapse: '折叠节点',
       emptyTitle: '空树状态',
-      emptyDescription:
-        'FocusTree 可以在真实结构数据接入前显示空状态。',
+      emptyDescription: 'BasicTree 可以在真实结构数据接入前显示空状态。',
     },
     sectionTree: {
       title: 'SectionTree',
@@ -205,6 +191,7 @@ const zhCN = {
       emptyDescription: '当前 Mock Data 中没有可展示的 SectionItem 节点。',
       nodeCount: '{count} 个根节点',
       itemCount: '{count} 项',
+      questionCount: '{count} 题',
       kind: {
         Section: 'Section',
         AtomicSection: 'AtomicSection',
@@ -216,8 +203,7 @@ const zhCN = {
   lab: {
     eyebrow: '组件验收',
     title: 'ComponentLab',
-    description:
-      '这里仅保留当前开发轮次需要验收的 Mock Data 场景。',
+    description: '这里仅保留当前开发轮次需要验收的 Mock Data 场景。',
     backHome: '返回首页',
     scenarioCount: '场景数：',
     sections: {

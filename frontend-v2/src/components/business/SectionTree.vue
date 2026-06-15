@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import FocusTree from '@/components/business/FocusTree.vue'
+import BasicTree from '@/components/business/BasicTree.vue'
+import SectionTreeNode from '@/components/business/SectionTreeNode.vue'
 import EmptyState from '@/components/presentation/EmptyState.vue'
-import type { FocusTreeNode, SectionTreeNodeModel } from '@/types'
+import type { BasicTreeNode, SectionTreeNodeModel } from '@/types'
 
 const props = defineProps<{
   nodes: SectionTreeNodeModel[]
@@ -16,16 +17,17 @@ defineEmits<{
 
 const { t } = useI18n()
 
-const focusNodes = computed(() => props.nodes.map(toFocusTreeNode))
+const basicNodes = computed(() => props.nodes.map(toBasicTreeNode))
 
-function toFocusTreeNode(node: SectionTreeNodeModel): FocusTreeNode {
+function toBasicTreeNode(node: SectionTreeNodeModel): BasicTreeNode {
   return {
     id: node.id,
     label: node.title,
     meta: buildMeta(node),
+    payload: node,
     disabled: node.disabled,
     expanded: node.expanded,
-    children: node.children?.map(toFocusTreeNode),
+    children: node.children?.map(toBasicTreeNode),
   }
 }
 
@@ -39,6 +41,10 @@ function buildMeta(node: SectionTreeNodeModel) {
   ]
 
   return metaParts.filter(Boolean).join(' · ')
+}
+
+function getSectionNode(node: BasicTreeNode) {
+  return node.payload as SectionTreeNodeModel
 }
 </script>
 
@@ -56,14 +62,18 @@ function buildMeta(node: SectionTreeNodeModel) {
       </span>
     </div>
 
-    <FocusTree
-      v-if="focusNodes.length"
-      :nodes="focusNodes"
+    <BasicTree
+      v-if="basicNodes.length"
+      :nodes="basicNodes"
       :selected-node-id="selectedNodeId"
-      :expand-label="t('components.focusTree.expand')"
-      :collapse-label="t('components.focusTree.collapse')"
+      :expand-label="t('components.basicTree.expand')"
+      :collapse-label="t('components.basicTree.collapse')"
       @select="$emit('selectNode', $event)"
-    />
+    >
+      <template #default="{ node, selected }">
+        <SectionTreeNode :node="getSectionNode(node)" :selected="selected" />
+      </template>
+    </BasicTree>
 
     <EmptyState
       v-else

@@ -191,12 +191,12 @@ const en = {
       preview: 'Preview',
       openWord: 'Word edit',
     },
-    focusTree: {
+    basicTree: {
       expand: 'Expand node',
       collapse: 'Collapse node',
       emptyTitle: 'Empty tree state',
       emptyDescription:
-        'The FocusTree can render an empty state before real structure data is available.',
+        'The BasicTree can render an empty state before real structure data is available.',
     },
     sectionTree: {
       title: 'SectionTree',
@@ -205,6 +205,7 @@ const en = {
       emptyDescription: 'There are no SectionItem nodes to show in this mock state.',
       nodeCount: '{count} root nodes',
       itemCount: '{count} items',
+      questionCount: '{count} questions',
       kind: {
         Section: 'Section',
         AtomicSection: 'AtomicSection',

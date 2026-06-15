@@ -196,12 +196,12 @@ function emitIfEnabled(
 <style scoped>
 .section-item-view:has(.section-item-view-actions:hover),
 .section-item-view:has(.section-item-view-actions:focus-within) {
-  border-color: var(--border);
+  border-color: var(--destructive);
 }
 
 .section-item-view-actions:hover,
 .section-item-view-actions:focus-within {
-  border-color: var(--border);
+  border-color: var(--destructive);
   opacity: 1;
 }
 </style>

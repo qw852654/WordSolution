@@ -30,13 +30,14 @@ export interface SectionVariantCardModel {
   disabled?: boolean
 }
 
-export interface FocusTreeNode {
+export interface BasicTreeNode {
   id: string
   label: string
   meta?: string
+  payload?: unknown
   disabled?: boolean
   expanded?: boolean
-  children?: FocusTreeNode[]
+  children?: BasicTreeNode[]
 }
 
 export type SectionTreeNodeKind = 'Section' | 'AtomicSection' | 'CompositeBlock' | 'ContentBlock'
@@ -45,8 +46,11 @@ export interface SectionTreeNodeModel {
   id: string
   title: string
   kind: SectionTreeNodeKind
+  typeLabel: string
+  difficulty?: string
   status?: string
   itemCount?: number
+  questionCount?: number
   disabled?: boolean
   expanded?: boolean
   children?: SectionTreeNodeModel[]

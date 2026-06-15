@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { ChevronDown, ChevronRight } from 'lucide-vue-next'
-import type { FocusTreeNode } from '@/types'
+import type { BasicTreeNode } from '@/types'
 
 const props = defineProps<{
-  nodes: FocusTreeNode[]
+  nodes: BasicTreeNode[]
   selectedNodeId?: string
   expandLabel: string
   collapseLabel: string
@@ -14,8 +14,18 @@ defineEmits<{
   select: [id: string]
 }>()
 
+defineSlots<{
+  default?: (props: {
+    node: BasicTreeNode
+    level: number
+    hasChildren: boolean
+    expanded: boolean
+    selected: boolean
+  }) => unknown
+}>()
+
 interface VisibleTreeNode {
-  node: FocusTreeNode
+  node: BasicTreeNode
   level: number
   hasChildren: boolean
 }
@@ -29,7 +39,7 @@ const expandedNodeIds = ref(new Set(
 const visibleNodes = computed(() => {
   const rows: VisibleTreeNode[] = []
 
-  function append(nodes: FocusTreeNode[], level: number) {
+  function append(nodes: BasicTreeNode[], level: number) {
     for (const node of nodes) {
       const hasChildren = Boolean(node.children?.length)
       rows.push({ node, level, hasChildren })
@@ -72,14 +82,14 @@ function toggleNode(nodeId: string) {
       <button
         v-if="hasChildren"
         type="button"
-        class="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+        class="inline-flex h-7 w-4 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
         :aria-label="expandedNodeIds.has(node.id) ? collapseLabel : expandLabel"
         @click="toggleNode(node.id)"
       >
-        <ChevronDown v-if="expandedNodeIds.has(node.id)" class="size-4" aria-hidden="true" />
-        <ChevronRight v-else class="size-4" aria-hidden="true" />
+        <ChevronDown v-if="expandedNodeIds.has(node.id)" class="size-3.5" aria-hidden="true" />
+        <ChevronRight v-else class="size-3.5" aria-hidden="true" />
       </button>
-      <span v-else class="size-7 shrink-0" aria-hidden="true" />
+      <span v-else class="h-7 w-4 shrink-0" aria-hidden="true" />
 
       <button
         type="button"
@@ -88,8 +98,16 @@ function toggleNode(nodeId: string) {
         :disabled="node.disabled"
         @click="$emit('select', node.id)"
       >
-        <span class="min-w-0 truncate font-medium text-foreground">{{ node.label }}</span>
-        <span v-if="node.meta" class="shrink-0 text-xs text-muted-foreground">{{ node.meta }}</span>
+        <slot
+          :node="node"
+          :level="level"
+          :has-children="hasChildren"
+          :expanded="expandedNodeIds.has(node.id)"
+          :selected="selectedNodeId === node.id"
+        >
+          <span class="min-w-0 truncate font-medium text-foreground">{{ node.label }}</span>
+          <span v-if="node.meta" class="shrink-0 text-xs text-muted-foreground">{{ node.meta }}</span>
+        </slot>
       </button>
     </div>
   </div>

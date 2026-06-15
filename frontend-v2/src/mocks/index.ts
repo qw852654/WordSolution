@@ -1,7 +1,7 @@
 import type {
+  BasicTreeNode,
   ContentBlockCardModel,
   ContentBlockDisplayModel,
-  FocusTreeNode,
   InsertPointModel,
   SectionItemViewShellModel,
   SectionNodeModel,
@@ -123,7 +123,7 @@ export const mockSectionVariants: SectionVariantCardModel[] = [
   },
 ]
 
-export const mockFocusTreeNodes: FocusTreeNode[] = [
+export const mockBasicTreeNodes: BasicTreeNode[] = [
   {
     id: 'topic-energy',
     label: 'Mechanical energy conservation',
@@ -168,13 +168,15 @@ export const mockFocusTreeNodes: FocusTreeNode[] = [
   },
 ]
 
-export const emptyFocusTreeNodes: FocusTreeNode[] = []
+export const emptyBasicTreeNodes: BasicTreeNode[] = []
 
 export const mockSectionTreeNodes: SectionTreeNodeModel[] = [
   {
     id: 'section-tree-root',
     title: '机械能守恒',
     kind: 'Section',
+    typeLabel: 'Section',
+    difficulty: '中档',
     status: '编辑中',
     itemCount: 5,
     expanded: true,
@@ -183,12 +185,16 @@ export const mockSectionTreeNodes: SectionTreeNodeModel[] = [
         id: 'section-tree-law',
         title: '机械能守恒条件',
         kind: 'ContentBlock',
+        typeLabel: '知识点',
+        difficulty: '基础',
         status: 'FollowLatest',
       },
       {
         id: 'section-tree-atomic-basics',
         title: '基础讲解 AtomicSection',
         kind: 'AtomicSection',
+        typeLabel: '知识点组',
+        difficulty: '基础',
         status: '可用',
         itemCount: 2,
         expanded: true,
@@ -197,12 +203,16 @@ export const mockSectionTreeNodes: SectionTreeNodeModel[] = [
             id: 'section-tree-example-one',
             title: '单物体机械能守恒例题',
             kind: 'ContentBlock',
+            typeLabel: '例题',
+            difficulty: '基础',
             status: 'LockedVersion',
           },
           {
             id: 'section-tree-example-two',
             title: '圆轨道临界问题例题',
             kind: 'ContentBlock',
+            typeLabel: '例题',
+            difficulty: '提高',
             status: 'FollowLatest',
           },
         ],
@@ -211,19 +221,26 @@ export const mockSectionTreeNodes: SectionTreeNodeModel[] = [
         id: 'section-tree-composite',
         title: '圆轨道模型 CompositeBlock',
         kind: 'CompositeBlock',
+        typeLabel: '例题组',
+        difficulty: '提高',
         status: '可用',
         itemCount: 3,
+        questionCount: 3,
       },
       {
         id: 'section-tree-long-title',
-        title: '长标题验证：带弹簧、圆轨道和多状态能量方程的综合讲解节点',
+        title: '长标题验收：带弹簧、圆轨道和多状态能量方程的综合讲解节点',
         kind: 'ContentBlock',
+        typeLabel: '变式题',
+        difficulty: '压轴',
         status: 'FollowLatest',
       },
       {
         id: 'section-tree-disabled',
         title: '已停用旧练习',
         kind: 'ContentBlock',
+        typeLabel: '练习',
+        difficulty: '基础',
         status: '停用',
         disabled: true,
       },
@@ -264,7 +281,7 @@ export const mockSectionNodes: SectionNodeModel[] = [
     lockedVersionLabel: 'v2',
     sortOrder: 3,
     level: 2,
-    summary: '验证长标题、锁定版本和层级信息在卡片中是否稳定显示。',
+    summary: '验收长标题、锁定版本和层级信息在卡片中是否稳定显示。',
   },
   {
     id: 'section-node-disabled',
@@ -274,7 +291,7 @@ export const mockSectionNodes: SectionNodeModel[] = [
     referenceMode: 'FollowLatest',
     sortOrder: 4,
     level: 1,
-    summary: '用于验证禁用状态、按钮不可用和弱化显示。',
+    summary: '用于验收禁用状态、按钮不可用和弱化显示。',
     disabled: true,
   },
 ]
@@ -342,7 +359,7 @@ export const mockContentBlockDisplays: ContentBlockDisplayModel[] = [
     referenceMode: 'LockedVersion',
     versionLabel: 'v1',
     htmlPreviewState: 'ready',
-    htmlPreview: '<p>该内容仅用于验证禁用状态，不应进入真实工作流。</p>',
+    htmlPreview: '<p>该内容仅用于验收禁用状态，不应进入真实工作流。</p>',
     disabled: true,
   },
 ]
