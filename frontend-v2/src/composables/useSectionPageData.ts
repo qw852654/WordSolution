@@ -15,6 +15,7 @@ import type {
   SectionReferenceMode,
   SectionTreeNodeModel,
   SectionWorkspaceFlowItemModel,
+  StructuredBlockChildModel,
   TeachingTopicTreeNodeModel,
 } from '@/types'
 
@@ -33,7 +34,11 @@ interface ResolvedContentBlock {
   versions: CmsV2ContentBlockVersionDto[]
 }
 
-const groupContentBlockTypes = new Set(['ExampleGroup', 'ExerciseGroup', 'VariantGroup'])
+const compositeContentBlockTypes = new Set(['ExampleGroup', 'ExerciseGroup', 'VariantGroup'])
+
+function isCompositeContentBlockType(blockType?: string | null) {
+  return blockType ? compositeContentBlockTypes.has(blockType) : false
+}
 
 export async function loadSectionPageData(routeSectionId?: string): Promise<SectionPageDataModel> {
   const [sections, topics] = await Promise.all([
@@ -218,7 +223,7 @@ async function buildSectionItemNode(
   }
 
   const resolvedBlock = await resolveContentBlock(item.targetId, context)
-  const isComposite = groupContentBlockTypes.has(resolvedBlock.block.blockType)
+  const isComposite = isCompositeContentBlockType(resolvedBlock.block.blockType)
   const relationNodes = isComposite
     ? await Promise.all(
         (await resolveContentBlockRelations(item.targetId, context)).map((relation) =>
@@ -246,21 +251,34 @@ async function buildAtomicSectionItemNode(
   item: CmsV2AtomicSectionItemDto,
   context: {
     blockCache: Map<number, Promise<ResolvedContentBlock>>
+    relationCache: Map<number, Promise<CmsV2ContentBlockRelationDto[]>>
     workspaceNodeMap: Record<string, string>
   },
 ): Promise<SectionTreeNodeModel> {
   const resolvedBlock = await resolveContentBlock(item.contentBlockId, context)
   const nodeId = createAtomicSectionItemNodeId(item.id)
   context.workspaceNodeMap[nodeId] = nodeId
+  const isComposite = isCompositeContentBlockType(resolvedBlock.block.blockType)
+  const relationNodes = isComposite
+    ? await Promise.all(
+        (await resolveContentBlockRelations(item.contentBlockId, context)).map((relation) =>
+          buildContentBlockRelationNode(relation, context),
+        ),
+      )
+    : []
 
   return {
     id: nodeId,
     title: item.titleOverride || resolvedBlock.block.title,
-    kind: 'ContentBlock',
+    kind: isComposite ? 'CompositeBlock' : 'ContentBlock',
     typeLabel: mapContentBlockType(resolvedBlock.block.blockType),
     difficulty: mapDifficulty(resolvedBlock.block.difficulty),
     status: item.referenceMode,
+    itemCount: relationNodes.length || undefined,
+    questionCount: isComposite ? countQuestionNodes(relationNodes) : undefined,
+    expanded: isComposite,
     disabled: resolvedBlock.block.status === 'Archived',
+    children: relationNodes.length ? relationNodes : undefined,
   }
 }
 
@@ -268,21 +286,34 @@ async function buildContentBlockRelationNode(
   relation: CmsV2ContentBlockRelationDto,
   context: {
     blockCache: Map<number, Promise<ResolvedContentBlock>>
+    relationCache: Map<number, Promise<CmsV2ContentBlockRelationDto[]>>
     workspaceNodeMap: Record<string, string>
   },
 ): Promise<SectionTreeNodeModel> {
   const resolvedBlock = await resolveContentBlock(relation.childBlockId, context)
   const nodeId = createContentRelationNodeId(relation.id)
   context.workspaceNodeMap[nodeId] = nodeId
+  const isComposite = isCompositeContentBlockType(resolvedBlock.block.blockType)
+  const relationNodes = isComposite
+    ? await Promise.all(
+        (await resolveContentBlockRelations(relation.childBlockId, context)).map((childRelation) =>
+          buildContentBlockRelationNode(childRelation, context),
+        ),
+      )
+    : []
 
   return {
     id: nodeId,
     title: relation.titleOverride || resolvedBlock.block.title,
-    kind: 'ContentBlock',
+    kind: isComposite ? 'CompositeBlock' : 'ContentBlock',
     typeLabel: mapContentBlockType(resolvedBlock.block.blockType),
     difficulty: mapDifficulty(resolvedBlock.block.difficulty),
     status: relation.referenceMode,
+    itemCount: relationNodes.length || undefined,
+    questionCount: isComposite ? countQuestionNodes(relationNodes) : undefined,
+    expanded: isComposite,
     disabled: resolvedBlock.block.status === 'Archived',
+    children: relationNodes.length ? relationNodes : undefined,
   }
 }
 
@@ -303,7 +334,7 @@ async function buildSectionFlowItem(
     const atomicItems = await resolveAtomicSectionItems(item.targetId, context)
     const children = await Promise.all(
       atomicItems.map((atomicItem) =>
-        buildContentBlockDisplayFromAtomicSectionItem(atomicItem, context),
+        buildStructuredBlockChildFromAtomicSectionItem(atomicItem, context),
       ),
     )
 
@@ -330,7 +361,7 @@ async function buildSectionFlowItem(
 
   const resolvedBlock = await resolveContentBlock(item.targetId, context)
 
-  if (!groupContentBlockTypes.has(resolvedBlock.block.blockType)) {
+  if (!isCompositeContentBlockType(resolvedBlock.block.blockType)) {
     return {
       kind: 'ContentBlock',
       id: nodeId,
@@ -350,7 +381,7 @@ async function buildSectionFlowItem(
 
   const relations = await resolveContentBlockRelations(item.targetId, context)
   const children = await Promise.all(
-    relations.map((relation) => buildContentBlockDisplayFromRelation(relation, context)),
+    relations.map((relation) => buildStructuredBlockChildFromRelation(relation, context)),
   )
 
   return {
@@ -374,38 +405,99 @@ async function buildSectionFlowItem(
   }
 }
 
-async function buildContentBlockDisplayFromAtomicSectionItem(
+async function buildStructuredBlockChildFromAtomicSectionItem(
   item: CmsV2AtomicSectionItemDto,
   context: {
     blockCache: Map<number, Promise<ResolvedContentBlock>>
+    relationCache: Map<number, Promise<CmsV2ContentBlockRelationDto[]>>
     workspaceNodeMap: Record<string, string>
   },
-) {
+): Promise<StructuredBlockChildModel> {
   const nodeId = createAtomicSectionItemNodeId(item.id)
   context.workspaceNodeMap[nodeId] = nodeId
-  return await buildContentBlockDisplay(
+
+  return await buildStructuredBlockChild(
     nodeId,
     await resolveContentBlock(item.contentBlockId, context),
     item.referenceMode,
     item.lockedContentBlockVersionId,
+    item.titleOverride,
+    context,
   )
 }
 
-async function buildContentBlockDisplayFromRelation(
+async function buildStructuredBlockChildFromRelation(
   relation: CmsV2ContentBlockRelationDto,
   context: {
     blockCache: Map<number, Promise<ResolvedContentBlock>>
+    relationCache: Map<number, Promise<CmsV2ContentBlockRelationDto[]>>
     workspaceNodeMap: Record<string, string>
   },
-) {
+): Promise<StructuredBlockChildModel> {
   const nodeId = createContentRelationNodeId(relation.id)
   context.workspaceNodeMap[nodeId] = nodeId
-  return await buildContentBlockDisplay(
+
+  return await buildStructuredBlockChild(
     nodeId,
     await resolveContentBlock(relation.childBlockId, context),
     relation.referenceMode,
     relation.lockedContentBlockVersionId,
+    relation.titleOverride,
+    context,
   )
+}
+
+async function buildStructuredBlockChild(
+  nodeId: string,
+  resolvedBlock: ResolvedContentBlock,
+  referenceMode: SectionReferenceMode,
+  lockedVersionId: number | null | undefined,
+  titleOverride: string | null | undefined,
+  context: {
+    relationCache: Map<number, Promise<CmsV2ContentBlockRelationDto[]>>
+    workspaceNodeMap: Record<string, string>
+    blockCache: Map<number, Promise<ResolvedContentBlock>>
+  },
+): Promise<StructuredBlockChildModel> {
+  const disabled = resolvedBlock.block.status === 'Archived'
+
+  if (!isCompositeContentBlockType(resolvedBlock.block.blockType)) {
+    return {
+      kind: 'ContentBlock',
+      id: nodeId,
+      nodeId,
+      disabled,
+      block: await buildContentBlockDisplay(
+        nodeId,
+        resolvedBlock,
+        referenceMode,
+        lockedVersionId,
+        titleOverride,
+      ),
+    }
+  }
+
+  const relations = await resolveContentBlockRelations(resolvedBlock.block.id, context)
+  const children = await Promise.all(
+    relations.map((relation) => buildStructuredBlockChildFromRelation(relation, context)),
+  )
+
+  return {
+    kind: 'CompositeBlock',
+    id: nodeId,
+    nodeId,
+    disabled,
+    block: {
+      id: nodeId,
+      title: titleOverride || resolvedBlock.block.title,
+      blockKind: 'CompositeBlock',
+      status: mapStatus(resolvedBlock.block.status),
+      difficulty: mapDifficulty(resolvedBlock.block.difficulty),
+      summary: resolvedBlock.block.summary || '',
+      children,
+      disabled,
+    },
+  }
 }
 
 async function buildContentBlockDisplay(
@@ -413,13 +505,14 @@ async function buildContentBlockDisplay(
   resolvedBlock: ResolvedContentBlock,
   referenceMode: SectionReferenceMode,
   lockedVersionId?: number | null,
+  titleOverride?: string | null,
 ): Promise<ContentBlockDisplayModel> {
   const version = getDisplayVersion(resolvedBlock.versions, referenceMode, lockedVersionId)
   const htmlPreview = await readHtmlPreview(resolvedBlock.block.id, referenceMode, version?.id)
 
   return {
     id,
-    title: resolvedBlock.block.title,
+    title: titleOverride || resolvedBlock.block.title,
     role: mapContentBlockType(resolvedBlock.block.blockType),
     blockType: 'ContentBlock',
     difficulty: mapDifficulty(resolvedBlock.block.difficulty),

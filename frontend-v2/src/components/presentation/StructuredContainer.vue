@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils'
 const props = defineProps<{
   title: string
   meta?: string
+  difficultyMarkerClass?: string
+  difficultyMarkerLabel?: string
   selected?: boolean
   disabled?: boolean
   class?: HTMLAttributes['class']
@@ -22,7 +24,12 @@ const props = defineProps<{
     )"
     :aria-disabled="disabled ? 'true' : undefined"
   >
-    <InlineBorderHeader :title="title" :meta="meta">
+    <InlineBorderHeader
+      :title="title"
+      :meta="meta"
+      :difficulty-marker-class="difficultyMarkerClass"
+      :difficulty-marker-label="difficultyMarkerLabel"
+    >
       <template #actions>
         <slot name="actions" />
       </template>

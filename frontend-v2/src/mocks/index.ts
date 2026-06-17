@@ -11,6 +11,7 @@ import type {
   SectionPageShellModel,
   SectionTreeNodeModel,
   SectionVariantCardModel,
+  StructuredBlockChildModel,
   StructuredBlockModel,
   TeachingTopicTreeNodeModel,
 } from '@/types'
@@ -426,6 +427,19 @@ export const mockContentBlockDisplays: ContentBlockDisplayModel[] = [
   },
 ]
 
+function createStructuredContentBlockChild(
+  block: ContentBlockDisplayModel,
+): StructuredBlockChildModel {
+  return {
+    kind: 'ContentBlock',
+    id: block.id,
+    nodeId: block.id,
+    selected: block.selected,
+    disabled: block.disabled,
+    block,
+  }
+}
+
 export const mockStructuredBlocks: StructuredBlockModel[] = [
   {
     id: 'atomic-energy-basics',
@@ -435,17 +449,17 @@ export const mockStructuredBlocks: StructuredBlockModel[] = [
     difficulty: '基础',
     summary: '用于组织概念条件和基础例题，不直接承载正文。',
     children: [
-      {
+      createStructuredContentBlockChild({
         ...mockContentBlockDisplays[1],
         id: 'atomic-example-one',
-      },
-      {
+      }),
+      createStructuredContentBlockChild({
         ...mockContentBlockDisplays[3],
         id: 'atomic-example-two',
         title: '圆轨道临界问题例题',
         role: '例题',
         difficulty: '提高',
-      },
+      }),
     ],
     selected: true,
   },
@@ -456,7 +470,7 @@ export const mockStructuredBlocks: StructuredBlockModel[] = [
     status: '可用',
     difficulty: '提高',
     summary: '组合两个 ContentBlock，用于表达同一模型下的连续例题。',
-    children: mockContentBlockDisplays.slice(1, 4),
+    children: mockContentBlockDisplays.slice(1, 4).map(createStructuredContentBlockChild),
   },
   {
     id: 'atomic-empty',

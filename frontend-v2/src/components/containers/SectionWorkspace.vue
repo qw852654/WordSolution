@@ -19,6 +19,7 @@ import type {
   SectionPageShellModel,
   SectionItemViewAction,
   SectionWorkspaceFlowItemModel,
+  StructuredBlockChildModel,
   StructuredBlockModel,
 } from '@/types'
 
@@ -92,13 +93,35 @@ function withContentSelection(block: ContentBlockDisplayModel): ContentBlockDisp
   }
 }
 
+function withStructuredChildSelection(child: StructuredBlockChildModel): StructuredBlockChildModel {
+  const selected = isWorkspaceItemSelected(child.id, child.selected, child.nodeId)
+
+  if (child.kind === 'ContentBlock') {
+    return {
+      ...child,
+      selected,
+      block: withContentSelection({
+        ...child.block,
+        selected,
+      }),
+    }
+  }
+
+  return {
+    ...child,
+    selected,
+    block: withStructuredSelection({
+      ...child.block,
+      selected,
+    }),
+  }
+}
+
 function withStructuredSelection(block: StructuredBlockModel): StructuredBlockModel {
   return {
     ...block,
     selected: isWorkspaceItemSelected(block.id, block.selected),
-    children: block.children.map((child) =>
-      block.blockKind === 'AtomicSection' ? withContentSelection(child) : { ...child },
-    ),
+    children: block.children.map((child) => withStructuredChildSelection(child)),
   }
 }
 
@@ -319,8 +342,9 @@ watch(
               <CompositeBlock
                 v-else
                 :block="item.block"
+                :node-id-map="workspaceNodeMap"
                 @select="emitWorkspaceSelection"
-                @select-content-block="emitWorkspaceSelection(item.id)"
+                @select-content-block="emitWorkspaceSelection"
               />
             </SectionItemView>
           </template>

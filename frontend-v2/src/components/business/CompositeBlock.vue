@@ -1,12 +1,18 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Layers3, MoreHorizontal } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import ContentBlockDisplay from '@/components/business/ContentBlockDisplay.vue'
+import { getDifficultyMarkerClass } from '@/components/business/difficultyTone'
 import SectionItemView from '@/components/business/SectionItemView.vue'
 import EmptyState from '@/components/presentation/EmptyState.vue'
 import StructuredContainer from '@/components/presentation/StructuredContainer.vue'
 import { Button } from '@/components/ui/button'
 import type { StructuredBlockModel } from '@/types'
+
+defineOptions({
+  name: 'CompositeBlock',
+})
 
 const props = defineProps<{
   block: StructuredBlockModel
@@ -24,12 +30,18 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const difficultyMarkerClass = computed(() => getDifficultyMarkerClass(props.block.difficulty))
+const difficultyMarkerLabel = computed(
+  () => `${t('components.contentBlockDisplay.difficulty')}: ${props.block.difficulty}`,
+)
 </script>
 
 <template>
   <StructuredContainer
     :title="block.title"
     :meta="t('components.structuredBlock.compositeBlock')"
+    :difficulty-marker-class="difficultyMarkerClass"
+    :difficulty-marker-label="difficultyMarkerLabel"
     :selected="block.selected"
     :disabled="block.disabled"
     @click="$emit('select', props.block.id)"
@@ -65,15 +77,26 @@ const { t } = useI18n()
         :item-id="child.id"
         :selected="child.selected"
         :disabled="child.disabled"
-        :data-workspace-node-id="nodeIdMap?.[child.id] ?? child.id"
+        :data-workspace-node-id="nodeIdMap?.[child.nodeId] ?? child.nodeId"
         @select="emit('selectContentBlock', $event)"
         @open-word="emit('openWord', $event)"
       >
         <ContentBlockDisplay
-          :block="child"
+          v-if="child.kind === 'ContentBlock'"
+          :block="child.block"
           @open-word="emit('openWord', $event)"
           @refresh-preview="emit('refreshPreview', $event)"
           @open-more="emit('openContentBlockMore', $event)"
+        />
+        <CompositeBlock
+          v-else
+          :block="child.block"
+          :node-id-map="nodeIdMap"
+          @select="emit('selectContentBlock', $event)"
+          @select-content-block="emit('selectContentBlock', $event)"
+          @open-word="emit('openWord', $event)"
+          @refresh-preview="emit('refreshPreview', $event)"
+          @open-content-block-more="emit('openContentBlockMore', $event)"
         />
       </SectionItemView>
     </div>

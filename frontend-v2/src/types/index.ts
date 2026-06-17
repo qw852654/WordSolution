@@ -185,6 +185,24 @@ export interface ContentBlockDisplayModel {
 
 export type StructuredBlockKind = 'AtomicSection' | 'CompositeBlock'
 
+export type StructuredBlockChildModel =
+  | {
+      kind: 'ContentBlock'
+      id: string
+      nodeId: string
+      selected?: boolean
+      disabled?: boolean
+      block: ContentBlockDisplayModel
+    }
+  | {
+      kind: 'CompositeBlock'
+      id: string
+      nodeId: string
+      selected?: boolean
+      disabled?: boolean
+      block: StructuredBlockModel
+    }
+
 export interface StructuredBlockModel {
   id: string
   title: string
@@ -192,7 +210,7 @@ export interface StructuredBlockModel {
   status: string
   difficulty: string
   summary: string
-  children: ContentBlockDisplayModel[]
+  children: StructuredBlockChildModel[]
   selected?: boolean
   disabled?: boolean
 }
