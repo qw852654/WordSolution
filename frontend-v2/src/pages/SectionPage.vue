@@ -20,12 +20,15 @@ const { t } = useI18n()
 const selectedStructureNodeId = ref('section-tree-atomic-basics')
 const activeInsertPointId = ref<string>()
 const insertFeedback = ref('')
+const workspaceScrollTargetNodeId = ref<string>()
+const workspaceScrollRequestKey = ref(0)
 
 const workspaceNodeMap: Record<string, string> = {
   'display-energy-law': 'section-tree-law',
   'atomic-energy-basics': 'section-tree-atomic-basics',
   'composite-circular-track': 'section-tree-composite',
-  'display-locked-example': 'section-tree-example-one',
+  'atomic-example-one': 'section-tree-example-one',
+  'atomic-example-two': 'section-tree-example-two',
   'display-empty-preview': 'section-tree-disabled',
   'display-long-preview': 'section-tree-long-title',
   'display-disabled': 'section-tree-disabled',
@@ -81,6 +84,12 @@ function selectStructureNode(nodeId: string) {
   clearActiveInsertPoint()
 }
 
+function selectStructureNodeFromTree(nodeId: string) {
+  selectStructureNode(nodeId)
+  workspaceScrollTargetNodeId.value = nodeId
+  workspaceScrollRequestKey.value += 1
+}
+
 function requestInsert(request: InsertRequestModel) {
   activeInsertPointId.value = request.insertPointId
   const feedbackKeyByAction: Record<InsertRequestModel['actionType'], string> = {
@@ -99,7 +108,7 @@ function requestInsert(request: InsertRequestModel) {
       <SectionStructurePanel
         :nodes="mockSectionTreeNodes"
         :selected-node-id="selectedStructureNodeId"
-        @select-node="selectStructureNode"
+        @select-node="selectStructureNodeFromTree"
       />
       <SectionWorkspace
         :section="sectionShell"
@@ -107,6 +116,8 @@ function requestInsert(request: InsertRequestModel) {
         :structured-blocks="mockStructuredBlocks"
         :selected-node-id="selectedStructureNodeId"
         :workspace-node-map="workspaceNodeMap"
+        :scroll-target-node-id="workspaceScrollTargetNodeId"
+        :scroll-request-key="workspaceScrollRequestKey"
         :active-insert-point-id="activeInsertPointId"
         :insert-feedback="insertFeedback"
         @select-node="selectStructureNode"

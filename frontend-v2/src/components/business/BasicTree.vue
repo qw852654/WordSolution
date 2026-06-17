@@ -31,10 +31,27 @@ interface VisibleTreeNode {
 }
 
 const expandedNodeIds = ref(new Set(
-  props.nodes
-    .filter((node) => node.expanded)
-    .map((node) => node.id),
+  getInitiallyExpandedNodeIds(props.nodes),
 ))
+
+function getInitiallyExpandedNodeIds(nodes: BasicTreeNode[]) {
+  const nodeIds: string[] = []
+
+  function appendExpandedNodeIds(currentNodes: BasicTreeNode[]) {
+    for (const node of currentNodes) {
+      if (node.expanded) {
+        nodeIds.push(node.id)
+      }
+
+      if (node.children?.length) {
+        appendExpandedNodeIds(node.children)
+      }
+    }
+  }
+
+  appendExpandedNodeIds(nodes)
+  return nodeIds
+}
 
 const visibleNodes = computed(() => {
   const rows: VisibleTreeNode[] = []

@@ -194,9 +194,18 @@ function emitIfEnabled(
 </template>
 
 <style scoped>
+.section-item-view {
+  --section-item-action-rail-height: calc((8 * 2rem) + (7 * 0.25rem) + (2 * 0.25rem));
+}
+
+.section-item-view-actions {
+  min-height: max(100%, var(--section-item-action-rail-height));
+}
+
 .section-item-view:has(.section-item-view-actions:hover),
 .section-item-view:has(.section-item-view-actions:focus-within) {
   border-color: var(--destructive);
+  min-height: var(--section-item-action-rail-height);
 }
 
 .section-item-view-actions:hover,

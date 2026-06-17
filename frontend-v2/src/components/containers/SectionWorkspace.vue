@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { PanelsTopLeft } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import AtomicSectionBlock from '@/components/business/AtomicSectionBlock.vue'
@@ -29,6 +29,8 @@ const props = withDefaults(
     structuredBlocks?: StructuredBlockModel[]
     selectedNodeId?: string
     workspaceNodeMap?: Record<string, string>
+    scrollTargetNodeId?: string
+    scrollRequestKey?: number
     activeInsertPointId?: string
     insertFeedback?: string
     teachingNoteMode?: boolean
@@ -45,6 +47,8 @@ const emit = defineEmits<{
   selectNode: [id: string]
   requestInsert: [request: InsertRequestModel]
 }>()
+
+const workspaceRoot = ref<HTMLElement | null>(null)
 
 type WorkspaceFlowItem =
   | {
@@ -84,7 +88,9 @@ function withStructuredSelection(block: StructuredBlockModel): StructuredBlockMo
   return {
     ...block,
     selected: isWorkspaceItemSelected(block.id, block.selected),
-    children: block.children.map((child) => withContentSelection(child)),
+    children: block.children.map((child) =>
+      block.blockKind === 'AtomicSection' ? withContentSelection(child) : { ...child },
+    ),
   }
 }
 
@@ -105,6 +111,33 @@ function isInsertPointActive(insertPointId: string) {
 
 function emitInsertRequest(insertPointId: string, actionType: InsertActionType) {
   emit('requestInsert', { insertPointId, actionType })
+}
+
+function findWorkspaceNodeElement(nodeId: string) {
+  const candidates = workspaceRoot.value?.querySelectorAll<HTMLElement>('[data-workspace-node-id]')
+
+  return Array.from(candidates ?? []).find(
+    (candidate) => candidate.dataset.workspaceNodeId === nodeId,
+  )
+}
+
+async function scrollToWorkspaceNode(nodeId?: string) {
+  if (!nodeId) {
+    return
+  }
+
+  await nextTick()
+
+  const target = findWorkspaceNodeElement(nodeId)
+
+  if (target) {
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    return
+  }
+
+  workspaceRoot.value
+    ?.querySelector<HTMLElement>('.weak-scroll-area')
+    ?.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 const flowItems = computed<WorkspaceFlowItem[]>(() => {
@@ -146,21 +179,29 @@ const flowItems = computed<WorkspaceFlowItem[]>(() => {
 
   return items
 })
+
+watch(
+  () => [props.scrollRequestKey, props.scrollTargetNodeId] as const,
+  () => {
+    void scrollToWorkspaceNode(props.scrollTargetNodeId)
+  },
+)
 </script>
 
 <template>
-  <Card class="flex h-full min-h-0 flex-col overflow-hidden">
-    <div class="flex min-h-10 flex-wrap items-center gap-x-3 gap-y-1 border-b px-3 py-2 text-xs">
+  <div ref="workspaceRoot" class="h-full min-h-0">
+    <Card class="flex h-full min-h-0 flex-col overflow-hidden">
+      <div class="flex min-h-10 flex-wrap items-center gap-x-3 gap-y-1 border-b px-3 py-2 text-xs">
       <span class="font-medium">{{ section.title }}</span>
       <StatusPill :label="section.status" tone="active" />
       <span class="text-muted-foreground">{{ t('sectionPage.meta.sectionId') }}: {{ section.sectionId }}</span>
       <span class="text-muted-foreground">{{ t('sectionPage.meta.teachingTopic') }}: {{ section.teachingTopicTitle }}</span>
-    </div>
+      </div>
 
-    <div
-      class="grid min-h-0 flex-1 gap-3 p-3"
-      :class="teachingNoteMode ? 'lg:grid-cols-[minmax(0,1fr)_260px]' : 'grid-cols-[minmax(0,1fr)]'"
-    >
+      <div
+        class="grid min-h-0 flex-1 gap-3 p-3"
+        :class="teachingNoteMode ? 'lg:grid-cols-[minmax(0,1fr)_260px]' : 'grid-cols-[minmax(0,1fr)]'"
+      >
       <WeakScrollArea class="rounded-md border bg-background p-3" :aria-label="t('sectionPage.workspace.mainColumnLabel')">
         <div v-if="flowItems.length" class="space-y-0">
           <template
@@ -184,6 +225,7 @@ const flowItems = computed<WorkspaceFlowItem[]>(() => {
               :item-id="item.id"
               :selected="item.selected"
               :disabled="item.disabled"
+              :data-workspace-node-id="item.nodeId"
               @select="emitWorkspaceSelection"
             >
               <ContentBlockDisplay
@@ -193,6 +235,7 @@ const flowItems = computed<WorkspaceFlowItem[]>(() => {
               <AtomicSectionBlock
                 v-else-if="item.kind === 'AtomicSection'"
                 :block="item.block"
+                :node-id-map="workspaceNodeMap"
                 @select="emitWorkspaceSelection"
                 @select-content-block="emitWorkspaceSelection"
               />
@@ -200,7 +243,7 @@ const flowItems = computed<WorkspaceFlowItem[]>(() => {
                 v-else
                 :block="item.block"
                 @select="emitWorkspaceSelection"
-                @select-content-block="emitWorkspaceSelection"
+                @select-content-block="emitWorkspaceSelection(item.id)"
               />
             </SectionItemView>
           </template>
@@ -227,6 +270,7 @@ const flowItems = computed<WorkspaceFlowItem[]>(() => {
           {{ t('sectionPage.workspace.teachingNoteColumnDescription') }}
         </p>
       </WeakScrollArea>
-    </div>
-  </Card>
+      </div>
+    </Card>
+  </div>
 </template>

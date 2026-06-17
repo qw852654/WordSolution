@@ -372,7 +372,19 @@ export const mockStructuredBlocks: StructuredBlockModel[] = [
     status: '草稿',
     difficulty: '基础',
     summary: '用于组织概念条件和基础例题，不直接承载正文。',
-    children: mockContentBlockDisplays.slice(0, 2),
+    children: [
+      {
+        ...mockContentBlockDisplays[1],
+        id: 'atomic-example-one',
+      },
+      {
+        ...mockContentBlockDisplays[3],
+        id: 'atomic-example-two',
+        title: '圆轨道临界问题例题',
+        role: '例题',
+        difficulty: '提高',
+      },
+    ],
     selected: true,
   },
   {

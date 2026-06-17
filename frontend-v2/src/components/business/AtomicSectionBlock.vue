@@ -10,6 +10,7 @@ import type { StructuredBlockModel } from '@/types'
 
 const props = defineProps<{
   block: StructuredBlockModel
+  nodeIdMap?: Record<string, string>
 }>()
 
 const emit = defineEmits<{
@@ -64,6 +65,7 @@ const { t } = useI18n()
         :item-id="child.id"
         :selected="child.selected"
         :disabled="child.disabled"
+        :data-workspace-node-id="nodeIdMap?.[child.id] ?? child.id"
         @select="emit('selectContentBlock', $event)"
         @open-word="emit('openWord', $event)"
       >

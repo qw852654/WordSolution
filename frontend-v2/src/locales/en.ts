@@ -267,6 +267,7 @@ const en = {
       backToTopic: 'Back to topic workspace',
       refresh: 'Refresh',
       save: 'Save structure',
+      questionBankSelectLabel: 'Select question bank',
     },
     meta: {
       section: 'Section',

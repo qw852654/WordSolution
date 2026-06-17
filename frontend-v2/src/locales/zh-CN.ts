@@ -256,6 +256,7 @@ const zhCN = {
       backToTopic: '返回主题工作台',
       refresh: '刷新',
       save: '保存结构',
+      questionBankSelectLabel: '选择题库',
     },
     meta: {
       section: 'Section',
