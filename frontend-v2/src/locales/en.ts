@@ -181,6 +181,24 @@ const en = {
       atomicSection: 'AtomicSection',
       compositeBlock: 'CompositeBlock',
     },
+    insertCreateOverlay: {
+      dialogLabel: 'InsertCreateOverlay',
+      contentBlockTitle: 'Create ContentBlock',
+      atomicSectionTitle: 'Create AtomicSection',
+      description:
+        'Fill in the Mock Data fields. The component only emits a submit event.',
+      insertPosition: 'Insert position',
+      titleLabel: 'Name',
+      titlePlaceholder: 'Enter a name',
+      contentBlockTypeLabel: 'Type',
+      difficultyLabel: 'Difficulty',
+      noteLabel: 'Note',
+      notePlaceholder: 'Optional note',
+      cancel: 'Cancel',
+      submitContentBlock: 'Create ContentBlock',
+      submitAtomicSection: 'Create AtomicSection',
+      titleRequired: 'Enter a name before confirming.',
+    },
     sectionInspector: {
       emptyTitle: 'Select a Section node',
       emptyDescription:
@@ -255,6 +273,22 @@ const en = {
         description:
           'Validate the left Section structure tree with hierarchy, collapse controls, selected state, disabled node, long title, and empty state.',
         selectedTitle: 'Selected node',
+      },
+      insertCreateOverlay: {
+        title: 'InsertCreateOverlay',
+        description:
+          'Validate the top-level create panel for ContentBlock / AtomicSection, backdrop blur, and Mock Data submit events.',
+        openContentBlock: 'Open ContentBlock panel',
+        openAtomicSection: 'Open AtomicSection panel',
+        openDisabled: 'Open disabled panel',
+        mockSectionTitle: 'SectionPage background Mock',
+        mockSectionDescription:
+          'When the overlay is open, this whole background should be blurred.',
+        mockInsertPointLabel: 'InsertPoint',
+        feedbackTitle: 'Mock feedback',
+        emptyFeedback: 'No Mock Data has been submitted yet.',
+        submitted: 'Received {targetType} Mock submit: {title}',
+        cancelled: 'Cancelled the {targetType} create panel.',
       },
     },
   },

@@ -205,6 +205,32 @@ InsertPoint 直接展示三个具体操作：
 - 块搜索组件的搜索范围必须同时包含 ContentBlock 和 AtomicSection。
 - 块搜索组件本轮不实现；后续必须先在 ComponentLab 中用 Mock Data 验收，再接入 SectionPage。
 
+新建 ContentBlock / AtomicSection 的插入流程使用 `InsertCreateOverlay`。
+
+展示规则：
+
+- 点击“新建 ContentBlock”或“新建 AtomicSection”后，打开最上层插入面板。
+- 面板打开时，背后的整个 SectionPage 模糊。
+- 面板不放在右侧 Inspector。
+- 面板不作为普通文档流内联块。
+- 第一版只使用 Mock UI，不调用 API，不真实创建数据。
+
+字段规则：
+
+当 targetType = ContentBlock：
+
+- 名称
+- 类型：知识点 / 例题 / 变式题 / 练习题 / 变式题组 / 练习题组
+- 难度：基础 / 中档 / 提高 / 压轴
+
+当 targetType = AtomicSection：
+
+- 名称
+- 难度：基础 / 中档 / 提高 / 压轴
+- 备注，可选
+
+这些字段先是 Mock UI 字段，不代表后端 DTO 已经固定。
+
 ### 6.3 调整顺序
 
 第一版优先支持稳定操作：

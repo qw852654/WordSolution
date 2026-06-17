@@ -196,7 +196,74 @@ Lab 验收方式：
 - 不在 InsertPoint 里写业务规则
 - 不调 API
 
-## Phase 4.1: BlockSearchPicker（后续开发）
+## Phase 4.1: InsertCreateOverlay（下一轮开发）
+
+阶段目标：
+
+- 开发点击“新建 ContentBlock / 新建 AtomicSection”后弹出的插入新块面板。
+- 面板打开时位于 SectionPage 最上层。
+- 背后的整个 SectionPage 模糊。
+- 只做 Mock UI 和事件，不调用 API，不真实创建数据。
+
+前置依赖：
+
+- Phase 4
+
+建议新增文件：
+
+- `frontend-v2/src/components/containers/InsertCreateOverlay.vue`
+- `frontend-v2/src/labs/insert-create-overlay/*`
+
+Mock Data：
+
+- ContentBlock 新建：名称、类型、难度
+- AtomicSection 新建：名称、难度、备注
+- 空名称状态
+- 长名称状态
+- 禁用状态
+- 提交后 Mock 反馈
+
+字段规则：
+
+当 targetType = ContentBlock：
+
+- 名称
+- 类型：知识点 / 例题 / 变式题 / 练习题 / 变式题组 / 练习题组
+- 难度：基础 / 中档 / 提高 / 压轴
+
+当 targetType = AtomicSection：
+
+- 名称
+- 难度：基础 / 中档 / 提高 / 压轴
+- 备注，可选
+
+Lab 验收方式：
+
+- ContentBlock 新建面板
+- AtomicSection 新建面板
+- 背景模糊 overlay
+- 空名称状态
+- 长名称状态
+- 取消关闭状态
+- 提交后只显示 Mock 反馈
+
+页面接入方式：
+
+- 从 InsertPoint 的“新建 ContentBlock”按钮打开。
+- 从 InsertPoint 的“新建 AtomicSection”按钮打开。
+- 父级记录 insertPointId 和 targetType。
+- submit 后只向父级 emit Mock 表单数据。
+
+禁止事项：
+
+- 不在 InsertCreateOverlay 中调用 API。
+- 不真实创建 ContentBlock。
+- 不真实创建 AtomicSection。
+- 不修改 Section 数据。
+- 不打开 Word。
+- 不处理“插入已有块”搜索。
+
+## Phase 4.2: BlockSearchPicker（后续开发）
 
 阶段目标：
 

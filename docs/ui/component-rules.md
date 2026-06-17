@@ -574,3 +574,56 @@ BlockSearchPicker 表示从已有块中搜索并选择插入目标的业务容�
 - 不把 ContentBlock 和 AtomicSection 拆成两个互斥搜索入口。
 - 不在当前 InsertPoint 小闭环中实现，后续单独开发。
 - 后续必须先进入 ComponentLab 使用 Mock Data 验收，再接入 SectionPage。
+## 当前补充约定：InsertCreateOverlay
+
+InsertCreateOverlay 表示从 InsertPoint 新建块时弹出的插入面板。
+
+触发入口：
+
+1. 新建 ContentBlock
+2. 新建 AtomicSection
+
+职责：
+
+- 作为 SectionPage 上方的最上层 overlay 显示。
+- 打开时让背后的整个 SectionPage 模糊。
+- 根据 targetType 显示新建 ContentBlock 或新建 AtomicSection 的 Mock 表单。
+- 显示当前插入位置上下文。
+- 通过事件把用户填写的 Mock 数据交给父级。
+- 提供取消和确认新建入口。
+
+字段：
+
+当 targetType = ContentBlock：
+
+- 名称
+- 类型：知识点 / 例题 / 变式题 / 练习题 / 变式题组 / 练习题组
+- 难度：基础 / 中档 / 提高 / 压轴
+
+当 targetType = AtomicSection：
+
+- 名称
+- 难度：基础 / 中档 / 提高 / 压轴
+- 备注，可选
+
+边界：
+
+- 字段只表示 Mock UI 字段，不代表后端 DTO 已经固定。
+- 不调用 API。
+- 不真实创建 ContentBlock。
+- 不真实创建 AtomicSection。
+- 不修改 Section 数据。
+- 不打开 Word。
+- 不搜索已有块。
+- 不处理 BlockSearchPicker。
+
+ComponentLabPage 验收：
+
+- ContentBlock 新建面板。
+- AtomicSection 新建面板。
+- 空名称状态。
+- 长名称状态。
+- 禁用状态。
+- 提交后 Mock 反馈。
+- 取消关闭状态。
+- 背后 SectionPage 模糊效果。

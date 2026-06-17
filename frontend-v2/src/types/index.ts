@@ -133,3 +133,31 @@ export interface InsertRequestModel {
   insertPointId: string
   actionType: InsertActionType
 }
+
+export type InsertCreateTargetType = 'ContentBlock' | 'AtomicSection'
+
+export type InsertCreateContentBlockType =
+  | '知识点'
+  | '例题'
+  | '变式题'
+  | '练习题'
+  | '变式题组'
+  | '练习题组'
+
+export type InsertCreateDifficulty = '基础' | '中档' | '提高' | '压轴'
+
+export interface InsertCreatePanelModel {
+  insertPointId: string
+  targetType: InsertCreateTargetType
+  insertPositionLabel: string
+  disabled?: boolean
+}
+
+export interface InsertCreateSubmitPayload {
+  insertPointId: string
+  targetType: InsertCreateTargetType
+  title: string
+  contentBlockType?: InsertCreateContentBlockType
+  difficulty: InsertCreateDifficulty
+  note?: string
+}

@@ -2,6 +2,9 @@ import type {
   BasicTreeNode,
   ContentBlockCardModel,
   ContentBlockDisplayModel,
+  InsertCreateContentBlockType,
+  InsertCreateDifficulty,
+  InsertCreatePanelModel,
   InsertPointModel,
   SectionItemViewShellModel,
   SectionNodeModel,
@@ -418,3 +421,38 @@ export const mockInsertPoints: InsertPointModel[] = [
     disabled: true,
   },
 ]
+
+export const mockInsertCreateContentBlockTypes: InsertCreateContentBlockType[] = [
+  '知识点',
+  '例题',
+  '变式题',
+  '练习题',
+  '变式题组',
+  '练习题组',
+]
+
+export const mockInsertCreateDifficulties: InsertCreateDifficulty[] = [
+  '基础',
+  '中档',
+  '提高',
+  '压轴',
+]
+
+export const mockInsertCreatePanels = {
+  contentBlock: {
+    insertPointId: 'insert-before-atomic-basics',
+    targetType: 'ContentBlock',
+    insertPositionLabel: '机械能守恒基础讲解片段之前',
+  },
+  atomicSection: {
+    insertPointId: 'insert-after-composite-examples',
+    targetType: 'AtomicSection',
+    insertPositionLabel: '圆轨道例题组之后',
+  },
+  disabled: {
+    insertPointId: 'insert-disabled',
+    targetType: 'ContentBlock',
+    insertPositionLabel: '当前结构位置不可插入',
+    disabled: true,
+  },
+} satisfies Record<string, InsertCreatePanelModel>
