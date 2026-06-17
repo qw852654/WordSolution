@@ -587,32 +587,37 @@ InsertCreateOverlay 表示从 InsertPoint 新建块时弹出的插入面板。
 
 - 作为 SectionPage 上方的最上层 overlay 显示。
 - 打开时让背后的整个 SectionPage 模糊。
-- 根据 targetType 显示新建 ContentBlock 或新建 AtomicSection 的 Mock 表单。
+- 根据 targetType 显示新建 ContentBlock 或新建 AtomicSection 的创建表单；ComponentLab 中使用 Mock Data 验收，SectionPage 中由父级调用 CMS V2 API。
 - 显示当前插入位置上下文。
-- 通过事件把用户填写的 Mock 数据交给父级。
+- 通过事件把用户填写的创建数据交给父级。
 - 提供取消和确认新建入口。
 
 字段：
 
 当 targetType = ContentBlock：
 
+- 所属 Section：默认显示当前 Section 名称，当前阶段不可修改；提交时传递 SectionId。
 - 名称
 - 类型：知识点 / 例题 / 变式题 / 练习题 / 变式题组 / 练习题组
 - 难度：基础 / 中档 / 提高 / 压轴
 
 当 targetType = AtomicSection：
 
+- 所属 Section：默认显示当前 Section 名称，当前阶段不可修改；提交时传递 SectionId。
 - 名称
 - 难度：基础 / 中档 / 提高 / 压轴
 - 备注，可选
 
+字段说明：
+
+- 所属 Section 在 UI 中显示名称，但持久化使用 SectionId，避免 Section 改名后归属断裂。
+- AtomicSection 的难度是独立字段，不映射到 Description。
+
 边界：
 
-- 字段只表示 Mock UI 字段，不代表后端 DTO 已经固定。
-- 不调用 API。
-- 不真实创建 ContentBlock。
-- 不真实创建 AtomicSection。
-- 不修改 Section 数据。
+- ComponentLab 中只提交 Mock 反馈，不调用 API。
+- SectionPage 中由页面父级调用 CMS V2 API 创建 ContentBlock / AtomicSection，并重新读取 Section 数据。
+- 组件本身不直接调用 API，不直接修改 Section 数据。
 - 不打开 Word。
 - 不搜索已有块。
 - 不处理 BlockSearchPicker。

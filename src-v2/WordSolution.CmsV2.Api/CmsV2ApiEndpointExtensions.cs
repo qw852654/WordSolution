@@ -119,6 +119,7 @@ public static class CmsV2ApiEndpointExtensions
             var result = await useCases.CreateContentBlockWithBlankDocumentAsync(
                 new CreateContentBlockWithBlankDocumentCommand(
                     options.Value.BankRootDirectory,
+                    request.SectionId,
                     request.Title,
                     request.BlockType,
                     request.Summary,
@@ -347,7 +348,18 @@ public static class CmsV2ApiEndpointExtensions
             ICmsV2UnitOfWork unitOfWork,
             CancellationToken cancellationToken) =>
         {
-            var atomicSection = new AtomicSection(request.Title, request.Description, request.Type, request.Status);
+            if (await unitOfWork.Sections.GetByIdAsync(request.SectionId, cancellationToken) is null)
+            {
+                return NotFoundProblem($"Section {request.SectionId} was not found.");
+            }
+
+            var atomicSection = new AtomicSection(
+                request.SectionId,
+                request.Title,
+                request.Description,
+                request.Type,
+                request.Difficulty,
+                request.Status);
             await unitOfWork.AtomicSections.AddAsync(atomicSection, cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
 

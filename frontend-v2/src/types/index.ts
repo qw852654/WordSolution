@@ -190,6 +190,7 @@ export type SectionWorkspaceFlowItemModel =
       kind: 'ContentBlock'
       id: string
       nodeId: string
+      sortOrder?: number
       selected?: boolean
       disabled?: boolean
       block: ContentBlockDisplayModel
@@ -198,6 +199,7 @@ export type SectionWorkspaceFlowItemModel =
       kind: 'AtomicSection' | 'CompositeBlock'
       id: string
       nodeId: string
+      sortOrder?: number
       selected?: boolean
       disabled?: boolean
       block: StructuredBlockModel
@@ -232,12 +234,15 @@ export interface InsertCreatePanelModel {
   insertPointId: string
   targetType: InsertCreateTargetType
   insertPositionLabel: string
+  sectionId: number
+  sectionTitle: string
   disabled?: boolean
 }
 
 export interface InsertCreateSubmitPayload {
   insertPointId: string
   targetType: InsertCreateTargetType
+  sectionId: number
   title: string
   contentBlockType?: InsertCreateContentBlockType
   difficulty: InsertCreateDifficulty

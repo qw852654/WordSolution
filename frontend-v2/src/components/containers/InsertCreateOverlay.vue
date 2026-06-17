@@ -79,6 +79,7 @@ function handleSubmit() {
   emit('submit', {
     insertPointId: props.model.insertPointId,
     targetType: props.model.targetType,
+    sectionId: props.model.sectionId,
     title,
     contentBlockType: isContentBlock.value ? form.contentBlockType : undefined,
     difficulty: form.difficulty,
@@ -126,6 +127,15 @@ watch(
         </header>
 
         <div class="grid gap-3">
+          <label class="grid gap-1 text-sm font-medium">
+            <span>{{ t('components.insertCreateOverlay.sectionLabel') }}</span>
+            <input
+              :value="model.sectionTitle"
+              disabled
+              class="h-9 cursor-not-allowed rounded-md border bg-muted/30 px-3 text-sm text-muted-foreground outline-none"
+            />
+          </label>
+
           <label class="grid gap-1 text-sm font-medium">
             <span>{{ t('components.insertCreateOverlay.titleLabel') }}</span>
             <input

@@ -56,12 +56,19 @@ public sealed class CmsV2ApiIntegrationTests
     {
         await using var factory = new CmsV2ApiFactory();
         var client = factory.CreateClient();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "机械能", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "机械能专题", type = "NormalCourse", difficulty = "Medium", status = "Draft" });
+        var sectionId = section.GetProperty("id").GetInt32();
 
         var created = await PostJsonAsync(
             client,
             "/api/cms-v2/content-blocks/blank-document",
             new
             {
+                sectionId,
                 title = "动能定理",
                 blockType = "KnowledgePoint",
                 summary = "合外力做功",
@@ -105,21 +112,73 @@ public sealed class CmsV2ApiIntegrationTests
     }
 
     [Fact]
+    public async Task Insert_create_endpoints_persist_section_ownership_and_atomic_section_difficulty()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "功能关系", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new
+            {
+                teachingTopicId = topic.GetProperty("id").GetInt32(),
+                title = "机械能守恒",
+                type = "NormalCourse",
+                difficulty = "Medium",
+                status = "Draft"
+            });
+        var sectionId = section.GetProperty("id").GetInt32();
+
+        var createdBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks/blank-document",
+            new
+            {
+                sectionId,
+                title = "守恒条件",
+                blockType = "KnowledgePoint",
+                difficulty = "Basic",
+                status = "Draft"
+            });
+        var blockDetail = await client.GetFromJsonAsync<JsonElement>(
+            $"/api/cms-v2/content-blocks/{createdBlock.GetProperty("contentBlockId").GetInt32()}");
+
+        var createdAtomicSection = await PostJsonAsync(
+            client,
+            "/api/cms-v2/atomic-sections",
+            new
+            {
+                sectionId,
+                title = "基础讲解片段",
+                description = "用于串联概念和例题",
+                type = "Custom",
+                difficulty = "Advanced",
+                status = "Draft"
+            });
+
+        Assert.Equal(sectionId, blockDetail.GetProperty("sectionId").GetInt32());
+        Assert.Equal(sectionId, createdAtomicSection.GetProperty("sectionId").GetInt32());
+        Assert.Equal("Advanced", createdAtomicSection.GetProperty("difficulty").GetString());
+    }
+
+    [Fact]
     public async Task Composition_and_handout_endpoints_generate_word_and_expose_generated_files()
     {
         await using var factory = new CmsV2ApiFactory();
         var client = factory.CreateClient();
         var templatePath = Path.Combine(factory.BankRootDirectory, "templates", "default.docx");
         await CreateMinimalDocxAsync(templatePath, "模板正文");
-        var importedBlock = await CreateImportedContentBlockAsync(client, factory.BankRootDirectory, "机械能守恒", "讲义正文");
         var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "机械能", sortOrder = 1 });
         var section = await PostJsonAsync(
             client,
             "/api/cms-v2/sections",
             new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "机械能专题", type = "NormalCourse", difficulty = "Medium", status = "Draft" });
+        var sectionId = section.GetProperty("id").GetInt32();
+        var importedBlock = await CreateImportedContentBlockAsync(client, factory.BankRootDirectory, sectionId, "机械能守恒", "讲义正文");
         var sectionItem = await PostJsonAsync(
             client,
-            $"/api/cms-v2/sections/{section.GetProperty("id").GetInt32()}/items",
+            $"/api/cms-v2/sections/{sectionId}/items",
             new
             {
                 targetType = "ContentBlock",
@@ -136,7 +195,7 @@ public sealed class CmsV2ApiIntegrationTests
             client,
             $"/api/cms-v2/section-variants/{variant.GetProperty("id").GetInt32()}/items",
             new { sectionItemId = sectionItem.GetProperty("id").GetInt32(), sortOrder = 1 });
-        var atomic = await PostJsonAsync(client, "/api/cms-v2/atomic-sections", new { title = "原子片段", type = "Custom", status = "Draft" });
+        var atomic = await PostJsonAsync(client, "/api/cms-v2/atomic-sections", new { sectionId, title = "原子片段", type = "Custom", difficulty = "Basic", status = "Draft" });
         await PostJsonAsync(
             client,
             $"/api/cms-v2/atomic-sections/{atomic.GetProperty("id").GetInt32()}/items",
@@ -195,7 +254,7 @@ public sealed class CmsV2ApiIntegrationTests
 
         var invalidBlock = await client.PostAsJsonAsync(
             "/api/cms-v2/content-blocks/blank-document",
-            new { title = " ", blockType = "KnowledgePoint" });
+            new { sectionId = 1, title = " ", blockType = "KnowledgePoint" });
         var missingBlock = await client.GetAsync("/api/cms-v2/content-blocks/404");
         var missingParent = await client.PostAsJsonAsync(
             "/api/cms-v2/sections",
@@ -209,13 +268,14 @@ public sealed class CmsV2ApiIntegrationTests
     private static async Task<ImportedContentBlock> CreateImportedContentBlockAsync(
         HttpClient client,
         string bankRootDirectory,
+        int sectionId,
         string title,
         string text)
     {
         var created = await PostJsonAsync(
             client,
             "/api/cms-v2/content-blocks/blank-document",
-            new { title, blockType = "KnowledgePoint", status = "Draft" });
+            new { sectionId, title, blockType = "KnowledgePoint", status = "Draft" });
         var contentBlockId = created.GetProperty("contentBlockId").GetInt32();
         var importDocxPath = Path.Combine(bankRootDirectory, "imports", $"{Guid.NewGuid():N}.docx");
         await CreateMinimalDocxAsync(importDocxPath, text);

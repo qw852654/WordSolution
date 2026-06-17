@@ -41,9 +41,11 @@ export interface CmsV2SectionItemDto {
 
 export interface CmsV2AtomicSectionDto {
   id: number
+  sectionId: number
   title: string
   description?: string | null
   type: string
+  difficulty: string
   status: string
   updatedTime: string
 }
@@ -62,6 +64,7 @@ export interface CmsV2AtomicSectionItemDto {
 
 export interface CmsV2ContentBlockDto {
   id: number
+  sectionId: number
   title: string
   summary?: string | null
   blockType: string
@@ -93,6 +96,52 @@ export interface CmsV2ContentBlockRelationDto {
   sortOrder: number
   note?: string | null
   updatedTime: string
+}
+
+export interface CmsV2CreatedEntityResultDto {
+  id: number
+}
+
+export interface CmsV2ContentBlockDocumentVersionResultDto {
+  contentBlockId: number
+  contentBlockVersionId: number
+  versionNumber: number
+  docxPath: string
+  htmlPreviewPath: string
+  plainTextPath: string
+}
+
+export interface CmsV2CreateContentBlockWithBlankDocumentRequest {
+  sectionId: number
+  title: string
+  blockType: string
+  summary?: string | null
+  difficulty: string
+  questionType?: string | null
+  status: string
+}
+
+export interface CmsV2CreateAtomicSectionRequest {
+  sectionId: number
+  title: string
+  description?: string | null
+  type: string
+  difficulty: string
+  status: string
+}
+
+export interface CmsV2AddSectionItemRequest {
+  targetType: 'ContentBlock' | 'AtomicSection'
+  targetId: number
+  referenceMode: 'FollowLatest' | 'LockedVersion'
+  lockedContentBlockVersionId?: number | null
+  sortOrder: number
+  titleOverride?: string | null
+  parentItemId?: number | null
+  selectionLayer?: string | null
+  teachingUseOverride?: string | null
+  status: string
+  note?: string | null
 }
 
 export function createCmsV2Url(path = ''): string {
@@ -138,6 +187,16 @@ export async function cmsV2FetchJson<T>(path: string, init?: RequestInit): Promi
   return (await response.json()) as T
 }
 
+export async function cmsV2PostJson<T>(path: string, value: unknown): Promise<T> {
+  return await cmsV2FetchJson<T>(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(value),
+  })
+}
+
 export async function cmsV2FetchText(path: string, init?: RequestInit): Promise<string> {
   const response = await cmsV2Fetch(path, init)
 
@@ -168,12 +227,21 @@ export const cmsV2Api = {
   getSection: (sectionId: number) => cmsV2FetchJson<CmsV2SectionDto>(`/sections/${sectionId}`),
   listSectionItems: (sectionId: number) =>
     cmsV2FetchJson<CmsV2SectionItemDto[]>(`/sections/${sectionId}/items`),
+  addSectionItem: (sectionId: number, request: CmsV2AddSectionItemRequest) =>
+    cmsV2PostJson<CmsV2CreatedEntityResultDto>(`/sections/${sectionId}/items`, request),
   getAtomicSection: (atomicSectionId: number) =>
     cmsV2FetchJson<CmsV2AtomicSectionDto>(`/atomic-sections/${atomicSectionId}`),
+  createAtomicSection: (request: CmsV2CreateAtomicSectionRequest) =>
+    cmsV2PostJson<CmsV2AtomicSectionDto>('/atomic-sections', request),
   listAtomicSectionItems: (atomicSectionId: number) =>
     cmsV2FetchJson<CmsV2AtomicSectionItemDto[]>(`/atomic-sections/${atomicSectionId}/items`),
   getContentBlock: (contentBlockId: number) =>
     cmsV2FetchJson<CmsV2ContentBlockDto>(`/content-blocks/${contentBlockId}`),
+  createContentBlockWithBlankDocument: (request: CmsV2CreateContentBlockWithBlankDocumentRequest) =>
+    cmsV2PostJson<CmsV2ContentBlockDocumentVersionResultDto>(
+      '/content-blocks/blank-document',
+      request,
+    ),
   listContentBlockVersions: (contentBlockId: number) =>
     cmsV2FetchJson<CmsV2ContentBlockVersionDto[]>(`/content-blocks/${contentBlockId}/versions`),
   getContentBlockHtmlPreview: (contentBlockId: number, versionId?: number | null) =>

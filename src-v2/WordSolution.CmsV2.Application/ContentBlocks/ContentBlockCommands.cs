@@ -3,6 +3,7 @@ using WordSolution.CmsV2.Domain.Enums;
 namespace WordSolution.CmsV2.Application.ContentBlocks;
 
 public sealed record CreateContentBlockWithInitialVersionCommand(
+    int SectionId,
     string Title,
     ContentBlockType BlockType,
     string DocxPath,

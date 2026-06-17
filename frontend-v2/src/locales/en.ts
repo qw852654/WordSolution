@@ -186,8 +186,9 @@ const en = {
       contentBlockTitle: 'Create ContentBlock',
       atomicSectionTitle: 'Create AtomicSection',
       description:
-        'Fill in the Mock Data fields. The component only emits a submit event.',
+        'The item belongs to the current Section by default. SectionPage submits it to the CMS V2 API.',
       insertPosition: 'Insert position',
+      sectionLabel: 'Section',
       titleLabel: 'Name',
       titlePlaceholder: 'Enter a name',
       contentBlockTypeLabel: 'Type',
@@ -405,7 +406,10 @@ const en = {
         insertPositionLabel: 'Current selected insert position',
         feedbackCreateContentBlock: 'Selected this position for creating ContentBlock.',
         feedbackCreateAtomicSection: 'Selected this position for creating AtomicSection.',
-        feedbackCreateSubmitted: 'Mock submit received: create {targetType} named {title}.',
+        feedbackSubmitting: 'Submitting to the CMS V2 API...',
+        feedbackCreateSubmitted: 'Created {targetType} and added it to the current Section: {title}.',
+        feedbackCreateFailed: 'Create failed. Please try again.',
+        feedbackMissingSection: 'No valid Section is available, so a block cannot be created.',
         feedbackSearchExistingBlock:
           'Selected this position for inserting an existing block. BlockSearchPicker will be connected later.',
       },

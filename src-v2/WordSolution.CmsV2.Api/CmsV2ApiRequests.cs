@@ -19,12 +19,15 @@ public sealed record CreateSectionRequest(
     int SortOrder = 0);
 
 public sealed record CreateAtomicSectionRequest(
+    int SectionId,
     string Title,
     string? Description = null,
     AtomicSectionType Type = AtomicSectionType.Custom,
+    Difficulty Difficulty = Difficulty.Unset,
     AtomicSectionStatus Status = AtomicSectionStatus.Draft);
 
 public sealed record CreateContentBlockWithBlankDocumentRequest(
+    int SectionId,
     string Title,
     ContentBlockType BlockType,
     string? Summary = null,

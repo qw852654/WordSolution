@@ -73,10 +73,10 @@ public sealed class CmsV2RepositoryTests
         await unitOfWork.Sections.AddAsync(sectionA);
         await unitOfWork.SaveChangesAsync();
 
-        var atomicSection = new AtomicSection("最小教学片段");
-        var blockA = new ContentBlock("知识点", ContentBlockType.KnowledgePoint);
-        var blockB = new ContentBlock("例题", ContentBlockType.Question, questionType: QuestionType.Calculation);
-        var blockParent = new ContentBlock("组合块", ContentBlockType.ExampleGroup);
+        var atomicSection = new AtomicSection(sectionA.Id, "最小教学片段");
+        var blockA = new ContentBlock(sectionA.Id, "知识点", ContentBlockType.KnowledgePoint);
+        var blockB = new ContentBlock(sectionA.Id, "例题", ContentBlockType.Question, questionType: QuestionType.Calculation);
+        var blockParent = new ContentBlock(sectionA.Id, "组合块", ContentBlockType.ExampleGroup);
         await unitOfWork.AtomicSections.AddAsync(atomicSection);
         await unitOfWork.ContentBlocks.AddAsync(blockA);
         await unitOfWork.ContentBlocks.AddAsync(blockB);

@@ -5,6 +5,12 @@
     <ProjectReference Include="..\WordSolution.CmsV2.Infrastructure\WordSolution.CmsV2.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="Aspose.Total.NET.lic">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>

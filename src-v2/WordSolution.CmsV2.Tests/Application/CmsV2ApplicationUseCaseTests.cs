@@ -20,9 +20,11 @@ public sealed class CmsV2ApplicationUseCaseTests
         await using var context = await CreateMigratedContextAsync();
         var unitOfWork = new EfCmsV2UnitOfWork(context);
         var useCases = new ContentBlockUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
 
         var created = await useCases.CreateContentBlockWithInitialVersionAsync(
             new CreateContentBlockWithInitialVersionCommand(
+                sectionId,
                 "动能定理",
                 ContentBlockType.KnowledgePoint,
                 "content-blocks/source/1/v1.docx",
@@ -54,14 +56,17 @@ public sealed class CmsV2ApplicationUseCaseTests
         await using var context = await CreateMigratedContextAsync();
         var unitOfWork = new EfCmsV2UnitOfWork(context);
         var useCases = new ContentBlockUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
 
         var first = await useCases.CreateContentBlockWithInitialVersionAsync(
             new CreateContentBlockWithInitialVersionCommand(
+                sectionId,
                 "内容块 A",
                 ContentBlockType.Explanation,
                 "content-blocks/source/a/v1.docx"));
         var second = await useCases.CreateContentBlockWithInitialVersionAsync(
             new CreateContentBlockWithInitialVersionCommand(
+                sectionId,
                 "内容块 B",
                 ContentBlockType.Explanation,
                 "content-blocks/source/b/v1.docx"));
@@ -80,10 +85,12 @@ public sealed class CmsV2ApplicationUseCaseTests
         await using var context = await CreateMigratedContextAsync();
         var unitOfWork = new EfCmsV2UnitOfWork(context);
         var useCases = new ContentBlockUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
 
         await Assert.ThrowsAnyAsync<Exception>(
             () => useCases.CreateContentBlockWithInitialVersionAsync(
                 new CreateContentBlockWithInitialVersionCommand(
+                    sectionId,
                     "不应留下半成品",
                     ContentBlockType.GeneralText,
                     " ")));
@@ -99,13 +106,14 @@ public sealed class CmsV2ApplicationUseCaseTests
         var unitOfWork = new EfCmsV2UnitOfWork(context);
         var contentBlocks = new ContentBlockUseCases(unitOfWork);
         var relations = new ContentBlockRelationUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
 
         var parent = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
-            new CreateContentBlockWithInitialVersionCommand("父组合块", ContentBlockType.ExampleGroup, "parent/v1.docx"));
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "父组合块", ContentBlockType.ExampleGroup, "parent/v1.docx"));
         var child = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
-            new CreateContentBlockWithInitialVersionCommand("子块", ContentBlockType.KnowledgePoint, "child/v1.docx"));
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "子块", ContentBlockType.KnowledgePoint, "child/v1.docx"));
         var grandChild = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
-            new CreateContentBlockWithInitialVersionCommand("孙块", ContentBlockType.Question, "grand-child/v1.docx"));
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "孙块", ContentBlockType.Question, "grand-child/v1.docx"));
         var parentVersion = await unitOfWork.ContentBlockVersions.GetCurrentByContentBlockAsync(parent.Id);
 
         Assert.NotNull(parentVersion);
@@ -146,15 +154,17 @@ public sealed class CmsV2ApplicationUseCaseTests
         await unitOfWork.SaveChangesAsync();
 
         var section = new Section(topic.Id, "机械能守恒");
-        var atomicSection = new AtomicSection("守恒条件");
         await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+
+        var atomicSection = new AtomicSection(section.Id, "守恒条件");
         await unitOfWork.AtomicSections.AddAsync(atomicSection);
         await unitOfWork.SaveChangesAsync();
 
         var block = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
-            new CreateContentBlockWithInitialVersionCommand("守恒条件内容", ContentBlockType.KnowledgePoint, "block/v1.docx"));
+            new CreateContentBlockWithInitialVersionCommand(section.Id, "守恒条件内容", ContentBlockType.KnowledgePoint, "block/v1.docx"));
         var otherBlock = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
-            new CreateContentBlockWithInitialVersionCommand("其他内容", ContentBlockType.KnowledgePoint, "other/v1.docx"));
+            new CreateContentBlockWithInitialVersionCommand(section.Id, "其他内容", ContentBlockType.KnowledgePoint, "other/v1.docx"));
         var otherVersion = await unitOfWork.ContentBlockVersions.GetCurrentByContentBlockAsync(otherBlock.Id);
 
         Assert.NotNull(otherVersion);
@@ -229,7 +239,7 @@ public sealed class CmsV2ApplicationUseCaseTests
         await unitOfWork.SaveChangesAsync();
 
         var block = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
-            new CreateContentBlockWithInitialVersionCommand("例题", ContentBlockType.Question, "question/v1.docx"));
+            new CreateContentBlockWithInitialVersionCommand(sectionA.Id, "例题", ContentBlockType.Question, "question/v1.docx"));
         var itemA = await sectionUseCases.AddSectionItemAsync(
             new AddSectionItemCommand(sectionA.Id, SectionItemTargetType.ContentBlock, block.Id, ReferenceMode.FollowLatest, null, SortOrder: 1));
         var itemB = await sectionUseCases.AddSectionItemAsync(
@@ -255,6 +265,7 @@ public sealed class CmsV2ApplicationUseCaseTests
         var unitOfWork = new EfCmsV2UnitOfWork(context);
         var contentBlocks = new ContentBlockUseCases(unitOfWork);
         var handouts = new HandoutUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
 
         var handout = new Handout("机械能讲义");
         await unitOfWork.Handouts.AddAsync(handout);
@@ -263,7 +274,7 @@ public sealed class CmsV2ApplicationUseCaseTests
         var handoutVersion = await handouts.CreateHandoutVersionAsync(
             new CreateHandoutVersionCommand(handout.Id, "基础班"));
         var block = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
-            new CreateContentBlockWithInitialVersionCommand("知识点", ContentBlockType.KnowledgePoint, "knowledge/v1.docx"));
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "知识点", ContentBlockType.KnowledgePoint, "knowledge/v1.docx"));
 
         await Assert.ThrowsAsync<CmsV2ApplicationException>(
             () => handouts.AddHandoutVersionItemAsync(
@@ -302,5 +313,18 @@ public sealed class CmsV2ApplicationUseCaseTests
         await context.Database.MigrateAsync();
 
         return context;
+    }
+
+    private static async Task<int> CreateSectionAsync(EfCmsV2UnitOfWork unitOfWork)
+    {
+        var topic = new TeachingTopic("默认主题");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+
+        var section = new Section(topic.Id, "默认 Section");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+
+        return section.Id;
     }
 }

@@ -4,6 +4,7 @@ namespace WordSolution.CmsV2.Application.ContentBlocks;
 
 public sealed record CreateContentBlockWithBlankDocumentCommand(
     string BankRootDirectory,
+    int SectionId,
     string Title,
     ContentBlockType BlockType,
     string? Summary = null,

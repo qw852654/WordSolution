@@ -213,23 +213,29 @@ InsertPoint 直接展示三个具体操作：
 - 面板打开时，背后的整个 SectionPage 模糊。
 - 面板不放在右侧 Inspector。
 - 面板不作为普通文档流内联块。
-- 第一版只使用 Mock UI，不调用 API，不真实创建数据。
+- ComponentLab 中使用 Mock Data 验收面板；接入 SectionPage 后，提交必须调用 CMS V2 API 创建真实对象并重新读取 Section 数据。
 
 字段规则：
 
 当 targetType = ContentBlock：
 
+- 所属 Section：默认显示当前 Section 名称，当前阶段不可修改；提交时后端记录当前 SectionId。
 - 名称
 - 类型：知识点 / 例题 / 变式题 / 练习题 / 变式题组 / 练习题组
 - 难度：基础 / 中档 / 提高 / 压轴
 
 当 targetType = AtomicSection：
 
+- 所属 Section：默认显示当前 Section 名称，当前阶段不可修改；提交时后端记录当前 SectionId。
 - 名称
 - 难度：基础 / 中档 / 提高 / 压轴
 - 备注，可选
 
-这些字段先是 Mock UI 字段，不代表后端 DTO 已经固定。
+字段说明：
+
+- 所属 Section 在 UI 中显示名称，但持久化使用 SectionId，避免 Section 改名后归属断裂。
+- AtomicSection 的难度是独立字段，不映射到 Description。
+- 这些字段是当前插入面板的最小创建字段，不代表后续完整编辑 DTO 已经固定。
 
 ### 6.3 调整顺序
 

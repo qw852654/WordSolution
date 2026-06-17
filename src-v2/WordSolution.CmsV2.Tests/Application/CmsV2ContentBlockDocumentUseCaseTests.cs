@@ -21,10 +21,12 @@ public sealed class CmsV2ContentBlockDocumentUseCaseTests
         var unitOfWork = new EfCmsV2UnitOfWork(context);
         var bankRootDirectory = CreateTempRoot();
         var useCases = CreateUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
 
         var result = await useCases.CreateContentBlockWithBlankDocumentAsync(
             new CreateContentBlockWithBlankDocumentCommand(
                 bankRootDirectory,
+                sectionId,
                 "机械能守恒",
                 ContentBlockType.KnowledgePoint,
                 Summary: "守恒条件"));
@@ -51,9 +53,11 @@ public sealed class CmsV2ContentBlockDocumentUseCaseTests
         var unitOfWork = new EfCmsV2UnitOfWork(context);
         var bankRootDirectory = CreateTempRoot();
         var useCases = CreateUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
         var created = await useCases.CreateContentBlockWithBlankDocumentAsync(
             new CreateContentBlockWithBlankDocumentCommand(
                 bankRootDirectory,
+                sectionId,
                 "动能定理",
                 ContentBlockType.KnowledgePoint));
         var importDocxPath = Path.Combine(bankRootDirectory, "imports", "source.docx");
@@ -95,6 +99,7 @@ public sealed class CmsV2ContentBlockDocumentUseCaseTests
             () => useCases.CreateContentBlockWithBlankDocumentAsync(
                 new CreateContentBlockWithBlankDocumentCommand(
                     " ",
+                    SectionId: 1,
                     "无效路径",
                     ContentBlockType.GeneralText)));
 
@@ -118,8 +123,10 @@ public sealed class CmsV2ContentBlockDocumentUseCaseTests
         var unitOfWork = new EfCmsV2UnitOfWork(context);
         var bankRootDirectory = CreateTempRoot();
         var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
         var created = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
             new CreateContentBlockWithInitialVersionCommand(
+                sectionId,
                 "已有内容块",
                 ContentBlockType.GeneralText,
                 "existing/v1.docx"));
@@ -151,6 +158,19 @@ public sealed class CmsV2ContentBlockDocumentUseCaseTests
             new CmsV2FileAssetPathProvider(),
             new LocalContentBlockFileStore(),
             new AsposeContentBlockDocumentProcessor());
+    }
+
+    private static async Task<int> CreateSectionAsync(EfCmsV2UnitOfWork unitOfWork)
+    {
+        var topic = new WordSolution.CmsV2.Domain.Entities.TeachingTopic("测试主题");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+
+        var section = new WordSolution.CmsV2.Domain.Entities.Section(topic.Id, "测试 Section");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+
+        return section.Id;
     }
 
     private static async Task<CmsV2DbContext> CreateMigratedContextAsync()

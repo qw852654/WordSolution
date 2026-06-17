@@ -152,8 +152,10 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
         await unitOfWork.TeachingTopics.AddAsync(topic);
         await unitOfWork.SaveChangesAsync();
         var section = new Section(topic.Id, "竖直圆轨道");
-        var atomicSection = new AtomicSection("圆轨道条件");
         await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+
+        var atomicSection = new AtomicSection(section.Id, "圆轨道条件");
         await unitOfWork.AtomicSections.AddAsync(atomicSection);
         await unitOfWork.SaveChangesAsync();
         var atomicSectionItem = new AtomicSectionItem(
@@ -365,7 +367,8 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
         int versionNumber,
         bool isCurrent)
     {
-        var block = new ContentBlock(title, ContentBlockType.GeneralText);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var block = new ContentBlock(sectionId, title, ContentBlockType.GeneralText);
         await unitOfWork.ContentBlocks.AddAsync(block);
         await unitOfWork.SaveChangesAsync();
         var docxPath = Path.Combine(
@@ -408,6 +411,19 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
         await context.Database.MigrateAsync();
 
         return context;
+    }
+
+    private static async Task<int> CreateSectionAsync(EfCmsV2UnitOfWork unitOfWork)
+    {
+        var topic = new TeachingTopic("默认主题");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+
+        var section = new Section(topic.Id, "默认 Section");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+
+        return section.Id;
     }
 
     private static string CreateTempRoot()

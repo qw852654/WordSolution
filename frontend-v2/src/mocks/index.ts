@@ -502,16 +502,22 @@ export const mockInsertCreatePanels = {
     insertPointId: 'insert-before-atomic-basics',
     targetType: 'ContentBlock',
     insertPositionLabel: '机械能守恒基础讲解片段之前',
+    sectionId: 1,
+    sectionTitle: '机械能守恒',
   },
   atomicSection: {
     insertPointId: 'insert-after-composite-examples',
     targetType: 'AtomicSection',
     insertPositionLabel: '圆轨道例题组之后',
+    sectionId: 1,
+    sectionTitle: '机械能守恒',
   },
   disabled: {
     insertPointId: 'insert-disabled',
     targetType: 'ContentBlock',
     insertPositionLabel: '当前结构位置不可插入',
+    sectionId: 1,
+    sectionTitle: '机械能守恒',
     disabled: true,
   },
 } satisfies Record<string, InsertCreatePanelModel>

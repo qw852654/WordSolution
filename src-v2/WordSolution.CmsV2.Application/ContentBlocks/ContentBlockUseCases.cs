@@ -21,7 +21,10 @@ public sealed class ContentBlockUseCases
 
         await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
         {
+            await RequireSectionAsync(command.SectionId, transactionCancellationToken);
+
             var contentBlock = new ContentBlock(
+                command.SectionId,
                 command.Title,
                 command.BlockType,
                 command.Summary,
@@ -160,5 +163,13 @@ public sealed class ContentBlockUseCases
     {
         return await _unitOfWork.ContentBlocks.GetByIdAsync(contentBlockId, cancellationToken)
             ?? throw new CmsV2ApplicationException($"ContentBlock {contentBlockId} was not found.");
+    }
+
+    private async Task RequireSectionAsync(int sectionId, CancellationToken cancellationToken)
+    {
+        if (await _unitOfWork.Sections.GetByIdAsync(sectionId, cancellationToken) is null)
+        {
+            throw new CmsV2ApplicationException($"Section {sectionId} was not found.");
+        }
     }
 }

@@ -13,6 +13,7 @@ public sealed class ContentBlock
     }
 
     public ContentBlock(
+        int sectionId,
         string title,
         ContentBlockType blockType,
         string? summary = null,
@@ -22,6 +23,7 @@ public sealed class ContentBlock
         int? currentVersionId = null,
         DateTimeOffset? updatedTime = null)
     {
+        DomainGuard.Positive(sectionId, nameof(SectionId));
         DomainGuard.NotWhiteSpace(title, nameof(Title));
         DomainGuard.ValidEnum(blockType, nameof(BlockType));
         DomainGuard.ValidEnum(difficulty, nameof(Difficulty));
@@ -38,6 +40,7 @@ public sealed class ContentBlock
             throw new DomainException("QuestionType can only be set when BlockType is Question.");
         }
 
+        SectionId = sectionId;
         Title = title.Trim();
         Summary = summary?.Trim();
         BlockType = blockType;
@@ -49,6 +52,8 @@ public sealed class ContentBlock
     }
 
     public int Id { get; private set; }
+
+    public int SectionId { get; private set; }
 
     public string Title { get; private set; }
 

@@ -10,8 +10,11 @@ import InsertCreateOverlay from '@/components/containers/InsertCreateOverlay.vue
 import SectionStructurePanel from '@/components/containers/SectionStructurePanel.vue'
 import SectionTopToolbar from '@/components/containers/SectionTopToolbar.vue'
 import SectionWorkspace from '@/components/containers/SectionWorkspace.vue'
+import { cmsV2Api } from '@/apis/cmsV2Client'
 import { loadSectionPageData, type SectionPageDataModel } from '@/composables/useSectionPageData'
 import type {
+  InsertCreateContentBlockType,
+  InsertCreateDifficulty,
   InsertCreatePanelModel,
   InsertCreateSubmitPayload,
   InsertRequestModel,
@@ -40,6 +43,7 @@ const selectedTeachingTopicId = ref<string>()
 const teachingTopicTreeContextMenu = ref<TeachingTopicTreeContextMenuModel | null>(null)
 const isLoadingSectionPage = ref(false)
 const sectionPageError = ref('')
+const isSubmittingInsertCreate = ref(false)
 let teachingTopicDrawerTimer: number | undefined
 let sectionPageLoadSequence = 0
 
@@ -69,6 +73,14 @@ const sectionTreeNodes = computed(() => sectionPageData.value?.treeNodes ?? [])
 const sectionWorkspaceFlowItems = computed(() => sectionPageData.value?.flowItems ?? [])
 const workspaceNodeMap = computed(() => sectionPageData.value?.workspaceNodeMap ?? {})
 const teachingTopicTreeNodes = computed(() => sectionPageData.value?.teachingTopicNodes ?? [])
+const activeCreatePanelModel = computed(() =>
+  activeCreatePanel.value
+    ? {
+        ...activeCreatePanel.value,
+        disabled: activeCreatePanel.value.disabled || isSubmittingInsertCreate.value,
+      }
+    : null,
+)
 
 function findSectionTreeNode(
   nodes: SectionTreeNodeModel[],
@@ -182,11 +194,20 @@ function requestInsert(request: InsertRequestModel) {
   activeInsertPointId.value = request.insertPointId
 
   if (request.actionType === 'CreateContentBlock' || request.actionType === 'CreateAtomicSection') {
+    const currentSectionId = Number(sectionShell.value.sectionId)
+
+    if (!Number.isInteger(currentSectionId) || currentSectionId <= 0) {
+      insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackMissingSection')
+      return
+    }
+
     insertFeedback.value = ''
     activeCreatePanel.value = {
       insertPointId: request.insertPointId,
       targetType: request.actionType === 'CreateContentBlock' ? 'ContentBlock' : 'AtomicSection',
       insertPositionLabel: t('sectionPage.workspace.insertPanel.insertPositionLabel'),
+      sectionId: currentSectionId,
+      sectionTitle: sectionShell.value.title,
     }
     return
   }
@@ -199,13 +220,132 @@ function cancelInsertCreateOverlay() {
   activeCreatePanel.value = null
 }
 
-function submitInsertCreateOverlay(payload: InsertCreateSubmitPayload) {
-  activeCreatePanel.value = null
-  activeInsertPointId.value = payload.insertPointId
-  insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackCreateSubmitted', {
-    targetType: payload.targetType,
+async function submitInsertCreateOverlay(payload: InsertCreateSubmitPayload) {
+  if (isSubmittingInsertCreate.value) {
+    return
+  }
+
+  isSubmittingInsertCreate.value = true
+  insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackSubmitting')
+
+  try {
+    const sortOrder = getSortOrderForInsertPoint(payload.insertPointId)
+    const createdTarget =
+      payload.targetType === 'ContentBlock'
+        ? await createContentBlockForInsert(payload)
+        : await createAtomicSectionForInsert(payload)
+    const createdSectionItem = await cmsV2Api.addSectionItem(payload.sectionId, {
+      targetType: payload.targetType,
+      targetId: createdTarget.id,
+      referenceMode: 'FollowLatest',
+      lockedContentBlockVersionId: null,
+      sortOrder,
+      titleOverride: null,
+      parentItemId: null,
+      selectionLayer: null,
+      teachingUseOverride: null,
+      status: 'Active',
+      note: null,
+    })
+
+    activeCreatePanel.value = null
+    activeInsertPointId.value = undefined
+    insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackCreateSubmitted', {
+      targetType: payload.targetType,
+      title: payload.title,
+    })
+
+    await loadCurrentSectionPage()
+    selectedStructureNodeId.value = `section-item-${createdSectionItem.id}`
+    workspaceScrollTargetNodeId.value = selectedStructureNodeId.value
+    workspaceScrollRequestKey.value += 1
+  } catch (error) {
+    insertFeedback.value =
+      error instanceof Error ? error.message : t('sectionPage.workspace.insertPanel.feedbackCreateFailed')
+  } finally {
+    isSubmittingInsertCreate.value = false
+  }
+}
+
+async function createContentBlockForInsert(payload: InsertCreateSubmitPayload) {
+  const created = await cmsV2Api.createContentBlockWithBlankDocument({
+    sectionId: payload.sectionId,
     title: payload.title,
+    blockType: mapInsertContentBlockType(payload.contentBlockType),
+    summary: null,
+    difficulty: mapInsertDifficulty(payload.difficulty),
+    questionType: null,
+    status: 'Draft',
   })
+
+  return { id: created.contentBlockId }
+}
+
+async function createAtomicSectionForInsert(payload: InsertCreateSubmitPayload) {
+  const created = await cmsV2Api.createAtomicSection({
+    sectionId: payload.sectionId,
+    title: payload.title,
+    description: payload.note ?? null,
+    type: 'Custom',
+    difficulty: mapInsertDifficulty(payload.difficulty),
+    status: 'Draft',
+  })
+
+  return { id: created.id }
+}
+
+function getSortOrderForInsertPoint(insertPointId: string) {
+  const indexText = /-(\d+)$/.exec(insertPointId)?.[1]
+  const index = indexText ? Number(indexText) : Number.NaN
+  const items = sectionWorkspaceFlowItems.value
+
+  if (Number.isInteger(index) && index > 0 && index < items.length) {
+    const previous = items[index - 1]
+    const next = items[index]
+
+    if (
+      typeof previous.sortOrder === 'number' &&
+      typeof next.sortOrder === 'number' &&
+      next.sortOrder - previous.sortOrder > 1
+    ) {
+      return Math.floor((previous.sortOrder + next.sortOrder) / 2)
+    }
+
+    if (typeof next.sortOrder === 'number') {
+      return next.sortOrder
+    }
+  }
+
+  const lastSortOrder = items.reduce(
+    (max, item) => Math.max(max, typeof item.sortOrder === 'number' ? item.sortOrder : 0),
+    0,
+  )
+
+  return lastSortOrder + 10
+}
+
+function mapInsertContentBlockType(type?: InsertCreateContentBlockType) {
+  const map: Record<InsertCreateContentBlockType, string> = {
+    知识点: 'KnowledgePoint',
+    例题: 'Question',
+    变式题: 'Question',
+    练习题: 'Question',
+    变式题组: 'VariantGroup',
+    练习题组: 'ExerciseGroup',
+  }
+
+  return type ? map[type] : 'GeneralText'
+}
+
+function mapInsertDifficulty(difficulty: InsertCreateDifficulty) {
+  const map: Record<InsertCreateDifficulty, string> = {
+    基础: 'Basic',
+    中档: 'Medium',
+    提高: 'Advanced',
+    压轴: 'Top',
+  }
+
+  return map[difficulty]
 }
 
 function openSectionTreeContextMenu(payload: SectionTreeContextMenuPayload) {
@@ -231,12 +371,21 @@ function handleSectionTreeContextMenuAction(payload: SectionTreeContextMenuActio
   }
 
   if (payload.actionType === 'CreateContentBlock' || payload.actionType === 'CreateAtomicSection') {
+    const currentSectionId = Number(sectionShell.value.sectionId)
+
+    if (!Number.isInteger(currentSectionId) || currentSectionId <= 0) {
+      insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackMissingSection')
+      return
+    }
+
     activeInsertPointId.value = `section-tree-context-${payload.nodeId}`
     insertFeedback.value = ''
     activeCreatePanel.value = {
       insertPointId: activeInsertPointId.value,
       targetType: payload.actionType === 'CreateContentBlock' ? 'ContentBlock' : 'AtomicSection',
       insertPositionLabel: contextNode.typeLabel,
+      sectionId: currentSectionId,
+      sectionTitle: sectionShell.value.title,
     }
     return
   }
@@ -336,9 +485,9 @@ watch(sectionId, () => {
     </section>
 
     <InsertCreateOverlay
-      v-if="activeCreatePanel"
-      :model="activeCreatePanel"
-      :open="activeCreatePanel !== null"
+      v-if="activeCreatePanelModel"
+      :model="activeCreatePanelModel"
+      :open="activeCreatePanelModel !== null"
       @cancel="cancelInsertCreateOverlay"
       @submit="submitInsertCreateOverlay"
     />
