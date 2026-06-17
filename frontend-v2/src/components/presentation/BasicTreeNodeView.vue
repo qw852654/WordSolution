@@ -2,6 +2,7 @@
 defineProps<{
   title: string
   markerLabel?: string
+  markerClass?: string
   metaItems?: string[]
   truncateTitle?: boolean
 }>()
@@ -19,7 +20,8 @@ defineProps<{
     <span class="flex min-w-0 items-center gap-1.5">
       <span
         v-if="markerLabel"
-        class="h-3 w-0.5 shrink-0 rounded-full bg-primary"
+        class="h-3 w-0.5 shrink-0 rounded-full"
+        :class="markerClass ?? 'bg-muted-foreground'"
         :title="markerLabel"
         aria-hidden="true"
       />

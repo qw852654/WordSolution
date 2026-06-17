@@ -45,6 +45,11 @@
     --section-tree-context-target: var(--primary);
     --section-tree-context-target-foreground: var(--primary);
     --section-tree-context-target-ring: var(--primary);
+    --difficulty-unset: var(--muted-foreground);
+    --difficulty-basic: oklch(0.58 0.17 145);
+    --difficulty-medium: oklch(0.58 0.17 255);
+    --difficulty-advanced: oklch(0.68 0.17 70);
+    --difficulty-top: oklch(0.58 0.22 25);
   }
 
   .dark {
@@ -79,6 +84,11 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
+    --difficulty-unset: var(--muted-foreground);
+    --difficulty-basic: oklch(0.72 0.16 145);
+    --difficulty-medium: oklch(0.72 0.15 255);
+    --difficulty-advanced: oklch(0.78 0.15 70);
+    --difficulty-top: oklch(0.72 0.18 25);
   }
 
   * {

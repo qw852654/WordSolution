@@ -597,7 +597,7 @@ InsertCreateOverlay 表示从 InsertPoint 新建块时弹出的插入面板。
 当 targetType = ContentBlock：
 
 - 所属 Section：默认显示当前 Section 名称，当前阶段不可修改；提交时传递 SectionId。
-- 名称
+- 名称，可选；没有名称时不阻止新建
 - 类型：知识点 / 例题 / 变式题 / 练习题 / 变式题组 / 练习题组
 - 难度：基础 / 中档 / 提高 / 压轴
 
@@ -611,7 +611,8 @@ InsertCreateOverlay 表示从 InsertPoint 新建块时弹出的插入面板。
 字段说明：
 
 - 所属 Section 在 UI 中显示名称，但持久化使用 SectionId，避免 Section 改名后归属断裂。
-- AtomicSection 的难度是独立字段，不映射到 Description。
+- ContentBlock 名称可为空；展示时由类型、预览摘要或上下文兜底。
+- AtomicSection 名称仍必填，难度是独立字段，不映射到 Description。
 
 边界：
 
@@ -796,3 +797,22 @@ ComponentLabPage ���գ�
 - �Ҽ��ڵ�ʱֻ���� context target��
 - �Ҽ��˵�����ʱ�����ԭ���˵������֡�
 - ѡ��˵����ֻ��ʾ Mock ���������������ݡ�
+
+## 当前补充约定：Difficulty Theme Tokens
+
+Difficulty Theme Tokens 用于统一显示 ContentBlock、AtomicSection、CompositeBlock、SectionTree 节点中的难度视觉标记。
+
+当前语义：
+
+- difficulty-unset：未设置。
+- difficulty-basic：基础，低难度，偏绿色。
+- difficulty-medium：中档，中等难度，偏蓝色。
+- difficulty-advanced：提高，较高难度，偏橙色。
+- difficulty-top：压轴，最高难度，偏红色。
+
+使用规则：
+
+- `ContentBlockDisplay` 的难度小点必须使用上述 token。
+- `SectionTreeNode` 的难度短竖线必须使用上述 token。
+- 业务组件中不得直接写具体颜色值。
+- 如果后续要调整难度颜色，只修改 theme token，不在组件中改一次性颜色。

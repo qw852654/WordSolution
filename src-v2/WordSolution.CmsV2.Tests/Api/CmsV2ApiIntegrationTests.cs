@@ -163,6 +163,54 @@ public sealed class CmsV2ApiIntegrationTests
     }
 
     [Fact]
+    public async Task Content_block_can_be_created_without_title_but_atomic_section_still_requires_title()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "功能关系", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new
+            {
+                teachingTopicId = topic.GetProperty("id").GetInt32(),
+                title = "机械能守恒",
+                type = "NormalCourse",
+                difficulty = "Medium",
+                status = "Draft"
+            });
+        var sectionId = section.GetProperty("id").GetInt32();
+
+        var createdBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks/blank-document",
+            new
+            {
+                sectionId,
+                title = string.Empty,
+                blockType = "Question",
+                difficulty = "Basic",
+                status = "Draft"
+            });
+        var blockDetail = await client.GetFromJsonAsync<JsonElement>(
+            $"/api/cms-v2/content-blocks/{createdBlock.GetProperty("contentBlockId").GetInt32()}");
+
+        var invalidAtomicSection = await client.PostAsJsonAsync(
+            "/api/cms-v2/atomic-sections",
+            new
+            {
+                sectionId,
+                title = string.Empty,
+                type = "Custom",
+                difficulty = "Basic",
+                status = "Draft"
+            });
+
+        Assert.Equal(string.Empty, blockDetail.GetProperty("title").GetString());
+        Assert.Equal(HttpStatusCode.BadRequest, invalidAtomicSection.StatusCode);
+    }
+
+    [Fact]
     public async Task Composition_and_handout_endpoints_generate_word_and_expose_generated_files()
     {
         await using var factory = new CmsV2ApiFactory();

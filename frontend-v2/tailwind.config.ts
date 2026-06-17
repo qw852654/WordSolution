@@ -37,6 +37,11 @@ export default {
           foreground: 'var(--section-tree-context-target-foreground)',
           ring: 'var(--section-tree-context-target-ring)',
         },
+        'difficulty-unset': 'var(--difficulty-unset)',
+        'difficulty-basic': 'var(--difficulty-basic)',
+        'difficulty-medium': 'var(--difficulty-medium)',
+        'difficulty-advanced': 'var(--difficulty-advanced)',
+        'difficulty-top': 'var(--difficulty-top)',
         popover: {
           DEFAULT: 'var(--popover)',
           foreground: 'var(--popover-foreground)',

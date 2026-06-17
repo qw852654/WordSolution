@@ -24,7 +24,6 @@ public sealed class ContentBlock
         DateTimeOffset? updatedTime = null)
     {
         DomainGuard.Positive(sectionId, nameof(SectionId));
-        DomainGuard.NotWhiteSpace(title, nameof(Title));
         DomainGuard.ValidEnum(blockType, nameof(BlockType));
         DomainGuard.ValidEnum(difficulty, nameof(Difficulty));
         DomainGuard.ValidEnum(status, nameof(Status));
@@ -41,7 +40,7 @@ public sealed class ContentBlock
         }
 
         SectionId = sectionId;
-        Title = title.Trim();
+        Title = title?.Trim() ?? string.Empty;
         Summary = summary?.Trim();
         BlockType = blockType;
         Difficulty = difficulty;

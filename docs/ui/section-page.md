@@ -220,7 +220,7 @@ InsertPoint 直接展示三个具体操作：
 当 targetType = ContentBlock：
 
 - 所属 Section：默认显示当前 Section 名称，当前阶段不可修改；提交时后端记录当前 SectionId。
-- 名称
+- 名称，可选；没有名称时不阻止新建
 - 类型：知识点 / 例题 / 变式题 / 练习题 / 变式题组 / 练习题组
 - 难度：基础 / 中档 / 提高 / 压轴
 
@@ -234,7 +234,8 @@ InsertPoint 直接展示三个具体操作：
 字段说明：
 
 - 所属 Section 在 UI 中显示名称，但持久化使用 SectionId，避免 Section 改名后归属断裂。
-- AtomicSection 的难度是独立字段，不映射到 Description。
+- ContentBlock 名称可为空；展示时由类型、预览摘要或上下文兜底。
+- AtomicSection 名称仍必填，难度是独立字段，不映射到 Description。
 - 这些字段是当前插入面板的最小创建字段，不代表后续完整编辑 DTO 已经固定。
 
 ### 6.3 调整顺序

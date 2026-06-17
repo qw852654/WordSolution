@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { FileText, MoreHorizontal, RefreshCw } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
+import { getDifficultyMarkerClass } from '@/components/business/difficultyTone'
 import type { ContentBlockDisplayModel } from '@/types'
 
 const props = defineProps<{
@@ -19,6 +20,7 @@ defineEmits<{
 const { t } = useI18n()
 
 const previewStateLabel = computed(() => t(`components.contentBlockDisplay.previewState.${props.block.htmlPreviewState}`))
+const difficultyMarkerClass = computed(() => getDifficultyMarkerClass(props.block.difficulty))
 </script>
 
 <template>
@@ -29,7 +31,8 @@ const previewStateLabel = computed(() => t(`components.contentBlockDisplay.previ
     @click="$emit('select', block.id)"
   >
     <span
-      class="content-block-display-difficulty-dot mt-2 size-2 rounded-full bg-muted-foreground"
+      class="content-block-display-difficulty-dot mt-2 size-2 rounded-full"
+      :class="difficultyMarkerClass"
       :aria-label="`${t('components.contentBlockDisplay.difficulty')}: ${block.difficulty}`"
       :title="block.difficulty"
     />

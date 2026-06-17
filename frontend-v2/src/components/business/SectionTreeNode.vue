@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BasicTreeNodeView from '@/components/presentation/BasicTreeNodeView.vue'
+import { getDifficultyMarkerClass } from '@/components/business/difficultyTone'
 import type { SectionTreeNodeModel } from '@/types'
 
 const props = defineProps<{
@@ -28,12 +29,15 @@ const metaItems = computed(() => {
 
   return items
 })
+
+const difficultyMarkerClass = computed(() => getDifficultyMarkerClass(props.node.difficulty))
 </script>
 
 <template>
   <BasicTreeNodeView
     :title="displayTitle"
     :marker-label="node.difficulty"
+    :marker-class="difficultyMarkerClass"
     :meta-items="metaItems"
   />
 </template>

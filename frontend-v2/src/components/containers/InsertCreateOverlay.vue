@@ -45,8 +45,10 @@ const form = reactive<{
 })
 
 const isContentBlock = computed(() => props.model.targetType === 'ContentBlock')
-const canSubmit = computed(() => !props.model.disabled && form.title.trim().length > 0)
-const showTitleRequired = computed(() => !props.model.disabled && form.title.trim().length === 0)
+const canSubmit = computed(() => !props.model.disabled && (isContentBlock.value || form.title.trim().length > 0))
+const showTitleRequired = computed(
+  () => !props.model.disabled && !isContentBlock.value && form.title.trim().length === 0,
+)
 const panelTitle = computed(() =>
   isContentBlock.value
     ? t('components.insertCreateOverlay.contentBlockTitle')
@@ -72,7 +74,7 @@ function handleCancel() {
 function handleSubmit() {
   const title = form.title.trim()
 
-  if (!title || props.model.disabled) {
+  if (props.model.disabled || (!isContentBlock.value && !title)) {
     return
   }
 
