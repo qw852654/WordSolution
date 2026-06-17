@@ -12,6 +12,7 @@ import type {
   SectionTreeNodeModel,
   SectionVariantCardModel,
   StructuredBlockModel,
+  TeachingTopicTreeNodeModel,
 } from '@/types'
 
 export const scaffoldChecks = [
@@ -252,6 +253,64 @@ export const mockSectionTreeNodes: SectionTreeNodeModel[] = [
 ]
 
 export const emptySectionTreeNodes: SectionTreeNodeModel[] = []
+
+export const mockTeachingTopicTreeNodes: TeachingTopicTreeNodeModel[] = [
+  {
+    id: 'topic-functional-relation',
+    title: '功能关系',
+    status: '进行中',
+    sectionCount: 3,
+    handoutCount: 2,
+    expanded: true,
+    children: [
+      {
+        id: 'topic-mechanical-energy',
+        title: '机械能守恒',
+        status: '重点',
+        sectionCount: 4,
+        handoutCount: 2,
+        expanded: true,
+        children: [
+          {
+            id: 'topic-vertical-circle',
+            title: '竖直圆轨道',
+            status: '专题',
+            sectionCount: 2,
+            handoutCount: 1,
+          },
+          {
+            id: 'topic-rod-model',
+            title: '杆模型',
+            status: '专题',
+            sectionCount: 1,
+          },
+          {
+            id: 'topic-ball-model',
+            title: '球模型',
+            status: '专题',
+            sectionCount: 1,
+          },
+        ],
+      },
+      {
+        id: 'topic-work-energy-theorem',
+        title: '动能定理与机械能变化的长标题节点验收',
+        status: '长标题',
+        sectionCount: 2,
+        handoutCount: 1,
+      },
+      {
+        id: 'topic-archived',
+        title: '旧版能量专题',
+        status: '已归档',
+        archived: true,
+        disabled: true,
+      },
+    ],
+  },
+]
+
+export const emptyTeachingTopicTreeNodes: TeachingTopicTreeNodeModel[] = []
 
 export const mockSectionNodes: SectionNodeModel[] = [
   {

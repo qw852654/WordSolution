@@ -702,3 +702,92 @@ CMS V2 前端涉及持久化的交互统一采用 server-confirmed update 模式。
 - 不使用 primary、accent 这类抽象命名直接表达业务状态。
 - 不写死具体颜色值。
 - 若后续需要调整视觉颜色，只修改 token 映射，不在组件中改一次性颜色。
+
+## 当前补充约定：BasicTreeNodeView 与 TeachingTopicTree
+
+### BasicTreeNodeView
+
+BasicTreeNodeView 表示树节点的一行通用视觉结构。
+
+职责：
+
+- 显示节点主标题。
+- 显示可选的左侧短竖线标记。
+- 显示右侧轻量 meta 信息。
+- 处理长标题截断和基础布局稳定性。
+
+边界：
+
+- 不理解 Section、TeachingTopic、ContentBlock 等业务语义。
+- 不负责展开 / 折叠。
+- 不负责选中态、右键目标态或 hover 背景。
+- 不调用 API。
+- 不读取 Pinia。
+
+使用规则：
+
+- SectionTreeNode 必须通过 BasicTreeNodeView 渲染节点内容。
+- TeachingTopicTreeNode 必须通过 BasicTreeNodeView 渲染节点内容。
+- 不允许为 SectionTree 和 TeachingTopicTree 分别复制两套节点行样式。
+
+### TeachingTopicTree
+
+TeachingTopicTree 表示教学主题导航树。
+
+职责：
+
+- 展示 TeachingTopic 层级。
+- 允许展开 / 折叠教学主题分支。
+- 允许选择一个 TeachingTopic，并通过 selectTopic 事件交给父级处理。
+- 显示轻量字段，例如 Section 数量、Handout 数量、归档状态。
+- 复用 BasicTree 的树行为和 BasicTreeNodeView 的节点视觉结构。
+
+边界：
+
+- 不展示 Section 内部结构。
+- 不展示 SectionItem、ContentBlock、版本或生成记录。
+- 不跳转页面。
+- 不调用 API。
+- 不接入实际页面，必须先在 ComponentLab 中用 Mock Data 验收。
+
+ComponentLabPage 验收：
+
+- 本轮只放 TeachingTopicTree 相关验收内容。
+- 点击节点后，右侧显示当前选中的 TeachingTopic Mock 信息。
+- 展开 / 折叠、选中态、禁用态、长标题必须沿用 BasicTree 行为。
+
+### TeachingTopicTreeContextMenu
+
+TeachingTopicTreeContextMenu 表示 TeachingTopicTree 节点上的右键上下文菜单。
+
+职责：
+
+- 覆盖浏览器默认右键菜单。
+- 显示当前右键目标 TeachingTopic 的菜单操作。
+- 通过事件把菜单动作交给父级处理。
+- 使用 BasicTree 的 context target 高亮能力。
+- 支持 Escape 和点击外部关闭。
+
+菜单项：
+
+1. 新增子节点
+2. 新增后续节点
+3. 删除
+
+边界：
+
+- 右键节点时只高亮该节点，不默认选中该节点。
+- 右键不改变当前选中的 TeachingTopic。
+- 本轮只在 ComponentLabPage 中使用 Mock Data 验收。
+- 本轮不真实新增 TeachingTopic。
+- 本轮不真实删除 TeachingTopic。
+- 本轮不调用 API。
+- 本轮不接入实际页面。
+
+ComponentLabPage 验收：
+
+- 放置一个 TeachingTopicTree 进行联动测试。
+- 点击节点时更新 selectedTopicId。
+- 右键节点时只更新 context target。
+- 右键菜单出现时浏览器原生菜单不出现。
+- 选择菜单项后只显示 Mock 反馈，不改树数据。

@@ -87,6 +87,39 @@ export interface SectionTreeContextMenuActionPayload {
   actionType: SectionTreeContextActionType
 }
 
+export interface TeachingTopicTreeNodeModel {
+  id: string
+  title: string
+  status?: string
+  sectionCount?: number
+  handoutCount?: number
+  archived?: boolean
+  disabled?: boolean
+  expanded?: boolean
+  children?: TeachingTopicTreeNodeModel[]
+}
+
+export interface TeachingTopicTreeContextMenuPayload {
+  node: TeachingTopicTreeNodeModel
+  x: number
+  y: number
+}
+
+export type TeachingTopicTreeContextActionType = 'AddChild' | 'AddAfter' | 'Delete'
+
+export interface TeachingTopicTreeContextMenuModel {
+  node: TeachingTopicTreeNodeModel
+  position: {
+    x: number
+    y: number
+  }
+}
+
+export interface TeachingTopicTreeContextMenuActionPayload {
+  nodeId: string
+  actionType: TeachingTopicTreeContextActionType
+}
+
 export type SectionNodeTargetType = 'ContentBlock' | 'AtomicSection'
 
 export type SectionReferenceMode = 'FollowLatest' | 'LockedVersion'
