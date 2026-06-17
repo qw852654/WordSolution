@@ -211,6 +211,100 @@ public sealed class CmsV2ApiIntegrationTests
     }
 
     [Fact]
+    public async Task Atomic_section_section_item_operations_rename_move_remove_and_insert_child_content_block()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "Mechanics", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new
+            {
+                teachingTopicId = topic.GetProperty("id").GetInt32(),
+                title = "Energy",
+                type = "NormalCourse",
+                difficulty = "Medium",
+                status = "Draft"
+            });
+        var sectionId = section.GetProperty("id").GetInt32();
+        var firstAtomic = await PostJsonAsync(
+            client,
+            "/api/cms-v2/atomic-sections",
+            new { sectionId, title = "First Atomic", type = "Custom", difficulty = "Basic", status = "Draft" });
+        var secondAtomic = await PostJsonAsync(
+            client,
+            "/api/cms-v2/atomic-sections",
+            new { sectionId, title = "Second Atomic", type = "Custom", difficulty = "Medium", status = "Draft" });
+        var firstAtomicId = firstAtomic.GetProperty("id").GetInt32();
+        var secondAtomicId = secondAtomic.GetProperty("id").GetInt32();
+        var firstSectionItem = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/sections/{sectionId}/items",
+            new
+            {
+                targetType = "AtomicSection",
+                targetId = firstAtomicId,
+                referenceMode = "FollowLatest",
+                sortOrder = 10,
+                status = "Active"
+            });
+        var secondSectionItem = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/sections/{sectionId}/items",
+            new
+            {
+                targetType = "AtomicSection",
+                targetId = secondAtomicId,
+                referenceMode = "FollowLatest",
+                sortOrder = 20,
+                status = "Active"
+            });
+        var firstSectionItemId = firstSectionItem.GetProperty("id").GetInt32();
+        var secondSectionItemId = secondSectionItem.GetProperty("id").GetInt32();
+        var createdBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks/blank-document",
+            new
+            {
+                sectionId,
+                title = string.Empty,
+                blockType = "Question",
+                difficulty = "Basic",
+                status = "Draft"
+            });
+        var contentBlockId = createdBlock.GetProperty("contentBlockId").GetInt32();
+
+        await PostJsonAsync(
+            client,
+            $"/api/cms-v2/atomic-sections/{firstAtomicId}/title",
+            new { title = "Renamed Atomic" });
+        await PostJsonAsync(
+            client,
+            $"/api/cms-v2/atomic-sections/{firstAtomicId}/items",
+            new { contentBlockId, referenceMode = "FollowLatest", sortOrder = 10 });
+        await PostJsonAsync(
+            client,
+            $"/api/cms-v2/sections/{sectionId}/items/{firstSectionItemId}/move",
+            new { direction = "Down" });
+        var deleteResponse = await client.DeleteAsync(
+            $"/api/cms-v2/sections/{sectionId}/items/{firstSectionItemId}");
+        Assert.True(deleteResponse.IsSuccessStatusCode, await deleteResponse.Content.ReadAsStringAsync());
+
+        var renamedAtomic = await client.GetFromJsonAsync<JsonElement>($"/api/cms-v2/atomic-sections/{firstAtomicId}");
+        var atomicChildren = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/atomic-sections/{firstAtomicId}/items")
+            ?? [];
+        var sectionItems = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/sections/{sectionId}/items")
+            ?? [];
+
+        Assert.Equal("Renamed Atomic", renamedAtomic.GetProperty("title").GetString());
+        Assert.Single(atomicChildren);
+        Assert.Equal(contentBlockId, atomicChildren[0].GetProperty("contentBlockId").GetInt32());
+        Assert.Single(sectionItems);
+        Assert.Equal(secondSectionItemId, sectionItems[0].GetProperty("id").GetInt32());
+    }
+
+    [Fact]
     public async Task Composition_and_handout_endpoints_generate_word_and_expose_generated_files()
     {
         await using var factory = new CmsV2ApiFactory();

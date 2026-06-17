@@ -15,3 +15,18 @@ public sealed record AddSectionItemCommand(
     TeachingUse? TeachingUseOverride = null,
     SectionStatus Status = SectionStatus.Active,
     string? Note = null);
+
+public enum SectionItemMoveDirection
+{
+    Up,
+    Down
+}
+
+public sealed record MoveSectionItemCommand(
+    int SectionId,
+    int SectionItemId,
+    SectionItemMoveDirection Direction);
+
+public sealed record RemoveSectionItemCommand(
+    int SectionId,
+    int SectionItemId);

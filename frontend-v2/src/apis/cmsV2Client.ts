@@ -144,6 +144,19 @@ export interface CmsV2AddSectionItemRequest {
   note?: string | null
 }
 
+export interface CmsV2MoveSectionItemRequest {
+  direction: 'Up' | 'Down'
+}
+
+export interface CmsV2AddAtomicSectionItemRequest {
+  contentBlockId: number
+  referenceMode: 'FollowLatest' | 'LockedVersion'
+  lockedContentBlockVersionId?: number | null
+  sortOrder: number
+  titleOverride?: string | null
+  note?: string | null
+}
+
 export function createCmsV2Url(path = ''): string {
   if (!path) {
     return CMS_V2_API_BASE
@@ -197,6 +210,16 @@ export async function cmsV2PostJson<T>(path: string, value: unknown): Promise<T>
   })
 }
 
+export async function cmsV2Delete(path: string): Promise<void> {
+  const response = await cmsV2Fetch(path, {
+    method: 'DELETE',
+  })
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response))
+  }
+}
+
 export async function cmsV2FetchText(path: string, init?: RequestInit): Promise<string> {
   const response = await cmsV2Fetch(path, init)
 
@@ -229,12 +252,27 @@ export const cmsV2Api = {
     cmsV2FetchJson<CmsV2SectionItemDto[]>(`/sections/${sectionId}/items`),
   addSectionItem: (sectionId: number, request: CmsV2AddSectionItemRequest) =>
     cmsV2PostJson<CmsV2CreatedEntityResultDto>(`/sections/${sectionId}/items`, request),
+  moveSectionItem: (
+    sectionId: number,
+    sectionItemId: number,
+    request: CmsV2MoveSectionItemRequest,
+  ) => cmsV2PostJson(`/sections/${sectionId}/items/${sectionItemId}/move`, request),
+  removeSectionItem: (sectionId: number, sectionItemId: number) =>
+    cmsV2Delete(`/sections/${sectionId}/items/${sectionItemId}`),
   getAtomicSection: (atomicSectionId: number) =>
     cmsV2FetchJson<CmsV2AtomicSectionDto>(`/atomic-sections/${atomicSectionId}`),
   createAtomicSection: (request: CmsV2CreateAtomicSectionRequest) =>
     cmsV2PostJson<CmsV2AtomicSectionDto>('/atomic-sections', request),
+  renameAtomicSection: (atomicSectionId: number, title: string) =>
+    cmsV2PostJson<CmsV2AtomicSectionDto>(`/atomic-sections/${atomicSectionId}/title`, {
+      title,
+    }),
   listAtomicSectionItems: (atomicSectionId: number) =>
     cmsV2FetchJson<CmsV2AtomicSectionItemDto[]>(`/atomic-sections/${atomicSectionId}/items`),
+  addAtomicSectionItem: (
+    atomicSectionId: number,
+    request: CmsV2AddAtomicSectionItemRequest,
+  ) => cmsV2PostJson<CmsV2CreatedEntityResultDto>(`/atomic-sections/${atomicSectionId}/items`, request),
   getContentBlock: (contentBlockId: number) =>
     cmsV2FetchJson<CmsV2ContentBlockDto>(`/content-blocks/${contentBlockId}`),
   createContentBlockWithBlankDocument: (request: CmsV2CreateContentBlockWithBlankDocumentRequest) =>

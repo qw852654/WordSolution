@@ -311,6 +311,8 @@ async function buildSectionFlowItem(
       kind: 'AtomicSection',
       id: nodeId,
       nodeId,
+      sectionItemId: item.id,
+      targetId: item.targetId,
       sortOrder: item.sortOrder,
       disabled: item.status === 'Archived' || atomicSection.status === 'Archived',
       block: {
@@ -333,6 +335,8 @@ async function buildSectionFlowItem(
       kind: 'ContentBlock',
       id: nodeId,
       nodeId,
+      sectionItemId: item.id,
+      targetId: item.targetId,
       sortOrder: item.sortOrder,
       disabled: item.status === 'Archived' || resolvedBlock.block.status === 'Archived',
       block: await buildContentBlockDisplay(
@@ -353,6 +357,8 @@ async function buildSectionFlowItem(
     kind: 'CompositeBlock',
     id: nodeId,
     nodeId,
+    sectionItemId: item.id,
+    targetId: item.targetId,
     sortOrder: item.sortOrder,
     disabled: item.status === 'Archived' || resolvedBlock.block.status === 'Archived',
     block: {

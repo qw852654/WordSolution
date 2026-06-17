@@ -333,6 +333,38 @@ public static class CmsV2ApiEndpointExtensions
 
             return Results.Ok(result);
         });
+
+        group.MapPost("/sections/{id:int}/items/{itemId:int}/move", async (
+            int id,
+            int itemId,
+            MoveSectionItemRequest request,
+            SectionUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            if (!Enum.TryParse<SectionItemMoveDirection>(request.Direction, ignoreCase: true, out var direction))
+            {
+                return Results.BadRequest(new { message = "Direction must be Up or Down." });
+            }
+
+            await useCases.MoveSectionItemAsync(
+                new MoveSectionItemCommand(id, itemId, direction),
+                cancellationToken);
+
+            return Results.Ok(new { sectionId = id, sectionItemId = itemId, direction = direction.ToString() });
+        });
+
+        group.MapDelete("/sections/{id:int}/items/{itemId:int}", async (
+            int id,
+            int itemId,
+            SectionUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            await useCases.RemoveSectionItemAsync(
+                new RemoveSectionItemCommand(id, itemId),
+                cancellationToken);
+
+            return Results.NoContent();
+        });
     }
 
     private static void MapAtomicSections(RouteGroupBuilder group)
@@ -364,6 +396,19 @@ public static class CmsV2ApiEndpointExtensions
             await unitOfWork.SaveChangesAsync(cancellationToken);
 
             return Results.Ok(atomicSection);
+        });
+
+        group.MapPost("/atomic-sections/{id:int}/title", async (
+            int id,
+            RenameAtomicSectionRequest request,
+            AtomicSectionUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.RenameAtomicSectionAsync(
+                new RenameAtomicSectionCommand(id, request.Title),
+                cancellationToken);
+
+            return Results.Ok(result);
         });
 
         group.MapGet("/atomic-sections/{id:int}/items", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>

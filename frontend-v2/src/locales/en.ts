@@ -143,8 +143,10 @@ const en = {
       noLockedVersion: 'No locked version',
       insertBefore: 'Insert before',
       insertAfter: 'Insert after',
+      insertChildContentBlock: 'Create child ContentBlock',
       moveUp: 'Move up',
       moveDown: 'Move down',
+      rename: 'Rename',
       indent: 'Indent',
       outdent: 'Outdent',
       remove: 'Remove',
@@ -408,10 +410,20 @@ const en = {
         feedbackCreateAtomicSection: 'Selected this position for creating AtomicSection.',
         feedbackSubmitting: 'Submitting to the CMS V2 API...',
         feedbackCreateSubmitted: 'Created {targetType} and added it to the current Section: {title}.',
+        feedbackCreateAtomicChildSubmitted:
+          'Created child ContentBlock inside the current AtomicSection: {title}.',
         feedbackCreateFailed: 'Create failed. Please try again.',
         feedbackMissingSection: 'No valid Section is available, so a block cannot be created.',
         feedbackSearchExistingBlock:
           'Selected this position for inserting an existing block. BlockSearchPicker will be connected later.',
+      },
+      atomicSectionActions: {
+        insertChildPosition: 'Inside AtomicSection: {title}',
+        renamePrompt: 'Rename AtomicSection',
+        removeConfirm:
+          'Remove this AtomicSection reference from the current Section? The AtomicSection and its child ContentBlocks will not be deleted. AtomicSection: {title}',
+        operationFailed: 'AtomicSection operation failed. Please try again.',
+        untitledContentBlock: 'Untitled ContentBlock',
       },
       mock: {
         contentBlockPlaceholderTitle: 'ContentBlockDisplay placeholder',

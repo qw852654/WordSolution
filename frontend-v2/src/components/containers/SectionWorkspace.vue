@@ -17,6 +17,7 @@ import type {
   InsertPointModel,
   InsertRequestModel,
   SectionPageShellModel,
+  SectionItemViewAction,
   SectionWorkspaceFlowItemModel,
   StructuredBlockModel,
 } from '@/types'
@@ -49,9 +50,31 @@ const props = withDefaults(
 const emit = defineEmits<{
   selectNode: [id: string]
   requestInsert: [request: InsertRequestModel]
+  requestAtomicChildContentBlock: [request: AtomicSectionWorkspaceActionPayload]
+  requestAtomicMove: [request: AtomicSectionWorkspaceMovePayload]
+  requestAtomicRename: [request: AtomicSectionWorkspaceActionPayload]
+  requestAtomicRemove: [request: AtomicSectionWorkspaceActionPayload]
 }>()
 
 const workspaceRoot = ref<HTMLElement | null>(null)
+const atomicSectionActions: SectionItemViewAction[] = [
+  'InsertChildContentBlock',
+  'MoveUp',
+  'MoveDown',
+  'Rename',
+  'Remove',
+]
+
+interface AtomicSectionWorkspaceActionPayload {
+  nodeId: string
+  sectionItemId: number
+  atomicSectionId: number
+  title: string
+}
+
+interface AtomicSectionWorkspaceMovePayload extends AtomicSectionWorkspaceActionPayload {
+  direction: 'Up' | 'Down'
+}
 
 function getNodeIdForWorkspaceItem(itemId: string, explicitNodeId?: string) {
   return explicitNodeId ?? props.workspaceNodeMap[itemId] ?? itemId
@@ -96,6 +119,47 @@ function isInsertPointActive(insertPointId: string) {
 
 function emitInsertRequest(insertPointId: string, actionType: InsertActionType) {
   emit('requestInsert', { insertPointId, actionType })
+}
+
+function createAtomicSectionActionPayload(item: SectionWorkspaceFlowItemModel) {
+  if (item.kind !== 'AtomicSection' || !item.sectionItemId || !item.targetId) {
+    return undefined
+  }
+
+  return {
+    nodeId: item.nodeId,
+    sectionItemId: item.sectionItemId,
+    atomicSectionId: item.targetId,
+    title: item.block.title,
+  }
+}
+
+function emitAtomicChildContentBlock(item: SectionWorkspaceFlowItemModel) {
+  const payload = createAtomicSectionActionPayload(item)
+  if (payload) {
+    emit('requestAtomicChildContentBlock', payload)
+  }
+}
+
+function emitAtomicMove(item: SectionWorkspaceFlowItemModel, direction: 'Up' | 'Down') {
+  const payload = createAtomicSectionActionPayload(item)
+  if (payload) {
+    emit('requestAtomicMove', { ...payload, direction })
+  }
+}
+
+function emitAtomicRename(item: SectionWorkspaceFlowItemModel) {
+  const payload = createAtomicSectionActionPayload(item)
+  if (payload) {
+    emit('requestAtomicRename', payload)
+  }
+}
+
+function emitAtomicRemove(item: SectionWorkspaceFlowItemModel) {
+  const payload = createAtomicSectionActionPayload(item)
+  if (payload) {
+    emit('requestAtomicRemove', payload)
+  }
 }
 
 function findWorkspaceNodeElement(nodeId: string) {
@@ -232,8 +296,14 @@ watch(
               :item-id="item.id"
               :selected="item.selected"
               :disabled="item.disabled"
+              :actions="item.kind === 'AtomicSection' ? atomicSectionActions : undefined"
               :data-workspace-node-id="item.nodeId"
               @select="emitWorkspaceSelection"
+              @insert-child-content-block="emitAtomicChildContentBlock(item)"
+              @move-up="emitAtomicMove(item, 'Up')"
+              @move-down="emitAtomicMove(item, 'Down')"
+              @rename="emitAtomicRename(item)"
+              @remove="emitAtomicRemove(item)"
             >
               <ContentBlockDisplay
                 v-if="item.kind === 'ContentBlock'"

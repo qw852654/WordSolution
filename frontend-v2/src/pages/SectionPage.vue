@@ -12,6 +12,7 @@ import SectionTopToolbar from '@/components/containers/SectionTopToolbar.vue'
 import SectionWorkspace from '@/components/containers/SectionWorkspace.vue'
 import { cmsV2Api } from '@/apis/cmsV2Client'
 import { loadSectionPageData, type SectionPageDataModel } from '@/composables/useSectionPageData'
+import { resolveAtomicSectionChildContentBlockTitle } from '@/utils/sectionInsertDefaults'
 import type {
   InsertCreateContentBlockType,
   InsertCreateDifficulty,
@@ -46,6 +47,17 @@ const sectionPageError = ref('')
 const isSubmittingInsertCreate = ref(false)
 let teachingTopicDrawerTimer: number | undefined
 let sectionPageLoadSequence = 0
+
+interface AtomicSectionWorkspaceActionPayload {
+  nodeId: string
+  sectionItemId: number
+  atomicSectionId: number
+  title: string
+}
+
+interface AtomicSectionWorkspaceMovePayload extends AtomicSectionWorkspaceActionPayload {
+  direction: 'Up' | 'Down'
+}
 
 const sectionId = computed(() => {
   const value = route.params.sectionId
@@ -178,6 +190,12 @@ function clearActiveInsertPoint() {
   insertFeedback.value = ''
 }
 
+function getCurrentNumericSectionId() {
+  const currentSectionId = Number(sectionShell.value.sectionId)
+
+  return Number.isInteger(currentSectionId) && currentSectionId > 0 ? currentSectionId : undefined
+}
+
 function selectStructureNode(nodeId: string) {
   selectedStructureNodeId.value = nodeId
   closeSectionTreeContextMenu()
@@ -194,9 +212,9 @@ function requestInsert(request: InsertRequestModel) {
   activeInsertPointId.value = request.insertPointId
 
   if (request.actionType === 'CreateContentBlock' || request.actionType === 'CreateAtomicSection') {
-    const currentSectionId = Number(sectionShell.value.sectionId)
+    const currentSectionId = getCurrentNumericSectionId()
 
-    if (!Number.isInteger(currentSectionId) || currentSectionId <= 0) {
+    if (!currentSectionId) {
       insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackMissingSection')
       return
     }
@@ -208,12 +226,109 @@ function requestInsert(request: InsertRequestModel) {
       insertPositionLabel: t('sectionPage.workspace.insertPanel.insertPositionLabel'),
       sectionId: currentSectionId,
       sectionTitle: sectionShell.value.title,
+      insertMode: 'SectionItem',
     }
     return
   }
 
   activeCreatePanel.value = null
   insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackSearchExistingBlock')
+}
+
+function requestAtomicChildContentBlock(payload: AtomicSectionWorkspaceActionPayload) {
+  const currentSectionId = getCurrentNumericSectionId()
+
+  if (!currentSectionId) {
+    insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackMissingSection')
+    return
+  }
+
+  activeInsertPointId.value = `atomic-section-child-${payload.atomicSectionId}`
+  insertFeedback.value = ''
+  activeCreatePanel.value = {
+    insertPointId: activeInsertPointId.value,
+    targetType: 'ContentBlock',
+    insertPositionLabel: t('sectionPage.workspace.atomicSectionActions.insertChildPosition', {
+      title: payload.title,
+    }),
+    sectionId: currentSectionId,
+    sectionTitle: sectionShell.value.title,
+    insertMode: 'AtomicSectionChild',
+    atomicSectionId: payload.atomicSectionId,
+    atomicSectionTitle: payload.title,
+  }
+}
+
+async function requestAtomicMove(payload: AtomicSectionWorkspaceMovePayload) {
+  const currentSectionId = getCurrentNumericSectionId()
+
+  if (!currentSectionId) {
+    return
+  }
+
+  try {
+    await cmsV2Api.moveSectionItem(currentSectionId, payload.sectionItemId, {
+      direction: payload.direction,
+    })
+    await loadCurrentSectionPage()
+    selectedStructureNodeId.value = payload.nodeId
+    workspaceScrollTargetNodeId.value = payload.nodeId
+    workspaceScrollRequestKey.value += 1
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error ? error.message : t('sectionPage.workspace.atomicSectionActions.operationFailed')
+  }
+}
+
+async function requestAtomicRename(payload: AtomicSectionWorkspaceActionPayload) {
+  const nextTitle = window.prompt(
+    t('sectionPage.workspace.atomicSectionActions.renamePrompt'),
+    payload.title,
+  )
+
+  if (nextTitle === null || nextTitle.trim() === '' || nextTitle.trim() === payload.title) {
+    return
+  }
+
+  try {
+    await cmsV2Api.renameAtomicSection(payload.atomicSectionId, nextTitle.trim())
+    await loadCurrentSectionPage()
+    selectedStructureNodeId.value = payload.nodeId
+    workspaceScrollTargetNodeId.value = payload.nodeId
+    workspaceScrollRequestKey.value += 1
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error ? error.message : t('sectionPage.workspace.atomicSectionActions.operationFailed')
+  }
+}
+
+async function requestAtomicRemove(payload: AtomicSectionWorkspaceActionPayload) {
+  const currentSectionId = getCurrentNumericSectionId()
+
+  if (!currentSectionId) {
+    return
+  }
+
+  const confirmed = window.confirm(
+    t('sectionPage.workspace.atomicSectionActions.removeConfirm', {
+      title: payload.title,
+    }),
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    await cmsV2Api.removeSectionItem(currentSectionId, payload.sectionItemId)
+    selectedStructureNodeId.value = undefined
+    await loadCurrentSectionPage()
+    workspaceScrollTargetNodeId.value = selectedStructureNodeId.value
+    workspaceScrollRequestKey.value += 1
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error ? error.message : t('sectionPage.workspace.atomicSectionActions.operationFailed')
+  }
 }
 
 function cancelInsertCreateOverlay() {
@@ -229,6 +344,15 @@ async function submitInsertCreateOverlay(payload: InsertCreateSubmitPayload) {
   insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackSubmitting')
 
   try {
+    if (
+      payload.targetType === 'ContentBlock' &&
+      payload.insertMode === 'AtomicSectionChild' &&
+      payload.atomicSectionId
+    ) {
+      await submitAtomicSectionChildContentBlock(payload)
+      return
+    }
+
     const sortOrder = getSortOrderForInsertPoint(payload.insertPointId)
     const createdTarget =
       payload.targetType === 'ContentBlock'
@@ -265,6 +389,33 @@ async function submitInsertCreateOverlay(payload: InsertCreateSubmitPayload) {
   } finally {
     isSubmittingInsertCreate.value = false
   }
+}
+
+async function submitAtomicSectionChildContentBlock(payload: InsertCreateSubmitPayload) {
+  const contentBlockTitle = resolveAtomicSectionChildContentBlockTitle({
+    inputTitle: payload.title,
+    atomicSectionTitle: payload.atomicSectionTitle ?? '',
+  })
+  const createdTarget = await createContentBlockForInsert({
+    ...payload,
+    title: contentBlockTitle,
+  })
+  await cmsV2Api.addAtomicSectionItem(payload.atomicSectionId!, {
+    contentBlockId: createdTarget.id,
+    referenceMode: 'FollowLatest',
+    lockedContentBlockVersionId: null,
+    sortOrder: getAtomicSectionChildSortOrder(payload.atomicSectionId!),
+    titleOverride: null,
+    note: null,
+  })
+
+  activeCreatePanel.value = null
+  activeInsertPointId.value = undefined
+  insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackCreateAtomicChildSubmitted', {
+    title: contentBlockTitle || t('sectionPage.workspace.atomicSectionActions.untitledContentBlock'),
+  })
+
+  await loadCurrentSectionPage()
 }
 
 async function createContentBlockForInsert(payload: InsertCreateSubmitPayload) {
@@ -324,6 +475,18 @@ function getSortOrderForInsertPoint(insertPointId: string) {
   return lastSortOrder + 10
 }
 
+function getAtomicSectionChildSortOrder(atomicSectionId: number) {
+  const atomicItem = sectionWorkspaceFlowItems.value.find(
+    (item) => item.kind === 'AtomicSection' && item.targetId === atomicSectionId,
+  )
+
+  if (!atomicItem || atomicItem.kind !== 'AtomicSection') {
+    return 10
+  }
+
+  return (atomicItem.block.children.length + 1) * 10
+}
+
 function mapInsertContentBlockType(type?: InsertCreateContentBlockType) {
   const map: Record<InsertCreateContentBlockType, string> = {
     知识点: 'KnowledgePoint',
@@ -371,9 +534,9 @@ function handleSectionTreeContextMenuAction(payload: SectionTreeContextMenuActio
   }
 
   if (payload.actionType === 'CreateContentBlock' || payload.actionType === 'CreateAtomicSection') {
-    const currentSectionId = Number(sectionShell.value.sectionId)
+    const currentSectionId = getCurrentNumericSectionId()
 
-    if (!Number.isInteger(currentSectionId) || currentSectionId <= 0) {
+    if (!currentSectionId) {
       insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackMissingSection')
       return
     }
@@ -386,6 +549,7 @@ function handleSectionTreeContextMenuAction(payload: SectionTreeContextMenuActio
       insertPositionLabel: contextNode.typeLabel,
       sectionId: currentSectionId,
       sectionTitle: sectionShell.value.title,
+      insertMode: 'SectionItem',
     }
     return
   }
@@ -476,6 +640,10 @@ watch(sectionId, () => {
         :insert-feedback="insertFeedback"
         @select-node="selectStructureNode"
         @request-insert="requestInsert"
+        @request-atomic-child-content-block="requestAtomicChildContentBlock"
+        @request-atomic-move="requestAtomicMove"
+        @request-atomic-rename="requestAtomicRename"
+        @request-atomic-remove="requestAtomicRemove"
       />
 
       <aside class="flex min-h-0 flex-col gap-3">

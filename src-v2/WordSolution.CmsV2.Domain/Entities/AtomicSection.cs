@@ -49,4 +49,12 @@ public sealed class AtomicSection
     public AtomicSectionStatus Status { get; private set; }
 
     public DateTimeOffset UpdatedTime { get; private set; }
+
+    public void Rename(string title, DateTimeOffset? updatedTime = null)
+    {
+        DomainGuard.NotWhiteSpace(title, nameof(Title));
+
+        Title = title.Trim();
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+    }
 }

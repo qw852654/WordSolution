@@ -816,3 +816,20 @@ Difficulty Theme Tokens 用于统一显示 ContentBlock、AtomicSection、Compos
 - `SectionTreeNode` 的难度短竖线必须使用上述 token。
 - 业务组件中不得直接写具体颜色值。
 - 如果后续要调整难度颜色，只修改 theme token，不在组件中改一次性颜色。
+## 当前补充约定：AtomicSection 的 SectionItemView 操作区
+
+当 `SectionItemView` 承载的是 `AtomicSectionBlock` 时，右侧操作区只显示：
+
+- 新建子级 `ContentBlock`。
+- 上移。
+- 下移。
+- 重命名 `AtomicSection`。
+- 移除当前 `SectionItem` 引用。
+
+边界：
+
+- 新建子级 `ContentBlock` 表示在当前 `AtomicSection` 内部创建并加入 `AtomicSectionItem`，不是在当前 `Section` 顶层新增兄弟 `SectionItem`。
+- 重命名修改的是 `AtomicSection` 本体名称，不是 `SectionItem` 的标题覆盖。
+- 移除只删除当前 `SectionItem` 引用，不删除 `AtomicSection` 本体，也不删除它内部已有的 `ContentBlock`。
+- 上移 / 下移只调整当前 `Section` 内该 `SectionItem` 的顺序，不做缩进、反缩进或拖拽。
+- `SectionItemView` 仍然不直接调用 API；真实动作由 `SectionPage` 编排，组件只通过 emits 暴露事件。

@@ -124,6 +124,18 @@ export type SectionNodeTargetType = 'ContentBlock' | 'AtomicSection'
 
 export type SectionReferenceMode = 'FollowLatest' | 'LockedVersion'
 
+export type SectionItemViewAction =
+  | 'InsertBefore'
+  | 'InsertAfter'
+  | 'InsertChildContentBlock'
+  | 'OpenWord'
+  | 'MoveUp'
+  | 'MoveDown'
+  | 'Rename'
+  | 'Indent'
+  | 'Outdent'
+  | 'Remove'
+
 export interface SectionNodeModel {
   id: string
   title: string
@@ -190,6 +202,8 @@ export type SectionWorkspaceFlowItemModel =
       kind: 'ContentBlock'
       id: string
       nodeId: string
+      sectionItemId?: number
+      targetId?: number
       sortOrder?: number
       selected?: boolean
       disabled?: boolean
@@ -199,6 +213,8 @@ export type SectionWorkspaceFlowItemModel =
       kind: 'AtomicSection' | 'CompositeBlock'
       id: string
       nodeId: string
+      sectionItemId?: number
+      targetId?: number
       sortOrder?: number
       selected?: boolean
       disabled?: boolean
@@ -236,6 +252,9 @@ export interface InsertCreatePanelModel {
   insertPositionLabel: string
   sectionId: number
   sectionTitle: string
+  insertMode?: 'SectionItem' | 'AtomicSectionChild'
+  atomicSectionId?: number
+  atomicSectionTitle?: string
   disabled?: boolean
 }
 
@@ -243,6 +262,9 @@ export interface InsertCreateSubmitPayload {
   insertPointId: string
   targetType: InsertCreateTargetType
   sectionId: number
+  insertMode?: 'SectionItem' | 'AtomicSectionChild'
+  atomicSectionId?: number
+  atomicSectionTitle?: string
   title: string
   contentBlockType?: InsertCreateContentBlockType
   difficulty: InsertCreateDifficulty

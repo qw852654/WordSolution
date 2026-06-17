@@ -58,6 +58,8 @@ public sealed record AddSectionItemRequest(
     SectionStatus Status = SectionStatus.Active,
     string? Note = null);
 
+public sealed record MoveSectionItemRequest(string Direction);
+
 public sealed record AddAtomicSectionItemRequest(
     int ContentBlockId,
     ReferenceMode ReferenceMode,
@@ -65,6 +67,8 @@ public sealed record AddAtomicSectionItemRequest(
     int SortOrder,
     string? TitleOverride = null,
     string? Note = null);
+
+public sealed record RenameAtomicSectionRequest(string Title);
 
 public sealed record CreateSectionVariantRequest(
     int SectionId,

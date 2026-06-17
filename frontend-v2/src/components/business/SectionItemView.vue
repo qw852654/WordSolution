@@ -1,20 +1,25 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import type { Component } from 'vue'
 import {
   ArrowDown,
   ArrowLeft,
   ArrowRight,
   ArrowUp,
   FileText,
+  Pencil,
   Plus,
   Trash2,
 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
+import type { SectionItemViewAction } from '@/types'
 
 const props = defineProps<{
   itemId: string
   selected?: boolean
   disabled?: boolean
+  actions?: SectionItemViewAction[]
   ariaLabel?: string
 }>()
 
@@ -22,8 +27,10 @@ const emit = defineEmits<{
   select: [id: string]
   insertBefore: [id: string]
   insertAfter: [id: string]
+  insertChildContentBlock: [id: string]
   moveUp: [id: string]
   moveDown: [id: string]
+  rename: [id: string]
   indent: [id: string]
   outdent: [id: string]
   remove: [id: string]
@@ -32,18 +39,75 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-function emitIfEnabled(
-  eventName:
-    | 'select'
-    | 'insertBefore'
-    | 'insertAfter'
-    | 'moveUp'
-    | 'moveDown'
-    | 'indent'
-    | 'outdent'
-    | 'remove'
-    | 'openWord',
-) {
+const defaultActions: SectionItemViewAction[] = [
+  'InsertBefore',
+  'InsertAfter',
+  'OpenWord',
+  'MoveUp',
+  'MoveDown',
+  'Outdent',
+  'Indent',
+  'Remove',
+]
+
+const actionDefinitions: Record<
+  SectionItemViewAction,
+  {
+    labelKey: string
+    icon: Component
+  }
+> = {
+  InsertBefore: {
+    labelKey: 'components.sectionItemView.insertBefore',
+    icon: Plus,
+  },
+  InsertAfter: {
+    labelKey: 'components.sectionItemView.insertAfter',
+    icon: Plus,
+  },
+  InsertChildContentBlock: {
+    labelKey: 'components.sectionItemView.insertChildContentBlock',
+    icon: Plus,
+  },
+  OpenWord: {
+    labelKey: 'components.sectionItemView.openWord',
+    icon: FileText,
+  },
+  MoveUp: {
+    labelKey: 'components.sectionItemView.moveUp',
+    icon: ArrowUp,
+  },
+  MoveDown: {
+    labelKey: 'components.sectionItemView.moveDown',
+    icon: ArrowDown,
+  },
+  Rename: {
+    labelKey: 'components.sectionItemView.rename',
+    icon: Pencil,
+  },
+  Indent: {
+    labelKey: 'components.sectionItemView.indent',
+    icon: ArrowRight,
+  },
+  Outdent: {
+    labelKey: 'components.sectionItemView.outdent',
+    icon: ArrowLeft,
+  },
+  Remove: {
+    labelKey: 'components.sectionItemView.remove',
+    icon: Trash2,
+  },
+}
+
+const visibleActions = computed(() => props.actions ?? defaultActions)
+const actionRailHeight = computed(() => {
+  const actionCount = visibleActions.value.length
+  const gapCount = Math.max(actionCount - 1, 0)
+
+  return `calc((${actionCount} * 2rem) + (${gapCount} * 0.25rem) + (2 * 0.25rem))`
+})
+
+function emitIfEnabled(eventName: 'select' | SectionItemViewAction) {
   if (props.disabled) {
     return
   }
@@ -52,28 +116,34 @@ function emitIfEnabled(
     case 'select':
       emit('select', props.itemId)
       break
-    case 'insertBefore':
+    case 'InsertBefore':
       emit('insertBefore', props.itemId)
       break
-    case 'insertAfter':
+    case 'InsertAfter':
       emit('insertAfter', props.itemId)
       break
-    case 'moveUp':
+    case 'InsertChildContentBlock':
+      emit('insertChildContentBlock', props.itemId)
+      break
+    case 'MoveUp':
       emit('moveUp', props.itemId)
       break
-    case 'moveDown':
+    case 'MoveDown':
       emit('moveDown', props.itemId)
       break
-    case 'indent':
+    case 'Rename':
+      emit('rename', props.itemId)
+      break
+    case 'Indent':
       emit('indent', props.itemId)
       break
-    case 'outdent':
+    case 'Outdent':
       emit('outdent', props.itemId)
       break
-    case 'remove':
+    case 'Remove':
       emit('remove', props.itemId)
       break
-    case 'openWord':
+    case 'OpenWord':
       emit('openWord', props.itemId)
       break
   }
@@ -91,6 +161,7 @@ function emitIfEnabled(
     :aria-disabled="disabled ? 'true' : undefined"
     :aria-selected="selected ? 'true' : 'false'"
     role="group"
+    :style="{ '--section-item-action-rail-height': actionRailHeight }"
     @click.stop="emitIfEnabled('select')"
   >
     <div class="min-w-0 p-2">
@@ -102,102 +173,23 @@ function emitIfEnabled(
       :aria-label="t('components.sectionItemView.actionRailLabel')"
     >
       <Button
+        v-for="action in visibleActions"
+        :key="action"
         type="button"
         size="icon"
         variant="ghost"
         class="size-8"
-        :aria-label="t('components.sectionItemView.insertBefore')"
+        :aria-label="t(actionDefinitions[action].labelKey)"
         :disabled="disabled"
-        @click.stop="emitIfEnabled('insertBefore')"
+        @click.stop="emitIfEnabled(action)"
       >
-        <Plus class="size-4" />
-      </Button>
-      <Button
-        type="button"
-        size="icon"
-        variant="ghost"
-        class="size-8"
-        :aria-label="t('components.sectionItemView.insertAfter')"
-        :disabled="disabled"
-        @click.stop="emitIfEnabled('insertAfter')"
-      >
-        <Plus class="size-4 rotate-90" />
-      </Button>
-      <Button
-        type="button"
-        size="icon"
-        variant="ghost"
-        class="size-8"
-        :aria-label="t('components.sectionItemView.openWord')"
-        :disabled="disabled"
-        @click.stop="emitIfEnabled('openWord')"
-      >
-        <FileText class="size-4" />
-      </Button>
-      <Button
-        type="button"
-        size="icon"
-        variant="ghost"
-        class="size-8"
-        :aria-label="t('components.sectionItemView.moveUp')"
-        :disabled="disabled"
-        @click.stop="emitIfEnabled('moveUp')"
-      >
-        <ArrowUp class="size-4" />
-      </Button>
-      <Button
-        type="button"
-        size="icon"
-        variant="ghost"
-        class="size-8"
-        :aria-label="t('components.sectionItemView.moveDown')"
-        :disabled="disabled"
-        @click.stop="emitIfEnabled('moveDown')"
-      >
-        <ArrowDown class="size-4" />
-      </Button>
-      <Button
-        type="button"
-        size="icon"
-        variant="ghost"
-        class="size-8"
-        :aria-label="t('components.sectionItemView.outdent')"
-        :disabled="disabled"
-        @click.stop="emitIfEnabled('outdent')"
-      >
-        <ArrowLeft class="size-4" />
-      </Button>
-      <Button
-        type="button"
-        size="icon"
-        variant="ghost"
-        class="size-8"
-        :aria-label="t('components.sectionItemView.indent')"
-        :disabled="disabled"
-        @click.stop="emitIfEnabled('indent')"
-      >
-        <ArrowRight class="size-4" />
-      </Button>
-      <Button
-        type="button"
-        size="icon"
-        variant="ghost"
-        class="size-8"
-        :aria-label="t('components.sectionItemView.remove')"
-        :disabled="disabled"
-        @click.stop="emitIfEnabled('remove')"
-      >
-        <Trash2 class="size-4" />
+        <component :is="actionDefinitions[action].icon" class="size-4" />
       </Button>
     </div>
   </article>
 </template>
 
 <style scoped>
-.section-item-view {
-  --section-item-action-rail-height: calc((8 * 2rem) + (7 * 0.25rem) + (2 * 0.25rem));
-}
-
 .section-item-view-actions {
   min-height: max(100%, var(--section-item-action-rail-height));
 }

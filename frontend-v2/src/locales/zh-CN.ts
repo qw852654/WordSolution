@@ -130,8 +130,10 @@ const zhCN = {
       noLockedVersion: '不锁定版本',
       insertBefore: '前插',
       insertAfter: '后插',
+      insertChildContentBlock: '新建子级 ContentBlock',
       moveUp: '上移',
       moveDown: '下移',
+      rename: '重命名',
       indent: '缩进',
       outdent: '反缩进',
       remove: '移除',
@@ -395,10 +397,20 @@ const zhCN = {
         feedbackCreateAtomicSection: '已选择在此处新建 AtomicSection',
         feedbackSubmitting: '正在提交到 CMS V2 API...',
         feedbackCreateSubmitted: '已新建 {targetType} 并加入当前 Section：{title}。',
+        feedbackCreateAtomicChildSubmitted:
+          '已在当前 AtomicSection 内部新建子级 ContentBlock：{title}。',
         feedbackCreateFailed: '新建失败，请稍后重试。',
         feedbackMissingSection: '当前没有可用的 Section，不能新建块。',
         feedbackSearchExistingBlock:
           '已选择在此处插入已有块；BlockSearchPicker 后续接入。',
+      },
+      atomicSectionActions: {
+        insertChildPosition: 'AtomicSection 内部：{title}',
+        renamePrompt: '重命名 AtomicSection',
+        removeConfirm:
+          '确认从当前 Section 移除这个 AtomicSection 引用？不会删除 AtomicSection 本体和内部 ContentBlock。AtomicSection：{title}',
+        operationFailed: 'AtomicSection 操作失败，请稍后重试。',
+        untitledContentBlock: '未命名 ContentBlock',
       },
       mock: {
         contentBlockPlaceholderTitle: 'ContentBlockDisplay 占位',

@@ -10,3 +10,7 @@ public sealed record AddAtomicSectionItemCommand(
     int SortOrder,
     string? TitleOverride = null,
     string? Note = null);
+
+public sealed record RenameAtomicSectionCommand(
+    int AtomicSectionId,
+    string Title);
