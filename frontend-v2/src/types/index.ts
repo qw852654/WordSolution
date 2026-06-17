@@ -126,3 +126,10 @@ export interface InsertPointModel {
   label: string
   disabled?: boolean
 }
+
+export type InsertActionType = 'CreateContentBlock' | 'CreateAtomicSection' | 'SearchExistingBlock'
+
+export interface InsertRequestModel {
+  insertPointId: string
+  actionType: InsertActionType
+}

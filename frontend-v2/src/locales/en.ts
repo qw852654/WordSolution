@@ -174,6 +174,9 @@ const en = {
     },
     insertPoint: {
       insert: 'Insert',
+      createContentBlock: 'Create ContentBlock',
+      createAtomicSection: 'Create AtomicSection',
+      searchExistingBlock: 'Insert existing block',
       contentBlock: 'ContentBlock',
       atomicSection: 'AtomicSection',
       compositeBlock: 'CompositeBlock',
@@ -183,11 +186,16 @@ const en = {
       emptyDescription:
         'The inspector shows details after a SectionItem or AtomicSection is selected.',
       currentSelection: 'Current selection',
+      kind: 'Node kind',
+      type: 'Type',
+      difficulty: 'Difficulty',
       status: 'Status',
-      position: 'Structure position',
-      referenceMode: 'Reference mode',
-      lockedVersion: 'Locked version',
-      note: 'Note',
+      itemCount: 'Child items',
+      questionCount: 'Questions',
+      disabled: 'Disabled',
+      yes: 'Yes',
+      no: 'No',
+      notSet: 'Not set',
       preview: 'Preview',
       openWord: 'Word edit',
     },
@@ -283,6 +291,12 @@ const en = {
       emptyTitle: 'SectionItemView document flow pending',
       emptyDescription:
         'This round does not render fake body content, ContentBlockDisplay, AtomicSectionBlock, or InsertPoint.',
+      insertPanel: {
+        feedbackCreateContentBlock: 'Selected this position for creating ContentBlock.',
+        feedbackCreateAtomicSection: 'Selected this position for creating AtomicSection.',
+        feedbackSearchExistingBlock:
+          'Selected this position for inserting an existing block. BlockSearchPicker will be connected later.',
+      },
       mock: {
         contentBlockPlaceholderTitle: 'ContentBlockDisplay placeholder',
         contentBlockPlaceholderDescription:

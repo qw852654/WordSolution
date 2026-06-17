@@ -161,11 +161,23 @@ const zhCN = {
     },
     insertPoint: {
       insert: '插入',
+      createContentBlock: '新建 ContentBlock',
+      createAtomicSection: '新建 AtomicSection',
+      searchExistingBlock: '插入已有块',
       contentBlock: 'ContentBlock',
       atomicSection: 'AtomicSection',
       compositeBlock: 'CompositeBlock',
     },
     sectionInspector: {
+      kind: '节点类型',
+      type: '类型',
+      difficulty: '难度',
+      itemCount: '子项数量',
+      questionCount: '题目数量',
+      disabled: '是否禁用',
+      yes: '是',
+      no: '否',
+      notSet: '未设置',
       emptyTitle: '请选择一个 Section 节点',
       emptyDescription:
         '选中 SectionItem 或 AtomicSection 后，这里会显示右侧检查信息。',
@@ -268,6 +280,12 @@ const zhCN = {
       emptyTitle: 'SectionItemView 文档流待接入',
       emptyDescription:
         '本轮不展示假正文、不实现 ContentBlockDisplay、AtomicSectionBlock 或 InsertPoint。',
+      insertPanel: {
+        feedbackCreateContentBlock: '已选择在此处新建 ContentBlock',
+        feedbackCreateAtomicSection: '已选择在此处新建 AtomicSection',
+        feedbackSearchExistingBlock:
+          '已选择在此处插入已有块；BlockSearchPicker 后续接入。',
+      },
       mock: {
         contentBlockPlaceholderTitle: 'ContentBlockDisplay 占位',
         contentBlockPlaceholderDescription:

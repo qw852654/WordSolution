@@ -7,11 +7,15 @@ import CompositeBlock from '@/components/business/CompositeBlock.vue'
 import ContentBlockDisplay from '@/components/business/ContentBlockDisplay.vue'
 import SectionItemView from '@/components/business/SectionItemView.vue'
 import EmptyState from '@/components/presentation/EmptyState.vue'
+import InsertPoint from '@/components/presentation/InsertPoint.vue'
 import StatusPill from '@/components/presentation/StatusPill.vue'
 import WeakScrollArea from '@/components/presentation/WeakScrollArea.vue'
 import { Card } from '@/components/ui/card'
 import type {
   ContentBlockDisplayModel,
+  InsertActionType,
+  InsertPointModel,
+  InsertRequestModel,
   SectionPageShellModel,
   StructuredBlockModel,
 } from '@/types'
@@ -23,19 +27,30 @@ const props = withDefaults(
     section: SectionPageShellModel
     contentBlocks?: ContentBlockDisplayModel[]
     structuredBlocks?: StructuredBlockModel[]
+    selectedNodeId?: string
+    workspaceNodeMap?: Record<string, string>
+    activeInsertPointId?: string
+    insertFeedback?: string
     teachingNoteMode?: boolean
   }>(),
   {
     contentBlocks: () => [],
     structuredBlocks: () => [],
+    workspaceNodeMap: () => ({}),
     teachingNoteMode: false,
   },
 )
+
+const emit = defineEmits<{
+  selectNode: [id: string]
+  requestInsert: [request: InsertRequestModel]
+}>()
 
 type WorkspaceFlowItem =
   | {
       kind: 'ContentBlock'
       id: string
+      nodeId: string
       selected?: boolean
       disabled?: boolean
       block: ContentBlockDisplayModel
@@ -43,10 +58,54 @@ type WorkspaceFlowItem =
   | {
       kind: 'AtomicSection' | 'CompositeBlock'
       id: string
+      nodeId: string
       selected?: boolean
       disabled?: boolean
       block: StructuredBlockModel
     }
+
+function getNodeIdForWorkspaceItem(itemId: string) {
+  return props.workspaceNodeMap[itemId] ?? itemId
+}
+
+function isWorkspaceItemSelected(itemId: string, fallback?: boolean) {
+  const nodeId = getNodeIdForWorkspaceItem(itemId)
+  return props.selectedNodeId ? props.selectedNodeId === nodeId : fallback
+}
+
+function withContentSelection(block: ContentBlockDisplayModel): ContentBlockDisplayModel {
+  return {
+    ...block,
+    selected: isWorkspaceItemSelected(block.id, block.selected),
+  }
+}
+
+function withStructuredSelection(block: StructuredBlockModel): StructuredBlockModel {
+  return {
+    ...block,
+    selected: isWorkspaceItemSelected(block.id, block.selected),
+    children: block.children.map((child) => withContentSelection(child)),
+  }
+}
+
+function emitWorkspaceSelection(itemId: string) {
+  emit('selectNode', getNodeIdForWorkspaceItem(itemId))
+}
+
+function getInsertPointBefore(item: WorkspaceFlowItem, index: number): InsertPointModel {
+  return {
+    id: `insert-before-${item.nodeId}-${index}`,
+    label: t('components.insertPoint.insert'),
+  }
+}
+
+function isInsertPointActive(insertPointId: string) {
+  return props.activeInsertPointId === insertPointId
+}
+
+function emitInsertRequest(insertPointId: string, actionType: InsertActionType) {
+  emit('requestInsert', { insertPointId, actionType })
+}
 
 const flowItems = computed<WorkspaceFlowItem[]>(() => {
   const [firstContentBlock, ...remainingContentBlocks] = props.contentBlocks
@@ -56,9 +115,10 @@ const flowItems = computed<WorkspaceFlowItem[]>(() => {
     items.push({
       kind: 'ContentBlock',
       id: firstContentBlock.id,
-      selected: firstContentBlock.selected,
+      nodeId: getNodeIdForWorkspaceItem(firstContentBlock.id),
+      selected: isWorkspaceItemSelected(firstContentBlock.id, firstContentBlock.selected),
       disabled: firstContentBlock.disabled,
-      block: firstContentBlock,
+      block: withContentSelection(firstContentBlock),
     })
   }
 
@@ -66,9 +126,10 @@ const flowItems = computed<WorkspaceFlowItem[]>(() => {
     items.push({
       kind: block.blockKind,
       id: block.id,
-      selected: block.selected,
+      nodeId: getNodeIdForWorkspaceItem(block.id),
+      selected: isWorkspaceItemSelected(block.id, block.selected),
       disabled: block.disabled,
-      block,
+      block: withStructuredSelection(block),
     })
   }
 
@@ -76,9 +137,10 @@ const flowItems = computed<WorkspaceFlowItem[]>(() => {
     items.push({
       kind: 'ContentBlock',
       id: block.id,
-      selected: block.selected,
+      nodeId: getNodeIdForWorkspaceItem(block.id),
+      selected: isWorkspaceItemSelected(block.id, block.selected),
       disabled: block.disabled,
-      block,
+      block: withContentSelection(block),
     })
   }
 
@@ -101,26 +163,47 @@ const flowItems = computed<WorkspaceFlowItem[]>(() => {
     >
       <WeakScrollArea class="rounded-md border bg-background p-3" :aria-label="t('sectionPage.workspace.mainColumnLabel')">
         <div v-if="flowItems.length" class="space-y-0">
-          <SectionItemView
-            v-for="item in flowItems"
+          <template
+            v-for="(item, index) in flowItems"
             :key="item.id"
-            :item-id="item.id"
-            :selected="item.selected"
-            :disabled="item.disabled"
           >
-            <ContentBlockDisplay
-              v-if="item.kind === 'ContentBlock'"
-              :block="item.block"
-            />
-            <AtomicSectionBlock
-              v-else-if="item.kind === 'AtomicSection'"
-              :block="item.block"
-            />
-            <CompositeBlock
-              v-else
-              :block="item.block"
-            />
-          </SectionItemView>
+            <div v-if="index > 0" class="space-y-1">
+              <InsertPoint
+                :point="getInsertPointBefore(item, index)"
+                :selected="isInsertPointActive(getInsertPointBefore(item, index).id)"
+                @request-action="emitInsertRequest($event.insertPointId, $event.actionType)"
+              />
+              <p
+                v-if="isInsertPointActive(getInsertPointBefore(item, index).id) && insertFeedback"
+                class="mx-4 rounded-md border bg-muted/20 px-2 py-1 text-xs text-muted-foreground"
+              >
+                {{ insertFeedback }}
+              </p>
+            </div>
+            <SectionItemView
+              :item-id="item.id"
+              :selected="item.selected"
+              :disabled="item.disabled"
+              @select="emitWorkspaceSelection"
+            >
+              <ContentBlockDisplay
+                v-if="item.kind === 'ContentBlock'"
+                :block="item.block"
+              />
+              <AtomicSectionBlock
+                v-else-if="item.kind === 'AtomicSection'"
+                :block="item.block"
+                @select="emitWorkspaceSelection"
+                @select-content-block="emitWorkspaceSelection"
+              />
+              <CompositeBlock
+                v-else
+                :block="item.block"
+                @select="emitWorkspaceSelection"
+                @select-content-block="emitWorkspaceSelection"
+              />
+            </SectionItemView>
+          </template>
         </div>
 
         <EmptyState

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { FileText, PackageOpen } from 'lucide-vue-next'
+import { computed } from 'vue'
+import { PackageOpen } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import EmptyState from '@/components/presentation/EmptyState.vue'
 import StatusPill from '@/components/presentation/StatusPill.vue'
@@ -11,18 +12,87 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import type { SectionNodeModel } from '@/types'
+import type { SectionTreeNodeModel } from '@/types'
 
-defineProps<{
-  node?: SectionNodeModel
-}>()
-
-defineEmits<{
-  preview: [id: string]
-  openWord: [id: string]
+const props = defineProps<{
+  node?: SectionTreeNodeModel
 }>()
 
 const { t } = useI18n()
+
+const displayTitle = computed(() => {
+  if (!props.node) {
+    return ''
+  }
+
+  if (props.node.kind === 'ContentBlock' || props.node.kind === 'CompositeBlock') {
+    return props.node.typeLabel
+  }
+
+  return props.node.title
+})
+
+const kindLabel = computed(() => {
+  if (!props.node) {
+    return ''
+  }
+
+  return t(`components.sectionTree.kind.${props.node.kind}`)
+})
+
+const detailRows = computed(() => {
+  const node = props.node
+  if (!node) {
+    return []
+  }
+
+  const rows = [
+    {
+      id: 'kind',
+      label: t('components.sectionInspector.kind'),
+      value: kindLabel.value,
+    },
+    {
+      id: 'type',
+      label: t('components.sectionInspector.type'),
+      value: node.typeLabel || t('components.sectionInspector.notSet'),
+    },
+    {
+      id: 'difficulty',
+      label: t('components.sectionInspector.difficulty'),
+      value: node.difficulty || t('components.sectionInspector.notSet'),
+    },
+    {
+      id: 'status',
+      label: t('components.sectionInspector.status'),
+      value: node.status || t('components.sectionInspector.notSet'),
+    },
+  ]
+
+  if (typeof node.itemCount === 'number') {
+    rows.push({
+      id: 'itemCount',
+      label: t('components.sectionInspector.itemCount'),
+      value: t('components.sectionTree.itemCount', { count: node.itemCount }),
+    })
+  }
+
+  if (typeof node.questionCount === 'number') {
+    rows.push({
+      id: 'questionCount',
+      label: t('components.sectionInspector.questionCount'),
+      value: t('components.sectionTree.questionCount', { count: node.questionCount }),
+    })
+  }
+
+  rows.push({
+    id: 'disabled',
+    label: t('components.sectionInspector.disabled'),
+    value: node.disabled ? t('components.sectionInspector.yes') : t('components.sectionInspector.no'),
+  })
+
+  return rows
+})
 </script>
 
 <template>
@@ -42,56 +112,30 @@ const { t } = useI18n()
       <div class="flex min-w-0 items-start justify-between gap-3">
         <div class="min-w-0 space-y-1">
           <p class="text-xs text-muted-foreground">{{ t('components.sectionInspector.currentSelection') }}</p>
-          <CardTitle class="truncate text-sm">{{ node.title }}</CardTitle>
+          <CardTitle class="truncate text-sm">{{ displayTitle }}</CardTitle>
         </div>
-        <StatusPill :label="node.targetType" tone="active" />
+        <StatusPill :label="kindLabel" :tone="node.disabled ? 'muted' : 'active'" />
       </div>
     </CardHeader>
 
-    <WeakScrollArea class="space-y-3 px-4 pb-4">
-      <p class="text-sm leading-6 text-muted-foreground">{{ node.summary }}</p>
-
+    <WeakScrollArea class="space-y-2 px-4 pb-4">
       <dl class="grid gap-2 text-sm">
-        <div class="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
-          <dt class="text-xs text-muted-foreground">{{ t('components.sectionInspector.status') }}</dt>
-          <dd class="truncate font-medium">{{ node.status }}</dd>
-        </div>
-        <div class="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
-          <dt class="text-xs text-muted-foreground">{{ t('components.sectionInspector.position') }}</dt>
-          <dd class="truncate font-medium">
-            {{ t('components.sectionItemView.sortOrder') }} {{ node.sortOrder }}
-            ·
-            {{ t('components.sectionItemView.level') }} {{ node.level }}
-          </dd>
-        </div>
-        <div class="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
-          <dt class="text-xs text-muted-foreground">{{ t('components.sectionInspector.referenceMode') }}</dt>
-          <dd class="truncate font-medium">
-            {{ node.referenceMode ?? t('components.sectionItemView.atomicSectionReference') }}
-          </dd>
-        </div>
-        <div class="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
-          <dt class="text-xs text-muted-foreground">{{ t('components.sectionInspector.lockedVersion') }}</dt>
-          <dd class="truncate font-medium">
-            {{ node.lockedVersionLabel ?? t('components.sectionItemView.noLockedVersion') }}
-          </dd>
+        <div
+          v-for="row in detailRows"
+          :key="row.id"
+          class="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2"
+        >
+          <dt class="text-xs text-muted-foreground">{{ row.label }}</dt>
+          <dd class="truncate font-medium">{{ row.value }}</dd>
         </div>
       </dl>
-
-      <section v-if="node.note" class="rounded-md border bg-background px-3 py-2">
-        <h3 class="text-xs font-medium text-muted-foreground">
-          {{ t('components.sectionInspector.note') }}
-        </h3>
-        <p class="mt-1 text-sm leading-6">{{ node.note }}</p>
-      </section>
     </WeakScrollArea>
 
     <CardFooter class="flex flex-wrap gap-2 border-t px-4 py-3">
-      <Button type="button" size="sm" variant="outline" @click="$emit('preview', node.id)">
-        <FileText class="size-4" />
+      <Button type="button" size="sm" variant="outline" disabled>
         {{ t('components.sectionInspector.preview') }}
       </Button>
-      <Button type="button" size="sm" variant="outline" @click="$emit('openWord', node.id)">
+      <Button type="button" size="sm" variant="outline" disabled>
         {{ t('components.sectionInspector.openWord') }}
       </Button>
     </CardFooter>

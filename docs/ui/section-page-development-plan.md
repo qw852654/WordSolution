@@ -156,6 +156,8 @@ Lab 验收方式：
 
 - 实现插入点视觉和事件边界
 - 只表达插入位置，不决定插入目标
+- InsertPoint 直接展示三个具体按钮：新建 ContentBlock、新建 AtomicSection、插入已有块
+- 不再使用单个“插入”按钮再展开二级面板的交互
 
 前置依赖：
 
@@ -173,6 +175,9 @@ Lab 验收方式：
 Mock Data：
 
 - `mockInsertContexts`
+- 允许新建 ContentBlock 的插入点
+- 允许新建 AtomicSection 的插入点
+- 允许插入已有块的插入点
 
 Lab 验收方式：
 
@@ -180,6 +185,7 @@ Lab 验收方式：
 - Hover 显示
 - Keyboard focus 显示
 - 禁用状态
+- 三个具体按钮在同一插入点内稳定展示
 
 页面验收方式：
 
@@ -189,6 +195,52 @@ Lab 验收方式：
 
 - 不在 InsertPoint 里写业务规则
 - 不调 API
+
+## Phase 4.1: BlockSearchPicker（后续开发）
+
+阶段目标：
+
+- 开发“插入已有块”使用的块搜索组件
+- 搜索范围同时包含 ContentBlock 和 AtomicSection
+- 用户可以在同一个搜索结果列表中区分 ContentBlock 与 AtomicSection
+- 选择已有块后只向父级返回选中对象，不直接修改 Section 数据
+
+前置依赖：
+
+- Phase 4
+
+建议新增文件：
+
+- `frontend-v2/src/components/containers/BlockSearchPicker.vue`
+- `frontend-v2/src/labs/block-search-picker/*`
+
+Mock Data：
+
+- 已有 ContentBlock
+- 已有 AtomicSection
+- 长标题
+- 禁用或不可插入项
+- 空搜索结果
+
+Lab 验收方式：
+
+- 搜索 ContentBlock
+- 搜索 AtomicSection
+- 混合结果列表
+- 空结果
+- 选择已有块后显示选中态
+
+页面接入方式：
+
+- 从 InsertPoint 的“插入已有块”按钮打开
+- 后续接入 SectionPage 时只记录插入上下文和选中块
+- 不在本阶段接真实 API
+
+禁止事项：
+
+- 不在 BlockSearchPicker 中修改 Section 数据
+- 不把搜索范围拆成两个互斥入口
+- 不提前实现真实保存
 
 ## Phase 5: StructuredContainer / InlineBorderHeader
 

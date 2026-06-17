@@ -534,3 +534,43 @@ Sidebar
 
 组件 props 中如果传入显示文案，调用方也应从 i18n 获取�?
 
+
+## 当前补充约定：InsertPoint 与 BlockSearchPicker
+
+### InsertPoint 当前使用规则
+
+在 SectionWorkspace 中，InsertPoint 直接呈现当前位置允许的具体操作按钮。
+
+当前按钮为：
+
+1. 新建 ContentBlock
+2. 新建 AtomicSection
+3. 插入已有块
+
+规则：
+
+- 不再使用单个“插入”按钮作为主入口。
+- 不再通过点击“插入”后展开二级面板。
+- 点击“新建 ContentBlock”进入新建 ContentBlock 流程。
+- 点击“新建 AtomicSection”进入新建 AtomicSection 流程。
+- 点击“插入已有块”后续打开 BlockSearchPicker。
+- InsertPoint 不直接修改 Section 数据，不调用 API。
+
+### BlockSearchPicker
+
+BlockSearchPicker 表示从已有块中搜索并选择插入目标的业务容器组件。
+
+职责：
+
+- 同时搜索 ContentBlock 和 AtomicSection。
+- 在同一个结果列表中展示对象类型、标题和必要摘要。
+- 允许用户选择一个已有块，并通过事件把选中对象交给父级。
+- 支持空结果、长标题、禁用项和加载状态的 Mock Data 验收。
+
+边界：
+
+- 不直接修改 Section 数据。
+- 不直接创建 ContentBlock 或 AtomicSection。
+- 不把 ContentBlock 和 AtomicSection 拆成两个互斥搜索入口。
+- 不在当前 InsertPoint 小闭环中实现，后续单独开发。
+- 后续必须先进入 ComponentLab 使用 Mock Data 验收，再接入 SectionPage。

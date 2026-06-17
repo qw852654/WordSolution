@@ -185,6 +185,26 @@ Secondary Panel
 如果目标是 ContentBlock，打开 `ContentBlockPicker`。  
 如果目标是 AtomicSection，打开 `AtomicSectionPicker` 或新建 Dialog。
 
+当前已确认的 InsertPoint 交互规则：
+
+```text
+InsertPoint 不再使用单个“插入”按钮。
+
+InsertPoint 直接展示三个具体操作：
+
+1. 新建 ContentBlock
+2. 新建 AtomicSection
+3. 插入已有块
+```
+
+规则：
+
+- 点击“新建 ContentBlock”进入新建 ContentBlock 流程。
+- 点击“新建 AtomicSection”进入新建 AtomicSection 流程。
+- 点击“插入已有块”打开后续单独开发的块搜索组件。
+- 块搜索组件的搜索范围必须同时包含 ContentBlock 和 AtomicSection。
+- 块搜索组件本轮不实现；后续必须先在 ComponentLab 中用 Mock Data 验收，再接入 SectionPage。
+
 ### 6.3 调整顺序
 
 第一版优先支持稳定操作：
