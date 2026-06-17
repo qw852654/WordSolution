@@ -351,6 +351,11 @@ const zhCN = {
       save: '保存结构',
       questionBankSelectLabel: '选择题库',
     },
+    teachingTopicDrawer: {
+      triggerLabel: '悬停打开 TeachingTopicTree',
+      dialogLabel: 'TeachingTopicTree 悬浮抽屉',
+      closeLabel: '关闭 TeachingTopicTree',
+    },
     meta: {
       section: 'Section',
       sectionId: 'Section ID',

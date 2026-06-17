@@ -15,6 +15,7 @@ const props = defineProps<{
   nodes: TeachingTopicTreeNodeModel[]
   selectedTopicId?: string
   contextTargetTopicId?: string
+  fullWidthContent?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -57,11 +58,23 @@ function handleNodeContextMenu(payload: BasicTreeContextMenuPayload) {
 </script>
 
 <template>
-  <section class="space-y-2" :aria-label="t('components.teachingTopicTree.title')">
+  <section
+    class="space-y-2"
+    :class="fullWidthContent ? 'w-max min-w-80' : ''"
+    :aria-label="t('components.teachingTopicTree.title')"
+  >
     <div class="flex items-center justify-between gap-2">
       <div class="min-w-0">
-        <h2 class="truncate text-sm font-medium">{{ t('components.teachingTopicTree.title') }}</h2>
-        <p class="truncate text-xs text-muted-foreground">
+        <h2
+          class="text-sm font-medium"
+          :class="fullWidthContent ? 'whitespace-nowrap' : 'truncate'"
+        >
+          {{ t('components.teachingTopicTree.title') }}
+        </h2>
+        <p
+          class="text-xs text-muted-foreground"
+          :class="fullWidthContent ? 'whitespace-nowrap' : 'truncate'"
+        >
           {{ t('components.teachingTopicTree.description') }}
         </p>
       </div>
@@ -81,7 +94,10 @@ function handleNodeContextMenu(payload: BasicTreeContextMenuPayload) {
       @node-context-menu="handleNodeContextMenu"
     >
       <template #default="{ node }">
-        <TeachingTopicTreeNode :node="getTeachingTopicNode(node)" />
+        <TeachingTopicTreeNode
+          :node="getTeachingTopicNode(node)"
+          :truncate-title="!fullWidthContent"
+        />
       </template>
     </BasicTree>
 

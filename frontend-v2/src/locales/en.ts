@@ -364,6 +364,11 @@ const en = {
       save: 'Save structure',
       questionBankSelectLabel: 'Select question bank',
     },
+    teachingTopicDrawer: {
+      triggerLabel: 'Hover to open TeachingTopicTree',
+      dialogLabel: 'TeachingTopicTree floating drawer',
+      closeLabel: 'Close TeachingTopicTree',
+    },
     meta: {
       section: 'Section',
       sectionId: 'Section ID',

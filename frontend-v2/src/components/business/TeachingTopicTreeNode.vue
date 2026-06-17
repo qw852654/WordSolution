@@ -6,6 +6,7 @@ import type { TeachingTopicTreeNodeModel } from '@/types'
 
 const props = defineProps<{
   node: TeachingTopicTreeNodeModel
+  truncateTitle?: boolean
 }>()
 
 const { t } = useI18n()
@@ -34,5 +35,9 @@ const metaItems = computed(() => {
 </script>
 
 <template>
-  <BasicTreeNodeView :title="node.title" :meta-items="metaItems" />
+  <BasicTreeNodeView
+    :title="node.title"
+    :meta-items="metaItems"
+    :truncate-title="truncateTitle"
+  />
 </template>

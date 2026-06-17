@@ -3,11 +3,19 @@ defineProps<{
   title: string
   markerLabel?: string
   metaItems?: string[]
+  truncateTitle?: boolean
 }>()
 </script>
 
 <template>
-  <span class="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+  <span
+    class="grid items-center gap-2"
+    :class="
+      truncateTitle === false
+        ? 'w-max min-w-full grid-cols-[max-content_auto]'
+        : 'w-full min-w-0 grid-cols-[minmax(0,1fr)_auto]'
+    "
+  >
     <span class="flex min-w-0 items-center gap-1.5">
       <span
         v-if="markerLabel"
@@ -15,7 +23,10 @@ defineProps<{
         :title="markerLabel"
         aria-hidden="true"
       />
-      <span class="min-w-0 truncate font-medium text-foreground">
+      <span
+        class="font-medium text-foreground"
+        :class="truncateTitle === false ? 'whitespace-nowrap' : 'min-w-0 truncate'"
+      >
         {{ title }}
       </span>
     </span>
