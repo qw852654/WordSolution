@@ -4,6 +4,26 @@
 @tailwind components;
 @tailwind utilities;
 
+.bg-difficulty-unset {
+  background-color: var(--difficulty-unset);
+}
+
+.bg-difficulty-basic {
+  background-color: var(--difficulty-basic);
+}
+
+.bg-difficulty-medium {
+  background-color: var(--difficulty-medium);
+}
+
+.bg-difficulty-advanced {
+  background-color: var(--difficulty-advanced);
+}
+
+.bg-difficulty-top {
+  background-color: var(--difficulty-top);
+}
+
 @layer base {
   :root {
     color-scheme: light;
