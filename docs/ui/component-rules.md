@@ -833,3 +833,88 @@ Difficulty Theme Tokens 用于统一显示 ContentBlock、AtomicSection、Compos
 - 移除只删除当前 `SectionItem` 引用，不删除 `AtomicSection` 本体，也不删除它内部已有的 `ContentBlock`。
 - 上移 / 下移只调整当前 `Section` 内该 `SectionItem` 的顺序，不做缩进、反缩进或拖拽。
 - `SectionItemView` 仍然不直接调用 API；真实动作由 `SectionPage` 编排，组件只通过 emits 暴露事件。
+
+## 当前补充约定：ContentBlock 的 Word 编辑操作区
+
+当 `SectionItemView` 承载的是 `ContentBlockDisplay` 时，右侧操作区可以提供 Word 编辑入口。
+
+组件边界：
+
+- `ContentBlockDisplay` 不直接调用 API。
+- `SectionItemView` 不直接调用 API。
+- 组件只 emit `openWord` 或等价事件。
+- `SectionPage` 或页面级 composable 负责调用 CMS V2 后端。
+- 组件不得构造本地 DOCX 路径。
+- 组件不得构造 `ms-word:`、`file://` 或其他本地打开 URI。
+- 组件不得调用 V1 `编辑会话` 接口。
+
+后端边界：
+
+- Word 编辑入口必须通过 CMS V2 后端编辑会话 API。
+- 本地 Word 启动方式由后端策略封装。
+- 未来迁移到云端时，应替换后端 `ContentBlock` 编辑会话启动策略，而不是修改业务组件。
+
+ComponentLabPage 验收：
+
+- 后续开发 `ContentBlock` 操作区时，应先在 ComponentLabPage 中验证 Word 编辑按钮的展示、loading、错误和成功反馈。
+- ComponentLabPage 中仍只使用 Mock Data；真实 API 接入必须在 `SectionPage` 页面级完成。
+
+## 当前补充约定：Section 动作集合 / Composables
+
+`SectionPage` 中的真实动作不得写入业务展示组件。
+
+适用范围：
+
+- `SectionItemView`
+- `AtomicSectionBlock`
+- `ContentBlockDisplay`
+- `SectionTree`
+- `SectionInspector`
+
+固定规则：
+
+- 组件只负责展示 UI 和 emit 事件。
+- 组件不直接调用 `cmsV2Client`。
+- 组件不直接修改 Section / AtomicSection / ContentBlock 数据。
+- 真实动作统一进入页面级 action composable。
+- 同一动作必须能被 Workspace、SectionTree 右键菜单、Inspector、快捷键等入口复用。
+
+推荐 composable：
+
+```text
+frontend-v2/src/composables/useSectionItemActions.ts
+frontend-v2/src/composables/useAtomicSectionActions.ts
+frontend-v2/src/composables/useContentBlockActions.ts
+```
+
+命名语义：
+
+- `removeSectionItemReference`：从当前 Section 中移除一个 SectionItem 引用。
+- `deleteAtomicSectionEntity`：真正删除 AtomicSection 本体；这是更高风险动作，不能和移除引用混用。
+- `removeAtomicSectionChildItem`：从 AtomicSection 内部移除一个 ContentBlock 引用。
+- `renameAtomicSection`：重命名 AtomicSection 本体。
+- `createContentBlockInsideAtomicSection`：在 AtomicSection 内部新建 ContentBlock 并加入 AtomicSectionItem。
+
+当前 Workspace 中 AtomicSection 的“删除”按钮语义是：
+
+```text
+removeSectionItemReference
+```
+
+不是：
+
+```text
+deleteAtomicSectionEntity
+```
+
+开发要求：
+
+- 后续新增任何删除、移动、重命名、Word 编辑、新建子块等真实动作，必须先判断它是否应该进入 action composable。
+- 不允许因为某个动作最先出现在 Workspace，就把真实方法写死在 Workspace 或具体展示组件中。
+- action composable 可以调用 API、触发 server-confirmed refresh、设置反馈消息；展示组件不做这些事情。
+
+详细实施计划见：
+
+```text
+docs/superpowers/plans/2026-06-17-section-action-composables.md
+```

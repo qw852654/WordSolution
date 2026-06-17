@@ -660,3 +660,88 @@ Lab 验收方式：
 - 文档流和 Inspector 必须在 mock 下先跑通，否则一接 API 就会把“组件边界问题”和“数据问题”混在一起。
 - 当前后端写入接口明显不完整，因此第一轮应先以 mock 和真实只读接口为界。
 - 以上顺序不把 ComponentLabPage 当作永久组件展览馆；每个阶段只在 ComponentLabPage 中保留当前阶段需要验收的组件。
+
+## 当前补充阶段：ContentBlock Word 编辑会话 V2 后端前置
+
+背景：
+
+- `ContentBlock` 操作区需要“启动 Word 编辑”。
+- V1 历史后端曾有本地编辑会话能力，但 V2 前端不能调用 V1 接口。
+- 当前 CMS V2 已有内容块 DOCX 创建、导入版本、HTML 预览、DOCX 下载能力，但尚未提供 Word 编辑会话 API。
+
+阶段目标：
+
+- 先在 CMS V2 后端建立稳定的 `ContentBlock` 编辑会话 API。
+- 前端只调用 V2 API，不直接打开本地文件或 URI。
+- 后端内部通过可替换策略启动本地 Word；未来云端迁移时替换策略，不改组件语义。
+
+推荐接口：
+
+```text
+POST /api/cms-v2/content-blocks/{contentBlockId}/edit-session
+GET  /api/cms-v2/content-block-edit-sessions/{sessionId}
+POST /api/cms-v2/content-block-edit-sessions/{sessionId}/sync
+POST /api/cms-v2/content-block-edit-sessions/{sessionId}/cancel
+```
+
+前端接入顺序：
+
+1. 后端完成 `ContentBlock` 编辑会话 API。
+2. `frontend-v2/src/apis/cmsV2Client.ts` 增加 API client 方法。
+3. 新增或补全页面级 `useContentBlockWordEditor` composable。
+4. `ContentBlockDisplay` / `SectionItemView` 继续只 emit `openWord`。
+5. `SectionPage` 接收事件后调用 composable。
+6. 成功或失败后只刷新相关 `ContentBlock` / Section 数据，不做 optimistic update。
+
+禁止事项：
+
+- 不调用 V1 `编辑会话` 接口。
+- 不在前端拼本地 DOCX 路径。
+- 不在前端拼 `ms-word:` 或 `file://`。
+- 不修改 `VSTO/`。
+- 不修改 `Word本地文件操作核心库/`。
+- 不把 Word 编辑逻辑塞进 `ContentBlockDisplay` 或 `SectionItemView`。
+
+详细实施计划见：
+
+```text
+docs/superpowers/plans/2026-06-17-content-block-word-edit-session-v2.md
+```
+
+## 当前补充阶段：Section 动作集合 / Composables 抽取
+
+阶段目标：
+
+- 把删除、移动、重命名、新建子块、Word 编辑等真实动作从页面事件处理里抽到 action composable。
+- 组件继续只 emit 事件。
+- Workspace、SectionTree 右键菜单、Inspector、快捷键后续都复用同一套动作方法。
+
+建议文件：
+
+```text
+frontend-v2/src/composables/useSectionItemActions.ts
+frontend-v2/src/composables/useAtomicSectionActions.ts
+frontend-v2/src/composables/useContentBlockActions.ts
+```
+
+第一轮只处理当前已经出现的 AtomicSection 相关动作：
+
+- `createContentBlockInsideAtomicSection`
+- `moveSectionItemUp`
+- `moveSectionItemDown`
+- `renameAtomicSection`
+- `removeSectionItemReference`
+
+边界：
+
+- 不改 UI 样式。
+- 不新增后端 API。
+- 不改变现有交互语义。
+- 不把真正删除 AtomicSection 本体作为 Workspace 默认删除动作。
+- 不把 action 方法写入 `SectionItemView`、`AtomicSectionBlock`、`ContentBlockDisplay`、`SectionTree` 或 `SectionInspector`。
+
+详细实施计划见：
+
+```text
+docs/superpowers/plans/2026-06-17-section-action-composables.md
+```

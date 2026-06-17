@@ -11,6 +11,8 @@ import SectionStructurePanel from '@/components/containers/SectionStructurePanel
 import SectionTopToolbar from '@/components/containers/SectionTopToolbar.vue'
 import SectionWorkspace from '@/components/containers/SectionWorkspace.vue'
 import { cmsV2Api } from '@/apis/cmsV2Client'
+import { useAtomicSectionActions } from '@/composables/useAtomicSectionActions'
+import { useSectionItemActions } from '@/composables/useSectionItemActions'
 import { loadSectionPageData, type SectionPageDataModel } from '@/composables/useSectionPageData'
 import { resolveAtomicSectionChildContentBlockTitle } from '@/utils/sectionInsertDefaults'
 import type {
@@ -159,6 +161,14 @@ async function loadCurrentSectionPage() {
   }
 }
 
+const sectionItemActions = useSectionItemActions({
+  refreshSection: loadCurrentSectionPage,
+})
+
+const atomicSectionActions = useAtomicSectionActions({
+  refreshSection: loadCurrentSectionPage,
+})
+
 function startTeachingTopicDrawerTimer() {
   stopTeachingTopicDrawerTimer()
   teachingTopicDrawerTimer = window.setTimeout(() => {
@@ -267,10 +277,12 @@ async function requestAtomicMove(payload: AtomicSectionWorkspaceMovePayload) {
   }
 
   try {
-    await cmsV2Api.moveSectionItem(currentSectionId, payload.sectionItemId, {
-      direction: payload.direction,
-    })
-    await loadCurrentSectionPage()
+    if (payload.direction === 'Up') {
+      await sectionItemActions.moveSectionItemUp(currentSectionId, payload.sectionItemId)
+    } else {
+      await sectionItemActions.moveSectionItemDown(currentSectionId, payload.sectionItemId)
+    }
+
     selectedStructureNodeId.value = payload.nodeId
     workspaceScrollTargetNodeId.value = payload.nodeId
     workspaceScrollRequestKey.value += 1
@@ -291,8 +303,7 @@ async function requestAtomicRename(payload: AtomicSectionWorkspaceActionPayload)
   }
 
   try {
-    await cmsV2Api.renameAtomicSection(payload.atomicSectionId, nextTitle.trim())
-    await loadCurrentSectionPage()
+    await atomicSectionActions.renameAtomicSection(payload.atomicSectionId, nextTitle.trim())
     selectedStructureNodeId.value = payload.nodeId
     workspaceScrollTargetNodeId.value = payload.nodeId
     workspaceScrollRequestKey.value += 1
@@ -320,9 +331,8 @@ async function requestAtomicRemove(payload: AtomicSectionWorkspaceActionPayload)
   }
 
   try {
-    await cmsV2Api.removeSectionItem(currentSectionId, payload.sectionItemId)
+    await sectionItemActions.removeSectionItemReference(currentSectionId, payload.sectionItemId)
     selectedStructureNodeId.value = undefined
-    await loadCurrentSectionPage()
     workspaceScrollTargetNodeId.value = selectedStructureNodeId.value
     workspaceScrollRequestKey.value += 1
   } catch (error) {
@@ -396,17 +406,13 @@ async function submitAtomicSectionChildContentBlock(payload: InsertCreateSubmitP
     inputTitle: payload.title,
     atomicSectionTitle: payload.atomicSectionTitle ?? '',
   })
-  const createdTarget = await createContentBlockForInsert({
-    ...payload,
+  await atomicSectionActions.createContentBlockInsideAtomicSection({
+    atomicSectionId: payload.atomicSectionId!,
+    sectionId: payload.sectionId,
     title: contentBlockTitle,
-  })
-  await cmsV2Api.addAtomicSectionItem(payload.atomicSectionId!, {
-    contentBlockId: createdTarget.id,
-    referenceMode: 'FollowLatest',
-    lockedContentBlockVersionId: null,
+    blockType: mapInsertContentBlockType(payload.contentBlockType),
+    difficulty: mapInsertDifficulty(payload.difficulty),
     sortOrder: getAtomicSectionChildSortOrder(payload.atomicSectionId!),
-    titleOverride: null,
-    note: null,
   })
 
   activeCreatePanel.value = null
@@ -414,8 +420,6 @@ async function submitAtomicSectionChildContentBlock(payload: InsertCreateSubmitP
   insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackCreateAtomicChildSubmitted', {
     title: contentBlockTitle || t('sectionPage.workspace.atomicSectionActions.untitledContentBlock'),
   })
-
-  await loadCurrentSectionPage()
 }
 
 async function createContentBlockForInsert(payload: InsertCreateSubmitPayload) {

@@ -317,3 +317,26 @@ SectionItemView
 需确认：
 
 - 后续实现阶段是否先补这个用例，再做前端交互？
+
+## 当前补充结论：Word 编辑入口需要 V2 编辑会话 API
+
+已确认：
+
+- `ContentBlock` 操作区中的 Word 编辑不是前端本地打开文件。
+- 后续后端可能迁移到云端，因此 Word 编辑启动方式不能固化在前端。
+- CMS V2 后端需要提供稳定的 `ContentBlock` 编辑会话 API。
+- 本地打开 Word、未来云端编辑、外部 URI 跳转等差异应由后端策略封装。
+
+当前结论：
+
+- SectionPage 第一版接真实 Word 编辑前，先实现 CMS V2 后端编辑会话能力。
+- `ContentBlockDisplay` / `SectionItemView` 只发出 `openWord` 事件。
+- `SectionPage` 或页面级 composable 调用 `/api/cms-v2`。
+- 不调用 V1 `编辑会话` 接口。
+- 不在前端构造本地 DOCX 路径、`ms-word:` 或 `file://`。
+
+该问题不再作为 UI 组件开放问题处理，转入后端前置计划：
+
+```text
+docs/superpowers/plans/2026-06-17-content-block-word-edit-session-v2.md
+```

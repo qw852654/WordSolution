@@ -816,3 +816,31 @@ ComponentLab 的定位是当前开发轮次的验收入口，不是永久组件�
 - 非连续块升级 AtomicSection
 - 完整 HandoutPage 设计扩展
 - 多人协作、权限、云端同步
+
+## 当前补充结论：ContentBlock Word 编辑后端缺口已转入 V2 计划
+
+此前架构检查记录过：当前未看到 Word 编辑会话接口。
+
+现已校准为：
+
+- 这是 CMS V2 后端必须补齐的前置能力。
+- 不在 `SectionPage` 组件内部临时实现。
+- 不调用 V1 `编辑会话`。
+- 不在前端构造本地文件路径、`ms-word:` 或 `file://`。
+- `ContentBlockDisplay` / `SectionItemView` 只 emit Word 编辑事件。
+- `SectionPage` 或页面级 composable 调用 CMS V2 编辑会话 API。
+
+推荐接口：
+
+```text
+POST /api/cms-v2/content-blocks/{contentBlockId}/edit-session
+GET  /api/cms-v2/content-block-edit-sessions/{sessionId}
+POST /api/cms-v2/content-block-edit-sessions/{sessionId}/sync
+POST /api/cms-v2/content-block-edit-sessions/{sessionId}/cancel
+```
+
+详细执行计划见：
+
+```text
+docs/superpowers/plans/2026-06-17-content-block-word-edit-session-v2.md
+```

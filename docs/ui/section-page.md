@@ -366,3 +366,66 @@ SectionPage ����������ʵ API ʱ������ server-confirmed update ģʽ��
 - �Ҽ��˵���ʱĿ�ꡣ
 - ��������״̬��
 - �����ύǰ����ʱ���롣
+
+## 当前补充约定：ContentBlock Word 编辑入口
+
+`SectionPage` 中的 `ContentBlock` 操作区需要提供 Word 编辑入口，但前端不直接打开本地 DOCX、`ms-word:` URI 或任何操作系统路径。
+
+固定边界：
+
+- `ContentBlockDisplay` / `SectionItemView` 只负责显示按钮并 emit Word 编辑意图。
+- `SectionPage` 或页面级 composable 负责调用 CMS V2 后端 API。
+- 后端必须提供稳定的 `ContentBlock` 编辑会话接口。
+- 本地打开 Word、未来云端编辑、外部 URI 跳转等实现差异，必须封装在后端策略中。
+- 前端只关心会话创建、状态、同步、取消和错误提示。
+- 不允许在 V2 前端中调用 V1 `编辑会话` 接口。
+- 不允许在 V2 前端中拼接 `/api/题库实例/...`。
+
+推荐后端 API 语义：
+
+```text
+POST /api/cms-v2/content-blocks/{contentBlockId}/edit-session
+GET  /api/cms-v2/content-block-edit-sessions/{sessionId}
+POST /api/cms-v2/content-block-edit-sessions/{sessionId}/sync
+POST /api/cms-v2/content-block-edit-sessions/{sessionId}/cancel
+```
+
+第一版 `ContentBlock` 操作区接入真实动作时，Word 编辑按钮应等待上述 V2 API 完成后再接入真实行为。
+
+## 当前补充约定：SectionPage 动作编排层
+
+`SectionPage` 需要区分三层职责：
+
+```text
+展示组件
+  只 emit 事件
+
+SectionPage 页面编排
+  接收事件，提供当前 Section / 选中节点 / 插入上下文
+
+Action composables
+  统一执行真实动作，调用 CMS V2 API，刷新数据并设置反馈
+```
+
+因此：
+
+- Workspace 中的删除、移动、重命名、新建子块，不应直接写在 `SectionItemView` 或 `AtomicSectionBlock` 里。
+- SectionTree 右键菜单以后也会触发删除、新增、重命名等动作，必须复用同一套 action composable。
+- Inspector 后续如果提供操作按钮，也必须复用同一套 action composable。
+- 快捷键后续如果触发操作，也必须复用同一套 action composable。
+
+第一批建议抽取：
+
+```text
+useSectionItemActions
+useAtomicSectionActions
+useContentBlockActions
+```
+
+删除语义必须精确：
+
+- 从 Workspace 移除 AtomicSection 当前项 = `removeSectionItemReference`。
+- 删除 AtomicSection 本体 = `deleteAtomicSectionEntity`，当前不作为 Workspace 默认动作。
+- 从 AtomicSection 内部移除 ContentBlock = `removeAtomicSectionChildItem`。
+
+该规则用于避免 Workspace、SectionTree、Inspector 各自复制一套真实动作逻辑。
