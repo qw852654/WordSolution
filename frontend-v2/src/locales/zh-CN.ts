@@ -356,6 +356,15 @@ const zhCN = {
       dialogLabel: 'TeachingTopicTree 悬浮抽屉',
       closeLabel: '关闭 TeachingTopicTree',
     },
+    api: {
+      loadingTitle: '正在加载 Section',
+      loadingStatus: '加载中',
+      emptyTitle: '暂无 Section 数据',
+      emptyStatus: '未加载',
+      loadingMessage: '正在从 CMS V2 API 读取 Section 数据。',
+      errorTitle: 'Section 数据读取失败',
+      loadError: '无法读取 Section 数据。',
+    },
     meta: {
       section: 'Section',
       sectionId: 'Section ID',

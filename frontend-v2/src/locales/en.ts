@@ -369,6 +369,15 @@ const en = {
       dialogLabel: 'TeachingTopicTree floating drawer',
       closeLabel: 'Close TeachingTopicTree',
     },
+    api: {
+      loadingTitle: 'Loading Section',
+      loadingStatus: 'Loading',
+      emptyTitle: 'No Section data',
+      emptyStatus: 'Not loaded',
+      loadingMessage: 'Loading Section data from the CMS V2 API.',
+      errorTitle: 'Failed to load Section data',
+      loadError: 'Unable to load Section data.',
+    },
     meta: {
       section: 'Section',
       sectionId: 'Section ID',

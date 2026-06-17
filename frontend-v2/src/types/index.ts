@@ -185,6 +185,24 @@ export interface StructuredBlockModel {
   disabled?: boolean
 }
 
+export type SectionWorkspaceFlowItemModel =
+  | {
+      kind: 'ContentBlock'
+      id: string
+      nodeId: string
+      selected?: boolean
+      disabled?: boolean
+      block: ContentBlockDisplayModel
+    }
+  | {
+      kind: 'AtomicSection' | 'CompositeBlock'
+      id: string
+      nodeId: string
+      selected?: boolean
+      disabled?: boolean
+      block: StructuredBlockModel
+    }
+
 export interface InsertPointModel {
   id: string
   label: string

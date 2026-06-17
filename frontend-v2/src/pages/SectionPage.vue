@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import SectionInspector from '@/components/business/SectionInspector.vue'
@@ -10,13 +10,7 @@ import InsertCreateOverlay from '@/components/containers/InsertCreateOverlay.vue
 import SectionStructurePanel from '@/components/containers/SectionStructurePanel.vue'
 import SectionTopToolbar from '@/components/containers/SectionTopToolbar.vue'
 import SectionWorkspace from '@/components/containers/SectionWorkspace.vue'
-import {
-  mockContentBlockDisplays,
-  mockSectionPageShells,
-  mockSectionTreeNodes,
-  mockStructuredBlocks,
-  mockTeachingTopicTreeNodes,
-} from '@/mocks'
+import { loadSectionPageData, type SectionPageDataModel } from '@/composables/useSectionPageData'
 import type {
   InsertCreatePanelModel,
   InsertCreateSubmitPayload,
@@ -33,7 +27,8 @@ import type {
 
 const route = useRoute()
 const { t } = useI18n()
-const selectedStructureNodeId = ref('section-tree-atomic-basics')
+const sectionPageData = ref<SectionPageDataModel | null>(null)
+const selectedStructureNodeId = ref<string>()
 const activeInsertPointId = ref<string>()
 const activeCreatePanel = ref<InsertCreatePanelModel | null>(null)
 const sectionTreeContextMenu = ref<SectionTreeContextMenuModel | null>(null)
@@ -41,21 +36,12 @@ const insertFeedback = ref('')
 const workspaceScrollTargetNodeId = ref<string>()
 const workspaceScrollRequestKey = ref(0)
 const teachingTopicDrawerOpen = ref(false)
-const selectedTeachingTopicId = ref('topic-mechanical-energy')
+const selectedTeachingTopicId = ref<string>()
 const teachingTopicTreeContextMenu = ref<TeachingTopicTreeContextMenuModel | null>(null)
+const isLoadingSectionPage = ref(false)
+const sectionPageError = ref('')
 let teachingTopicDrawerTimer: number | undefined
-
-const workspaceNodeMap: Record<string, string> = {
-  'display-energy-law': 'section-tree-law',
-  'atomic-energy-basics': 'section-tree-atomic-basics',
-  'composite-circular-track': 'section-tree-composite',
-  'atomic-example-one': 'section-tree-example-one',
-  'atomic-example-two': 'section-tree-example-two',
-  'display-empty-preview': 'section-tree-disabled',
-  'display-long-preview': 'section-tree-long-title',
-  'display-disabled': 'section-tree-disabled',
-  'atomic-empty': 'section-tree-atomic-basics',
-}
+let sectionPageLoadSequence = 0
 
 const sectionId = computed(() => {
   const value = route.params.sectionId
@@ -63,16 +49,26 @@ const sectionId = computed(() => {
 })
 
 const sectionShell = computed<SectionPageShellModel>(() => {
-  const id = sectionId.value || 'demo-section'
-  const matched = mockSectionPageShells.find((section) => section.sectionId === id)
+  if (sectionPageData.value) {
+    return sectionPageData.value.section
+  }
 
-  return matched ?? {
-    sectionId: id,
-    title: `Section ${id}`,
-    teachingTopicTitle: 'Mock Data',
-    status: '骨架验收',
+  return {
+    sectionId: sectionId.value || 'pending',
+    title: isLoadingSectionPage.value
+      ? t('sectionPage.api.loadingTitle')
+      : t('sectionPage.api.emptyTitle'),
+    teachingTopicTitle: 'TeachingTopic',
+    status: isLoadingSectionPage.value
+      ? t('sectionPage.api.loadingStatus')
+      : t('sectionPage.api.emptyStatus'),
   }
 })
+
+const sectionTreeNodes = computed(() => sectionPageData.value?.treeNodes ?? [])
+const sectionWorkspaceFlowItems = computed(() => sectionPageData.value?.flowItems ?? [])
+const workspaceNodeMap = computed(() => sectionPageData.value?.workspaceNodeMap ?? {})
+const teachingTopicTreeNodes = computed(() => sectionPageData.value?.teachingTopicNodes ?? [])
 
 function findSectionTreeNode(
   nodes: SectionTreeNodeModel[],
@@ -93,11 +89,51 @@ function findSectionTreeNode(
 }
 
 const selectedStructureNode = computed(() =>
-  findSectionTreeNode(mockSectionTreeNodes, selectedStructureNodeId.value),
+  selectedStructureNodeId.value
+    ? findSectionTreeNode(sectionTreeNodes.value, selectedStructureNodeId.value)
+    : undefined,
 )
 
 const contextTargetNodeId = computed(() => sectionTreeContextMenu.value?.node.id)
 const teachingTopicContextTargetId = computed(() => teachingTopicTreeContextMenu.value?.node.id)
+
+async function loadCurrentSectionPage() {
+  const loadId = ++sectionPageLoadSequence
+  isLoadingSectionPage.value = true
+  sectionPageError.value = ''
+
+  try {
+    const data = await loadSectionPageData(sectionId.value)
+
+    if (loadId !== sectionPageLoadSequence) {
+      return
+    }
+
+    sectionPageData.value = data
+    selectedTeachingTopicId.value = data.selectedTeachingTopicId
+
+    if (
+      !selectedStructureNodeId.value ||
+      !findSectionTreeNode(data.treeNodes, selectedStructureNodeId.value)
+    ) {
+      selectedStructureNodeId.value = data.defaultSelectedNodeId
+    }
+  } catch (error) {
+    if (loadId !== sectionPageLoadSequence) {
+      return
+    }
+
+    sectionPageData.value = null
+    selectedStructureNodeId.value = undefined
+    selectedTeachingTopicId.value = undefined
+    sectionPageError.value =
+      error instanceof Error ? error.message : t('sectionPage.api.loadError')
+  } finally {
+    if (loadId === sectionPageLoadSequence) {
+      isLoadingSectionPage.value = false
+    }
+  }
+}
 
 function startTeachingTopicDrawerTimer() {
   stopTeachingTopicDrawerTimer()
@@ -248,11 +284,16 @@ function handleDocumentKeydown(event: KeyboardEvent) {
 
 onMounted(() => {
   document.addEventListener('keydown', handleDocumentKeydown)
+  void loadCurrentSectionPage()
 })
 
 onBeforeUnmount(() => {
   stopTeachingTopicDrawerTimer()
   document.removeEventListener('keydown', handleDocumentKeydown)
+})
+
+watch(sectionId, () => {
+  void loadCurrentSectionPage()
 })
 </script>
 
@@ -269,7 +310,7 @@ onBeforeUnmount(() => {
 
     <section class="grid min-h-screen grid-cols-[minmax(0,1fr)] gap-3 p-3 xl:h-full xl:min-h-0 xl:grid-cols-[240px_minmax(0,1fr)_280px]">
       <SectionStructurePanel
-        :nodes="mockSectionTreeNodes"
+        :nodes="sectionTreeNodes"
         :selected-node-id="selectedStructureNodeId"
         :context-target-node-id="contextTargetNodeId"
         @select-node="selectStructureNodeFromTree"
@@ -277,8 +318,7 @@ onBeforeUnmount(() => {
       />
       <SectionWorkspace
         :section="sectionShell"
-        :content-blocks="mockContentBlockDisplays"
-        :structured-blocks="mockStructuredBlocks"
+        :flow-items="sectionWorkspaceFlowItems"
         :selected-node-id="selectedStructureNodeId"
         :workspace-node-map="workspaceNodeMap"
         :scroll-target-node-id="workspaceScrollTargetNodeId"
@@ -329,7 +369,7 @@ onBeforeUnmount(() => {
           class="relative z-10 m-3 max-h-[calc(100vh-1.5rem)] w-max max-w-[calc(100vw-1.5rem)] overflow-auto rounded-lg border bg-card p-3 text-card-foreground"
         >
           <TeachingTopicTree
-            :nodes="mockTeachingTopicTreeNodes"
+            :nodes="teachingTopicTreeNodes"
             :selected-topic-id="selectedTeachingTopicId"
             :context-target-topic-id="teachingTopicContextTargetId"
             full-width-content
@@ -346,5 +386,21 @@ onBeforeUnmount(() => {
       @close="closeTeachingTopicTreeContextMenu"
       @request-action="handleTeachingTopicTreeContextMenuAction"
     />
+
+    <div
+      v-if="isLoadingSectionPage || sectionPageError"
+      class="fixed bottom-3 left-3 z-50 max-w-md rounded-md border bg-card px-3 py-2 text-xs text-card-foreground"
+      role="status"
+    >
+      <p v-if="isLoadingSectionPage" class="font-medium">
+        {{ t('sectionPage.api.loadingMessage') }}
+      </p>
+      <p v-else class="font-medium">
+        {{ t('sectionPage.api.errorTitle') }}
+      </p>
+      <p v-if="sectionPageError" class="mt-1 text-muted-foreground">
+        {{ sectionPageError }}
+      </p>
+    </div>
   </main>
 </template>

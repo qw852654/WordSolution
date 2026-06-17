@@ -17,6 +17,7 @@ import type {
   InsertPointModel,
   InsertRequestModel,
   SectionPageShellModel,
+  SectionWorkspaceFlowItemModel,
   StructuredBlockModel,
 } from '@/types'
 
@@ -27,6 +28,7 @@ const props = withDefaults(
     section: SectionPageShellModel
     contentBlocks?: ContentBlockDisplayModel[]
     structuredBlocks?: StructuredBlockModel[]
+    flowItems?: SectionWorkspaceFlowItemModel[]
     selectedNodeId?: string
     workspaceNodeMap?: Record<string, string>
     scrollTargetNodeId?: string
@@ -38,6 +40,7 @@ const props = withDefaults(
   {
     contentBlocks: () => [],
     structuredBlocks: () => [],
+    flowItems: () => [],
     workspaceNodeMap: () => ({}),
     teachingNoteMode: false,
   },
@@ -50,30 +53,12 @@ const emit = defineEmits<{
 
 const workspaceRoot = ref<HTMLElement | null>(null)
 
-type WorkspaceFlowItem =
-  | {
-      kind: 'ContentBlock'
-      id: string
-      nodeId: string
-      selected?: boolean
-      disabled?: boolean
-      block: ContentBlockDisplayModel
-    }
-  | {
-      kind: 'AtomicSection' | 'CompositeBlock'
-      id: string
-      nodeId: string
-      selected?: boolean
-      disabled?: boolean
-      block: StructuredBlockModel
-    }
-
-function getNodeIdForWorkspaceItem(itemId: string) {
-  return props.workspaceNodeMap[itemId] ?? itemId
+function getNodeIdForWorkspaceItem(itemId: string, explicitNodeId?: string) {
+  return explicitNodeId ?? props.workspaceNodeMap[itemId] ?? itemId
 }
 
-function isWorkspaceItemSelected(itemId: string, fallback?: boolean) {
-  const nodeId = getNodeIdForWorkspaceItem(itemId)
+function isWorkspaceItemSelected(itemId: string, fallback?: boolean, explicitNodeId?: string) {
+  const nodeId = getNodeIdForWorkspaceItem(itemId, explicitNodeId)
   return props.selectedNodeId ? props.selectedNodeId === nodeId : fallback
 }
 
@@ -98,7 +83,7 @@ function emitWorkspaceSelection(itemId: string) {
   emit('selectNode', getNodeIdForWorkspaceItem(itemId))
 }
 
-function getInsertPointBefore(item: WorkspaceFlowItem, index: number): InsertPointModel {
+function getInsertPointBefore(item: SectionWorkspaceFlowItemModel, index: number): InsertPointModel {
   return {
     id: `insert-before-${item.nodeId}-${index}`,
     label: t('components.insertPoint.insert'),
@@ -131,7 +116,7 @@ async function scrollToWorkspaceNode(nodeId?: string) {
   const target = findWorkspaceNodeElement(nodeId)
 
   if (target) {
-    target.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    target.scrollIntoView({ block: 'start', behavior: 'smooth' })
     return
   }
 
@@ -140,9 +125,31 @@ async function scrollToWorkspaceNode(nodeId?: string) {
     ?.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-const flowItems = computed<WorkspaceFlowItem[]>(() => {
+const flowItems = computed<SectionWorkspaceFlowItemModel[]>(() => {
+  if (props.flowItems.length) {
+    return props.flowItems.map((item) => {
+      const nodeId = getNodeIdForWorkspaceItem(item.id, item.nodeId)
+
+      if (item.kind === 'ContentBlock') {
+        return {
+          ...item,
+          nodeId,
+          selected: isWorkspaceItemSelected(item.id, item.selected, nodeId),
+          block: withContentSelection(item.block),
+        }
+      }
+
+      return {
+        ...item,
+        nodeId,
+        selected: isWorkspaceItemSelected(item.id, item.selected, nodeId),
+        block: withStructuredSelection(item.block),
+      }
+    })
+  }
+
   const [firstContentBlock, ...remainingContentBlocks] = props.contentBlocks
-  const items: WorkspaceFlowItem[] = []
+  const items: SectionWorkspaceFlowItemModel[] = []
 
   if (firstContentBlock) {
     items.push({
