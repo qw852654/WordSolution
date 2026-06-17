@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { ChevronDown, ChevronRight } from 'lucide-vue-next'
-import type { BasicTreeNode } from '@/types'
+import type { BasicTreeContextMenuPayload, BasicTreeNode } from '@/types'
 
 const props = defineProps<{
   nodes: BasicTreeNode[]
   selectedNodeId?: string
+  contextTargetNodeId?: string
   expandLabel: string
   collapseLabel: string
 }>()
 
 defineEmits<{
   select: [id: string]
+  nodeContextMenu: [payload: BasicTreeContextMenuPayload]
 }>()
 
 defineSlots<{
@@ -21,6 +23,7 @@ defineSlots<{
     hasChildren: boolean
     expanded: boolean
     selected: boolean
+    contextTarget: boolean
   }) => unknown
 }>()
 
@@ -95,6 +98,9 @@ function toggleNode(nodeId: string) {
       :aria-expanded="hasChildren ? expandedNodeIds.has(node.id) : undefined"
       class="flex min-h-8 items-center gap-1 rounded-md"
       :style="{ paddingLeft: `${(level - 1) * 16}px` }"
+      @contextmenu.prevent="
+        $emit('nodeContextMenu', { node, x: $event.clientX, y: $event.clientY })
+      "
     >
       <button
         v-if="hasChildren"
@@ -111,7 +117,13 @@ function toggleNode(nodeId: string) {
       <button
         type="button"
         class="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-60"
-        :class="selectedNodeId === node.id ? 'bg-muted text-foreground' : 'text-muted-foreground'"
+        :class="[
+          contextTargetNodeId === node.id
+            ? 'bg-section-tree-context-target/10 text-section-tree-context-target-foreground ring-1 ring-section-tree-context-target-ring/40'
+            : selectedNodeId === node.id
+              ? 'bg-muted text-foreground'
+              : 'text-muted-foreground',
+        ]"
         :disabled="node.disabled"
         @click="$emit('select', node.id)"
       >
@@ -121,6 +133,7 @@ function toggleNode(nodeId: string) {
           :has-children="hasChildren"
           :expanded="expandedNodeIds.has(node.id)"
           :selected="selectedNodeId === node.id"
+          :context-target="contextTargetNodeId === node.id"
         >
           <span class="min-w-0 truncate font-medium text-foreground">{{ node.label }}</span>
           <span v-if="node.meta" class="shrink-0 text-xs text-muted-foreground">{{ node.meta }}</span>

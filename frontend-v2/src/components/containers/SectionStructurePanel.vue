@@ -5,7 +5,7 @@ import SectionTree from '@/components/business/SectionTree.vue'
 import EmptyState from '@/components/presentation/EmptyState.vue'
 import WeakScrollArea from '@/components/presentation/WeakScrollArea.vue'
 import { Card } from '@/components/ui/card'
-import type { SectionTreeNodeModel } from '@/types'
+import type { SectionTreeContextMenuPayload, SectionTreeNodeModel } from '@/types'
 
 const { t } = useI18n()
 
@@ -13,6 +13,7 @@ withDefaults(
   defineProps<{
     nodes?: SectionTreeNodeModel[]
     selectedNodeId?: string
+    contextTargetNodeId?: string
   }>(),
   {
     nodes: () => [],
@@ -21,6 +22,7 @@ withDefaults(
 
 defineEmits<{
   selectNode: [id: string]
+  nodeContextMenu: [payload: SectionTreeContextMenuPayload]
 }>()
 </script>
 
@@ -31,7 +33,9 @@ defineEmits<{
         v-if="nodes.length"
         :nodes="nodes"
         :selected-node-id="selectedNodeId"
+        :context-target-node-id="contextTargetNodeId"
         @select-node="$emit('selectNode', $event)"
+        @node-context-menu="$emit('nodeContextMenu', $event)"
       />
       <EmptyState
         v-else

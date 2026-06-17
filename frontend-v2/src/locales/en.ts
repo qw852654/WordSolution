@@ -239,6 +239,17 @@ const en = {
         ContentBlock: 'ContentBlock',
       },
     },
+    sectionTreeContextMenu: {
+      label: 'SectionTree context menu',
+      target: 'Context target',
+      rootRemoveDisabled: 'The Section root cannot be removed.',
+      actions: {
+        CreateContentBlock: 'Create ContentBlock',
+        CreateAtomicSection: 'Create AtomicSection',
+        SearchExistingBlock: 'Insert existing block',
+        Remove: 'Remove',
+      },
+    },
   },
   lab: {
     eyebrow: 'Component validation',
@@ -290,6 +301,19 @@ const en = {
         submitted: 'Received {targetType} Mock submit: {title}',
         cancelled: 'Cancelled the {targetType} create panel.',
       },
+      sectionTreeContextMenu: {
+        title: 'SectionTree context menu',
+        description:
+          'Validate that right-click overrides the browser menu, highlights only the context target, and keeps the selected node unchanged.',
+        selectedTitle: 'Selected node',
+        contextTargetTitle: 'Context target',
+        emptySelected: 'No selected node',
+        emptyContextTarget: 'No context target',
+        contextRule: 'The context target is menu-only and does not sync the Inspector selection.',
+        feedbackTitle: 'Mock feedback',
+        emptyFeedback: 'No menu action has been triggered yet.',
+        feedback: 'Triggered {action} for node: {node}',
+      },
     },
   },
   sectionPage: {
@@ -327,8 +351,10 @@ const en = {
       emptyDescription:
         'This round does not render fake body content, ContentBlockDisplay, AtomicSectionBlock, or InsertPoint.',
       insertPanel: {
+        insertPositionLabel: 'Current selected insert position',
         feedbackCreateContentBlock: 'Selected this position for creating ContentBlock.',
         feedbackCreateAtomicSection: 'Selected this position for creating AtomicSection.',
+        feedbackCreateSubmitted: 'Mock submit received: create {targetType} named {title}.',
         feedbackSearchExistingBlock:
           'Selected this position for inserting an existing block. BlockSearchPicker will be connected later.',
       },

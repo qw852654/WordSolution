@@ -228,6 +228,17 @@ const zhCN = {
         ContentBlock: 'ContentBlock',
       },
     },
+    sectionTreeContextMenu: {
+      label: 'SectionTree 右键菜单',
+      target: '右键目标',
+      rootRemoveDisabled: 'Section 根节点不能移除',
+      actions: {
+        CreateContentBlock: '新建 ContentBlock',
+        CreateAtomicSection: '新建 AtomicSection',
+        SearchExistingBlock: '插入已有块',
+        Remove: '移除',
+      },
+    },
   },
   lab: {
     eyebrow: '组件验收',
@@ -277,6 +288,19 @@ const zhCN = {
         submitted: '已收到 {targetType} Mock 提交：{title}',
         cancelled: '已取消 {targetType} 新建面板。',
       },
+      sectionTreeContextMenu: {
+        title: 'SectionTree 右键菜单',
+        description:
+          '右键树节点时覆盖浏览器默认菜单，只高亮右键目标，不改变当前选中节点。',
+        selectedTitle: '当前选中节点',
+        contextTargetTitle: '当前右键目标',
+        emptySelected: '尚未选中节点',
+        emptyContextTarget: '尚未右键节点',
+        contextRule: '右键目标只用于菜单上下文，不同步 Inspector 选中态。',
+        feedbackTitle: 'Mock 反馈',
+        emptyFeedback: '尚未触发菜单动作。',
+        feedback: '已触发 {action}，目标节点：{node}',
+      },
     },
   },
   sectionPage: {
@@ -314,8 +338,10 @@ const zhCN = {
       emptyDescription:
         '本轮不展示假正文、不实现 ContentBlockDisplay、AtomicSectionBlock 或 InsertPoint。',
       insertPanel: {
+        insertPositionLabel: '当前选中的插入位置',
         feedbackCreateContentBlock: '已选择在此处新建 ContentBlock',
         feedbackCreateAtomicSection: '已选择在此处新建 AtomicSection',
+        feedbackCreateSubmitted: '已收到 Mock 提交：新建 {targetType}，名称为 {title}。',
         feedbackSearchExistingBlock:
           '已选择在此处插入已有块；BlockSearchPicker 后续接入。',
       },

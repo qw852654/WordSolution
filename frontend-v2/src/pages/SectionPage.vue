@@ -3,6 +3,8 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import SectionInspector from '@/components/business/SectionInspector.vue'
+import SectionTreeContextMenu from '@/components/business/SectionTreeContextMenu.vue'
+import InsertCreateOverlay from '@/components/containers/InsertCreateOverlay.vue'
 import SectionStructurePanel from '@/components/containers/SectionStructurePanel.vue'
 import SectionTopToolbar from '@/components/containers/SectionTopToolbar.vue'
 import SectionWorkspace from '@/components/containers/SectionWorkspace.vue'
@@ -12,13 +14,23 @@ import {
   mockSectionTreeNodes,
   mockStructuredBlocks,
 } from '@/mocks'
-import type { SectionPageShellModel, SectionTreeNodeModel } from '@/types'
-import type { InsertRequestModel } from '@/types'
+import type {
+  InsertCreatePanelModel,
+  InsertCreateSubmitPayload,
+  InsertRequestModel,
+  SectionPageShellModel,
+  SectionTreeContextMenuActionPayload,
+  SectionTreeContextMenuModel,
+  SectionTreeContextMenuPayload,
+  SectionTreeNodeModel,
+} from '@/types'
 
 const route = useRoute()
 const { t } = useI18n()
 const selectedStructureNodeId = ref('section-tree-atomic-basics')
 const activeInsertPointId = ref<string>()
+const activeCreatePanel = ref<InsertCreatePanelModel | null>(null)
+const sectionTreeContextMenu = ref<SectionTreeContextMenuModel | null>(null)
 const insertFeedback = ref('')
 const workspaceScrollTargetNodeId = ref<string>()
 const workspaceScrollRequestKey = ref(0)
@@ -74,13 +86,17 @@ const selectedStructureNode = computed(() =>
   findSectionTreeNode(mockSectionTreeNodes, selectedStructureNodeId.value),
 )
 
+const contextTargetNodeId = computed(() => sectionTreeContextMenu.value?.node.id)
+
 function clearActiveInsertPoint() {
   activeInsertPointId.value = undefined
+  activeCreatePanel.value = null
   insertFeedback.value = ''
 }
 
 function selectStructureNode(nodeId: string) {
   selectedStructureNodeId.value = nodeId
+  closeSectionTreeContextMenu()
   clearActiveInsertPoint()
 }
 
@@ -92,13 +108,75 @@ function selectStructureNodeFromTree(nodeId: string) {
 
 function requestInsert(request: InsertRequestModel) {
   activeInsertPointId.value = request.insertPointId
-  const feedbackKeyByAction: Record<InsertRequestModel['actionType'], string> = {
-    CreateContentBlock: 'sectionPage.workspace.insertPanel.feedbackCreateContentBlock',
-    CreateAtomicSection: 'sectionPage.workspace.insertPanel.feedbackCreateAtomicSection',
-    SearchExistingBlock: 'sectionPage.workspace.insertPanel.feedbackSearchExistingBlock',
+
+  if (request.actionType === 'CreateContentBlock' || request.actionType === 'CreateAtomicSection') {
+    insertFeedback.value = ''
+    activeCreatePanel.value = {
+      insertPointId: request.insertPointId,
+      targetType: request.actionType === 'CreateContentBlock' ? 'ContentBlock' : 'AtomicSection',
+      insertPositionLabel: t('sectionPage.workspace.insertPanel.insertPositionLabel'),
+    }
+    return
   }
 
-  insertFeedback.value = t(feedbackKeyByAction[request.actionType])
+  activeCreatePanel.value = null
+  insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackSearchExistingBlock')
+}
+
+function cancelInsertCreateOverlay() {
+  activeCreatePanel.value = null
+}
+
+function submitInsertCreateOverlay(payload: InsertCreateSubmitPayload) {
+  activeCreatePanel.value = null
+  activeInsertPointId.value = payload.insertPointId
+  insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackCreateSubmitted', {
+    targetType: payload.targetType,
+    title: payload.title,
+  })
+}
+
+function openSectionTreeContextMenu(payload: SectionTreeContextMenuPayload) {
+  sectionTreeContextMenu.value = {
+    node: payload.node,
+    position: {
+      x: payload.x,
+      y: payload.y,
+    },
+  }
+}
+
+function closeSectionTreeContextMenu() {
+  sectionTreeContextMenu.value = null
+}
+
+function handleSectionTreeContextMenuAction(payload: SectionTreeContextMenuActionPayload) {
+  const contextNode = sectionTreeContextMenu.value?.node
+  closeSectionTreeContextMenu()
+
+  if (!contextNode) {
+    return
+  }
+
+  if (payload.actionType === 'CreateContentBlock' || payload.actionType === 'CreateAtomicSection') {
+    activeInsertPointId.value = `section-tree-context-${payload.nodeId}`
+    insertFeedback.value = ''
+    activeCreatePanel.value = {
+      insertPointId: activeInsertPointId.value,
+      targetType: payload.actionType === 'CreateContentBlock' ? 'ContentBlock' : 'AtomicSection',
+      insertPositionLabel: contextNode.typeLabel,
+    }
+    return
+  }
+
+  activeCreatePanel.value = null
+
+  if (payload.actionType === 'SearchExistingBlock') {
+    insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackSearchExistingBlock')
+    return
+  }
+
+  insertFeedback.value = ''
 }
 </script>
 
@@ -108,7 +186,9 @@ function requestInsert(request: InsertRequestModel) {
       <SectionStructurePanel
         :nodes="mockSectionTreeNodes"
         :selected-node-id="selectedStructureNodeId"
+        :context-target-node-id="contextTargetNodeId"
         @select-node="selectStructureNodeFromTree"
+        @node-context-menu="openSectionTreeContextMenu"
       />
       <SectionWorkspace
         :section="sectionShell"
@@ -129,5 +209,20 @@ function requestInsert(request: InsertRequestModel) {
         <SectionInspector class="min-h-0 flex-1" :node="selectedStructureNode" />
       </aside>
     </section>
+
+    <InsertCreateOverlay
+      v-if="activeCreatePanel"
+      :model="activeCreatePanel"
+      :open="activeCreatePanel !== null"
+      @cancel="cancelInsertCreateOverlay"
+      @submit="submitInsertCreateOverlay"
+    />
+
+    <SectionTreeContextMenu
+      :model="sectionTreeContextMenu"
+      :open="sectionTreeContextMenu !== null"
+      @close="closeSectionTreeContextMenu"
+      @request-action="handleSectionTreeContextMenuAction"
+    />
   </main>
 </template>

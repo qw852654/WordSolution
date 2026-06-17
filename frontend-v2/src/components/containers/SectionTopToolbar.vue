@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { RefreshCw, Save, Undo2 } from 'lucide-vue-next'
+import { RefreshCw, Undo2 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 
@@ -41,10 +41,6 @@ const questionBanks = [
           {{ questionBank.label }}
         </option>
       </select>
-      <Button type="button" size="sm" class="h-8 px-2 text-xs" disabled>
-        <Save class="size-3.5" />
-        {{ t('sectionPage.toolbar.save') }}
-      </Button>
     </div>
   </header>
 </template>

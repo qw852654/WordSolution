@@ -40,6 +40,12 @@ export interface BasicTreeNode {
   children?: BasicTreeNode[]
 }
 
+export interface BasicTreeContextMenuPayload {
+  node: BasicTreeNode
+  x: number
+  y: number
+}
+
 export type SectionTreeNodeKind = 'Section' | 'AtomicSection' | 'CompositeBlock' | 'ContentBlock'
 
 export interface SectionTreeNodeModel {
@@ -54,6 +60,31 @@ export interface SectionTreeNodeModel {
   disabled?: boolean
   expanded?: boolean
   children?: SectionTreeNodeModel[]
+}
+
+export interface SectionTreeContextMenuPayload {
+  node: SectionTreeNodeModel
+  x: number
+  y: number
+}
+
+export type SectionTreeContextActionType =
+  | 'CreateContentBlock'
+  | 'CreateAtomicSection'
+  | 'SearchExistingBlock'
+  | 'Remove'
+
+export interface SectionTreeContextMenuModel {
+  node: SectionTreeNodeModel
+  position: {
+    x: number
+    y: number
+  }
+}
+
+export interface SectionTreeContextMenuActionPayload {
+  nodeId: string
+  actionType: SectionTreeContextActionType
 }
 
 export type SectionNodeTargetType = 'ContentBlock' | 'AtomicSection'

@@ -32,6 +32,11 @@ export default {
           DEFAULT: 'var(--accent)',
           foreground: 'var(--accent-foreground)',
         },
+        'section-tree-context-target': {
+          DEFAULT: 'var(--section-tree-context-target)',
+          foreground: 'var(--section-tree-context-target-foreground)',
+          ring: 'var(--section-tree-context-target-ring)',
+        },
         popover: {
           DEFAULT: 'var(--popover)',
           foreground: 'var(--popover-foreground)',

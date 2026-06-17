@@ -4,15 +4,22 @@ import { useI18n } from 'vue-i18n'
 import BasicTree from '@/components/business/BasicTree.vue'
 import SectionTreeNode from '@/components/business/SectionTreeNode.vue'
 import EmptyState from '@/components/presentation/EmptyState.vue'
-import type { BasicTreeNode, SectionTreeNodeModel } from '@/types'
+import type {
+  BasicTreeContextMenuPayload,
+  BasicTreeNode,
+  SectionTreeContextMenuPayload,
+  SectionTreeNodeModel,
+} from '@/types'
 
 const props = defineProps<{
   nodes: SectionTreeNodeModel[]
   selectedNodeId?: string
+  contextTargetNodeId?: string
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   selectNode: [id: string]
+  nodeContextMenu: [payload: SectionTreeContextMenuPayload]
 }>()
 
 const { t } = useI18n()
@@ -46,6 +53,20 @@ function buildMeta(node: SectionTreeNodeModel) {
 function getSectionNode(node: BasicTreeNode) {
   return node.payload as SectionTreeNodeModel
 }
+
+function handleNodeContextMenu(payload: BasicTreeContextMenuPayload) {
+  const sectionNode = payload.node.payload as SectionTreeNodeModel | undefined
+
+  if (!sectionNode) {
+    return
+  }
+
+  emit('nodeContextMenu', {
+    node: sectionNode,
+    x: payload.x,
+    y: payload.y,
+  })
+}
 </script>
 
 <template>
@@ -66,9 +87,11 @@ function getSectionNode(node: BasicTreeNode) {
       v-if="basicNodes.length"
       :nodes="basicNodes"
       :selected-node-id="selectedNodeId"
+      :context-target-node-id="contextTargetNodeId"
       :expand-label="t('components.basicTree.expand')"
       :collapse-label="t('components.basicTree.collapse')"
-      @select="$emit('selectNode', $event)"
+      @select="emit('selectNode', $event)"
+      @node-context-menu="handleNodeContextMenu"
     >
       <template #default="{ node, selected }">
         <SectionTreeNode :node="getSectionNode(node)" :selected="selected" />
