@@ -169,6 +169,7 @@ const en = {
       atomicSection: 'AtomicSection',
       compositeBlock: 'CompositeBlock',
       collapse: 'Collapse',
+      expand: 'Expand',
       more: 'More',
       emptyTitle: 'No child content',
       atomicEmptyDescription: 'This AtomicSection does not contain ContentBlock items yet.',

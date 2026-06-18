@@ -429,3 +429,43 @@ useContentBlockActions
 - 从 AtomicSection 内部移除 ContentBlock = `removeAtomicSectionChildItem`。
 
 该规则用于避免 Workspace、SectionTree、Inspector 各自复制一套真实动作逻辑。
+
+## 后续待实现：移除引用后的空壳对象清理
+
+状态：Planned / Deferred，当前不实现。
+
+背景：
+
+- `SectionPage` 当前删除动作语义仍是“移除引用”。
+- 后续希望在移除引用后，由后端判断被移除对象是否为空壳。
+- 如果目标对象为空壳，并且不再被其他对象引用，后端可以同时删除该对象本体。
+- 该逻辑涉及引用统计、文件资产、版本、组合关系和删除顺序，容易引入误删，因此先记录为后续专项能力。
+
+目标语义：
+
+1. 前端仍只提交“移除引用”请求，不在前端判断目标对象是否为空。
+2. 后端应用层在同一业务用例中执行：
+   - 删除当前引用。
+   - 判断被移除目标是否为空壳。
+   - 判断被移除目标是否仍被其他对象引用。
+   - 只有“空壳 + 无其他引用”同时成立时，才删除目标对象本体。
+3. 后续 API 返回结果应能表达：
+   - `removedReference`
+   - `deletedEmptyTarget`
+   - `deletedTargetType`
+   - `deletedTargetId`
+
+候选清理规则：
+
+- `ContentBlock`：只有在无 `ContentBlockVersion` / 无 DOCX 内容资产、无 `ContentBlockRelation` children，并且没有 `SectionItem`、`AtomicSectionItem`、`ContentBlockRelation`、`HandoutVersionItem` 等其他引用时，才允许清理。
+- `AtomicSection`：只有在无 `AtomicSectionItem`，并且没有其他 `SectionItem` 引用时，才允许清理。
+- `CompositeBlock` 本质仍是 `ContentBlock`；如果作为 child relation 被移除，清理规则按 `ContentBlock` 执行。
+- 删除 parent `CompositeBlock` 自身不应由删除其内部 child relation 自动触发。
+
+边界：
+
+- 不改变展示组件职责。
+- 不允许前端直接删除实体。
+- 不允许仅凭标题为空判断 `ContentBlock` 为空。
+- 不允许删除已有版本、DOCX、HTML、PlainText 或被其他结构引用的内容资产。
+- 后续实现前必须先补后端用例测试，再实现业务逻辑。

@@ -41,6 +41,7 @@ const props = withDefaults(
     scrollRequestKey?: number
     activeInsertPointId?: string
     insertFeedback?: string
+    collapsedWorkspaceNodeIds?: string[]
     teachingNoteMode?: boolean
   }>(),
   {
@@ -48,6 +49,7 @@ const props = withDefaults(
     structuredBlocks: () => [],
     flowItems: () => [],
     workspaceNodeMap: () => ({}),
+    collapsedWorkspaceNodeIds: () => [],
     teachingNoteMode: false,
   },
 )
@@ -68,6 +70,7 @@ const emit = defineEmits<{
   requestContentBlockRelationOpenWord: [request: ContentBlockRelationActionPayload]
   requestContentBlockRelationMove: [request: ContentBlockRelationMovePayload]
   requestContentBlockRelationRemove: [request: ContentBlockRelationActionPayload]
+  toggleWorkspaceNodeCollapse: [id: string]
 }>()
 
 const workspaceRoot = ref<HTMLElement | null>(null)
@@ -90,6 +93,7 @@ const compositeBlockActions: SectionItemViewAction[] = [
   'MoveDown',
   'Remove',
 ]
+const collapsedWorkspaceNodeIdSet = computed(() => new Set(props.collapsedWorkspaceNodeIds))
 
 interface AtomicSectionWorkspaceActionPayload {
   nodeId: string
@@ -156,9 +160,18 @@ function withStructuredChildSelection(child: StructuredBlockChildModel): Structu
 function withStructuredSelection(block: StructuredBlockModel): StructuredBlockModel {
   return {
     ...block,
+    expanded: isStructuredBlockExpanded(block.id, block.expanded),
     selected: isWorkspaceItemSelected(block.id, block.selected),
     children: block.children.map((child) => withStructuredChildSelection(child)),
   }
+}
+
+function isStructuredBlockExpanded(blockId: string, fallback?: boolean) {
+  if (collapsedWorkspaceNodeIdSet.value.has(blockId)) {
+    return false
+  }
+
+  return fallback !== false
 }
 
 function emitWorkspaceSelection(itemId: string) {
@@ -421,6 +434,7 @@ watch(
                 :node-id-map="workspaceNodeMap"
                 @select="emitWorkspaceSelection"
                 @select-content-block="emitWorkspaceSelection"
+                @toggle-collapse="emit('toggleWorkspaceNodeCollapse', $event)"
                 @open-content-block-relation-word="emit('requestContentBlockRelationOpenWord', $event)"
                 @move-content-block-relation="emit('requestContentBlockRelationMove', $event)"
                 @remove-content-block-relation="emit('requestContentBlockRelationRemove', $event)"
@@ -434,6 +448,7 @@ watch(
                 :node-id-map="workspaceNodeMap"
                 @select="emitWorkspaceSelection"
                 @select-content-block="emitWorkspaceSelection"
+                @toggle-collapse="emit('toggleWorkspaceNodeCollapse', $event)"
                 @open-content-block-relation-word="emit('requestContentBlockRelationOpenWord', $event)"
                 @move-content-block-relation="emit('requestContentBlockRelationMove', $event)"
                 @remove-content-block-relation="emit('requestContentBlockRelationRemove', $event)"

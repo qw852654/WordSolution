@@ -222,6 +222,7 @@ export interface StructuredBlockModel {
   difficulty: string
   summary: string
   children: StructuredBlockChildModel[]
+  expanded?: boolean
   selected?: boolean
   disabled?: boolean
 }

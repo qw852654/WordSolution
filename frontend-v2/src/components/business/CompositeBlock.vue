@@ -39,6 +39,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const isExpanded = computed(() => props.block.expanded !== false)
 const difficultyMarkerClass = computed(() => getDifficultyMarkerClass(props.block.difficulty))
 const difficultyMarkerLabel = computed(
   () => `${t('components.contentBlockDisplay.difficulty')}: ${props.block.difficulty}`,
@@ -106,10 +107,11 @@ function emitRelationRemove(child: StructuredBlockChildModel) {
         type="button"
         size="sm"
         variant="ghost"
+        :aria-expanded="isExpanded"
         :disabled="block.disabled"
         @click.stop="$emit('toggleCollapse', block.id)"
       >
-        {{ t('components.structuredBlock.collapse') }}
+        {{ isExpanded ? t('components.structuredBlock.collapse') : t('components.structuredBlock.expand') }}
       </Button>
       <Button
         type="button"
@@ -124,6 +126,7 @@ function emitRelationRemove(child: StructuredBlockChildModel) {
       </Button>
     </template>
 
+    <template v-if="isExpanded">
     <p class="text-sm leading-6 text-muted-foreground">{{ block.summary }}</p>
     <div v-if="block.children.length">
       <SectionItemView
@@ -153,6 +156,7 @@ function emitRelationRemove(child: StructuredBlockChildModel) {
           :node-id-map="nodeIdMap"
           @select="emit('selectContentBlock', $event)"
           @select-content-block="emit('selectContentBlock', $event)"
+          @toggle-collapse="emit('toggleCollapse', $event)"
           @open-word="emit('openWord', $event)"
           @refresh-preview="emit('refreshPreview', $event)"
           @open-content-block-more="emit('openContentBlockMore', $event)"
@@ -171,5 +175,6 @@ function emitRelationRemove(child: StructuredBlockChildModel) {
         <Layers3 class="size-5" aria-hidden="true" />
       </template>
     </EmptyState>
+    </template>
   </StructuredContainer>
 </template>

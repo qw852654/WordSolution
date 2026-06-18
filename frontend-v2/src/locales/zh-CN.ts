@@ -156,6 +156,7 @@ const zhCN = {
       atomicSection: 'AtomicSection',
       compositeBlock: 'CompositeBlock',
       collapse: '折叠',
+      expand: '展开',
       more: '更多',
       emptyTitle: '暂无子内容',
       atomicEmptyDescription: '这个 AtomicSection 还没有放入 ContentBlock。',

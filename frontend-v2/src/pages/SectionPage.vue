@@ -47,6 +47,7 @@ const sectionTreeContextMenu = ref<SectionTreeContextMenuModel | null>(null)
 const insertFeedback = ref('')
 const workspaceScrollTargetNodeId = ref<string>()
 const workspaceScrollRequestKey = ref(0)
+const collapsedWorkspaceNodeIds = ref(new Set<string>())
 const teachingTopicDrawerOpen = ref(false)
 const selectedTeachingTopicId = ref<string>()
 const teachingTopicTreeContextMenu = ref<TeachingTopicTreeContextMenuModel | null>(null)
@@ -103,6 +104,7 @@ const sectionShell = computed<SectionPageShellModel>(() => {
 const sectionTreeNodes = computed(() => sectionPageData.value?.treeNodes ?? [])
 const sectionWorkspaceFlowItems = computed(() => sectionPageData.value?.flowItems ?? [])
 const workspaceNodeMap = computed(() => sectionPageData.value?.workspaceNodeMap ?? {})
+const collapsedWorkspaceNodeIdList = computed(() => Array.from(collapsedWorkspaceNodeIds.value))
 const teachingTopicTreeNodes = computed(() => sectionPageData.value?.teachingTopicNodes ?? [])
 const activeCreatePanelModel = computed(() =>
   activeCreatePanel.value
@@ -246,6 +248,18 @@ function selectStructureNodeFromTree(nodeId: string) {
   selectStructureNode(nodeId)
   workspaceScrollTargetNodeId.value = nodeId
   workspaceScrollRequestKey.value += 1
+}
+
+function toggleWorkspaceNodeCollapse(nodeId: string) {
+  const next = new Set(collapsedWorkspaceNodeIds.value)
+
+  if (next.has(nodeId)) {
+    next.delete(nodeId)
+  } else {
+    next.add(nodeId)
+  }
+
+  collapsedWorkspaceNodeIds.value = next
 }
 
 function requestInsert(request: InsertRequestModel) {
@@ -853,7 +867,9 @@ watch(sectionId, () => {
         :scroll-request-key="workspaceScrollRequestKey"
         :active-insert-point-id="activeInsertPointId"
         :insert-feedback="insertFeedback"
+        :collapsed-workspace-node-ids="collapsedWorkspaceNodeIdList"
         @select-node="selectStructureNode"
+        @toggle-workspace-node-collapse="toggleWorkspaceNodeCollapse"
         @request-insert="requestInsert"
         @request-atomic-child-content-block="requestAtomicChildContentBlock"
         @request-atomic-move="requestAtomicMove"
