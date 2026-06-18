@@ -24,7 +24,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  select: [id: string]
+  select: [id: string, event?: MouseEvent]
   insertBefore: [id: string]
   insertAfter: [id: string]
   insertChildContentBlock: [id: string]
@@ -107,14 +107,14 @@ const actionRailHeight = computed(() => {
   return `calc((${actionCount} * 2rem) + (${gapCount} * 0.25rem) + (2 * 0.25rem))`
 })
 
-function emitIfEnabled(eventName: 'select' | SectionItemViewAction) {
+function emitIfEnabled(eventName: 'select' | SectionItemViewAction, event?: MouseEvent) {
   if (props.disabled) {
     return
   }
 
   switch (eventName) {
     case 'select':
-      emit('select', props.itemId)
+      emit('select', props.itemId, event)
       break
     case 'InsertBefore':
       emit('insertBefore', props.itemId)
@@ -162,7 +162,7 @@ function emitIfEnabled(eventName: 'select' | SectionItemViewAction) {
     :aria-selected="selected ? 'true' : 'false'"
     role="group"
     :style="{ '--section-item-action-rail-height': actionRailHeight }"
-    @click.stop="emitIfEnabled('select')"
+    @click.stop="emitIfEnabled('select', $event)"
   >
     <div class="min-w-0 p-2">
       <slot />

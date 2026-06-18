@@ -82,6 +82,14 @@ public sealed record AddSectionItemRequest(
     SectionStatus Status = SectionStatus.Active,
     string? Note = null);
 
+public sealed record WrapSectionItemsAsAtomicSectionRequest(
+    int[] SectionItemIds,
+    string Title,
+    string? Description = null,
+    AtomicSectionType Type = AtomicSectionType.Custom,
+    Difficulty Difficulty = Difficulty.Unset,
+    AtomicSectionStatus Status = AtomicSectionStatus.Draft);
+
 public sealed record MoveSectionItemRequest(string Direction);
 
 public sealed record AddAtomicSectionItemRequest(

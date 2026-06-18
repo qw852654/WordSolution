@@ -45,19 +45,29 @@ const form = reactive<{
 })
 
 const isContentBlock = computed(() => props.model.targetType === 'ContentBlock')
+const isWrapAsAtomicSection = computed(() => props.model.insertMode === 'WrapAsAtomicSection')
 const canSubmit = computed(() => !props.model.disabled && (isContentBlock.value || form.title.trim().length > 0))
 const showTitleRequired = computed(
   () => !props.model.disabled && !isContentBlock.value && form.title.trim().length === 0,
 )
 const panelTitle = computed(() =>
-  isContentBlock.value
-    ? t('components.insertCreateOverlay.contentBlockTitle')
-    : t('components.insertCreateOverlay.atomicSectionTitle'),
+  isWrapAsAtomicSection.value
+    ? t('components.insertCreateOverlay.wrapAtomicSectionTitle')
+    : isContentBlock.value
+      ? t('components.insertCreateOverlay.contentBlockTitle')
+      : t('components.insertCreateOverlay.atomicSectionTitle'),
+)
+const panelDescription = computed(() =>
+  isWrapAsAtomicSection.value
+    ? t('components.insertCreateOverlay.wrapDescription')
+    : t('components.insertCreateOverlay.description'),
 )
 const submitLabel = computed(() =>
-  isContentBlock.value
-    ? t('components.insertCreateOverlay.submitContentBlock')
-    : t('components.insertCreateOverlay.submitAtomicSection'),
+  isWrapAsAtomicSection.value
+    ? t('components.insertCreateOverlay.submitWrapAtomicSection')
+    : isContentBlock.value
+      ? t('components.insertCreateOverlay.submitContentBlock')
+      : t('components.insertCreateOverlay.submitAtomicSection'),
 )
 
 function resetForm() {
@@ -85,6 +95,7 @@ function handleSubmit() {
     insertMode: props.model.insertMode,
     atomicSectionId: props.model.atomicSectionId,
     atomicSectionTitle: props.model.atomicSectionTitle,
+    wrapSectionItemIds: props.model.wrapSectionItemIds,
     title,
     contentBlockType: isContentBlock.value ? form.contentBlockType : undefined,
     difficulty: form.difficulty,
@@ -93,7 +104,13 @@ function handleSubmit() {
 }
 
 watch(
-  () => [props.open, props.model.insertPointId, props.model.targetType],
+  [
+    () => props.open,
+    () => props.model.insertPointId,
+    () => props.model.targetType,
+    () => props.model.insertMode,
+    () => props.model.atomicSectionId,
+  ],
   () => {
     if (props.open) {
       resetForm()
@@ -127,7 +144,7 @@ watch(
             <p class="text-sm text-muted-foreground">{{ model.insertPositionLabel }}</p>
           </div>
           <p class="text-sm text-muted-foreground">
-            {{ t('components.insertCreateOverlay.description') }}
+            {{ panelDescription }}
           </p>
         </header>
 

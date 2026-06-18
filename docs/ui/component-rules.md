@@ -918,3 +918,26 @@ deleteAtomicSectionEntity
 ```text
 docs/superpowers/plans/2026-06-17-section-action-composables.md
 ```
+## 当前补充约定：Workspace Wrap As AtomicSection
+
+本能力涉及的组件边界如下：
+
+- SectionItemView 仍然只是 SectionItem 的视觉容器，只负责选中事件和操作事件 emit。
+- SectionItemView 不判断自己是否可以被升级为 AtomicSection。
+- ContentBlockDisplay、AtomicSectionBlock、CompositeBlock 不调用 API，不持有升级状态。
+- SectionWorkspace 可以展示连续多选状态和“升级为 AtomicSection”入口，但不直接调用 API。
+- SectionPage 持有 Workspace 多选状态、InsertCreateOverlay 打开状态和页面级 blocking 状态。
+- useSectionItemActions 负责调用 `/api/cms-v2/sections/{sectionId}/items/wrap-as-atomic-section` 并在成功后触发 server-confirmed refresh。
+- 后端应用层负责事务、连续性校验、写入和失败回滚。
+
+ComponentLab 规则：
+
+- 本能力不是新增独立展示组件，本轮不要求放入 ComponentLab。
+- 如果后续抽出可复用 MultiSelectToolbar、BlockingOverlay 或 WrapAsAtomicSectionPanel，必须先放入 ComponentLab 用 Mock Data 验收。
+
+禁止事项：
+
+- 不允许在展示组件中串联多个 API 模拟升级。
+- 不允许在前端 optimistic update 中先本地改结构。
+- 不允许把已有 AtomicSection 包进新的 AtomicSection。
+- 不允许把非连续选择交给后端“尽量处理”。

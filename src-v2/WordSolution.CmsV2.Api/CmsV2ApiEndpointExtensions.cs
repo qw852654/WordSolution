@@ -446,6 +446,26 @@ public static class CmsV2ApiEndpointExtensions
             return Results.Ok(result);
         });
 
+        group.MapPost("/sections/{id:int}/items/wrap-as-atomic-section", async (
+            int id,
+            WrapSectionItemsAsAtomicSectionRequest request,
+            SectionUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.WrapSectionItemsAsAtomicSectionAsync(
+                new WrapSectionItemsAsAtomicSectionCommand(
+                    id,
+                    request.SectionItemIds,
+                    request.Title,
+                    request.Description,
+                    request.Type,
+                    request.Difficulty,
+                    request.Status),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
         group.MapPost("/sections/{id:int}/items/{itemId:int}/move", async (
             int id,
             int itemId,

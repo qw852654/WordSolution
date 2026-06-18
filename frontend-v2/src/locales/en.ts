@@ -188,8 +188,11 @@ const en = {
       dialogLabel: 'InsertCreateOverlay',
       contentBlockTitle: 'Create ContentBlock',
       atomicSectionTitle: 'Create AtomicSection',
+      wrapAtomicSectionTitle: 'Upgrade to AtomicSection',
       description:
         'The item belongs to the current Section by default. SectionPage submits it to the CMS V2 API.',
+      wrapDescription:
+        'The selected top-level blocks will be wrapped into a new AtomicSection in one CMS V2 API transaction.',
       insertPosition: 'Insert position',
       sectionLabel: 'Section',
       titleLabel: 'Name',
@@ -201,6 +204,7 @@ const en = {
       cancel: 'Cancel',
       submitContentBlock: 'Create ContentBlock',
       submitAtomicSection: 'Create AtomicSection',
+      submitWrapAtomicSection: 'Upgrade to AtomicSection',
       titleRequired: 'Enter a name before confirming.',
     },
     sectionInspector: {
@@ -405,6 +409,17 @@ const en = {
       emptyTitle: 'SectionItemView document flow pending',
       emptyDescription:
         'This round does not render fake body content, ContentBlockDisplay, AtomicSectionBlock, or InsertPoint.',
+      wrap: {
+        selectedCount: '{count} blocks selected',
+        action: 'Upgrade to AtomicSection',
+        invalidRange:
+          'Select at least two continuous top-level ContentBlock or CompositeBlock items.',
+        selectedPositionLabel: '{count} selected blocks',
+        blockingTitle: 'Upgrading to AtomicSection',
+        blockingDescription:
+          'SectionPage is temporarily locked while the CMS V2 API completes the transaction.',
+        feedbackSuccess: 'Upgraded selected blocks to AtomicSection: {title}.',
+      },
       insertPanel: {
         insertPositionLabel: 'Current selected insert position',
         feedbackCreateContentBlock: 'Selected this position for creating ContentBlock.',

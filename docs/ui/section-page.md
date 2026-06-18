@@ -469,3 +469,26 @@ useContentBlockActions
 - 涓嶅厑璁镐粎鍑爣棰樹负绌哄垽鏂? `ContentBlock` 涓虹┖銆?
 - 涓嶅厑璁稿垹闄ゅ凡鏈夌増鏈?丏OCX銆丠TML銆丳lainText 鎴栬鍏朵粬缁撴瀯寮曠敤鐨勫唴瀹硅祫浜с??
 - 鍚庣画瀹炵幇鍓嶅繀椤诲厛琛ュ悗绔敤渚嬫祴璇曪紝鍐嶅疄鐜颁笟鍔￠?昏緫銆?
+## 当前补充约定：多个顶层块升级为 AtomicSection
+
+SectionPage 支持在 Workspace 中把多个连续的顶层块升级为一个新的 AtomicSection。
+
+交互规则：
+
+- 入口只出现在中间 Workspace，不放在 SectionTree、Inspector 或右键菜单中。
+- 用户通过 Shift + click 连续选择顶层 ContentBlock / CompositeBlock。
+- CompositeBlock 本质仍是 ContentBlock，因此允许参与升级。
+- 已有 AtomicSection 不允许参与升级。
+- 非连续选择、不足两个块、包含 AtomicSection 的选择都不显示有效升级入口，或显示轻量错误提示。
+- 点击“升级为 AtomicSection”后打开 InsertCreateOverlay，填写 AtomicSection 名称、难度和备注。
+- AtomicSection 名称必填。
+- 提交期间整个 SectionPage 顶层阻塞并显示“正在升级为 AtomicSection”，期间禁止 Workspace、SectionTree、右键菜单、插入、删除、移动和 Word 编辑等操作。
+- 成功后重新读取 Section 数据，不做 optimistic update。
+- 失败时保持原数据不变，由后端事务回滚保证不留下半成品。
+- 成功后的撤销能力本轮不实现。
+
+数据规则：
+
+- 前端只提交一次 CMS V2 API 调用，不在前端串联“新建 AtomicSection、移动 item、删除旧引用”等多个 API。
+- 后端 API 必须在一个事务中完成创建 AtomicSection、创建 AtomicSectionItem、删除旧 SectionItem 引用、插入新 SectionItem 和规整 SortOrder。
+- 删除旧 SectionItem 只删除引用，不删除源 ContentBlock、DOCX、版本或组合关系。

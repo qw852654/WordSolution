@@ -184,6 +184,23 @@ export interface CmsV2MoveSectionItemRequest {
   direction: 'Up' | 'Down'
 }
 
+export interface CmsV2WrapSectionItemsAsAtomicSectionRequest {
+  sectionItemIds: number[]
+  title: string
+  description?: string | null
+  type: string
+  difficulty: string
+  status: string
+}
+
+export interface CmsV2WrapSectionItemsAsAtomicSectionResultDto {
+  sectionId: number
+  atomicSectionId: number
+  sectionItemId: number
+  wrappedSectionItemIds: number[]
+  atomicSectionItemIds: number[]
+}
+
 export interface CmsV2MoveContentBlockRelationRequest {
   direction: 'Up' | 'Down'
 }
@@ -301,6 +318,14 @@ export const cmsV2Api = {
     sectionItemId: number,
     request: CmsV2MoveSectionItemRequest,
   ) => cmsV2PostJson(`/sections/${sectionId}/items/${sectionItemId}/move`, request),
+  wrapSectionItemsAsAtomicSection: (
+    sectionId: number,
+    request: CmsV2WrapSectionItemsAsAtomicSectionRequest,
+  ) =>
+    cmsV2PostJson<CmsV2WrapSectionItemsAsAtomicSectionResultDto>(
+      `/sections/${sectionId}/items/wrap-as-atomic-section`,
+      request,
+    ),
   removeSectionItem: (sectionId: number, sectionItemId: number) =>
     cmsV2Delete(`/sections/${sectionId}/items/${sectionItemId}`),
   getAtomicSection: (atomicSectionId: number) =>

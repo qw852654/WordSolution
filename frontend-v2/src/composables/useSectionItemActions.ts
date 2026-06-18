@@ -1,4 +1,8 @@
-import { cmsV2Api, type CmsV2MoveSectionItemRequest } from '@/apis/cmsV2Client'
+import {
+  cmsV2Api,
+  type CmsV2MoveSectionItemRequest,
+  type CmsV2WrapSectionItemsAsAtomicSectionRequest,
+} from '@/apis/cmsV2Client'
 
 export interface SectionItemActionsOptions {
   refreshSection: () => Promise<void>
@@ -27,10 +31,21 @@ export function useSectionItemActions(options: SectionItemActionsOptions) {
     await options.refreshSection()
   }
 
+  async function wrapSectionItemsAsAtomicSection(
+    sectionId: number,
+    request: CmsV2WrapSectionItemsAsAtomicSectionRequest,
+  ) {
+    const result = await cmsV2Api.wrapSectionItemsAsAtomicSection(sectionId, request)
+    await options.refreshSection()
+
+    return result
+  }
+
   return {
     moveSectionItem,
     moveSectionItemUp,
     moveSectionItemDown,
     removeSectionItemReference,
+    wrapSectionItemsAsAtomicSection,
   }
 }

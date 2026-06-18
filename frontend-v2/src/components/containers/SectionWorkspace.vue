@@ -10,6 +10,7 @@ import EmptyState from '@/components/presentation/EmptyState.vue'
 import InsertPoint from '@/components/presentation/InsertPoint.vue'
 import StatusPill from '@/components/presentation/StatusPill.vue'
 import WeakScrollArea from '@/components/presentation/WeakScrollArea.vue'
+import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import type {
   AtomicSectionItemActionPayload,
@@ -41,6 +42,8 @@ const props = withDefaults(
     scrollRequestKey?: number
     activeInsertPointId?: string
     insertFeedback?: string
+    wrapSelectedNodeIds?: string[]
+    wrapSelectionFeedback?: string
     collapsedWorkspaceNodeIds?: string[]
     teachingNoteMode?: boolean
   }>(),
@@ -49,14 +52,16 @@ const props = withDefaults(
     structuredBlocks: () => [],
     flowItems: () => [],
     workspaceNodeMap: () => ({}),
+    wrapSelectedNodeIds: () => [],
     collapsedWorkspaceNodeIds: () => [],
     teachingNoteMode: false,
   },
 )
 
 const emit = defineEmits<{
-  selectNode: [id: string]
+  selectNode: [id: string, event?: MouseEvent]
   requestInsert: [request: InsertRequestModel]
+  requestWrapAsAtomicSection: []
   requestAtomicChildContentBlock: [request: AtomicSectionWorkspaceActionPayload]
   requestAtomicMove: [request: AtomicSectionWorkspaceMovePayload]
   requestAtomicRename: [request: AtomicSectionWorkspaceActionPayload]
@@ -94,6 +99,8 @@ const compositeBlockActions: SectionItemViewAction[] = [
   'Remove',
 ]
 const collapsedWorkspaceNodeIdSet = computed(() => new Set(props.collapsedWorkspaceNodeIds))
+const wrapSelectedNodeIdSet = computed(() => new Set(props.wrapSelectedNodeIds))
+const wrapSelectedCount = computed(() => props.wrapSelectedNodeIds.length)
 
 interface AtomicSectionWorkspaceActionPayload {
   nodeId: string
@@ -123,6 +130,10 @@ function getNodeIdForWorkspaceItem(itemId: string, explicitNodeId?: string) {
 
 function isWorkspaceItemSelected(itemId: string, fallback?: boolean, explicitNodeId?: string) {
   const nodeId = getNodeIdForWorkspaceItem(itemId, explicitNodeId)
+  if (wrapSelectedNodeIdSet.value.has(nodeId)) {
+    return true
+  }
+
   return props.selectedNodeId ? props.selectedNodeId === nodeId : fallback
 }
 
@@ -174,8 +185,8 @@ function isStructuredBlockExpanded(blockId: string, fallback?: boolean) {
   return fallback !== false
 }
 
-function emitWorkspaceSelection(itemId: string) {
-  emit('selectNode', getNodeIdForWorkspaceItem(itemId))
+function emitWorkspaceSelection(itemId: string, event?: MouseEvent) {
+  emit('selectNode', getNodeIdForWorkspaceItem(itemId), event)
 }
 
 function getInsertPointBefore(item: SectionWorkspaceFlowItemModel, index: number): InsertPointModel {
@@ -385,6 +396,22 @@ watch(
       <StatusPill :label="section.status" tone="active" />
       <span class="text-muted-foreground">{{ t('sectionPage.meta.sectionId') }}: {{ section.sectionId }}</span>
       <span class="text-muted-foreground">{{ t('sectionPage.meta.teachingTopic') }}: {{ section.teachingTopicTitle }}</span>
+      <span
+        v-if="wrapSelectedCount >= 2"
+        class="ml-auto text-muted-foreground"
+      >
+        {{ t('sectionPage.workspace.wrap.selectedCount', { count: wrapSelectedCount }) }}
+      </span>
+      <Button
+        v-if="wrapSelectedCount >= 2"
+        type="button"
+        size="sm"
+        variant="outline"
+        class="h-7 px-2 text-xs"
+        @click="emit('requestWrapAsAtomicSection')"
+      >
+        {{ t('sectionPage.workspace.wrap.action') }}
+      </Button>
       </div>
 
       <div
@@ -393,6 +420,12 @@ watch(
       >
       <WeakScrollArea class="rounded-md border bg-background p-3" :aria-label="t('sectionPage.workspace.mainColumnLabel')">
         <div v-if="flowItems.length" class="space-y-0">
+          <p
+            v-if="wrapSelectionFeedback"
+            class="mb-2 rounded-md border bg-muted/20 px-2 py-1 text-xs text-muted-foreground"
+          >
+            {{ wrapSelectionFeedback }}
+          </p>
           <template
             v-for="(item, index) in flowItems"
             :key="item.id"

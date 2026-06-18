@@ -306,9 +306,10 @@ export interface InsertCreatePanelModel {
   insertPositionLabel: string
   sectionId: number
   sectionTitle: string
-  insertMode?: 'SectionItem' | 'AtomicSectionChild'
+  insertMode?: 'SectionItem' | 'AtomicSectionChild' | 'WrapAsAtomicSection'
   atomicSectionId?: number
   atomicSectionTitle?: string
+  wrapSectionItemIds?: number[]
   disabled?: boolean
 }
 
@@ -316,9 +317,10 @@ export interface InsertCreateSubmitPayload {
   insertPointId: string
   targetType: InsertCreateTargetType
   sectionId: number
-  insertMode?: 'SectionItem' | 'AtomicSectionChild'
+  insertMode?: 'SectionItem' | 'AtomicSectionChild' | 'WrapAsAtomicSection'
   atomicSectionId?: number
   atomicSectionTitle?: string
+  wrapSectionItemIds?: number[]
   title: string
   contentBlockType?: InsertCreateContentBlockType
   difficulty: InsertCreateDifficulty

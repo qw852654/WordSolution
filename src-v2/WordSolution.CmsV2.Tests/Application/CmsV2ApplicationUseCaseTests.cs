@@ -293,6 +293,164 @@ public sealed class CmsV2ApplicationUseCaseTests
     }
 
     [Fact]
+    public async Task WrapSectionItemsAsAtomicSection_wraps_continuous_content_block_items_transactionally()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var sectionUseCases = new SectionUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+
+        var firstBlock = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "A", ContentBlockType.KnowledgePoint, "a/v1.docx"));
+        var secondBlock = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "B", ContentBlockType.Question, "b/v1.docx"));
+        var thirdBlock = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "C", ContentBlockType.ExampleGroup, "c/v1.docx"));
+        var fourthBlock = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "D", ContentBlockType.Question, "d/v1.docx"));
+        var secondVersion = await unitOfWork.ContentBlockVersions.GetCurrentByContentBlockAsync(secondBlock.Id);
+
+        Assert.NotNull(secondVersion);
+
+        var firstItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, firstBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 10));
+        var secondItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, secondBlock.Id, ReferenceMode.LockedVersion, secondVersion.Id, SortOrder: 20, TitleOverride: "锁定 B", Note: "保留备注"));
+        var thirdItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, thirdBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 30));
+        var fourthItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, fourthBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 40));
+
+        var result = await sectionUseCases.WrapSectionItemsAsAtomicSectionAsync(
+            new WrapSectionItemsAsAtomicSectionCommand(
+                sectionId,
+                [secondItem.Id, thirdItem.Id],
+                "新 AtomicSection",
+                "由连续块升级",
+                AtomicSectionType.Custom,
+                Difficulty.Medium,
+                AtomicSectionStatus.Draft));
+
+        var atomicSection = await unitOfWork.AtomicSections.GetByIdAsync(result.AtomicSectionId);
+        var sectionItems = await unitOfWork.SectionItems.ListBySectionAsync(sectionId);
+        var atomicItems = await unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(result.AtomicSectionId);
+
+        Assert.NotNull(atomicSection);
+        Assert.Equal(sectionId, atomicSection.SectionId);
+        Assert.Equal("新 AtomicSection", atomicSection.Title);
+        Assert.Equal("由连续块升级", atomicSection.Description);
+        Assert.Equal(Difficulty.Medium, atomicSection.Difficulty);
+        Assert.Equal([secondItem.Id, thirdItem.Id], result.WrappedSectionItemIds);
+        Assert.Equal([firstItem.Id, result.SectionItemId, fourthItem.Id], sectionItems.Select(item => item.Id));
+        Assert.Equal([10, 20, 30], sectionItems.Select(item => item.SortOrder));
+        Assert.Equal(SectionItemTargetType.AtomicSection, sectionItems[1].TargetType);
+        Assert.Equal(result.AtomicSectionId, sectionItems[1].TargetId);
+        Assert.Equal(SectionStatus.Active, sectionItems[1].Status);
+        Assert.Null(await unitOfWork.SectionItems.GetByIdAsync(secondItem.Id));
+        Assert.Null(await unitOfWork.SectionItems.GetByIdAsync(thirdItem.Id));
+        Assert.Equal([secondBlock.Id, thirdBlock.Id], atomicItems.Select(item => item.ContentBlockId));
+        Assert.Equal([ReferenceMode.LockedVersion, ReferenceMode.FollowLatest], atomicItems.Select(item => item.ReferenceMode));
+        Assert.Equal(secondVersion.Id, atomicItems[0].LockedContentBlockVersionId);
+        Assert.Equal("锁定 B", atomicItems[0].TitleOverride);
+        Assert.Equal("保留备注", atomicItems[0].Note);
+        Assert.Equal(atomicItems.Select(item => item.Id), result.AtomicSectionItemIds);
+        Assert.NotNull(await unitOfWork.ContentBlocks.GetByIdAsync(secondBlock.Id));
+        Assert.NotNull(await unitOfWork.ContentBlocks.GetByIdAsync(thirdBlock.Id));
+    }
+
+    [Fact]
+    public async Task WrapSectionItemsAsAtomicSection_replaces_section_variant_references_to_wrapped_items()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var sectionUseCases = new SectionUseCases(unitOfWork);
+        var variantUseCases = new SectionVariantUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+
+        var firstBlock = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "A", ContentBlockType.KnowledgePoint, "variant-wrap-a/v1.docx"));
+        var secondBlock = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "B", ContentBlockType.Question, "variant-wrap-b/v1.docx"));
+        var thirdBlock = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "C", ContentBlockType.Question, "variant-wrap-c/v1.docx"));
+
+        var firstItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, firstBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 10));
+        var secondItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, secondBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 20));
+        var thirdItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, thirdBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 30));
+
+        var variant = await variantUseCases.CreateSectionVariantAsync(
+            new CreateSectionVariantCommand(sectionId, "基础讲解版"));
+        await variantUseCases.AddSectionVariantItemAsync(
+            new AddSectionVariantItemCommand(variant.Id, firstItem.Id, SortOrder: 10, Note: "before"));
+        await variantUseCases.AddSectionVariantItemAsync(
+            new AddSectionVariantItemCommand(variant.Id, secondItem.Id, SortOrder: 20, Note: "selected"));
+        await variantUseCases.AddSectionVariantItemAsync(
+            new AddSectionVariantItemCommand(variant.Id, thirdItem.Id, SortOrder: 30, Note: "selected"));
+
+        var result = await sectionUseCases.WrapSectionItemsAsAtomicSectionAsync(
+            new WrapSectionItemsAsAtomicSectionCommand(
+                sectionId,
+                [secondItem.Id, thirdItem.Id],
+                "升级片段",
+                null,
+                AtomicSectionType.Custom,
+                Difficulty.Basic,
+                AtomicSectionStatus.Draft));
+
+        var variantItems = await unitOfWork.SectionVariantItems.ListBySectionVariantAsync(variant.Id);
+
+        Assert.Equal([firstItem.Id, result.SectionItemId], variantItems.Select(item => item.SectionItemId));
+        Assert.Equal([10, 20], variantItems.Select(item => item.SortOrder));
+        Assert.Null(await unitOfWork.SectionItems.GetByIdAsync(secondItem.Id));
+        Assert.Null(await unitOfWork.SectionItems.GetByIdAsync(thirdItem.Id));
+    }
+
+    [Fact]
+    public async Task WrapSectionItemsAsAtomicSection_rejects_invalid_selection_without_partial_changes()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var sectionUseCases = new SectionUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+
+        var firstBlock = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "A", ContentBlockType.KnowledgePoint, "rollback-a/v1.docx"));
+        var secondBlock = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "B", ContentBlockType.Question, "rollback-b/v1.docx"));
+        var thirdBlock = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "C", ContentBlockType.Question, "rollback-c/v1.docx"));
+        var firstItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, firstBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 10));
+        var secondItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, secondBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 20));
+        var thirdItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, thirdBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 30));
+
+        await Assert.ThrowsAsync<CmsV2ApplicationException>(
+            () => sectionUseCases.WrapSectionItemsAsAtomicSectionAsync(
+                new WrapSectionItemsAsAtomicSectionCommand(
+                    sectionId,
+                    [firstItem.Id, thirdItem.Id],
+                    "不应创建",
+                    null,
+                    AtomicSectionType.Custom,
+                    Difficulty.Basic,
+                    AtomicSectionStatus.Draft)));
+
+        Assert.Empty(await unitOfWork.AtomicSections.ListAsync());
+        Assert.Empty(await unitOfWork.AtomicSectionItems.ListAsync());
+        Assert.Equal(
+            [firstItem.Id, secondItem.Id, thirdItem.Id],
+            (await unitOfWork.SectionItems.ListBySectionAsync(sectionId)).Select(item => item.Id));
+    }
+
+    [Fact]
     public async Task SectionVariant_use_cases_require_items_from_the_same_section()
     {
         await using var context = await CreateMigratedContextAsync();

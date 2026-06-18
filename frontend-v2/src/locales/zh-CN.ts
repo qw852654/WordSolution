@@ -175,7 +175,10 @@ const zhCN = {
       dialogLabel: 'InsertCreateOverlay',
       contentBlockTitle: '新建 ContentBlock',
       atomicSectionTitle: '新建 AtomicSection',
+      wrapAtomicSectionTitle: '升级为 AtomicSection',
       description: '默认归属当前 Section，确认后由 SectionPage 提交到 CMS V2 API。',
+      wrapDescription:
+        '会把选中的顶层块通过一次 CMS V2 API 事务升级为新的 AtomicSection。',
       insertPosition: '插入位置',
       sectionLabel: 'Section',
       titleLabel: '名称',
@@ -187,6 +190,7 @@ const zhCN = {
       cancel: '取消',
       submitContentBlock: '新建 ContentBlock',
       submitAtomicSection: '新建 AtomicSection',
+      submitWrapAtomicSection: '升级为 AtomicSection',
       titleRequired: '请输入名称后再确认。',
     },
     sectionInspector: {
@@ -392,6 +396,15 @@ const zhCN = {
       emptyTitle: 'SectionItemView 文档流待接入',
       emptyDescription:
         '本轮不展示假正文、不实现 ContentBlockDisplay、AtomicSectionBlock 或 InsertPoint。',
+      wrap: {
+        selectedCount: '已选择 {count} 个块',
+        action: '升级为 AtomicSection',
+        invalidRange: '请选择至少两个连续的顶层 ContentBlock 或 CompositeBlock。',
+        selectedPositionLabel: '已选择 {count} 个块',
+        blockingTitle: '正在升级为 AtomicSection',
+        blockingDescription: 'CMS V2 API 正在执行事务，SectionPage 已暂时锁定。',
+        feedbackSuccess: '已将选中块升级为 AtomicSection：{title}。',
+      },
       insertPanel: {
         insertPositionLabel: '当前选中的插入位置',
         feedbackCreateContentBlock: '已选择在此处新建 ContentBlock',

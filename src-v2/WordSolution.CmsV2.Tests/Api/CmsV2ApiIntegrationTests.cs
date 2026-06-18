@@ -396,6 +396,95 @@ public sealed class CmsV2ApiIntegrationTests
     }
 
     [Fact]
+    public async Task Section_items_can_be_wrapped_as_atomic_section_through_api()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "功能关系", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new
+            {
+                teachingTopicId = topic.GetProperty("id").GetInt32(),
+                title = "机械能守恒",
+                type = "NormalCourse",
+                difficulty = "Medium",
+                status = "Draft"
+            });
+        var sectionId = section.GetProperty("id").GetInt32();
+        var firstBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks/blank-document",
+            new { sectionId, title = "知识点", blockType = "KnowledgePoint", difficulty = "Basic", status = "Draft" });
+        var secondBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks/blank-document",
+            new { sectionId, title = "题目", blockType = "Question", difficulty = "Medium", status = "Draft" });
+        var firstItem = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/sections/{sectionId}/items",
+            new
+            {
+                targetType = "ContentBlock",
+                targetId = firstBlock.GetProperty("contentBlockId").GetInt32(),
+                referenceMode = "FollowLatest",
+                sortOrder = 10,
+                status = "Active"
+            });
+        var secondItem = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/sections/{sectionId}/items",
+            new
+            {
+                targetType = "ContentBlock",
+                targetId = secondBlock.GetProperty("contentBlockId").GetInt32(),
+                referenceMode = "FollowLatest",
+                sortOrder = 20,
+                status = "Active"
+            });
+
+        var wrapped = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/sections/{sectionId}/items/wrap-as-atomic-section",
+            new
+            {
+                sectionItemIds = new[] { firstItem.GetProperty("id").GetInt32(), secondItem.GetProperty("id").GetInt32() },
+                title = "守恒基础",
+                description = "由两个块升级",
+                type = "Custom",
+                difficulty = "Medium",
+                status = "Draft"
+            });
+        var sectionItems = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/sections/{sectionId}/items")
+            ?? [];
+        var atomicItems = await client.GetFromJsonAsync<JsonElement[]>(
+                $"/api/cms-v2/atomic-sections/{wrapped.GetProperty("atomicSectionId").GetInt32()}/items")
+            ?? [];
+
+        Assert.Equal(sectionId, wrapped.GetProperty("sectionId").GetInt32());
+        Assert.Equal(2, wrapped.GetProperty("wrappedSectionItemIds").GetArrayLength());
+        Assert.Equal(2, wrapped.GetProperty("atomicSectionItemIds").GetArrayLength());
+        Assert.Single(sectionItems);
+        Assert.Equal("AtomicSection", sectionItems[0].GetProperty("targetType").GetString());
+        Assert.Equal(wrapped.GetProperty("atomicSectionId").GetInt32(), sectionItems[0].GetProperty("targetId").GetInt32());
+        Assert.Equal(2, atomicItems.Length);
+
+        var invalid = await client.PostAsJsonAsync(
+            $"/api/cms-v2/sections/{sectionId}/items/wrap-as-atomic-section",
+            new
+            {
+                sectionItemIds = new[] { sectionItems[0].GetProperty("id").GetInt32() },
+                title = "无效",
+                type = "Custom",
+                difficulty = "Basic",
+                status = "Draft"
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+    }
+
+    [Fact]
     public async Task Composition_and_handout_endpoints_generate_word_and_expose_generated_files()
     {
         await using var factory = new CmsV2ApiFactory();
