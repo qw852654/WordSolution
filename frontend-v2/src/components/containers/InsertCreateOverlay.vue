@@ -23,6 +23,7 @@ const difficultyOptions: InsertCreateDifficulty[] = ['基础', '中档', '提高
 const props = defineProps<{
   model: InsertCreatePanelModel
   open: boolean
+  errorMessage?: string
 }>()
 
 const emit = defineEmits<{
@@ -212,6 +213,14 @@ watch(
             />
           </label>
         </div>
+
+        <p
+          v-if="errorMessage"
+          class="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          role="alert"
+        >
+          {{ errorMessage }}
+        </p>
 
         <footer class="flex justify-end gap-2">
           <Button type="button" variant="outline" @click="handleCancel">

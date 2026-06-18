@@ -397,6 +397,13 @@ const zhCN = {
       emptyDescription:
         '本轮不展示假正文、不实现 ContentBlockDisplay、AtomicSectionBlock 或 InsertPoint。',
       wrap: {
+        enterAction: '升级为 as',
+        confirmAction: '确认升级为 as',
+        clearAction: '清空选择',
+        exitAction: '退出升级',
+        invalidSelection: '请选择至少两个顶层 ContentBlock 或 CompositeBlock。',
+        atomicSectionNotAllowed: '已有 as 不能参与升级。',
+        notWrappableLabel: '这个块不能参与升级为 as',
         selectedCount: '已选择 {count} 个块',
         action: '升级为 AtomicSection',
         invalidRange: '请选择至少两个连续的顶层 ContentBlock 或 CompositeBlock。',

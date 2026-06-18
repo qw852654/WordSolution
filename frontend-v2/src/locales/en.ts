@@ -410,6 +410,13 @@ const en = {
       emptyDescription:
         'This round does not render fake body content, ContentBlockDisplay, AtomicSectionBlock, or InsertPoint.',
       wrap: {
+        enterAction: 'Upgrade to as',
+        confirmAction: 'Confirm upgrade to as',
+        clearAction: 'Clear selection',
+        exitAction: 'Exit upgrade',
+        invalidSelection: 'Select at least two top-level ContentBlock or CompositeBlock items.',
+        atomicSectionNotAllowed: 'Existing as items cannot be upgraded.',
+        notWrappableLabel: 'This block cannot be upgraded to as',
         selectedCount: '{count} blocks selected',
         action: 'Upgrade to AtomicSection',
         invalidRange:

@@ -46,7 +46,8 @@ const activeInsertPointId = ref<string>()
 const activeCreatePanel = ref<InsertCreatePanelModel | null>(null)
 const sectionTreeContextMenu = ref<SectionTreeContextMenuModel | null>(null)
 const insertFeedback = ref('')
-const wrapSelectionAnchorNodeId = ref<string>()
+const insertCreateError = ref('')
+const wrapSelectionMode = ref(false)
 const wrapSelectedNodeIds = ref<string[]>([])
 const wrapSelectionFeedback = ref('')
 const wrappingAsAtomicSection = ref(false)
@@ -250,11 +251,24 @@ function clearActiveInsertPoint() {
   activeInsertPointId.value = undefined
   activeCreatePanel.value = null
   insertFeedback.value = ''
+  insertCreateError.value = ''
 }
 
 function clearWrapSelection() {
   wrapSelectedNodeIds.value = []
   wrapSelectionFeedback.value = ''
+}
+
+function enterWrapSelectionMode() {
+  clearActiveInsertPoint()
+  closeSectionTreeContextMenu()
+  wrapSelectionMode.value = true
+  clearWrapSelection()
+}
+
+function cancelWrapSelectionMode() {
+  wrapSelectionMode.value = false
+  clearWrapSelection()
 }
 
 function getCurrentNumericSectionId() {
@@ -267,8 +281,7 @@ function selectStructureNode(nodeId: string) {
   selectedStructureNodeId.value = nodeId
   closeSectionTreeContextMenu()
   clearActiveInsertPoint()
-  wrapSelectionAnchorNodeId.value = undefined
-  clearWrapSelection()
+  cancelWrapSelectionMode()
 }
 
 function isWrappableWorkspaceItem(item: SectionWorkspaceFlowItemModel) {
@@ -276,33 +289,40 @@ function isWrappableWorkspaceItem(item: SectionWorkspaceFlowItemModel) {
 }
 
 function selectWorkspaceNode(nodeId: string, event?: MouseEvent) {
+  if (wrapSelectionMode.value) {
+    toggleWrapNodeSelection(nodeId)
+    return
+  }
+
   selectedStructureNodeId.value = nodeId
   closeSectionTreeContextMenu()
   clearActiveInsertPoint()
+  clearWrapSelection()
+  void event
+}
 
-  if (event?.shiftKey && wrapSelectionAnchorNodeId.value) {
-    const items = sectionWorkspaceFlowItems.value
-    const startIndex = items.findIndex((item) => item.nodeId === wrapSelectionAnchorNodeId.value)
-    const endIndex = items.findIndex((item) => item.nodeId === nodeId)
-
-    if (startIndex >= 0 && endIndex >= 0) {
-      const [from, to] = startIndex < endIndex ? [startIndex, endIndex] : [endIndex, startIndex]
-      const range = items.slice(from, to + 1)
-
-      if (range.length >= 2 && range.every(isWrappableWorkspaceItem)) {
-        wrapSelectedNodeIds.value = range.map((item) => item.nodeId)
-        wrapSelectionFeedback.value = ''
-      } else {
-        clearWrapSelection()
-        wrapSelectionFeedback.value = t('sectionPage.workspace.wrap.invalidRange')
-      }
-
-      return
-    }
+function toggleWrapNodeSelection(nodeId: string) {
+  if (!wrapSelectionMode.value) {
+    return
   }
 
-  wrapSelectionAnchorNodeId.value = nodeId
-  clearWrapSelection()
+  const item = sectionWorkspaceFlowItems.value.find((flowItem) => flowItem.nodeId === nodeId)
+
+  if (!item || !isWrappableWorkspaceItem(item)) {
+    wrapSelectionFeedback.value = t('sectionPage.workspace.wrap.atomicSectionNotAllowed')
+    return
+  }
+
+  const next = new Set(wrapSelectedNodeIds.value)
+
+  if (next.has(nodeId)) {
+    next.delete(nodeId)
+  } else {
+    next.add(nodeId)
+  }
+
+  wrapSelectedNodeIds.value = Array.from(next)
+  wrapSelectionFeedback.value = ''
 }
 
 function selectStructureNodeFromTree(nodeId: string) {
@@ -324,8 +344,9 @@ function toggleWorkspaceNodeCollapse(nodeId: string) {
 }
 
 function requestInsert(request: InsertRequestModel) {
-  clearWrapSelection()
+  cancelWrapSelectionMode()
   activeInsertPointId.value = request.insertPointId
+  insertCreateError.value = ''
 
   if (request.actionType === 'CreateContentBlock' || request.actionType === 'CreateAtomicSection') {
     const currentSectionId = getCurrentNumericSectionId()
@@ -360,7 +381,7 @@ function requestWrapAsAtomicSection() {
   }
 
   if (wrapSelectedSectionItemIds.value.length < 2) {
-    wrapSelectionFeedback.value = t('sectionPage.workspace.wrap.invalidRange')
+    wrapSelectionFeedback.value = t('sectionPage.workspace.wrap.invalidSelection')
     return
   }
 
@@ -368,6 +389,7 @@ function requestWrapAsAtomicSection() {
 
   activeInsertPointId.value = undefined
   insertFeedback.value = ''
+  insertCreateError.value = ''
   activeCreatePanel.value = {
     insertPointId: 'wrap-as-atomic-section',
     targetType: 'AtomicSection',
@@ -391,6 +413,7 @@ function requestAtomicChildContentBlock(payload: AtomicSectionWorkspaceActionPay
 
   activeInsertPointId.value = `atomic-section-child-${payload.atomicSectionId}`
   insertFeedback.value = ''
+  insertCreateError.value = ''
   activeCreatePanel.value = {
     insertPointId: activeInsertPointId.value,
     targetType: 'ContentBlock',
@@ -660,6 +683,7 @@ async function requestContentBlockRelationRemove(payload: ContentBlockRelationAc
 
 function cancelInsertCreateOverlay() {
   activeCreatePanel.value = null
+  insertCreateError.value = ''
 }
 
 async function submitInsertCreateOverlay(payload: InsertCreateSubmitPayload) {
@@ -669,6 +693,7 @@ async function submitInsertCreateOverlay(payload: InsertCreateSubmitPayload) {
 
   isSubmittingInsertCreate.value = true
   insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackSubmitting')
+  insertCreateError.value = ''
 
   try {
     if (payload.insertMode === 'WrapAsAtomicSection') {
@@ -716,8 +741,10 @@ async function submitInsertCreateOverlay(payload: InsertCreateSubmitPayload) {
     workspaceScrollTargetNodeId.value = selectedStructureNodeId.value
     workspaceScrollRequestKey.value += 1
   } catch (error) {
-    insertFeedback.value =
+    const message =
       error instanceof Error ? error.message : t('sectionPage.workspace.insertPanel.feedbackCreateFailed')
+    insertFeedback.value = message
+    insertCreateError.value = message
   } finally {
     isSubmittingInsertCreate.value = false
   }
@@ -727,7 +754,7 @@ async function submitWrapAsAtomicSection(payload: InsertCreateSubmitPayload) {
   const sectionItemIds = payload.wrapSectionItemIds ?? wrapSelectedSectionItemIds.value
 
   if (sectionItemIds.length < 2) {
-    throw new Error(t('sectionPage.workspace.wrap.invalidRange'))
+    throw new Error(t('sectionPage.workspace.wrap.invalidSelection'))
   }
 
   try {
@@ -743,8 +770,7 @@ async function submitWrapAsAtomicSection(payload: InsertCreateSubmitPayload) {
 
     activeCreatePanel.value = null
     activeInsertPointId.value = undefined
-    clearWrapSelection()
-    wrapSelectionAnchorNodeId.value = undefined
+    cancelWrapSelectionMode()
     selectedStructureNodeId.value = `section-item-${result.sectionItemId}`
     insertFeedback.value = t('sectionPage.workspace.wrap.feedbackSuccess', {
       title: payload.title,
@@ -900,6 +926,7 @@ function handleSectionTreeContextMenuAction(payload: SectionTreeContextMenuActio
 
     activeInsertPointId.value = `section-tree-context-${payload.nodeId}`
     insertFeedback.value = ''
+    insertCreateError.value = ''
     activeCreatePanel.value = {
       insertPointId: activeInsertPointId.value,
       targetType: payload.actionType === 'CreateContentBlock' ? 'ContentBlock' : 'AtomicSection',
@@ -947,6 +974,11 @@ function handleTeachingTopicTreeContextMenuAction(
 }
 
 function handleDocumentKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && wrapSelectionMode.value && !activeCreatePanel.value) {
+    cancelWrapSelectionMode()
+    return
+  }
+
   if (event.key === 'Escape' && teachingTopicDrawerOpen.value) {
     closeTeachingTopicDrawer()
   }
@@ -995,12 +1027,17 @@ watch(sectionId, () => {
         :scroll-request-key="workspaceScrollRequestKey"
         :active-insert-point-id="activeInsertPointId"
         :insert-feedback="insertFeedback"
+        :wrap-selection-mode="wrapSelectionMode"
         :wrap-selected-node-ids="wrapSelectedNodeIds"
         :wrap-selection-feedback="wrapSelectionFeedback"
         :collapsed-workspace-node-ids="collapsedWorkspaceNodeIdList"
         @select-node="selectWorkspaceNode"
         @toggle-workspace-node-collapse="toggleWorkspaceNodeCollapse"
         @request-insert="requestInsert"
+        @enter-wrap-selection-mode="enterWrapSelectionMode"
+        @cancel-wrap-selection-mode="cancelWrapSelectionMode"
+        @clear-wrap-selection="clearWrapSelection"
+        @toggle-wrap-node-selection="toggleWrapNodeSelection"
         @request-wrap-as-atomic-section="requestWrapAsAtomicSection"
         @request-atomic-child-content-block="requestAtomicChildContentBlock"
         @request-atomic-move="requestAtomicMove"
@@ -1027,6 +1064,7 @@ watch(sectionId, () => {
       v-if="activeCreatePanelModel"
       :model="activeCreatePanelModel"
       :open="activeCreatePanelModel !== null"
+      :error-message="insertCreateError"
       @cancel="cancelInsertCreateOverlay"
       @submit="submitInsertCreateOverlay"
     />

@@ -175,11 +175,6 @@ public sealed class SectionUseCases
                 .Select(item => topLevelItems.FindIndex(candidate => candidate.Id == item.Id))
                 .Order()
                 .ToArray();
-            if (selectedIndexes.Length == 0
-                || selectedIndexes[^1] - selectedIndexes[0] + 1 != selectedIndexes.Length)
-            {
-                throw new CmsV2ApplicationException("SectionItems must be continuous top-level siblings.");
-            }
 
             foreach (var item in selectedItems)
             {

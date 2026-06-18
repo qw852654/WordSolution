@@ -42,6 +42,7 @@ const props = withDefaults(
     scrollRequestKey?: number
     activeInsertPointId?: string
     insertFeedback?: string
+    wrapSelectionMode?: boolean
     wrapSelectedNodeIds?: string[]
     wrapSelectionFeedback?: string
     collapsedWorkspaceNodeIds?: string[]
@@ -52,6 +53,7 @@ const props = withDefaults(
     structuredBlocks: () => [],
     flowItems: () => [],
     workspaceNodeMap: () => ({}),
+    wrapSelectionMode: false,
     wrapSelectedNodeIds: () => [],
     collapsedWorkspaceNodeIds: () => [],
     teachingNoteMode: false,
@@ -61,6 +63,10 @@ const props = withDefaults(
 const emit = defineEmits<{
   selectNode: [id: string, event?: MouseEvent]
   requestInsert: [request: InsertRequestModel]
+  enterWrapSelectionMode: []
+  cancelWrapSelectionMode: []
+  clearWrapSelection: []
+  toggleWrapNodeSelection: [nodeId: string]
   requestWrapAsAtomicSection: []
   requestAtomicChildContentBlock: [request: AtomicSectionWorkspaceActionPayload]
   requestAtomicMove: [request: AtomicSectionWorkspaceMovePayload]
@@ -187,6 +193,27 @@ function isStructuredBlockExpanded(blockId: string, fallback?: boolean) {
 
 function emitWorkspaceSelection(itemId: string, event?: MouseEvent) {
   emit('selectNode', getNodeIdForWorkspaceItem(itemId), event)
+}
+
+function isWrappableWorkspaceItem(item: SectionWorkspaceFlowItemModel) {
+  return item.kind !== 'AtomicSection' && typeof item.sectionItemId === 'number'
+}
+
+function handleWorkspaceItemSelect(item: SectionWorkspaceFlowItemModel, event?: MouseEvent) {
+  if (props.wrapSelectionMode) {
+    emit('toggleWrapNodeSelection', item.nodeId)
+    return
+  }
+
+  emitWorkspaceSelection(item.id, event)
+}
+
+function handleNestedWorkspaceSelection(itemId: string, event?: MouseEvent) {
+  if (props.wrapSelectionMode) {
+    return
+  }
+
+  emitWorkspaceSelection(itemId, event)
 }
 
 function getInsertPointBefore(item: SectionWorkspaceFlowItemModel, index: number): InsertPointModel {
@@ -396,22 +423,55 @@ watch(
       <StatusPill :label="section.status" tone="active" />
       <span class="text-muted-foreground">{{ t('sectionPage.meta.sectionId') }}: {{ section.sectionId }}</span>
       <span class="text-muted-foreground">{{ t('sectionPage.meta.teachingTopic') }}: {{ section.teachingTopicTitle }}</span>
-      <span
-        v-if="wrapSelectedCount >= 2"
-        class="ml-auto text-muted-foreground"
-      >
-        {{ t('sectionPage.workspace.wrap.selectedCount', { count: wrapSelectedCount }) }}
-      </span>
-      <Button
-        v-if="wrapSelectedCount >= 2"
-        type="button"
-        size="sm"
-        variant="outline"
-        class="h-7 px-2 text-xs"
-        @click="emit('requestWrapAsAtomicSection')"
-      >
-        {{ t('sectionPage.workspace.wrap.action') }}
-      </Button>
+      <div class="ml-auto flex flex-wrap items-center gap-2">
+        <span
+          v-if="wrapSelectionMode"
+          class="text-muted-foreground"
+        >
+          {{ t('sectionPage.workspace.wrap.selectedCount', { count: wrapSelectedCount }) }}
+        </span>
+        <Button
+          v-if="!wrapSelectionMode"
+          type="button"
+          size="sm"
+          variant="outline"
+          class="h-7 px-2 text-xs"
+          @click="emit('enterWrapSelectionMode')"
+        >
+          {{ t('sectionPage.workspace.wrap.enterAction') }}
+        </Button>
+        <template v-else>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            class="h-7 px-2 text-xs"
+            :disabled="wrapSelectedCount < 2"
+            @click="emit('requestWrapAsAtomicSection')"
+          >
+            {{ t('sectionPage.workspace.wrap.confirmAction') }}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            class="h-7 px-2 text-xs"
+            :disabled="wrapSelectedCount === 0"
+            @click="emit('clearWrapSelection')"
+          >
+            {{ t('sectionPage.workspace.wrap.clearAction') }}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            class="h-7 px-2 text-xs"
+            @click="emit('cancelWrapSelectionMode')"
+          >
+            {{ t('sectionPage.workspace.wrap.exitAction') }}
+          </Button>
+        </template>
+      </div>
       </div>
 
       <div
@@ -449,7 +509,8 @@ watch(
               :disabled="item.disabled"
               :actions="getWorkspaceItemActions(item)"
               :data-workspace-node-id="item.nodeId"
-              @select="emitWorkspaceSelection"
+              :aria-label="isWrappableWorkspaceItem(item) ? undefined : t('sectionPage.workspace.wrap.notWrappableLabel')"
+              @select="(_, event) => handleWorkspaceItemSelect(item, event)"
               @insert-child-content-block="emitAtomicChildContentBlock(item)"
               @move-up="item.kind === 'AtomicSection' ? emitAtomicMove(item, 'Up') : emitContentBlockMove(item, 'Up')"
               @move-down="item.kind === 'AtomicSection' ? emitAtomicMove(item, 'Down') : emitContentBlockMove(item, 'Down')"
@@ -465,8 +526,8 @@ watch(
                 v-else-if="item.kind === 'AtomicSection'"
                 :block="item.block"
                 :node-id-map="workspaceNodeMap"
-                @select="emitWorkspaceSelection"
-                @select-content-block="emitWorkspaceSelection"
+                @select="handleNestedWorkspaceSelection"
+                @select-content-block="handleNestedWorkspaceSelection"
                 @toggle-collapse="emit('toggleWorkspaceNodeCollapse', $event)"
                 @open-content-block-relation-word="emit('requestContentBlockRelationOpenWord', $event)"
                 @move-content-block-relation="emit('requestContentBlockRelationMove', $event)"
@@ -479,8 +540,8 @@ watch(
                 v-else
                 :block="item.block"
                 :node-id-map="workspaceNodeMap"
-                @select="emitWorkspaceSelection"
-                @select-content-block="emitWorkspaceSelection"
+                @select="handleNestedWorkspaceSelection"
+                @select-content-block="handleNestedWorkspaceSelection"
                 @toggle-collapse="emit('toggleWorkspaceNodeCollapse', $event)"
                 @open-content-block-relation-word="emit('requestContentBlockRelationOpenWord', $event)"
                 @move-content-block-relation="emit('requestContentBlockRelationMove', $event)"
