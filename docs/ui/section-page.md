@@ -492,3 +492,39 @@ SectionPage 支持在 Workspace 中把多个连续的顶层块升级为一个新
 - 前端只提交一次 CMS V2 API 调用，不在前端串联“新建 AtomicSection、移动 item、删除旧引用”等多个 API。
 - 后端 API 必须在一个事务中完成创建 AtomicSection、创建 AtomicSectionItem、删除旧 SectionItem 引用、插入新 SectionItem 和规整 SortOrder。
 - 删除旧 SectionItem 只删除引用，不删除源 ContentBlock、DOCX、版本或组合关系。
+## 当前修订：Workspace 升级为 as 交互
+
+本节覆盖旧的 `Shift + click` 连续选择规则。后续用户口头说 `as` 时，均表示 `AtomicSection` / 原子小节。
+
+交互入口：
+
+- `Workspace` 顶部右侧放置 `升级为 as` 按钮。
+- 默认状态下，点击该按钮进入升级状态。
+- 进入升级状态后，按钮文案切换为确认动作，例如 `确认升级为 as`。
+- 升级状态下同时显示已选数量，并提供 `清空选择`、`退出升级` 这类轻量操作。
+
+块选择规则：
+
+- 升级状态下，点击可升级块会切换选择状态。
+- 点击未选中的可升级块：加入选择并高亮。
+- 再次点击已选中的块：取消选择。
+- 允许不连续选择。
+- 已有 `as` / `AtomicSection` 块不可选，不参与升级。
+- `ContentBlock` 与组类型 `CompositeBlock` 可以参与升级；`CompositeBlock` 本质仍是 `ContentBlock`。
+- 点击空白区域不清空选择，避免误操作。
+- 按 `Esc` 可以退出升级状态并清空选择。
+
+确认与面板：
+
+- 只有点击顶部 `确认升级为 as` 按钮，才打开升级确认面板。
+- 块本身的点击行为只负责选择 / 取消选择，不负责打开面板。
+- 少于两个块时，顶部确认按钮禁用或给出轻量提示。
+- 升级确认面板填写：as 名称、难度、备注。
+- as 名称必填。
+
+提交行为：
+
+- 提交时整个 `SectionPage` 顶层阻塞，并显示 `正在升级为 as`。
+- 阻塞期间禁止 `Workspace` 选择、插入、删除、移动、Word 编辑、右键菜单和 `SectionTree` 操作。
+- 成功后重新读取 `Section` 数据，不做 optimistic update。
+- 失败时保持原页面数据不变，并显示错误提示。

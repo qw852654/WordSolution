@@ -941,3 +941,29 @@ ComponentLab 规则：
 - 不允许在前端 optimistic update 中先本地改结构。
 - 不允许把已有 AtomicSection 包进新的 AtomicSection。
 - 不允许把非连续选择交给后端“尽量处理”。
+## 当前修订：Workspace 升级为 as 的组件边界
+
+`as` 是 `AtomicSection` / 原子小节的口头简称。
+
+组件职责：
+
+- `SectionItemView` 仍然只负责视觉容器、选中态展示和事件 emit。
+- `ContentBlockDisplay`、`CompositeBlock`、`AtomicSectionBlock` 不持有升级状态，不调用升级 API。
+- `SectionWorkspace` 可以展示升级模式、已选高亮、已选数量和顶部操作入口，但不直接调用 API。
+- `SectionPage` 持有升级模式状态、已选块集合、升级面板状态和页面级阻塞状态。
+- `useSectionItemActions` 负责调用 `/api/cms-v2/sections/{sectionId}/items/wrap-as-atomic-section`，并在成功后触发 server-confirmed refresh。
+
+交互边界：
+
+- 升级状态只能由 `Workspace` 顶部右侧按钮进入。
+- 升级状态下，点击可升级块只做选择 / 取消选择。
+- 再次点击已选块是取消选择，不打开面板。
+- 升级确认面板只能由顶部 `确认升级为 as` 按钮打开。
+- 已有 `AtomicSection` 不允许参与升级。
+- 允许不连续选择。
+- 少于两个块时，不允许提交升级。
+
+ComponentLab 规则：
+
+- 如果后续抽出独立 `WrapAsAtomicSectionToolbar`、`WrapAsAtomicSectionPanel` 或升级模式高亮组件，必须先放入 `ComponentLab` 使用 Mock Data 验收。
+- 当前若只在 `SectionPage` / `SectionWorkspace` 内调整页面级联动，不强制新增 ComponentLab 展示。
