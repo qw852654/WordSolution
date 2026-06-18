@@ -709,7 +709,7 @@ CMS V2 前端涉及持久化的交互统一采用 server-confirmed update 模式
 - 不写死具体颜色值。
 - 若后续需要调整视觉颜色，只修改 token 映射，不在组件中改一次性颜色。
 
-## 当前补充约定：BasicTreeNodeView 与 TeachingTopicTree
+## 当前补充约定：BasicTreeNodeView 与 TeachingStructureTree
 
 ### BasicTreeNodeView
 
@@ -736,64 +736,153 @@ BasicTreeNodeView 表示树节点的一行通用视觉结构。
 - TeachingTopicTreeNode 必须通过 BasicTreeNodeView 渲染节点内容。
 - 不允许为 SectionTree 和 TeachingTopicTree 分别复制两套节点行样式。
 
-### TeachingTopicTree
+### TeachingStructureTree / TeachingTopicTree
 
-TeachingTopicTree 表示教学主题导航树。
+产品语义上，这棵树称为 TeachingStructureTree【教学结构树】。
+
+当前代码中已有的 TeachingTopicTree 是它的实现基础。后续是否把组件文件从 TeachingTopicTree 重命名为 TeachingStructureTree，需要单独规划，不在普通功能修改中顺手完成。
+
+TeachingStructureTree 表示整个内容库的教学结构总览树，不再只是纯 TeachingTopic 导航树。
+
+核心模型：
+
+```text
+TeachingStructureNode
+  = TeachingTopic 信息
+  + 可选绑定的 Section 信息
+  + 只读 SectionVariant 列表
+```
+
+典型结构：
+
+```text
+功能关系
+  机械能守恒                 TeachingTopic + Section
+    基础讲解版               SectionVariant，只读
+    提高版                   SectionVariant，只读
+    一轮复习版               SectionVariant，只读
+  竖直圆轨道                 TeachingTopic + Section
+  杆模型                     TeachingTopic，未绑定 Section
+```
 
 职责：
 
-- 展示 TeachingTopic 层级。
-- 允许展开 / 折叠教学主题分支。
-- 允许选择一个 TeachingTopic，并通过 selectTopic 事件交给父级处理。
-- 显示轻量字段，例如 Section 数量、Handout 数量、归档状态。
+- 展示全库 TeachingTopic 层级。
+- 表达每个 TeachingTopic 是否已经绑定 Section。
+- 展开绑定了 Section 的 TeachingTopic 后，只读显示该 Section 下的 SectionVariant 列表。
+- 作为全库教学结构总览入口，帮助用户快速理解章节、主题、Section 和 Variant 的分布。
+- 允许选择一个 TeachingTopic / Section / SectionVariant 节点，并通过事件交给父级处理。
+- 显示轻量字段，例如 Section 状态、Variant 数量、归档状态。
 - 复用 BasicTree 的树行为和 BasicTreeNodeView 的节点视觉结构。
 
 边界：
 
 - 不展示 Section 内部结构。
 - 不展示 SectionItem、ContentBlock、版本或生成记录。
-- 不跳转页面。
-- 不调用 API。
-- 不接入实际页面，必须先在 ComponentLab 中用 Mock Data 验收。
+- 不展示 Handout 内部结构。
+- 不把 ContentBlock、ContentBlockVersion、GeneratedFile 混进这棵树。
+- SectionVariant 第一版只读，不在这棵树内新增、重命名、删除或复制。
+- 第一版不提供 Section 解绑能力，避免出现无法从 UI 找回的孤儿 Section。
+- 组件本身不调用 API，真实读写由页面或 composable 处理。
+
+基础交互：
+
+- 单击 TeachingTopic 节点：只选中节点，用于查看或右键管理。
+- 双击已绑定 Section 的 TeachingTopic 节点：打开该 Section 本身。
+- 展开已绑定 Section 的 TeachingTopic 节点：显示它下面的 SectionVariant 列表。
+- 单击 SectionVariant 节点：只选中，显示 Variant 信息。
+- 双击 SectionVariant 节点：后续可打开对应 Variant 视图；第一版如果页面未完成，可以保留为占位。
+- 点击树外区域或按 Escape：关闭悬浮抽屉。
+
+Display Root【显示根节点】：
+
+- TeachingStructureTree 必须支持把某个节点临时设为显示根节点。
+- Display Root 只是前端注意力管理状态，不修改真实 TeachingTopic 层级，不写数据库，不调用持久化 API。
+- `displayRootNodeId = null` 表示显示全库根结构。
+- `displayRootNodeId = 某节点 id` 表示只显示该节点及其下级分支。
+- 前端必须维护 `displayRootNodeId` 和 `displayRootPath`，用于返回上一级和返回全库根。
+- 允许通过“返回上一级”把显示根切回父节点。
+- 允许通过“返回全库根”把 `displayRootNodeId` 置回 `null`。
+
+可设为显示根的节点：
+
+- 有子 TeachingTopic 的 TeachingTopic。
+- 已绑定 Section 的 TeachingTopic，即使它没有子 TeachingTopic、没有 SectionVariant。
+
+不可设为显示根的节点：
+
+- 空 TeachingTopic。空 = 没有子 TeachingTopic + 没有绑定 Section。
+- SectionVariant。
+- SectionTree 内部节点，例如 SectionItem / AtomicSection / ContentBlock。
+
+SectionVariant 规则：
+
+- SectionVariant 在 TeachingStructureTree 中不新增独立节点类型。
+- 它复用现有 SectionVariant 节点语义，作为已绑定 Section 的 TeachingTopic 下方只读子项。
+- SectionVariant 不参与 Display Root。
 
 ComponentLabPage 验收：
 
-- 本轮只放 TeachingTopicTree 相关验收内容。
-- 点击节点后，右侧显示当前选中的 TeachingTopic Mock 信息。
+- 本轮只放 TeachingStructureTree / TeachingTopicTree 相关验收内容。
+- 必须覆盖未绑定 Section、已绑定 Section、带 SectionVariant、空主题、长标题等 Mock Data 场景。
+- 点击节点后，右侧显示当前选中的 TeachingStructureNode Mock 信息。
 - 展开 / 折叠、选中态、禁用态、长标题必须沿用 BasicTree 行为。
+- 必须覆盖 Display Root 场景：可提升节点、不可提升空节点、不可提升 SectionVariant、返回上一级、返回全库根。
 
-### TeachingTopicTreeContextMenu
+### TeachingStructureTreeContextMenu
 
-TeachingTopicTreeContextMenu 表示 TeachingTopicTree 节点上的右键上下文菜单。
+TeachingStructureTreeContextMenu 表示 TeachingStructureTree 节点上的右键上下文菜单。当前代码可继续使用 TeachingTopicTreeContextMenu 作为实现名，但文档语义按 TeachingStructureTree 理解。
 
 职责：
 
 - 覆盖浏览器默认右键菜单。
-- 显示当前右键目标 TeachingTopic 的菜单操作。
+- 显示当前右键目标 TeachingStructureNode 的菜单操作。
 - 通过事件把菜单动作交给父级处理。
 - 使用 BasicTree 的 context target 高亮能力。
 - 支持 Escape 和点击外部关闭。
 
-菜单项：
+第一版菜单项：
+
+未绑定 Section 且允许管理的 TeachingTopic 节点：
 
 1. 新增子节点
 2. 新增后续节点
-3. 删除
+3. 重命名主题
+4. 创建 Section
+5. 删除空主题
+
+已绑定 Section 的 TeachingTopic 节点：
+
+1. 新增子节点
+2. 新增后续节点
+3. 重命名主题
+4. 打开 Section
+
+SectionVariant 节点：
+
+- 第一版只读，不提供管理动作。
+
+删除规则：
+
+- 第一版只允许删除空 TeachingTopic。
+- 空 TeachingTopic = 没有子主题 + 没有绑定 Section。
+- 已绑定 Section 的节点不能删除。
+- 有子主题的节点不能删除。
 
 边界：
 
 - 右键节点时只高亮该节点，不默认选中该节点。
-- 右键不改变当前选中的 TeachingTopic。
+- 右键不改变当前选中的 TeachingStructureNode。
 - 本轮只在 ComponentLabPage 中使用 Mock Data 验收。
-- 本轮不真实新增 TeachingTopic。
-- 本轮不真实删除 TeachingTopic。
+- 真实新增、重命名、创建 Section、删除空主题必须走页面或 composable 的 CMS V2 API。
+- 不做 Section 解绑。
+- 不做 SectionVariant 管理。
 - 本轮不调用 API。
-- 本轮不接入实际页面。
 
 ComponentLabPage 验收：
 
-- 放置一个 TeachingTopicTree 进行联动测试。
-- 点击节点时更新 selectedTopicId。
+- 放置一个 TeachingStructureTree / TeachingTopicTree 进行联动测试。
+- 点击节点时更新 selectedStructureNodeId。
 - 右键节点时只更新 context target。
 - 右键菜单出现时浏览器原生菜单不出现。
 - 选择菜单项后只显示 Mock 反馈，不改树数据。

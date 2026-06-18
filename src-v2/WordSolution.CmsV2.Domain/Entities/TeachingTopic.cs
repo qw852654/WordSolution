@@ -44,4 +44,31 @@ public sealed class TeachingTopic
     public TeachingTopicStatus Status { get; private set; }
 
     public DateTimeOffset UpdatedTime { get; private set; }
+
+    public void Rename(string name, string? description = null, DateTimeOffset? updatedTime = null)
+    {
+        DomainGuard.NotWhiteSpace(name, nameof(Name));
+
+        Name = name.Trim();
+        Description = description?.Trim();
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+    }
+
+    public void MoveTo(int? parentId, int sortOrder, DateTimeOffset? updatedTime = null)
+    {
+        DomainGuard.PositiveOrNull(parentId, nameof(ParentId));
+        DomainGuard.NonNegative(sortOrder, nameof(SortOrder));
+
+        ParentId = parentId;
+        SortOrder = sortOrder;
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+    }
+
+    public void SetSortOrder(int sortOrder, DateTimeOffset? updatedTime = null)
+    {
+        DomainGuard.NonNegative(sortOrder, nameof(SortOrder));
+
+        SortOrder = sortOrder;
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+    }
 }

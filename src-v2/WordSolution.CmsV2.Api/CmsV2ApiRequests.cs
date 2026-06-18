@@ -9,6 +9,27 @@ public sealed record CreateTeachingTopicRequest(
     int SortOrder = 0,
     TeachingTopicStatus Status = TeachingTopicStatus.Active);
 
+public sealed record CreateTeachingTopicChildRequest(
+    string Name,
+    string? Description = null,
+    TeachingTopicStatus Status = TeachingTopicStatus.Active);
+
+public sealed record CreateTeachingTopicNextSiblingRequest(
+    string Name,
+    string? Description = null,
+    TeachingTopicStatus Status = TeachingTopicStatus.Active);
+
+public sealed record RenameTeachingTopicRequest(
+    string Name,
+    string? Description = null);
+
+public sealed record CreateSectionForTeachingTopicRequest(
+    string? Title = null,
+    string? Description = null,
+    SectionType Type = SectionType.NormalCourse,
+    Difficulty Difficulty = Difficulty.Unset,
+    SectionStatus Status = SectionStatus.Draft);
+
 public sealed record CreateSectionRequest(
     int TeachingTopicId,
     string Title,

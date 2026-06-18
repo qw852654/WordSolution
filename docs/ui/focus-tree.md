@@ -44,6 +44,17 @@ Focus Workspace 表示用户可以临时聚焦一条分支，隐藏无关内容�
 - 面包屑显示当前焦点路径。
 - 仅展示当前焦点分支的相关节点。
 
+Display Root【显示根节点】是 FocusTree 的通用注意力管理能力。
+
+规则：
+
+- Display Root 只改变前端树的显示范围，不改变业务树真实结构。
+- `displayRootNodeId = null` 表示显示完整业务树。
+- `displayRootNodeId` 有值时，业务树只显示该节点及其后代。
+- `displayRootPath` 用于面包屑、返回上一级和返回完整根。
+- FocusTree 只维护机制状态，不判断哪些业务节点允许设为显示根。
+- 是否允许设为显示根必须由业务树提供，例如 `canSetDisplayRoot(node)`。
+
 ## 3. 业务树职责
 
 业务树提供：
@@ -59,21 +70,40 @@ Permission / State Display
 业务树示例：
 
 ```text
-TeachingTopicTree
+TeachingStructureTree
 SectionTree
 ContentBlockTree
 HandoutTree
 ```
 
-### TeachingTopicTree
+### TeachingStructureTree
 
 职责：
 
-- 展示教学主题层级。
-- 定位知识结构位置。
+- 展示全库教学结构层级。
+- 以 TeachingTopic 作为主节点。
+- 表达 TeachingTopic 是否绑定 Section。
+- 展开绑定 Section 的 TeachingTopic 后，可以显示只读 SectionVariant 列表。
+- 定位知识结构位置，并提供进入 Section 的入口。
 - 不展示小节内部结构。
 - 不展示讲义内部结构。
 - 不展示内容块版本和生成记录。
+
+边界：
+
+- 这棵树可以显示 TeachingTopic、绑定的 Section 状态和只读 SectionVariant 列表，但不能展示 SectionItem / ContentBlock / AtomicSection。
+- 双击绑定 Section 的 TeachingTopic 节点打开 Section 本身。
+- SectionVariant 第一版只读，不在这棵树内新增、重命名、删除或复制。
+- 第一版不提供 Section 解绑能力。
+- 删除只允许作用于没有子主题且没有绑定 Section 的空 TeachingTopic。
+
+Display Root 规则：
+
+- 有子 TeachingTopic 的 TeachingTopic 可以设为显示根。
+- 已绑定 Section 的 TeachingTopic 可以设为显示根，即使它没有子 TeachingTopic、没有 SectionVariant。
+- 空 TeachingTopic 不允许设为显示根。
+- SectionVariant 不允许设为显示根。
+- SectionVariant 不新增 TeachingStructureTree 专属节点类型，复用现有 SectionVariant 节点语义。
 
 ### SectionTree
 

@@ -4,6 +4,7 @@ using WordSolution.CmsV2.Application.ContentBlocks;
 using WordSolution.CmsV2.Application.Handouts;
 using WordSolution.CmsV2.Application.SectionVariants;
 using WordSolution.CmsV2.Application.Sections;
+using WordSolution.CmsV2.Application.TeachingStructure;
 using WordSolution.CmsV2.Domain.Documents;
 using WordSolution.CmsV2.Domain.Entities;
 using WordSolution.CmsV2.Domain.Enums;
@@ -56,6 +57,7 @@ public static class CmsV2ApiEndpointExtensions
             teachingNoteStatus = EnumNames<TeachingNoteStatus>()
         }));
 
+        MapTeachingStructure(group);
         MapTeachingTopics(group);
         MapContentBlocks(group);
         MapSections(group);
@@ -68,6 +70,14 @@ public static class CmsV2ApiEndpointExtensions
         return app;
     }
 
+    private static void MapTeachingStructure(RouteGroupBuilder group)
+    {
+        group.MapGet("/teaching-structure", async (
+            TeachingStructureUseCases useCases,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await useCases.GetTeachingStructureAsync(cancellationToken)));
+    }
+
     private static void MapTeachingTopics(RouteGroupBuilder group)
     {
         group.MapGet("/teaching-topics", async (ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
@@ -78,6 +88,74 @@ public static class CmsV2ApiEndpointExtensions
 
         group.MapGet("/teaching-topics/{id:int}/children", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
             Results.Ok(await unitOfWork.TeachingTopics.ListChildrenAsync(id, cancellationToken)));
+
+        group.MapPost("/teaching-topics/{id:int}/children", async (
+            int id,
+            CreateTeachingTopicChildRequest request,
+            TeachingStructureUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.CreateChildTopicAsync(
+                new CreateTeachingTopicChildCommand(id, request.Name, request.Description, request.Status),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
+        group.MapPost("/teaching-topics/{id:int}/next-sibling", async (
+            int id,
+            CreateTeachingTopicNextSiblingRequest request,
+            TeachingStructureUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.CreateNextSiblingTopicAsync(
+                new CreateTeachingTopicNextSiblingCommand(id, request.Name, request.Description, request.Status),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
+        group.MapPost("/teaching-topics/{id:int}/rename", async (
+            int id,
+            RenameTeachingTopicRequest request,
+            TeachingStructureUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.RenameTopicAsync(
+                new RenameTeachingTopicCommand(id, request.Name, request.Description),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
+        group.MapDelete("/teaching-topics/{id:int}", async (
+            int id,
+            TeachingStructureUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            await useCases.DeleteTopicAsync(new DeleteTeachingTopicCommand(id), cancellationToken);
+
+            return Results.NoContent();
+        });
+
+        group.MapPost("/teaching-topics/{id:int}/section", async (
+            int id,
+            CreateSectionForTeachingTopicRequest request,
+            TeachingStructureUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.CreateSectionForTopicAsync(
+                new CreateSectionForTeachingTopicCommand(
+                    id,
+                    request.Title,
+                    request.Description,
+                    request.Type,
+                    request.Difficulty,
+                    request.Status),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
 
         group.MapPost("/teaching-topics", async (
             CreateTeachingTopicRequest request,

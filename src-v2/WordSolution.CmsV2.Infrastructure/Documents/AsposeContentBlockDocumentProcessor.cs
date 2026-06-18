@@ -6,6 +6,25 @@ namespace WordSolution.CmsV2.Infrastructure.Documents;
 
 public sealed class AsposeContentBlockDocumentProcessor : IContentBlockDocumentProcessor
 {
+    private static readonly string DefaultTemplateDocxPath = Path.Combine(
+        AppContext.BaseDirectory,
+        "Documents",
+        "Templates",
+        "content-block-default.docx");
+
+    private readonly string _templateDocxPath;
+
+    public AsposeContentBlockDocumentProcessor()
+        : this(DefaultTemplateDocxPath)
+    {
+    }
+
+    public AsposeContentBlockDocumentProcessor(string templateDocxPath)
+    {
+        ValidatePath(templateDocxPath, nameof(templateDocxPath));
+        _templateDocxPath = Path.GetFullPath(templateDocxPath);
+    }
+
     public Task CreateBlankDocxAsync(
         string docxPath,
         CancellationToken cancellationToken = default)
@@ -17,8 +36,14 @@ public sealed class AsposeContentBlockDocumentProcessor : IContentBlockDocumentP
             cancellationToken.ThrowIfCancellationRequested();
             EnsureParentDirectory(docxPath);
 
-            var document = new Document();
-            document.Save(docxPath, SaveFormat.Docx);
+            if (!File.Exists(_templateDocxPath))
+            {
+                throw new FileNotFoundException(
+                    "Default ContentBlock DOCX template was not found.",
+                    _templateDocxPath);
+            }
+
+            File.Copy(_templateDocxPath, docxPath, overwrite: true);
         }, cancellationToken);
     }
 

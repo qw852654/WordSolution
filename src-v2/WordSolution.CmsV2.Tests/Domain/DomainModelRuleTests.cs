@@ -117,4 +117,41 @@ public sealed class DomainModelRuleTests
 
         Assert.Equal(generatedTime, generatedFile.GeneratedTime);
     }
+
+    [Fact]
+    public void Teaching_topic_rename_trims_name_and_updates_time()
+    {
+        var initialTime = new DateTimeOffset(2026, 6, 1, 8, 0, 0, TimeSpan.Zero);
+        var updatedTime = new DateTimeOffset(2026, 6, 2, 8, 0, 0, TimeSpan.Zero);
+        var topic = new TeachingTopic(" Mechanics ", " old ", sortOrder: 1, updatedTime: initialTime);
+
+        topic.Rename(" Energy ", " new ", updatedTime);
+
+        Assert.Equal("Energy", topic.Name);
+        Assert.Equal("new", topic.Description);
+        Assert.Equal(updatedTime, topic.UpdatedTime);
+    }
+
+    [Fact]
+    public void Teaching_topic_rename_rejects_empty_name()
+    {
+        var topic = new TeachingTopic("Mechanics");
+
+        var exception = Assert.Throws<DomainException>(() => topic.Rename(" "));
+
+        Assert.Contains("Name", exception.Message);
+    }
+
+    [Fact]
+    public void Teaching_topic_move_updates_parent_sort_order_and_time()
+    {
+        var updatedTime = new DateTimeOffset(2026, 6, 2, 8, 0, 0, TimeSpan.Zero);
+        var topic = new TeachingTopic("Mechanics", parentId: 1, sortOrder: 1);
+
+        topic.MoveTo(parentId: 2, sortOrder: 20, updatedTime);
+
+        Assert.Equal(2, topic.ParentId);
+        Assert.Equal(20, topic.SortOrder);
+        Assert.Equal(updatedTime, topic.UpdatedTime);
+    }
 }

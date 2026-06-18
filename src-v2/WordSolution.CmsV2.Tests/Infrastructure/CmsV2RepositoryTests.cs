@@ -67,8 +67,8 @@ public sealed class CmsV2RepositoryTests
         await unitOfWork.TeachingTopics.AddAsync(childTopicA);
         await unitOfWork.SaveChangesAsync();
 
-        var sectionB = new Section(parentTopic.Id, "提高班", sortOrder: 2);
-        var sectionA = new Section(parentTopic.Id, "基础班", sortOrder: 1);
+        var sectionB = new Section(childTopicB.Id, "提高班", sortOrder: 2);
+        var sectionA = new Section(childTopicA.Id, "基础班", sortOrder: 1);
         await unitOfWork.Sections.AddAsync(sectionB);
         await unitOfWork.Sections.AddAsync(sectionA);
         await unitOfWork.SaveChangesAsync();
@@ -196,7 +196,8 @@ public sealed class CmsV2RepositoryTests
         await unitOfWork.SaveChangesAsync();
 
         Assert.Equal(["动能定理", "机械能守恒"], (await unitOfWork.TeachingTopics.ListChildrenAsync(parentTopic.Id)).Select(x => x.Name));
-        Assert.Equal(["基础班", "提高班"], (await unitOfWork.Sections.ListByTeachingTopicAsync(parentTopic.Id)).Select(x => x.Title));
+        Assert.Equal(["基础班"], (await unitOfWork.Sections.ListByTeachingTopicAsync(childTopicA.Id)).Select(x => x.Title));
+        Assert.Equal(["提高班"], (await unitOfWork.Sections.ListByTeachingTopicAsync(childTopicB.Id)).Select(x => x.Title));
         Assert.Equal([sectionItemA.Id, sectionItemB.Id], (await unitOfWork.SectionItems.ListBySectionAsync(sectionA.Id)).Select(x => x.Id));
         Assert.Equal([sectionItemA.Id], (await unitOfWork.SectionItems.ListByTargetAsync(SectionItemTargetType.ContentBlock, blockA.Id)).Select(x => x.Id));
         Assert.Equal([atomicItem.Id], (await unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(atomicSection.Id)).Select(x => x.Id));
@@ -262,6 +263,24 @@ public sealed class CmsV2RepositoryTests
         Assert.NotNull(savedTopic);
 
         unitOfWork.TeachingTopics.Remove(savedTopic);
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => unitOfWork.SaveChangesAsync());
+    }
+
+    [Fact]
+    public async Task Sections_teaching_topic_unique_constraint_blocks_duplicate_binding()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+
+        var topic = new TeachingTopic("Unique topic");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+
+        await unitOfWork.Sections.AddAsync(new Section(topic.Id, "First Section"));
+        await unitOfWork.SaveChangesAsync();
+
+        await unitOfWork.Sections.AddAsync(new Section(topic.Id, "Duplicate Section"));
 
         await Assert.ThrowsAsync<DbUpdateException>(() => unitOfWork.SaveChangesAsync());
     }

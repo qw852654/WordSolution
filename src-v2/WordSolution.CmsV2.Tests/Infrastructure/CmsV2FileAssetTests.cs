@@ -74,7 +74,9 @@ public sealed class CmsV2FileAssetTests
     public async Task AsposeContentBlockDocumentProcessor_creates_preview_and_extracts_plain_text()
     {
         var rootDirectory = CreateTempRoot();
-        var processor = new AsposeContentBlockDocumentProcessor();
+        var templateDocxPath = Path.Combine(rootDirectory, "template.docx");
+        await CreateMinimalDocxAsync(templateDocxPath, "模板正文");
+        var processor = new AsposeContentBlockDocumentProcessor(templateDocxPath);
         var blankDocxPath = Path.Combine(rootDirectory, "blank.docx");
         var sourceDocxPath = Path.Combine(rootDirectory, "source.docx");
         var htmlPath = Path.Combine(rootDirectory, "preview.html");
@@ -88,6 +90,21 @@ public sealed class CmsV2FileAssetTests
         Assert.True(new FileInfo(htmlPath).Length > 0);
         Assert.Contains("动能定理", await File.ReadAllTextAsync(htmlPath));
         Assert.Contains("动能定理", plainText);
+    }
+
+    [Fact]
+    public async Task AsposeContentBlockDocumentProcessor_copies_default_template_when_creating_initial_docx()
+    {
+        var rootDirectory = CreateTempRoot();
+        var templateDocxPath = Path.Combine(rootDirectory, "template.docx");
+        var initialDocxPath = Path.Combine(rootDirectory, "initial.docx");
+        await CreateMinimalDocxAsync(templateDocxPath, "默认内容块模板");
+        var processor = new AsposeContentBlockDocumentProcessor(templateDocxPath);
+
+        await processor.CreateBlankDocxAsync(initialDocxPath);
+
+        Assert.True(File.Exists(initialDocxPath));
+        Assert.Contains("默认内容块模板", await processor.ExtractPlainTextAsync(initialDocxPath));
     }
 
     private static string CreateTempRoot()

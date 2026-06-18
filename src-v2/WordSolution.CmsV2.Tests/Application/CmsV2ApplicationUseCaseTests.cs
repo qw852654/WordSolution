@@ -513,12 +513,14 @@ public sealed class CmsV2ApplicationUseCaseTests
         var sectionUseCases = new SectionUseCases(unitOfWork);
         var variantUseCases = new SectionVariantUseCases(unitOfWork);
 
-        var topic = new TeachingTopic("圆周运动");
-        await unitOfWork.TeachingTopics.AddAsync(topic);
+        var topicA = new TeachingTopic("圆周运动");
+        var topicB = new TeachingTopic("水平圆周运动");
+        await unitOfWork.TeachingTopics.AddAsync(topicA);
+        await unitOfWork.TeachingTopics.AddAsync(topicB);
         await unitOfWork.SaveChangesAsync();
 
-        var sectionA = new Section(topic.Id, "竖直圆轨道");
-        var sectionB = new Section(topic.Id, "水平圆周");
+        var sectionA = new Section(topicA.Id, "竖直圆轨道");
+        var sectionB = new Section(topicB.Id, "水平圆周");
         await unitOfWork.Sections.AddAsync(sectionA);
         await unitOfWork.Sections.AddAsync(sectionB);
         await unitOfWork.SaveChangesAsync();

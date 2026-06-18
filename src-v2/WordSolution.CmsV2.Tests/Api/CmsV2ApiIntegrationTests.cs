@@ -13,6 +13,7 @@ using WordSolution.CmsV2.Application.ContentBlocks;
 using WordSolution.CmsV2.Application.Handouts;
 using WordSolution.CmsV2.Application.SectionVariants;
 using WordSolution.CmsV2.Application.Sections;
+using WordSolution.CmsV2.Application.TeachingStructure;
 using WordSolution.CmsV2.Domain.Documents;
 using WordSolution.CmsV2.Domain.Repositories;
 using WordSolution.CmsV2.Infrastructure.Persistence;
@@ -52,6 +53,7 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<SectionUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<AtomicSectionUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<SectionVariantUseCases>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<TeachingStructureUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<HandoutUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<HandoutGenerationUseCases>());
         Assert.Contains(
@@ -299,6 +301,59 @@ public sealed class CmsV2ApiIntegrationTests
 
         Assert.Equal(string.Empty, blockDetail.GetProperty("title").GetString());
         Assert.Equal(HttpStatusCode.BadRequest, invalidAtomicSection.StatusCode);
+    }
+
+    [Fact]
+    public async Task Teaching_structure_endpoints_manage_topics_section_binding_and_read_tree()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var root = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "Energy", sortOrder = 10 });
+        var rootId = root.GetProperty("id").GetInt32();
+        var child = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/teaching-topics/{rootId}/children",
+            new { name = "Work energy theorem" });
+        var sibling = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/teaching-topics/{child.GetProperty("id").GetInt32()}/next-sibling",
+            new { name = "Mechanical energy conservation" });
+        var renamed = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/teaching-topics/{sibling.GetProperty("id").GetInt32()}/rename",
+            new { name = "Mechanical energy", description = "renamed" });
+        var section = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/teaching-topics/{sibling.GetProperty("id").GetInt32()}/section",
+            new { title = "Mechanical energy section", difficulty = "Medium", status = "Draft" });
+        var variant = await PostJsonAsync(
+            client,
+            "/api/cms-v2/section-variants",
+            new { sectionId = section.GetProperty("id").GetInt32(), title = "Basic lecture", type = "Lecture", status = "Draft" });
+
+        var duplicateSection = await client.PostAsJsonAsync(
+            $"/api/cms-v2/teaching-topics/{sibling.GetProperty("id").GetInt32()}/section",
+            new { title = "Duplicate" });
+        var deleteNonEmpty = await client.DeleteAsync($"/api/cms-v2/teaching-topics/{rootId}");
+        var deleteEmpty = await client.DeleteAsync($"/api/cms-v2/teaching-topics/{child.GetProperty("id").GetInt32()}");
+        var tree = await client.GetFromJsonAsync<JsonElement[]>("/api/cms-v2/teaching-structure") ?? [];
+
+        Assert.Equal("Mechanical energy", renamed.GetProperty("name").GetString());
+        Assert.Equal("renamed", renamed.GetProperty("description").GetString());
+        Assert.Equal("Mechanical energy section", section.GetProperty("title").GetString());
+        Assert.Equal(HttpStatusCode.BadRequest, duplicateSection.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, deleteNonEmpty.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, deleteEmpty.StatusCode);
+        Assert.Single(tree);
+        var rootNode = tree[0];
+        Assert.Equal(rootId, rootNode.GetProperty("teachingTopic").GetProperty("id").GetInt32());
+        Assert.True(rootNode.GetProperty("canSetDisplayRoot").GetBoolean());
+        var children = rootNode.GetProperty("children").EnumerateArray().ToArray();
+        Assert.Single(children);
+        Assert.Equal(sibling.GetProperty("id").GetInt32(), children[0].GetProperty("teachingTopic").GetProperty("id").GetInt32());
+        Assert.Equal(section.GetProperty("id").GetInt32(), children[0].GetProperty("section").GetProperty("id").GetInt32());
+        Assert.Equal(variant.GetProperty("id").GetInt32(), children[0].GetProperty("sectionVariants")[0].GetProperty("id").GetInt32());
+        Assert.False(children[0].GetProperty("canDelete").GetBoolean());
     }
 
     [Fact]

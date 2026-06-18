@@ -65,6 +65,7 @@ internal sealed class SectionConfiguration : IEntityTypeConfiguration<Section>
         builder.Property(entity => entity.SortOrder).IsRequired();
         CmsV2EntityConfiguration.ConfigureUpdatedTime(builder);
 
+        builder.HasIndex(entity => entity.TeachingTopicId).IsUnique();
         builder.HasIndex(entity => new { entity.TeachingTopicId, entity.SortOrder });
         builder.HasOne<TeachingTopic>()
             .WithMany()

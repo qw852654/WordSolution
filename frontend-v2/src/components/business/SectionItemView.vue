@@ -18,6 +18,7 @@ import type { SectionItemViewAction } from '@/types'
 const props = defineProps<{
   itemId: string
   selected?: boolean
+  upgradeSelected?: boolean
   disabled?: boolean
   actions?: SectionItemViewAction[]
   ariaLabel?: string
@@ -154,12 +155,13 @@ function emitIfEnabled(eventName: 'select' | SectionItemViewAction, event?: Mous
   <article
     :class="[
       'section-item-view relative w-full overflow-visible rounded-md border border-transparent bg-background transition-colors',
-      selected ? 'bg-muted/30' : '',
+      selected && !upgradeSelected ? 'bg-muted/30' : '',
+      upgradeSelected ? 'section-item-view-upgrade-selected' : '',
       disabled ? 'opacity-60' : '',
     ]"
     :aria-label="ariaLabel ?? t('components.sectionItemView.containerLabel')"
     :aria-disabled="disabled ? 'true' : undefined"
-    :aria-selected="selected ? 'true' : 'false'"
+    :aria-selected="selected || upgradeSelected ? 'true' : 'false'"
     role="group"
     :style="{ '--section-item-action-rail-height': actionRailHeight }"
     @click.stop="emitIfEnabled('select', $event)"
@@ -192,6 +194,23 @@ function emitIfEnabled(eventName: 'select' | SectionItemViewAction, event?: Mous
 <style scoped>
 .section-item-view-actions {
   min-height: max(100%, var(--section-item-action-rail-height));
+}
+
+.section-item-view-upgrade-selected {
+  background-color: var(--section-item-upgrade-selection);
+  box-shadow: inset 0 0 0 1px var(--section-item-upgrade-selection-ring);
+}
+
+.section-item-view-upgrade-selected::before {
+  position: absolute;
+  z-index: 20;
+  inset-block: 0.35rem;
+  inset-inline-start: 0.25rem;
+  width: 0.1875rem;
+  border-radius: 9999px;
+  background: var(--section-item-upgrade-selection-marker);
+  content: "";
+  pointer-events: none;
 }
 
 .section-item-view:has(.section-item-view-actions:hover),

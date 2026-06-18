@@ -5,6 +5,7 @@ using WordSolution.CmsV2.Application.ContentBlocks;
 using WordSolution.CmsV2.Application.Handouts;
 using WordSolution.CmsV2.Application.SectionVariants;
 using WordSolution.CmsV2.Application.Sections;
+using WordSolution.CmsV2.Application.TeachingStructure;
 using WordSolution.CmsV2.Domain.Documents;
 using WordSolution.CmsV2.Domain.Repositories;
 using WordSolution.CmsV2.Infrastructure.Documents;
@@ -49,6 +50,7 @@ public static class CmsV2ApiServiceCollectionExtensions
         services.AddScoped<SectionUseCases>();
         services.AddScoped<AtomicSectionUseCases>();
         services.AddScoped<SectionVariantUseCases>();
+        services.AddScoped<TeachingStructureUseCases>();
         services.AddScoped<HandoutUseCases>();
         services.AddScoped<HandoutGenerationUseCases>();
         services.AddHostedService<ContentBlockEditSessionBackgroundService>();

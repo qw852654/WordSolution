@@ -21,6 +21,12 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Documents\Templates\content-block-default.docx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

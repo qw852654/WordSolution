@@ -116,6 +116,107 @@ SectionInspector
 - 宸﹀彸渚ф爮鏈嶅姟浜庣粨鏋勫畾浣嶅拰缁嗚妭妫?鏌ワ紝涓嶅簲鎴愪负涓绘搷浣滃尯鍩熴??
 - 椤甸潰涓嶅簲鍑虹幇鍥涙爮甯搁┗甯冨眬銆?
 
+## 3.1 TeachingStructureTree 悬浮入口
+
+TeachingStructureTree【教学结构树】是 SectionPage 中的全库教学结构总览入口。
+
+它不是 SectionStructurePanel，也不是 SectionTree。
+
+职责区分：
+
+```text
+TeachingStructureTree
+  全库总览：章节 / 教学主题 / Section / SectionVariant。
+
+SectionTree
+  当前 Section 内部结构：SectionItem / AtomicSection / ContentBlock。
+```
+
+当前阶段只在 SectionPage 中以悬浮抽屉形式出现，不实现主题工作台或常驻教学结构管理页。
+
+呼出规则：
+
+- 用户把鼠标停留在整个页面最左侧热区 2 秒后，打开 TeachingStructureTree 悬浮抽屉。
+- 抽屉宽度可以根据内容动态展开，优先完整展示树节点文本。
+- 抽屉打开时，整个 SectionPage 背景模糊，避免用户误以为还能直接编辑当前 Section。
+- 点击抽屉外区域或按 Escape 关闭抽屉。
+- 抽屉不是第四个常驻侧栏，不挤占 SectionStructurePanel、Workspace 或 Inspector 的布局空间。
+
+节点模型：
+
+```text
+TeachingStructureNode
+  = TeachingTopic
+  + 可选绑定的 Section
+  + 只读 SectionVariant 列表
+```
+
+行为规则：
+
+- 单击 TeachingTopic 节点：只选中节点，用于查看节点信息或准备右键操作。
+- 双击已绑定 Section 的 TeachingTopic 节点：打开该 Section 本身。
+- 展开已绑定 Section 的 TeachingTopic 节点：显示该 Section 下的 SectionVariant 列表。
+- SectionVariant 第一版只读，只允许查看或打开占位，不允许新增、重命名、删除、复制。
+- 第一版不提供 Section 解绑能力，避免产生无法从 UI 找回的孤儿 Section。
+- 删除只允许作用于空 TeachingTopic；空 TeachingTopic 指没有子主题且没有绑定 Section。
+
+Display Root【显示根节点】：
+
+- TeachingStructureTree 在前端必须维护当前显示根节点状态。
+- `displayRootNodeId = null` 时显示全库根结构。
+- `displayRootNodeId` 有值时，只显示该节点作为临时显示根的分支。
+- `displayRootPath` 用于显示当前显示根路径，并支持返回上一级、返回全库根。
+- 设为显示根不修改后端数据，不改变真实 TeachingTopic 层级。
+
+允许设为显示根：
+
+- 有子 TeachingTopic 的 TeachingTopic。
+- 已绑定 Section 的 TeachingTopic，即使它没有子 TeachingTopic、没有 SectionVariant。
+
+禁止设为显示根：
+
+- 空 TeachingTopic。空 = 没有子 TeachingTopic + 没有绑定 Section。
+- SectionVariant。
+- SectionTree 内部节点。
+
+SectionVariant 节点规则：
+
+- SectionVariant 不新增 TeachingStructureTree 专属节点类型。
+- SectionVariant 复用已有 SectionVariant 节点语义，作为已绑定 Section 的 TeachingTopic 的只读子项。
+- SectionVariant 不允许设为显示根。
+
+右键菜单第一版：
+
+未绑定 Section 的 TeachingTopic：
+
+```text
+新建子主题
+新建后续主题
+重命名主题
+创建 Section
+删除空主题
+```
+
+已绑定 Section 的 TeachingTopic：
+
+```text
+新建子主题
+新建后续主题
+重命名主题
+打开 Section
+```
+
+SectionVariant：
+
+```text
+第一版只读，不提供管理动作。
+```
+
+后续方向：
+
+- 主题工作台 / 教学结构管理页完成后，TeachingStructureTree 可以在该页面常驻左侧。
+- SectionPage 中仍保持悬浮抽屉形态，避免长期占用编辑空间。
+
 ## 4. Toolbar 鑱岃矗
 
 Toolbar 鎻愪緵椤甸潰绾у懡浠わ細

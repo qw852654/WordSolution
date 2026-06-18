@@ -98,6 +98,11 @@ public sealed class CmsV2PersistenceSchemaTests
             contentVersionIndexes,
             index => index.IsUnique && index.Columns.SequenceEqual(["ContentBlockId", "VersionNumber"]));
 
+        var sectionIndexes = await ReadIndexesAsync(context, "Sections");
+        Assert.Contains(
+            sectionIndexes,
+            index => index.IsUnique && index.Columns.SequenceEqual(["TeachingTopicId"]));
+
         var sectionItemForeignKeys = await ReadForeignKeysAsync(context, "SectionItems");
         Assert.Contains(
             sectionItemForeignKeys,

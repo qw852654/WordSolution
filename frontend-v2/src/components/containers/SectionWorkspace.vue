@@ -199,6 +199,10 @@ function isWrappableWorkspaceItem(item: SectionWorkspaceFlowItemModel) {
   return item.kind !== 'AtomicSection' && typeof item.sectionItemId === 'number'
 }
 
+function isWorkspaceItemUpgradeSelected(item: SectionWorkspaceFlowItemModel) {
+  return props.wrapSelectionMode && wrapSelectedNodeIdSet.value.has(item.nodeId)
+}
+
 function handleWorkspaceItemSelect(item: SectionWorkspaceFlowItemModel, event?: MouseEvent) {
   if (props.wrapSelectionMode) {
     emit('toggleWrapNodeSelection', item.nodeId)
@@ -506,6 +510,7 @@ watch(
             <SectionItemView
               :item-id="item.id"
               :selected="item.selected"
+              :upgrade-selected="isWorkspaceItemUpgradeSelected(item)"
               :disabled="item.disabled"
               :actions="getWorkspaceItemActions(item)"
               :data-workspace-node-id="item.nodeId"
