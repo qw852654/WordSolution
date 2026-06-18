@@ -111,6 +111,42 @@ export interface CmsV2ContentBlockDocumentVersionResultDto {
   plainTextPath: string
 }
 
+export interface CmsV2CreateContentBlockEditSessionRequest {
+  openWord: boolean
+}
+
+export type CmsV2ContentBlockEditSessionStatus =
+  | 'Created'
+  | 'Opening'
+  | 'Editing'
+  | 'Synced'
+  | 'Cancelled'
+  | 'Failed'
+
+export type CmsV2ContentBlockEditLaunchMode = 'LocalShell' | 'ExternalUri' | 'Cloud' | 'None'
+
+export interface CmsV2ContentBlockEditSessionDto {
+  sessionId: string
+  contentBlockId: number
+  sourceContentBlockVersionId: number
+  status: CmsV2ContentBlockEditSessionStatus
+  launchMode: CmsV2ContentBlockEditLaunchMode
+  openedByServer: boolean
+  message?: string | null
+  createdTime: string
+  updatedTime: string
+}
+
+export interface CmsV2SyncContentBlockEditSessionResultDto {
+  sessionId: string
+  contentBlockId: number
+  changed: boolean
+  newContentBlockVersionId?: number | null
+  currentVersionNumber?: number | null
+  status: 'Synced'
+  message?: string | null
+}
+
 export interface CmsV2CreateContentBlockWithBlankDocumentRequest {
   sectionId: number
   title: string
@@ -305,6 +341,28 @@ export const cmsV2Api = {
     versionId
       ? cmsV2FetchText(`/content-blocks/${contentBlockId}/versions/${versionId}/html-preview`)
       : cmsV2FetchText(`/content-blocks/${contentBlockId}/html-preview`),
+  createContentBlockEditSession: (
+    contentBlockId: number,
+    request: CmsV2CreateContentBlockEditSessionRequest,
+  ) =>
+    cmsV2PostJson<CmsV2ContentBlockEditSessionDto>(
+      `/content-blocks/${contentBlockId}/edit-session`,
+      request,
+    ),
+  getContentBlockEditSession: (sessionId: string) =>
+    cmsV2FetchJson<CmsV2ContentBlockEditSessionDto>(
+      `/content-block-edit-sessions/${sessionId}`,
+    ),
+  syncContentBlockEditSession: (sessionId: string) =>
+    cmsV2PostJson<CmsV2SyncContentBlockEditSessionResultDto>(
+      `/content-block-edit-sessions/${sessionId}/sync`,
+      {},
+    ),
+  cancelContentBlockEditSession: (sessionId: string) =>
+    cmsV2PostJson<CmsV2ContentBlockEditSessionDto>(
+      `/content-block-edit-sessions/${sessionId}/cancel`,
+      {},
+    ),
   listContentBlockChildren: (contentBlockId: number) =>
     cmsV2FetchJson<CmsV2ContentBlockRelationDto[]>(
       `/content-blocks/${contentBlockId}/relations/children`,

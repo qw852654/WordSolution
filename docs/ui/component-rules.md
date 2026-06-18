@@ -1,23 +1,23 @@
-# CMS V2 前端组件规则
+# CMS V2 鍓嶇缁勪欢瑙勫垯
 
-本文档定�?V2 前端组件分层、职责边界、API 调用规则、mock 优先流程和组件验证要求�?
+鏈枃妗ｅ畾涔?V2 鍓嶇缁勪欢鍒嗗眰銆佽亴璐ｈ竟鐣屻?丄PI 璋冪敤瑙勫垯銆乵ock 浼樺厛娴佺▼鍜岀粍浠堕獙璇佽姹傘??
 
-## 1. 组件类型
+## 1. 缁勪欢绫诲瀷
 
 ### 1.1 Presentation Components
 
-�?UI 展示组件�?
+绾?UI 灞曠ず缁勪欢銆?
 
-职责�?
+鑱岃矗锛?
 
-- 接收 props�?
-- 渲染视觉结构�?
-- 通过 emits 暴露事件�?
-- 不理解具�?CMS 业务含义�?
-- 不调�?API�?
-- 不读�?Pinia store�?
+- 鎺ユ敹 props銆?
+- 娓叉煋瑙嗚缁撴瀯銆?
+- 閫氳繃 emits 鏆撮湶浜嬩欢銆?
+- 涓嶇悊瑙ｅ叿浣?CMS 涓氬姟鍚箟銆?
+- 涓嶈皟鐢?API銆?
+- 涓嶈鍙?Pinia store銆?
 
-示例�?
+绀轰緥锛?
 
 ```text
 Badge
@@ -31,16 +31,16 @@ FieldLabel
 
 ### 1.2 Business Components
 
-业务展示组件�?
+涓氬姟灞曠ず缁勪欢銆?
 
-职责�?
+鑱岃矗锛?
 
-- 理解某个业务对象的展示语义�?
-- 可以组合 presentation components�?
-- 可以使用 composables�?
-- 默认不直接调�?API�?
+- 鐞嗚В鏌愪釜涓氬姟瀵硅薄鐨勫睍绀鸿涔夈??
+- 鍙互缁勫悎 presentation components銆?
+- 鍙互浣跨敤 composables銆?
+- 榛樿涓嶇洿鎺ヨ皟鐢?API銆?
 
-示例�?
+绀轰緥锛?
 
 ```text
 ContentBlockCard
@@ -55,16 +55,16 @@ TeachingNotePanel
 
 ### 1.3 Business Container Components
 
-可复用业务容器�?
+鍙鐢ㄤ笟鍔″鍣ㄣ??
 
-职责�?
+鑱岃矗锛?
 
-- 封装一段可复用业务流程�?
-- 可以加载数据�?
-- 可以调用 API �?composables�?
-- 可以管理局部容器状态�?
+- 灏佽涓?娈靛彲澶嶇敤涓氬姟娴佺▼銆?
+- 鍙互鍔犺浇鏁版嵁銆?
+- 鍙互璋冪敤 API 鎴?composables銆?
+- 鍙互绠＄悊灞?閮ㄥ鍣ㄧ姸鎬併??
 
-示例�?
+绀轰緥锛?
 
 ```text
 ContentBlockPicker
@@ -75,7 +75,7 @@ TeachingNoteDrawer
 GeneratedFilePanel
 ```
 
-## 2. API 调用规则
+## 2. API 璋冪敤瑙勫垯
 
 ```text
 Presentation Components
@@ -94,62 +94,62 @@ Composables
   API calls allowed
 ```
 
-禁止�?
+绂佹锛?
 
 ```text
-在普通展示组件中直接 fetch�?
-在多个组件中复制同一�?API URL�?
-把页面状态偷偷放进全局 store�?
+鍦ㄦ櫘閫氬睍绀虹粍浠朵腑鐩存帴 fetch銆?
+鍦ㄥ涓粍浠朵腑澶嶅埗鍚屼竴涓?API URL銆?
+鎶婇〉闈㈢姸鎬佸伔鍋锋斁杩涘叏灞? store銆?
 ```
 
-允许�?
+鍏佽锛?
 
 ```text
-页面加载主数据�?
-业务容器加载选择器数据�?
-composable 封装查询、选择、保存、展开等复用逻辑�?
+椤甸潰鍔犺浇涓绘暟鎹??
+涓氬姟瀹瑰櫒鍔犺浇閫夋嫨鍣ㄦ暟鎹??
+composable 灏佽鏌ヨ銆侀?夋嫨銆佷繚瀛樸?佸睍寮?绛夊鐢ㄩ?昏緫銆?
 ```
 
-## 3. Mock Data First 工作�?
+## 3. Mock Data First 宸ヤ綔娴?
 
-所有可复用组件开发遵循：
+鎵?鏈夊彲澶嶇敤缁勪欢寮?鍙戦伒寰細
 
 ```text
 Define DTO
-�?
+鈫?
 Create Mock Data
-�?
+鈫?
 Build Component
-�?
+鈫?
 Connect API
 ```
 
-要求�?
+瑕佹眰锛?
 
-- 没有代表�?mock 数据，不开始做可复用组件�?
-- mock 数据必须覆盖空状态、长文本、多层级、禁用状态、错误状态�?
-- 组件先在 ComponentLabPage 验证，再接入真实页面�?
+- 娌℃湁浠ｈ〃鎬?mock 鏁版嵁锛屼笉寮?濮嬪仛鍙鐢ㄧ粍浠躲??
+- mock 鏁版嵁蹇呴』瑕嗙洊绌虹姸鎬併?侀暱鏂囨湰銆佸灞傜骇銆佺鐢ㄧ姸鎬併?侀敊璇姸鎬併??
+- 缁勪欢鍏堝湪 ComponentLabPage 楠岃瘉锛屽啀鎺ュ叆鐪熷疄椤甸潰銆?
 
-## 3.1 样式约束
+## 3.1 鏍峰紡绾︽潫
 
-在用户没有明确给出详细视觉修改要求之前：
+鍦ㄧ敤鎴锋病鏈夋槑纭粰鍑鸿缁嗚瑙変慨鏀硅姹備箣鍓嶏細
 
-- 允许组件先使用最简样式落地�?
-- 禁止自行发挥成装饰性方案�?
+- 鍏佽缁勪欢鍏堜娇鐢ㄦ渶绠?鏍峰紡钀藉湴銆?
+- 绂佹鑷鍙戞尌鎴愯楗版?ф柟妗堛??
 
-必须遵守�?
+蹇呴』閬靛畧锛?
 
-- 不在组件中随意写一次性颜色值�?
-- 不使用大面积阴影、渐变、装饰性背景�?
-- 不为相似组件重复写多套样式�?
-- 优先复用 shadcn-vue 基础组件�?Tailwind spacing、border、text、background token�?
-- 布局结构、组件层级、状态类必须稳定，不�?hover、选中、加载而临时改结构�?
-- 如果视觉细节不确定，先保持简洁中性，不自行补充装饰�?
-- 所有可复用组件必须先在 ComponentLabPage 中以 mock 数据验收，再进入真实页面�?
+- 涓嶅湪缁勪欢涓殢鎰忓啓涓?娆℃?ч鑹插?笺??
+- 涓嶄娇鐢ㄥぇ闈㈢Н闃村奖銆佹笎鍙樸?佽楗版?ц儗鏅??
+- 涓嶄负鐩镐技缁勪欢閲嶅鍐欏濂楁牱寮忋??
+- 浼樺厛澶嶇敤 shadcn-vue 鍩虹缁勪欢涓?Tailwind spacing銆乥order銆乼ext銆乥ackground token銆?
+- 甯冨眬缁撴瀯銆佺粍浠跺眰绾с?佺姸鎬佺被蹇呴』绋冲畾锛屼笉鍥?hover銆侀?変腑銆佸姞杞借?屼复鏃舵敼缁撴瀯銆?
+- 濡傛灉瑙嗚缁嗚妭涓嶇‘瀹氾紝鍏堜繚鎸佺畝娲佷腑鎬э紝涓嶈嚜琛岃ˉ鍏呰楗般??
+- 鎵?鏈夊彲澶嶇敤缁勪欢蹇呴』鍏堝湪 ComponentLabPage 涓互 mock 鏁版嵁楠屾敹锛屽啀杩涘叆鐪熷疄椤甸潰銆?
 
 ### 3.1.1 Theme Token Rule
 
-后续所有业务组件，包括�?
+鍚庣画鎵?鏈変笟鍔＄粍浠讹紝鍖呮嫭锛?
 
 - `ContentBlockDisplay`
 - `AtomicSectionBlock`
@@ -159,37 +159,37 @@ Connect API
 - `Toolbar`
 - `StatusTag`
 
-禁止直接写死颜色�?
+绂佹鐩存帴鍐欐棰滆壊銆?
 
-统一通过 Theme Token 引用颜色�?
+缁熶竴閫氳繃 Theme Token 寮曠敤棰滆壊銆?
 
-如果当前缺少 Token�?
+濡傛灉褰撳墠缂哄皯 Token锛?
 
-- 先提出需要新增什�?Token�?
-- 不要直接写颜色值�?
+- 鍏堟彁鍑洪渶瑕佹柊澧炰粈涔?Token銆?
+- 涓嶈鐩存帴鍐欓鑹插?笺??
 
-## 3.2 新组件开发前确认
+## 3.2 鏂扮粍浠跺紑鍙戝墠纭
 
-每次新增或抽�?UI 组件前，必须先向用户做简要对齐，内容包括�?
+姣忔鏂板鎴栨娊璞?UI 缁勪欢鍓嶏紝蹇呴』鍏堝悜鐢ㄦ埛鍋氱畝瑕佸榻愶紝鍐呭鍖呮嫭锛?
 
-- 组件名称�?
-- 组件职责�?
-- 组件不负责什么�?
-- 输入数据�?mock 数据范围�?
-- 对外 emits / 事件边界�?
-- 需要放�?ComponentLabPage 的验收场景�?
+- 缁勪欢鍚嶇О銆?
+- 缁勪欢鑱岃矗銆?
+- 缁勪欢涓嶈礋璐ｄ粈涔堛??
+- 杈撳叆鏁版嵁鎴?mock 鏁版嵁鑼冨洿銆?
+- 瀵瑰 emits / 浜嬩欢杈圭晫銆?
+- 闇?瑕佹斁鍏?ComponentLabPage 鐨勯獙鏀跺満鏅??
 
-用户确认后才能开始实现该组件�?
+鐢ㄦ埛纭鍚庢墠鑳藉紑濮嬪疄鐜拌缁勪欢銆?
 
 ## 4. ComponentLabPage
 
-建议路由�?
+寤鸿璺敱锛?
 
 ```text
 /lab
 ```
 
-职责�?
+鑱岃矗锛?
 
 ```text
 Component Development
@@ -197,295 +197,295 @@ Mock Data Testing
 UI Verification
 ```
 
-每个可复用组件至少提供：
+姣忎釜鍙鐢ㄧ粍浠惰嚦灏戞彁渚涳細
 
-- 默认状态�?
-- 选中状态�?
-- 禁用状态�?
-- 长标�?/ 长正文�?
-- 空数据状态�?
-- 加载状态�?
-- 错误状态�?
+- 榛樿鐘舵?併??
+- 閫変腑鐘舵?併??
+- 绂佺敤鐘舵?併??
+- 闀挎爣棰?/ 闀挎鏂囥??
+- 绌烘暟鎹姸鎬併??
+- 鍔犺浇鐘舵?併??
+- 閿欒鐘舵?併??
 
-优先验证组件�?
+浼樺厛楠岃瘉缁勪欢锛?
 
 ```text
-当前开发轮次相关组�?
+褰撳墠寮?鍙戣疆娆＄浉鍏崇粍浠?
 ```
 
-说明�?
+璇存槑锛?
 
-- ComponentLabPage 是当前开发轮次的验收入口，不是永久组件展览馆�?
-- 每一轮只保留本轮需要验收的组件�?mock 场景�?
-- 上一轮无关组件应从当�?ComponentLabPage 视图中移除�?
-- ComponentLabPage 必须作为独立页面渲染，不应包在主应用 AppShell、主导航或左侧导航中�?
-- 页面级功能验收时，可以在 ComponentLabPage 中放入完整页�?mock，而不只展示孤立组件�?
-- 每轮交付时必须说�?ComponentLabPage 中具体放入了什么、用户需要验收哪些区域、哪些按钮或数据仍是占位�?
+- ComponentLabPage 鏄綋鍓嶅紑鍙戣疆娆＄殑楠屾敹鍏ュ彛锛屼笉鏄案涔呯粍浠跺睍瑙堥銆?
+- 姣忎竴杞彧淇濈暀鏈疆闇?瑕侀獙鏀剁殑缁勪欢鍜?mock 鍦烘櫙銆?
+- 涓婁竴杞棤鍏崇粍浠跺簲浠庡綋鍓?ComponentLabPage 瑙嗗浘涓Щ闄ゃ??
+- ComponentLabPage 蹇呴』浣滀负鐙珛椤甸潰娓叉煋锛屼笉搴斿寘鍦ㄤ富搴旂敤 AppShell銆佷富瀵艰埅鎴栧乏渚у鑸腑銆?
+- 椤甸潰绾у姛鑳介獙鏀舵椂锛屽彲浠ュ湪 ComponentLabPage 涓斁鍏ュ畬鏁撮〉闈?mock锛岃?屼笉鍙睍绀哄绔嬬粍浠躲??
+- 姣忚疆浜や粯鏃跺繀椤昏鏄?ComponentLabPage 涓叿浣撴斁鍏ヤ簡浠?涔堛?佺敤鎴烽渶瑕侀獙鏀跺摢浜涘尯鍩熴?佸摢浜涙寜閽垨鏁版嵁浠嶆槸鍗犱綅銆?
 
-## 5. 核心业务组件职责
+## 5. 鏍稿績涓氬姟缁勪欢鑱岃矗
 
 ### ContentBlockCard
 
-表示一个可复用内容资产�?
+琛ㄧず涓?涓彲澶嶇敤鍐呭璧勪骇銆?
 
-使用范围�?
+浣跨敤鑼冨洿锛?
 
-- 资源库�?
-- 内容选择器�?
-- 其他需要“选择内容资产”的列表或网格�?
+- 璧勬簮搴撱??
+- 鍐呭閫夋嫨鍣ㄣ??
+- 鍏朵粬闇?瑕佲?滈?夋嫨鍐呭璧勪骇鈥濈殑鍒楄〃鎴栫綉鏍笺??
 
-不用于：
+涓嶇敤浜庯細
 
-- SectionWorkspace 文档流正文展示�?
-- SectionItemView 内部正文内容�?
+- SectionWorkspace 鏂囨。娴佹鏂囧睍绀恒??
+- SectionItemView 鍐呴儴姝ｆ枃鍐呭銆?
 
-必须展示�?
+蹇呴』灞曠ず锛?
 
-- 标题�?
-- 内容类型�?
-- 难度�?
-- 状态�?
-- 当前版本信息�?
-- 摘要或纯文本预览入口�?
+- 鏍囬銆?
+- 鍐呭绫诲瀷銆?
+- 闅惧害銆?
+- 鐘舵?併??
+- 褰撳墠鐗堟湰淇℃伅銆?
+- 鎽樿鎴栫函鏂囨湰棰勮鍏ュ彛銆?
 
-允许操作�?
+鍏佽鎿嶄綔锛?
 
-- 选择�?
-- 打开详情�?
-- 打开 Word 编辑入口�?
-- 查看 HTML 预览�?
+- 閫夋嫨銆?
+- 鎵撳紑璇︽儏銆?
+- 鎵撳紑 Word 缂栬緫鍏ュ彛銆?
+- 鏌ョ湅 HTML 棰勮銆?
 
 ### ContentBlockDisplay
 
-表示 ContentBlock �?SectionWorkspace 文档流中的正文展示�?
+琛ㄧず ContentBlock 鍦?SectionWorkspace 鏂囨。娴佷腑鐨勬鏂囧睍绀恒??
 
-职责�?
+鑱岃矗锛?
 
-- 展示 ContentBlock 的正�?HTML 预览�?
-- 不显�?ContentBlock 标题�?
-- 不显示版本信息�?
-- 正文预览区域不显示边框，尽量贴近文档流�?
-- 不显�?ContentBlock 类型、可用状态、引用模式等文字元信息�?
-- 只显示难度，难度只用左侧顶部的小颜色点表示；具体颜色值后续由用户确认后再固定�?
-- 自身上下左右 padding �?0，间距由外层 SectionItemView 控制�?
-- 鼠标 hover �?ContentBlockDisplay 时不显示边框�?
-- 提供轻量动作入口：Word 编辑、刷新预览、更多�?
-- 可以作为 SectionItemView �?slot 内容�?
-- 可以作为 AtomicSectionBlock / CompositeBlock 的子内容�?
+- 灞曠ず ContentBlock 鐨勬鏂?HTML 棰勮銆?
+- 涓嶆樉绀?ContentBlock 鏍囬銆?
+- 涓嶆樉绀虹増鏈俊鎭??
+- 姝ｆ枃棰勮鍖哄煙涓嶆樉绀鸿竟妗嗭紝灏介噺璐磋繎鏂囨。娴併??
+- 涓嶆樉绀?ContentBlock 绫诲瀷銆佸彲鐢ㄧ姸鎬併?佸紩鐢ㄦā寮忕瓑鏂囧瓧鍏冧俊鎭??
+- 鍙樉绀洪毦搴︼紝闅惧害鍙敤宸︿晶椤堕儴鐨勫皬棰滆壊鐐硅〃绀猴紱鍏蜂綋棰滆壊鍊煎悗缁敱鐢ㄦ埛纭鍚庡啀鍥哄畾銆?
+- 鑷韩涓婁笅宸﹀彸 padding 涓?0锛岄棿璺濈敱澶栧眰 SectionItemView 鎺у埗銆?
+- 榧犳爣 hover 鍒?ContentBlockDisplay 鏃朵笉鏄剧ず杈规銆?
+- 鎻愪緵杞婚噺鍔ㄤ綔鍏ュ彛锛歐ord 缂栬緫銆佸埛鏂伴瑙堛?佹洿澶氥??
+- 鍙互浣滀负 SectionItemView 鐨?slot 鍐呭銆?
+- 鍙互浣滀负 AtomicSectionBlock / CompositeBlock 鐨勫瓙鍐呭銆?
 
-边界�?
+杈圭晫锛?
 
-- 不作为资源库卡片使用�?
-- 不使�?`StructuredContainer`�?
-- 不直接调�?API�?
-- 不直接实�?Word 编辑会话轮询�?
-- 不持�?SectionPage 页面状态�?
+- 涓嶄綔涓鸿祫婧愬簱鍗＄墖浣跨敤銆?
+- 涓嶄娇鐢?`StructuredContainer`銆?
+- 涓嶇洿鎺ヨ皟鐢?API銆?
+- 涓嶇洿鎺ュ疄鐜?Word 缂栬緫浼氳瘽杞銆?
+- 涓嶆寔鏈?SectionPage 椤甸潰鐘舵?併??
 
-ComponentLabPage 验收�?
+ComponentLabPage 楠屾敹锛?
 
-- 默认状态�?
-- 选中状态�?
-- LockedVersion�?
-- �?HTML 预览�?
-- 长正文�?
-- 禁用状态�?
-- 不显示标题和版本�?
-- 不显�?ContentBlock 类型和状态�?
+- 榛樿鐘舵?併??
+- 閫変腑鐘舵?併??
+- LockedVersion銆?
+- 鏃?HTML 棰勮銆?
+- 闀挎鏂囥??
+- 绂佺敤鐘舵?併??
+- 涓嶆樉绀烘爣棰樺拰鐗堟湰銆?
+- 涓嶆樉绀?ContentBlock 绫诲瀷鍜岀姸鎬併??
 
 ### InsertPoint
 
-表示文档流中“这里可以插入”的交互位置�?
+琛ㄧず鏂囨。娴佷腑鈥滆繖閲屽彲浠ユ彃鍏モ?濈殑浜や簰浣嶇疆銆?
 
-职责�?
+鑱岃矗锛?
 
-- 出现在两�?flow item 之间�?
-- 默认弱化显示�?
-- 高度保持紧凑�?
-- 鼠标停留�?0.5 秒后显示插入入口�?
-- 键盘 focus 后应显示插入入口�?
-- 中间提供 slot，用于展示当前位置允许插入的全部内容类型�?
-- 通过 `insert` 事件把插入点 id 交给父组件�?
+- 鍑虹幇鍦ㄤ袱涓?flow item 涔嬮棿銆?
+- 榛樿寮卞寲鏄剧ず銆?
+- 楂樺害淇濇寔绱у噾銆?
+- 榧犳爣鍋滅暀绾?0.5 绉掑悗鏄剧ず鎻掑叆鍏ュ彛銆?
+- 閿洏 focus 鍚庡簲鏄剧ず鎻掑叆鍏ュ彛銆?
+- 涓棿鎻愪緵 slot锛岀敤浜庡睍绀哄綋鍓嶄綅缃厑璁告彃鍏ョ殑鍏ㄩ儴鍐呭绫诲瀷銆?
+- 閫氳繃 `insert` 浜嬩欢鎶婃彃鍏ョ偣 id 浜ょ粰鐖剁粍浠躲??
 
-边界�?
+杈圭晫锛?
 
-- 不决定可以插入哪些业务对象�?
-- 不调�?API�?
-- 不写死插入菜单选项�?
-- 不修�?Section 数据�?
+- 涓嶅喅瀹氬彲浠ユ彃鍏ュ摢浜涗笟鍔″璞°??
+- 涓嶈皟鐢?API銆?
+- 涓嶅啓姝绘彃鍏ヨ彍鍗曢?夐」銆?
+- 涓嶄慨鏀?Section 鏁版嵁銆?
 
 ### StructuredContainer / InlineBorderHeader
 
-表示 AtomicSectionBlock �?CompositeBlock 共享的弱边框结构容器�?
+琛ㄧず AtomicSectionBlock 鍜?CompositeBlock 鍏变韩鐨勫急杈规缁撴瀯瀹瑰櫒銆?
 
-职责�?
+鑱岃矗锛?
 
-- `StructuredContainer` 负责弱边框容器和 body slot�?
-- `InlineBorderHeader` 负责边框线上的标题和 actions slot�?
-- 支持长标题和多个操作入口�?
-- AtomicSectionBlock / CompositeBlock 内部子块不使用左侧竖线�?
-- AtomicSectionBlock / CompositeBlock 内部的每�?ContentBlockDisplay 必须先由子级 SectionItemView 包裹，再承载正文展示�?
+- `StructuredContainer` 璐熻矗寮辫竟妗嗗鍣ㄥ拰 body slot銆?
+- `InlineBorderHeader` 璐熻矗杈规绾夸笂鐨勬爣棰樺拰 actions slot銆?
+- 鏀寔闀挎爣棰樺拰澶氫釜鎿嶄綔鍏ュ彛銆?
+- AtomicSectionBlock / CompositeBlock 鍐呴儴瀛愬潡涓嶄娇鐢ㄥ乏渚х珫绾裤??
+- AtomicSectionBlock / CompositeBlock 鍐呴儴鐨勬瘡涓?ContentBlockDisplay 蹇呴』鍏堢敱瀛愮骇 SectionItemView 鍖呰９锛屽啀鎵胯浇姝ｆ枃灞曠ず銆?
 
-边界�?
+杈圭晫锛?
 
-- 不理�?CMS 业务语义�?
-- 不调�?API�?
-- 不用�?ContentBlockDisplay�?
-- 不持有展开、选中或写入状态�?
+- 涓嶇悊瑙?CMS 涓氬姟璇箟銆?
+- 涓嶈皟鐢?API銆?
+- 涓嶇敤浜?ContentBlockDisplay銆?
+- 涓嶆寔鏈夊睍寮?銆侀?変腑鎴栧啓鍏ョ姸鎬併??
 
 ### AtomicSectionCard
 
-表示一个原子教学片段�?
+琛ㄧず涓?涓師瀛愭暀瀛︾墖娈点??
 
-必须展示�?
+蹇呴』灞曠ず锛?
 
-- 标题�?
-- 类型�?
-- 状态�?
-- 内部内容块数量�?
-- 简要说明�?
+- 鏍囬銆?
+- 绫诲瀷銆?
+- 鐘舵?併??
+- 鍐呴儴鍐呭鍧楁暟閲忋??
+- 绠?瑕佽鏄庛??
 
-语义�?
+璇箟锛?
 
-- AtomicSection 组织 ContentBlock�?
-- AtomicSection 自身不承载可编辑正文�?
+- AtomicSection 缁勭粐 ContentBlock銆?
+- AtomicSection 鑷韩涓嶆壙杞藉彲缂栬緫姝ｆ枃銆?
 
 ### SectionItemView
 
-表示 SectionItem �?SectionWorkspace 中的可视化表现�?
+琛ㄧず SectionItem 鍦?SectionWorkspace 涓殑鍙鍖栬〃鐜般??
 
-当前已确认口径：
+褰撳墠宸茬‘璁ゅ彛寰勶細
 
-- SectionItemView 是上层容器，不是资源卡片�?
-- SectionItemView 不展示标题、类型、状态、版本、备注、引用模式或摘要�?
-- SectionItemView 只负责承载未来的 ContentBlockDisplay / AtomicSectionBlock / CompositeBlock 等具体内容组件�?
-- SectionItemView 的宽度应弹性填满横向区域�?
-- SectionItemView 的高度由内部实际渲染内容自动撑开�?
-- SectionItemView 允许子级 SectionItemView，用于表�?SectionItem 的父子层级�?
-- SectionItemView 默认不显示边框�?
-- SectionItemView 的右侧纵向操作区默认隐藏�?
-- SectionItemView 的右侧纵向操作区必须脱离正常布局流，不允许撑�?SectionItemView�?
-- 多个 SectionItemView 连续出现时默认竖直贴合，不在外层额外添加 gap / margin�?
-- 鼠标 hover �?SectionItemView 的正文区域时，不显示边框，也不显示操作图标�?
-- 只有鼠标进入右侧纵向操作热区，或键盘 focus 进入右侧操作区时，右侧操作图标和 SectionItemView 容器边框才一起显现�?
+- SectionItemView 鏄笂灞傚鍣紝涓嶆槸璧勬簮鍗＄墖銆?
+- SectionItemView 涓嶅睍绀烘爣棰樸?佺被鍨嬨?佺姸鎬併?佺増鏈?佸娉ㄣ?佸紩鐢ㄦā寮忔垨鎽樿銆?
+- SectionItemView 鍙礋璐ｆ壙杞芥湭鏉ョ殑 ContentBlockDisplay / AtomicSectionBlock / CompositeBlock 绛夊叿浣撳唴瀹圭粍浠躲??
+- SectionItemView 鐨勫搴﹀簲寮规?у～婊℃í鍚戝尯鍩熴??
+- SectionItemView 鐨勯珮搴︾敱鍐呴儴瀹為檯娓叉煋鍐呭鑷姩鎾戝紑銆?
+- SectionItemView 鍏佽瀛愮骇 SectionItemView锛岀敤浜庤〃杈?SectionItem 鐨勭埗瀛愬眰绾с??
+- SectionItemView 榛樿涓嶆樉绀鸿竟妗嗐??
+- SectionItemView 鐨勫彸渚х旱鍚戞搷浣滃尯榛樿闅愯棌銆?
+- SectionItemView 鐨勫彸渚х旱鍚戞搷浣滃尯蹇呴』鑴辩姝ｅ父甯冨眬娴侊紝涓嶅厑璁告拺楂?SectionItemView銆?
+- 澶氫釜 SectionItemView 杩炵画鍑虹幇鏃堕粯璁ょ珫鐩磋创鍚堬紝涓嶅湪澶栧眰棰濆娣诲姞 gap / margin銆?
+- 榧犳爣 hover 鍒?SectionItemView 鐨勬鏂囧尯鍩熸椂锛屼笉鏄剧ず杈规锛屼篃涓嶆樉绀烘搷浣滃浘鏍囥??
+- 鍙湁榧犳爣杩涘叆鍙充晶绾靛悜鎿嶄綔鐑尯锛屾垨閿洏 focus 杩涘叆鍙充晶鎿嶄綔鍖烘椂锛屽彸渚ф搷浣滃浘鏍囧拰 SectionItemView 瀹瑰櫒杈规鎵嶄竴璧锋樉鐜般??
 
-语义�?
+璇箟锛?
 
-- 修改它只修改小节结构引用�?
-- 不直接修改源 ContentBlock �?AtomicSection�?
-- SectionItemView 是上层概念，具体内容�?ContentBlockDisplay / AtomicSectionBlock / CompositeBlock 承载�?- 实现必须先在 ComponentLabPage 中用 Mock Data 验收默认、选中、禁用、横向填满、内容自适应高度、子级结构和 hover 操作区显隐�?- 组件只通过 emits 暴露选择、前插、后插、上移、下移、缩进、反缩进、移除和 Word 编辑入口�?- 组件不调�?API，不读取 Pinia，不持有 SectionPage 页面状态�?
+- 淇敼瀹冨彧淇敼灏忚妭缁撴瀯寮曠敤銆?
+- 涓嶇洿鎺ヤ慨鏀规簮 ContentBlock 鎴?AtomicSection銆?
+- SectionItemView 鏄笂灞傛蹇碉紝鍏蜂綋鍐呭鐢?ContentBlockDisplay / AtomicSectionBlock / CompositeBlock 鎵胯浇銆?- 瀹炵幇蹇呴』鍏堝湪 ComponentLabPage 涓敤 Mock Data 楠屾敹榛樿銆侀?変腑銆佺鐢ㄣ?佹í鍚戝～婊°?佸唴瀹硅嚜閫傚簲楂樺害銆佸瓙绾х粨鏋勫拰 hover 鎿嶄綔鍖烘樉闅愩??- 缁勪欢鍙?氳繃 emits 鏆撮湶閫夋嫨銆佸墠鎻掋?佸悗鎻掋?佷笂绉汇?佷笅绉汇?佺缉杩涖?佸弽缂╄繘銆佺Щ闄ゅ拰 Word 缂栬緫鍏ュ彛銆?- 缁勪欢涓嶈皟鐢?API锛屼笉璇诲彇 Pinia锛屼笉鎸佹湁 SectionPage 椤甸潰鐘舵?併??
 ### SectionTree
 
-表示 SectionStructurePanel 中的当前 Section 结构树�?
-职责�?
-- 展示当前 Section 内部�?SectionItem 结构�?- 节点可以表达 Section、AtomicSection、CompositeBlock、ContentBlock �?Section 内部结构对象�?- 展示层级、展开 / 折叠、选中态、禁用态和节点类型摘要�?- 点击节点只通过事件把节�?id 交给父级，由父级决定是否滚动工作区、更�?Inspector 或触发其他页面状态�?- 复用 BasicTree 的通用展开 / 折叠和树语义能力�?
-边界�?
-- 不调�?API�?- 不读�?Pinia�?- 不持�?SectionPage 页面�?selectedNodeId�?- 不直接滚�?SectionWorkspace�?- 不直接修�?SectionItem 顺序、层级或引用关系�?- 不混�?TeachingTopic、Handout、GeneratedFile �?ContentBlockVersion�?- 不把 BasicTree 机制写成 Section 专用规则�?
-ComponentLabPage 验收�?
-- 默认层级树�?- 折叠 / 展开按钮�?- 选中态�?- 禁用节点�?- 长标题�?- 空状态�?
+琛ㄧず SectionStructurePanel 涓殑褰撳墠 Section 缁撴瀯鏍戙??
+鑱岃矗锛?
+- 灞曠ず褰撳墠 Section 鍐呴儴鐨?SectionItem 缁撴瀯銆?- 鑺傜偣鍙互琛ㄨ揪 Section銆丄tomicSection銆丆ompositeBlock銆丆ontentBlock 绛?Section 鍐呴儴缁撴瀯瀵硅薄銆?- 灞曠ず灞傜骇銆佸睍寮? / 鎶樺彔銆侀?変腑鎬併?佺鐢ㄦ?佸拰鑺傜偣绫诲瀷鎽樿銆?- 鐐瑰嚮鑺傜偣鍙?氳繃浜嬩欢鎶婅妭鐐?id 浜ょ粰鐖剁骇锛岀敱鐖剁骇鍐冲畾鏄惁婊氬姩宸ヤ綔鍖恒?佹洿鏂?Inspector 鎴栬Е鍙戝叾浠栭〉闈㈢姸鎬併??- 澶嶇敤 BasicTree 鐨勯?氱敤灞曞紑 / 鎶樺彔鍜屾爲璇箟鑳藉姏銆?
+杈圭晫锛?
+- 涓嶈皟鐢?API銆?- 涓嶈鍙?Pinia銆?- 涓嶆寔鏈?SectionPage 椤甸潰绾?selectedNodeId銆?- 涓嶇洿鎺ユ粴鍔?SectionWorkspace銆?- 涓嶇洿鎺ヤ慨鏀?SectionItem 椤哄簭銆佸眰绾ф垨寮曠敤鍏崇郴銆?- 涓嶆贩鍏?TeachingTopic銆丠andout銆丟eneratedFile 鎴?ContentBlockVersion銆?- 涓嶆妸 BasicTree 鏈哄埗鍐欐垚 Section 涓撶敤瑙勫垯銆?
+ComponentLabPage 楠屾敹锛?
+- 榛樿灞傜骇鏍戙??- 鎶樺彔 / 灞曞紑鎸夐挳銆?- 閫変腑鎬併??- 绂佺敤鑺傜偣銆?- 闀挎爣棰樸??- 绌虹姸鎬併??
 ### SectionTreeNode
 
-表示 SectionTree 中的一行节点内容�?
-职责�?
-- 展示节点标题；题组和题目类节点的主显示名使用类型名，而不是独立标题�?- 展示难度，使用紧贴节点标题左侧的短竖线表示，竖线使用统一主题色，不在组件中写死具体颜色值�?- 展示业务类型，例如知识点、例题、例题组、变式题组�?- 当节点是题组类对象时，展示题目数量�?- 作为 SectionTree 的节点内容插槽使用，方便后续扩展更多字段�?
-边界�?
-- 不负责展开 / 折叠�?- 不负责节点选中状态管理�?- 不调�?API�?- 不读�?Pinia�?- 不直接滚�?SectionWorkspace�?
+琛ㄧず SectionTree 涓殑涓?琛岃妭鐐瑰唴瀹广??
+鑱岃矗锛?
+- 灞曠ず鑺傜偣鏍囬锛涢缁勫拰棰樼洰绫昏妭鐐圭殑涓绘樉绀哄悕浣跨敤绫诲瀷鍚嶏紝鑰屼笉鏄嫭绔嬫爣棰樸??- 灞曠ず闅惧害锛屼娇鐢ㄧ揣璐磋妭鐐规爣棰樺乏渚х殑鐭珫绾胯〃绀猴紝绔栫嚎浣跨敤缁熶竴涓婚鑹诧紝涓嶅湪缁勪欢涓啓姝诲叿浣撻鑹插?笺??- 灞曠ず涓氬姟绫诲瀷锛屼緥濡傜煡璇嗙偣銆佷緥棰樸?佷緥棰樼粍銆佸彉寮忛缁勩??- 褰撹妭鐐规槸棰樼粍绫诲璞℃椂锛屽睍绀洪鐩暟閲忋??- 浣滀负 SectionTree 鐨勮妭鐐瑰唴瀹规彃妲戒娇鐢紝鏂逛究鍚庣画鎵╁睍鏇村瀛楁銆?
+杈圭晫锛?
+- 涓嶈礋璐ｅ睍寮? / 鎶樺彔銆?- 涓嶈礋璐ｈ妭鐐归?変腑鐘舵?佺鐞嗐??- 涓嶈皟鐢?API銆?- 涓嶈鍙?Pinia銆?- 涓嶇洿鎺ユ粴鍔?SectionWorkspace銆?
 ### SectionPage Skeleton Components
 
-当前最小骨架包含：
+褰撳墠鏈?灏忛鏋跺寘鍚細
 
 - `SectionTopToolbar`
 - `SectionStructurePanel`
 - `SectionWorkspace`
 - `SectionInspector`
 
-职责�?
+鑱岃矗锛?
 
-- `SectionTopToolbar` 只作为右侧顶部的紧凑工具控件区，不显示页面标题�?
-- `SectionStructurePanel` 只保留左侧结构树区域和空状态�?
-- `SectionWorkspace` 保留低高�?Section 信息条、SectionItemView 文档流主列、未�?TeachingNoteColumn 分栏预留和空状态，并在竖直方向占满页面主工作区高度�?
-- `SectionWorkspace` 文档流主滚动区使�?`WeakScrollArea`，避免默认粗滚动条抢占内容注意力�?
-- `SectionInspector` 只保留右侧选中对象检查区域和空状态�?
+- `SectionTopToolbar` 鍙綔涓哄彸渚ч《閮ㄧ殑绱у噾宸ュ叿鎺т欢鍖猴紝涓嶆樉绀洪〉闈㈡爣棰樸??
+- `SectionStructurePanel` 鍙繚鐣欏乏渚х粨鏋勬爲鍖哄煙鍜岀┖鐘舵?併??
+- `SectionWorkspace` 淇濈暀浣庨珮搴?Section 淇℃伅鏉°?丼ectionItemView 鏂囨。娴佷富鍒椼?佹湭鏉?TeachingNoteColumn 鍒嗘爮棰勭暀鍜岀┖鐘舵?侊紝骞跺湪绔栫洿鏂瑰悜鍗犳弧椤甸潰涓诲伐浣滃尯楂樺害銆?
+- `SectionWorkspace` 鏂囨。娴佷富婊氬姩鍖轰娇鐢?`WeakScrollArea`锛岄伩鍏嶉粯璁ょ矖婊氬姩鏉℃姠鍗犲唴瀹规敞鎰忓姏銆?
+- `SectionInspector` 鍙繚鐣欏彸渚ч?変腑瀵硅薄妫?鏌ュ尯鍩熷拰绌虹姸鎬併??
 
-边界�?
+杈圭晫锛?
 
-- 不接 API�?
-- 不写入数据�?
-- 不实�?SectionTree、BasicTree 联动、真�?SectionItemView 列表、ContentBlockDisplay、AtomicSectionBlock 或真�?InsertPoint 交互�?
-- 本轮 ComponentLabPage 只展示这些骨架组件�?
+- 涓嶆帴 API銆?
+- 涓嶅啓鍏ユ暟鎹??
+- 涓嶅疄鐜?SectionTree銆丅asicTree 鑱斿姩銆佺湡瀹?SectionItemView 鍒楄〃銆丆ontentBlockDisplay銆丄tomicSectionBlock 鎴栫湡瀹?InsertPoint 浜や簰銆?
+- 鏈疆 ComponentLabPage 鍙睍绀鸿繖浜涢鏋剁粍浠躲??
 
 ### WeakScrollArea
 
-表示弱视觉滚动容器�?
+琛ㄧず寮辫瑙夋粴鍔ㄥ鍣ㄣ??
 
-职责�?
+鑱岃矗锛?
 
-- 统一承载页面中需要竖向滚动的局部区域�?
-- 使用轻量轨道和弱视觉滑块，降低默认滚动条对内容区的视觉干扰�?
-- 优先用于 SectionWorkspace 文档流、TeachingNoteColumn、SectionStructurePanel、SectionInspector，以及后�?HandoutPage 的类似滚动区域�?
+- 缁熶竴鎵胯浇椤甸潰涓渶瑕佺珫鍚戞粴鍔ㄧ殑灞?閮ㄥ尯鍩熴??
+- 浣跨敤杞婚噺杞ㄩ亾鍜屽急瑙嗚婊戝潡锛岄檷浣庨粯璁ゆ粴鍔ㄦ潯瀵瑰唴瀹瑰尯鐨勮瑙夊共鎵般??
+- 浼樺厛鐢ㄤ簬 SectionWorkspace 鏂囨。娴併?乀eachingNoteColumn銆丼ectionStructurePanel銆丼ectionInspector锛屼互鍙婂悗缁?HandoutPage 鐨勭被浼兼粴鍔ㄥ尯鍩熴??
 
-边界�?
+杈圭晫锛?
 
-- 不理�?CMS 业务语义�?
-- 不调�?API�?
-- 不读�?Pinia�?
-- 不管理滚动区域内部内容状态�?
-- 不替代页面布局容器，只负责滚动外壳�?
+- 涓嶇悊瑙?CMS 涓氬姟璇箟銆?
+- 涓嶈皟鐢?API銆?
+- 涓嶈鍙?Pinia銆?
+- 涓嶇鐞嗘粴鍔ㄥ尯鍩熷唴閮ㄥ唴瀹圭姸鎬併??
+- 涓嶆浛浠ｉ〉闈㈠竷灞?瀹瑰櫒锛屽彧璐熻矗婊氬姩澶栧３銆?
 
 ### SectionInspector
 
-表示 SectionPage 右侧当前选中节点检查面板�?
+琛ㄧず SectionPage 鍙充晶褰撳墠閫変腑鑺傜偣妫?鏌ラ潰鏉裤??
 
-必须展示�?
+蹇呴』灞曠ず锛?
 
-- 当前选中标题�?
-- 目标类型�?
-- 状态�?
-- 排序和层级�?
-- 引用模式�?
-- 锁定版本�?
-- 摘要�?
-- 备注�?
+- 褰撳墠閫変腑鏍囬銆?
+- 鐩爣绫诲瀷銆?
+- 鐘舵?併??
+- 鎺掑簭鍜屽眰绾с??
+- 寮曠敤妯″紡銆?
+- 閿佸畾鐗堟湰銆?
+- 鎽樿銆?
+- 澶囨敞銆?
 
-语义�?
+璇箟锛?
 
-- 只显示当前选中�?SectionItem / AtomicSection / ContentBlock 引用信息�?
-- 不直接修�?Section 结构�?
-- 不直接修改源 ContentBlock �?AtomicSection�?
-- 第一轮只提供预览�?Word 编辑入口事件，不调用 API�?
-- 必须�?ComponentLabPage 中同时展示空状态和选中状态�?
+- 鍙樉绀哄綋鍓嶉?変腑鐨?SectionItem / AtomicSection / ContentBlock 寮曠敤淇℃伅銆?
+- 涓嶇洿鎺ヤ慨鏀?Section 缁撴瀯銆?
+- 涓嶇洿鎺ヤ慨鏀规簮 ContentBlock 鎴?AtomicSection銆?
+- 绗竴杞彧鎻愪緵棰勮鍜?Word 缂栬緫鍏ュ彛浜嬩欢锛屼笉璋冪敤 API銆?
+- 蹇呴』鍦?ComponentLabPage 涓悓鏃跺睍绀虹┖鐘舵?佸拰閫変腑鐘舵?併??
 
 ### SectionVariantCard
 
-表示同一 Section 下的一个教学用途变体�?
+琛ㄧず鍚屼竴 Section 涓嬬殑涓?涓暀瀛︾敤閫斿彉浣撱??
 
-必须展示�?
+蹇呴』灞曠ず锛?
 
-- 标题�?
-- 类型�?
-- 难度�?
-- 状态�?
-- 已�?SectionItem 数量�?
+- 鏍囬銆?
+- 绫诲瀷銆?
+- 闅惧害銆?
+- 鐘舵?併??
+- 宸查??SectionItem 鏁伴噺銆?
 
 ### HandoutItemCard
 
-表示讲义版本中的一个输出编排项�?
+琛ㄧず璁蹭箟鐗堟湰涓殑涓?涓緭鍑虹紪鎺掗」銆?
 
-必须展示�?
+蹇呴』灞曠ず锛?
 
-- 目标类型�?
-- 目标标题�?
-- 排序�?
-- 标题覆盖�?
-- 备注�?
+- 鐩爣绫诲瀷銆?
+- 鐩爣鏍囬銆?
+- 鎺掑簭銆?
+- 鏍囬瑕嗙洊銆?
+- 澶囨敞銆?
 
-语义�?
+璇箟锛?
 
-- 引用 SectionVariant 时，展示为展开预览�?
-- 调整讲义项不能反向修改源 Section 结构�?
+- 寮曠敤 SectionVariant 鏃讹紝灞曠ず涓哄睍寮?棰勮銆?
+- 璋冩暣璁蹭箟椤逛笉鑳藉弽鍚戜慨鏀规簮 Section 缁撴瀯銆?
 
-## 6. shadcn-vue 使用规则
+## 6. shadcn-vue 浣跨敤瑙勫垯
 
-优先使用 shadcn-vue 提供的基础组件�?
+浼樺厛浣跨敤 shadcn-vue 鎻愪緵鐨勫熀纭?缁勪欢锛?
 
 ```text
 Button
@@ -504,366 +504,366 @@ Table
 Sidebar
 ```
 
-约束�?
+绾︽潫锛?
 
-- 主导航优先基�?Sidebar 模式，不手写一套无语义 sidebar�?
-- 表单优先复用统一表单组件与校验模式�?
-- 不为每个页面临时创造相似按钮、Badge 和面板样式�?
-- 卡片只用于重复业务对象，不把整页 section 做成卡片套卡片�?
+- 涓诲鑸紭鍏堝熀浜?Sidebar 妯″紡锛屼笉鎵嬪啓涓?濂楁棤璇箟 sidebar銆?
+- 琛ㄥ崟浼樺厛澶嶇敤缁熶竴琛ㄥ崟缁勪欢涓庢牎楠屾ā寮忋??
+- 涓嶄负姣忎釜椤甸潰涓存椂鍒涢?犵浉浼兼寜閽?丅adge 鍜岄潰鏉挎牱寮忋??
+- 鍗＄墖鍙敤浜庨噸澶嶄笟鍔″璞★紝涓嶆妸鏁撮〉 section 鍋氭垚鍗＄墖濂楀崱鐗囥??
 
-## 7. 图标规则
+## 7. 鍥炬爣瑙勫垯
 
-- 图标优先使用 `lucide-vue-next`�?
-- 不使�?emoji 作为 UI 图标�?
-- 图标按钮必须�?Tooltip �?`aria-label`�?
-- 图标尺寸保持稳定，常�?16px�?8px�?0px�?4px 四档�?
+- 鍥炬爣浼樺厛浣跨敤 `lucide-vue-next`銆?
+- 涓嶄娇鐢?emoji 浣滀负 UI 鍥炬爣銆?
+- 鍥炬爣鎸夐挳蹇呴』鏈?Tooltip 鎴?`aria-label`銆?
+- 鍥炬爣灏哄淇濇寔绋冲畾锛屽父鐢?16px銆?8px銆?0px銆?4px 鍥涙。銆?
 
-## 8. 文本�?i18n
+## 8. 鏂囨湰鍜?i18n
 
-所有可见文本必须通过 i18n key�?
+鎵?鏈夊彲瑙佹枃鏈繀椤婚?氳繃 i18n key锛?
 
 ```vue
 <Button>{{ t("common.save") }}</Button>
 ```
 
-禁止�?
+绂佹锛?
 
 ```vue
 <Button>Save</Button>
 ```
 
-组件 props 中如果传入显示文案，调用方也应从 i18n 获取�?
+缁勪欢 props 涓鏋滀紶鍏ユ樉绀烘枃妗堬紝璋冪敤鏂逛篃搴斾粠 i18n 鑾峰彇銆?
 
 
-## 当前补充约定：InsertPoint 与 BlockSearchPicker
+## 褰撳墠琛ュ厖绾﹀畾锛欼nsertPoint 涓? BlockSearchPicker
 
-### InsertPoint 当前使用规则
+### InsertPoint 褰撳墠浣跨敤瑙勫垯
 
-在 SectionWorkspace 中，InsertPoint 直接呈现当前位置允许的具体操作按钮。
+鍦? SectionWorkspace 涓紝InsertPoint 鐩存帴鍛堢幇褰撳墠浣嶇疆鍏佽鐨勫叿浣撴搷浣滄寜閽??
 
-当前按钮为：
+褰撳墠鎸夐挳涓猴細
+
+1. 鏂板缓 ContentBlock
+2. 鏂板缓 AtomicSection
+3. 鎻掑叆宸叉湁鍧?
+
+瑙勫垯锛?
+
+- 涓嶅啀浣跨敤鍗曚釜鈥滄彃鍏モ?濇寜閽綔涓轰富鍏ュ彛銆?
+- 涓嶅啀閫氳繃鐐瑰嚮鈥滄彃鍏モ?濆悗灞曞紑浜岀骇闈㈡澘銆?
+- 鐐瑰嚮鈥滄柊寤? ContentBlock鈥濊繘鍏ユ柊寤? ContentBlock 娴佺▼銆?
+- 鐐瑰嚮鈥滄柊寤? AtomicSection鈥濊繘鍏ユ柊寤? AtomicSection 娴佺▼銆?
+- 鐐瑰嚮鈥滄彃鍏ュ凡鏈夊潡鈥濆悗缁墦寮? BlockSearchPicker銆?
+- InsertPoint 涓嶇洿鎺ヤ慨鏀? Section 鏁版嵁锛屼笉璋冪敤 API銆?
+
+### BlockSearchPicker
+
+BlockSearchPicker 琛ㄧず浠庡凡鏈夊潡涓悳绱㈠苟閫夋嫨鎻掑叆鐩爣鐨勪笟鍔″鍣ㄧ粍浠躲??
+
+鑱岃矗锛?
+
+- 鍚屾椂鎼滅储 ContentBlock 鍜? AtomicSection銆?
+- 鍦ㄥ悓涓?涓粨鏋滃垪琛ㄤ腑灞曠ず瀵硅薄绫诲瀷銆佹爣棰樺拰蹇呰鎽樿銆?
+- 鍏佽鐢ㄦ埛閫夋嫨涓?涓凡鏈夊潡锛屽苟閫氳繃浜嬩欢鎶婇?変腑瀵硅薄浜ょ粰鐖剁骇銆?
+- 鏀寔绌虹粨鏋溿?侀暱鏍囬銆佺鐢ㄩ」鍜屽姞杞界姸鎬佺殑 Mock Data 楠屾敹銆?
+
+杈圭晫锛?
+
+- 涓嶇洿鎺ヤ慨鏀? Section 鏁版嵁銆?
+- 涓嶇洿鎺ュ垱寤? ContentBlock 鎴? AtomicSection銆?
+- 涓嶆妸 ContentBlock 鍜? AtomicSection 鎷嗘垚涓や釜浜掓枼鎼滅储鍏ュ彛銆?
+- 涓嶅湪褰撳墠 InsertPoint 灏忛棴鐜腑瀹炵幇锛屽悗缁崟鐙紑鍙戙??
+- 鍚庣画蹇呴』鍏堣繘鍏? ComponentLab 浣跨敤 Mock Data 楠屾敹锛屽啀鎺ュ叆 SectionPage銆?
+## 褰撳墠琛ュ厖绾﹀畾锛欼nsertCreateOverlay
+
+InsertCreateOverlay 琛ㄧず浠? InsertPoint 鏂板缓鍧楁椂寮瑰嚭鐨勬彃鍏ラ潰鏉裤??
+
+瑙﹀彂鍏ュ彛锛?
+
+1. 鏂板缓 ContentBlock
+2. 鏂板缓 AtomicSection
+
+鑱岃矗锛?
+
+- 浣滀负 SectionPage 涓婃柟鐨勬渶涓婂眰 overlay 鏄剧ず銆?
+- 鎵撳紑鏃惰鑳屽悗鐨勬暣涓? SectionPage 妯＄硦銆?
+- 鏍规嵁 targetType 鏄剧ず鏂板缓 ContentBlock 鎴栨柊寤? AtomicSection 鐨勫垱寤鸿〃鍗曪紱ComponentLab 涓娇鐢? Mock Data 楠屾敹锛孲ectionPage 涓敱鐖剁骇璋冪敤 CMS V2 API銆?
+- 鏄剧ず褰撳墠鎻掑叆浣嶇疆涓婁笅鏂囥??
+- 閫氳繃浜嬩欢鎶婄敤鎴峰～鍐欑殑鍒涘缓鏁版嵁浜ょ粰鐖剁骇銆?
+- 鎻愪緵鍙栨秷鍜岀‘璁ゆ柊寤哄叆鍙ｃ??
+
+瀛楁锛?
+
+褰? targetType = ContentBlock锛?
+
+- 鎵?灞? Section锛氶粯璁ゆ樉绀哄綋鍓? Section 鍚嶇О锛屽綋鍓嶉樁娈典笉鍙慨鏀癸紱鎻愪氦鏃朵紶閫? SectionId銆?
+- 鍚嶇О锛屽彲閫夛紱娌℃湁鍚嶇О鏃朵笉闃绘鏂板缓
+- 绫诲瀷锛氱煡璇嗙偣 / 渚嬮 / 鍙樺紡棰? / 缁冧範棰? / 鍙樺紡棰樼粍 / 缁冧範棰樼粍
+- 闅惧害锛氬熀纭? / 涓。 / 鎻愰珮 / 鍘嬭酱
+
+褰? targetType = AtomicSection锛?
+
+- 鎵?灞? Section锛氶粯璁ゆ樉绀哄綋鍓? Section 鍚嶇О锛屽綋鍓嶉樁娈典笉鍙慨鏀癸紱鎻愪氦鏃朵紶閫? SectionId銆?
+- 鍚嶇О
+- 闅惧害锛氬熀纭? / 涓。 / 鎻愰珮 / 鍘嬭酱
+- 澶囨敞锛屽彲閫?
+
+瀛楁璇存槑锛?
+
+- 鎵?灞? Section 鍦? UI 涓樉绀哄悕绉帮紝浣嗘寔涔呭寲浣跨敤 SectionId锛岄伩鍏? Section 鏀瑰悕鍚庡綊灞炴柇瑁傘??
+- ContentBlock 鍚嶇О鍙负绌猴紱灞曠ず鏃剁敱绫诲瀷銆侀瑙堟憳瑕佹垨涓婁笅鏂囧厹搴曘??
+- AtomicSection 鍚嶇О浠嶅繀濉紝闅惧害鏄嫭绔嬪瓧娈碉紝涓嶆槧灏勫埌 Description銆?
+
+杈圭晫锛?
+
+- ComponentLab 涓彧鎻愪氦 Mock 鍙嶉锛屼笉璋冪敤 API銆?
+- SectionPage 涓敱椤甸潰鐖剁骇璋冪敤 CMS V2 API 鍒涘缓 ContentBlock / AtomicSection锛屽苟閲嶆柊璇诲彇 Section 鏁版嵁銆?
+- 缁勪欢鏈韩涓嶇洿鎺ヨ皟鐢? API锛屼笉鐩存帴淇敼 Section 鏁版嵁銆?
+- 涓嶆墦寮? Word銆?
+- 涓嶆悳绱㈠凡鏈夊潡銆?
+- 涓嶅鐞? BlockSearchPicker銆?
+
+ComponentLabPage 楠屾敹锛?
+
+- ContentBlock 鏂板缓闈㈡澘銆?
+- AtomicSection 鏂板缓闈㈡澘銆?
+- 绌哄悕绉扮姸鎬併??
+- 闀垮悕绉扮姸鎬併??
+- 绂佺敤鐘舵?併??
+- 鎻愪氦鍚? Mock 鍙嶉銆?
+- 鍙栨秷鍏抽棴鐘舵?併??
+- 鑳屽悗 SectionPage 妯＄硦鏁堟灉銆?
+## 当前补充约定：SectionTreeContextMenu
+
+SectionTreeContextMenu 表示 SectionTree 节点上的右键上下文菜单。
+
+职责：
+
+- 覆盖浏览器默认右键菜单。
+- 显示当前右键目标节点的菜单操作。
+- 通过事件把菜单动作交给父级处理。
+- 使用 SectionTree 的临时 context target 高亮，不修改 selectedNodeId。
+- 支持 Escape 和点击外部关闭。
+
+菜单项：
 
 1. 新建 ContentBlock
 2. 新建 AtomicSection
 3. 插入已有块
-
-规则：
-
-- 不再使用单个“插入”按钮作为主入口。
-- 不再通过点击“插入”后展开二级面板。
-- 点击“新建 ContentBlock”进入新建 ContentBlock 流程。
-- 点击“新建 AtomicSection”进入新建 AtomicSection 流程。
-- 点击“插入已有块”后续打开 BlockSearchPicker。
-- InsertPoint 不直接修改 Section 数据，不调用 API。
-
-### BlockSearchPicker
-
-BlockSearchPicker 表示从已有块中搜索并选择插入目标的业务容器组件。
-
-职责：
-
-- 同时搜索 ContentBlock 和 AtomicSection。
-- 在同一个结果列表中展示对象类型、标题和必要摘要。
-- 允许用户选择一个已有块，并通过事件把选中对象交给父级。
-- 支持空结果、长标题、禁用项和加载状态的 Mock Data 验收。
+4. 移除
 
 边界：
 
-- 不直接修改 Section 数据。
-- 不直接创建 ContentBlock 或 AtomicSection。
-- 不把 ContentBlock 和 AtomicSection 拆成两个互斥搜索入口。
-- 不在当前 InsertPoint 小闭环中实现，后续单独开发。
-- 后续必须先进入 ComponentLab 使用 Mock Data 验收，再接入 SectionPage。
-## 当前补充约定：InsertCreateOverlay
-
-InsertCreateOverlay 表示从 InsertPoint 新建块时弹出的插入面板。
-
-触发入口：
-
-1. 新建 ContentBlock
-2. 新建 AtomicSection
-
-职责：
-
-- 作为 SectionPage 上方的最上层 overlay 显示。
-- 打开时让背后的整个 SectionPage 模糊。
-- 根据 targetType 显示新建 ContentBlock 或新建 AtomicSection 的创建表单；ComponentLab 中使用 Mock Data 验收，SectionPage 中由父级调用 CMS V2 API。
-- 显示当前插入位置上下文。
-- 通过事件把用户填写的创建数据交给父级。
-- 提供取消和确认新建入口。
-
-字段：
-
-当 targetType = ContentBlock：
-
-- 所属 Section：默认显示当前 Section 名称，当前阶段不可修改；提交时传递 SectionId。
-- 名称，可选；没有名称时不阻止新建
-- 类型：知识点 / 例题 / 变式题 / 练习题 / 变式题组 / 练习题组
-- 难度：基础 / 中档 / 提高 / 压轴
-
-当 targetType = AtomicSection：
-
-- 所属 Section：默认显示当前 Section 名称，当前阶段不可修改；提交时传递 SectionId。
-- 名称
-- 难度：基础 / 中档 / 提高 / 压轴
-- 备注，可选
-
-字段说明：
-
-- 所属 Section 在 UI 中显示名称，但持久化使用 SectionId，避免 Section 改名后归属断裂。
-- ContentBlock 名称可为空；展示时由类型、预览摘要或上下文兜底。
-- AtomicSection 名称仍必填，难度是独立字段，不映射到 Description。
-
-边界：
-
-- ComponentLab 中只提交 Mock 反馈，不调用 API。
-- SectionPage 中由页面父级调用 CMS V2 API 创建 ContentBlock / AtomicSection，并重新读取 Section 数据。
-- 组件本身不直接调用 API，不直接修改 Section 数据。
-- 不打开 Word。
-- 不搜索已有块。
-- 不处理 BlockSearchPicker。
+- 右键节点时只高亮该节点，不默认选中该节点。
+- 右键不应同步右侧 Inspector。
+- 右键不应同步 Workspace 选中态。
+- 上移、下移、缩进、反缩进不出现在该菜单中。
+- 组件不调用 API。
+- 组件不修改 Section 数据。
+- 组件不持有 SectionPage 页面状态。
 
 ComponentLabPage 验收：
 
-- ContentBlock 新建面板。
-- AtomicSection 新建面板。
-- 空名称状态。
-- 长名称状态。
-- 禁用状态。
-- 提交后 Mock 反馈。
-- 取消关闭状态。
-- 背后 SectionPage 模糊效果。
-## ��ǰ����Լ����SectionTreeContextMenu
+- 放置一个 SectionTree 进行联动测试。
+- 点击节点时更新 selectedNodeId。
+- 右键节点时只更新 context target。
+- 右键菜单出现时浏览器原生菜单不出现。
+- 选择菜单项后只显示 Mock 反馈，不改数据。
 
-SectionTreeContextMenu ��ʾ SectionTree �ڵ��ϵ��Ҽ������Ĳ˵���
+## 当前补充约定：Server-confirmed Update
 
-ְ��
+CMS V2 前端涉及持久化的交互统一采用 server-confirmed update 模式。
 
-- ���������Ĭ���Ҽ��˵���
-- ��ʾ��ǰ�Ҽ�Ŀ��ڵ�Ĳ˵�������
-- ͨ���¼��Ѳ˵�������������������
-- ʹ�� SectionTree ����ʱ context target ���������޸� selectedNodeId��
-- ֧�� Escape �͵���ⲿ�رա�
+职责边界：
 
-�˵��
+- 展示组件仍然不调用 API。
+- 业务组件仍然只通过 emits 暴露用户意图。
+- 页面、业务容器或 composable 负责调用 `/api/cms-v2`。
+- 前端页面只有在后端成功返回确认数据后，才允许更新对应业务数据视图。
 
-1. �½� ContentBlock
-2. �½� AtomicSection
-3. �������п�
-4. �Ƴ�
+禁止：
 
-�߽磺
+- 不允许 optimistic update。
+- 不允许先本地修改 Section 结构，再失败回滚。
+- 不允许把多个结构修改先堆在前端，最后通过“保存结构”统一提交。
+- 不允许组件内部私自维护一份会与后端状态分叉的业务数据副本。
 
-- �Ҽ��ڵ�ʱֻ�����ýڵ㣬��Ĭ��ѡ�иýڵ㡣
-- �Ҽ���Ӧͬ���Ҳ� Inspector��
-- �Ҽ���Ӧͬ�� Workspace ѡ��̬��
-- ���ơ����ơ��������������������ڸò˵��С�
-- ��������� API��
-- ������޸� Section ���ݡ�
-- ��������� SectionPage ҳ��״̬��
+允许：
 
-ComponentLabPage ���գ�
+- 维护纯 UI 状态，例如 selectedNodeId、expandedNodeIds、context target、overlay open、loading、error。
+- 表单提交前维护临时输入。
+- API 调用期间显示 loading 状态。
+- API 失败时显示错误提示，并保留原有后端确认过的数据。
+- API 成功后使用返回数据替换本地业务数据；如果响应不含最新聚合数据，则成功后重新读取。
+补充：SectionTree 右键目标高亮必须使用具备业务含义的 theme token。
 
-- ����һ�� SectionTree �����������ԡ�
-- ����ڵ�ʱ���� selectedNodeId��
-- �Ҽ��ڵ�ʱֻ���� context target��
-- �Ҽ��˵�����ʱ�����ԭ���˵������֡�
-- ѡ��˵����ֻ��ʾ Mock �������������ݡ�
-
-## ��ǰ����Լ����Server-confirmed Update
-
-CMS V2 ǰ���漰�־û��Ľ���ͳһ���� server-confirmed update ģʽ��
-
-ְ��߽磺
-
-- չʾ�����Ȼ������ API��
-- ҵ�������Ȼֻͨ�� emits ��¶�û���ͼ��
-- ҳ�桢ҵ�������� composable ������� `/api/cms-v2`��
-- ǰ��ҳ��ֻ���ں�˳ɹ�����ȷ�����ݺ󣬲��������¶�Ӧҵ��������ͼ��
-
-��ֹ��
-
-- ������ optimistic update��
-- �������ȱ����޸� Section �ṹ����ʧ�ܻع���
-- �������Ѷ���ṹ�޸��ȶ���ǰ�ˣ����ͨ��������ṹ��ͳһ�ύ��
-- ����������ڲ�˽��ά��һ�ݻ�����״̬�ֲ��ҵ�����ݸ�����
-
-������
-
-- ά���� UI ״̬������ selectedNodeId��expandedNodeIds��context target��overlay open��loading��error��
-- �����ύǰά����ʱ���롣
-- API �����ڼ���ʾ loading ״̬��
-- API ʧ��ʱ��ʾ������ʾ��������ԭ�к��ȷ�Ϲ������ݡ�
-- API �ɹ���ʹ�÷��������滻����ҵ�����ݣ������Ӧ�������¾ۺ����ݣ���ɹ������¶�ȡ��
-���䣺SectionTree �Ҽ�Ŀ���������ʹ�þ߱�ҵ����� theme token��
-
-��ǰ token ������
+当前 token 命名：
 
 - section-tree-context-target
 - section-tree-context-target-foreground
 - section-tree-context-target-ring
 
-����
+规则：
 
-- ��ʹ�� primary��accent �����������ֱ�ӱ���ҵ��״̬��
-- ��д��������ɫֵ��
-- ��������Ҫ�����Ӿ���ɫ��ֻ�޸� token ӳ�䣬��������и�һ������ɫ��
+- 不使用 primary、accent 这类抽象命名直接表达业务状态。
+- 不写死具体颜色值。
+- 若后续需要调整视觉颜色，只修改 token 映射，不在组件中改一次性颜色。
 
-## ��ǰ����Լ����BasicTreeNodeView �� TeachingTopicTree
+## 当前补充约定：BasicTreeNodeView 与 TeachingTopicTree
 
 ### BasicTreeNodeView
 
-BasicTreeNodeView ��ʾ���ڵ��һ��ͨ���Ӿ��ṹ��
+BasicTreeNodeView 表示树节点的一行通用视觉结构。
 
-ְ��
+职责：
 
-- ��ʾ�ڵ������⡣
-- ��ʾ��ѡ���������߱�ǡ�
-- ��ʾ�Ҳ����� meta ��Ϣ��
-- ����������ضϺͻ��������ȶ��ԡ�
-
-�߽磺
-
-- ������ Section��TeachingTopic��ContentBlock ��ҵ�����塣
-- ������չ�� / �۵���
-- ������ѡ��̬���Ҽ�Ŀ��̬�� hover ������
-- ������ API��
-- ����ȡ Pinia��
-
-ʹ�ù���
-
-- SectionTreeNode ����ͨ�� BasicTreeNodeView ��Ⱦ�ڵ����ݡ�
-- TeachingTopicTreeNode ����ͨ�� BasicTreeNodeView ��Ⱦ�ڵ����ݡ�
-- ������Ϊ SectionTree �� TeachingTopicTree �ֱ������׽ڵ�����ʽ��
-
-### TeachingTopicTree
-
-TeachingTopicTree ��ʾ��ѧ���⵼������
-
-ְ��
-
-- չʾ TeachingTopic �㼶��
-- ����չ�� / �۵���ѧ�����֧��
-- ����ѡ��һ�� TeachingTopic����ͨ�� selectTopic �¼���������������
-- ��ʾ�����ֶΣ����� Section ������Handout �������鵵״̬��
-- ���� BasicTree ������Ϊ�� BasicTreeNodeView �Ľڵ��Ӿ��ṹ��
-
-�߽磺
-
-- ��չʾ Section �ڲ��ṹ��
-- ��չʾ SectionItem��ContentBlock���汾�����ɼ�¼��
-- ����תҳ�档
-- ������ API��
-- ������ʵ��ҳ�棬�������� ComponentLab ���� Mock Data ���ա�
-
-ComponentLabPage ���գ�
-
-- ����ֻ�� TeachingTopicTree ����������ݡ�
-- ����ڵ���Ҳ���ʾ��ǰѡ�е� TeachingTopic Mock ��Ϣ��
-- չ�� / �۵���ѡ��̬������̬��������������� BasicTree ��Ϊ��
-
-### TeachingTopicTreeContextMenu
-
-TeachingTopicTreeContextMenu ��ʾ TeachingTopicTree �ڵ��ϵ��Ҽ������Ĳ˵���
-
-ְ��
-
-- ���������Ĭ���Ҽ��˵���
-- ��ʾ��ǰ�Ҽ�Ŀ�� TeachingTopic �Ĳ˵�������
-- ͨ���¼��Ѳ˵�������������������
-- ʹ�� BasicTree �� context target ����������
-- ֧�� Escape �͵���ⲿ�رա�
-
-�˵��
-
-1. �����ӽڵ�
-2. ���������ڵ�
-3. ɾ��
-
-�߽磺
-
-- �Ҽ��ڵ�ʱֻ�����ýڵ㣬��Ĭ��ѡ�иýڵ㡣
-- �Ҽ����ı䵱ǰѡ�е� TeachingTopic��
-- ����ֻ�� ComponentLabPage ��ʹ�� Mock Data ���ա�
-- ���ֲ���ʵ���� TeachingTopic��
-- ���ֲ���ʵɾ�� TeachingTopic��
-- ���ֲ����� API��
-- ���ֲ�����ʵ��ҳ�档
-
-ComponentLabPage ���գ�
-
-- ����һ�� TeachingTopicTree �����������ԡ�
-- ����ڵ�ʱ���� selectedTopicId��
-- �Ҽ��ڵ�ʱֻ���� context target��
-- �Ҽ��˵�����ʱ�����ԭ���˵������֡�
-- ѡ��˵����ֻ��ʾ Mock ���������������ݡ�
-
-## 当前补充约定：Difficulty Theme Tokens
-
-Difficulty Theme Tokens 用于统一显示 ContentBlock、AtomicSection、CompositeBlock、SectionTree 节点中的难度视觉标记。
-
-当前语义：
-
-- difficulty-unset：未设置。
-- difficulty-basic：基础，低难度，偏绿色。
-- difficulty-medium：中档，中等难度，偏蓝色。
-- difficulty-advanced：提高，较高难度，偏橙色。
-- difficulty-top：压轴，最高难度，偏红色。
-
-使用规则：
-
-- `ContentBlockDisplay` 的难度小点必须使用上述 token。
-- `SectionTreeNode` 的难度短竖线必须使用上述 token。
-- 业务组件中不得直接写具体颜色值。
-- 如果后续要调整难度颜色，只修改 theme token，不在组件中改一次性颜色。
-## 当前补充约定：AtomicSection 的 SectionItemView 操作区
-
-当 `SectionItemView` 承载的是 `AtomicSectionBlock` 时，右侧操作区只显示：
-
-- 新建子级 `ContentBlock`。
-- 上移。
-- 下移。
-- 重命名 `AtomicSection`。
-- 移除当前 `SectionItem` 引用。
+- 显示节点主标题。
+- 显示可选的左侧短竖线标记。
+- 显示右侧轻量 meta 信息。
+- 处理长标题截断和基础布局稳定性。
 
 边界：
 
-- 新建子级 `ContentBlock` 表示在当前 `AtomicSection` 内部创建并加入 `AtomicSectionItem`，不是在当前 `Section` 顶层新增兄弟 `SectionItem`。
-- 重命名修改的是 `AtomicSection` 本体名称，不是 `SectionItem` 的标题覆盖。
-- 移除只删除当前 `SectionItem` 引用，不删除 `AtomicSection` 本体，也不删除它内部已有的 `ContentBlock`。
-- 上移 / 下移只调整当前 `Section` 内该 `SectionItem` 的顺序，不做缩进、反缩进或拖拽。
-- `SectionItemView` 仍然不直接调用 API；真实动作由 `SectionPage` 编排，组件只通过 emits 暴露事件。
+- 不理解 Section、TeachingTopic、ContentBlock 等业务语义。
+- 不负责展开 / 折叠。
+- 不负责选中态、右键目标态或 hover 背景。
+- 不调用 API。
+- 不读取 Pinia。
 
-## 当前补充约定：ContentBlock 的 Word 编辑操作区
+使用规则：
 
-当 `SectionItemView` 承载的是 `ContentBlockDisplay` 时，右侧操作区可以提供 Word 编辑入口。
+- SectionTreeNode 必须通过 BasicTreeNodeView 渲染节点内容。
+- TeachingTopicTreeNode 必须通过 BasicTreeNodeView 渲染节点内容。
+- 不允许为 SectionTree 和 TeachingTopicTree 分别复制两套节点行样式。
 
-组件边界：
+### TeachingTopicTree
 
-- `ContentBlockDisplay` 不直接调用 API。
-- `SectionItemView` 不直接调用 API。
-- 组件只 emit `openWord` 或等价事件。
-- `SectionPage` 或页面级 composable 负责调用 CMS V2 后端。
-- 组件不得构造本地 DOCX 路径。
-- 组件不得构造 `ms-word:`、`file://` 或其他本地打开 URI。
-- 组件不得调用 V1 `编辑会话` 接口。
+TeachingTopicTree 表示教学主题导航树。
 
-后端边界：
+职责：
 
-- Word 编辑入口必须通过 CMS V2 后端编辑会话 API。
-- 本地 Word 启动方式由后端策略封装。
-- 未来迁移到云端时，应替换后端 `ContentBlock` 编辑会话启动策略，而不是修改业务组件。
+- 展示 TeachingTopic 层级。
+- 允许展开 / 折叠教学主题分支。
+- 允许选择一个 TeachingTopic，并通过 selectTopic 事件交给父级处理。
+- 显示轻量字段，例如 Section 数量、Handout 数量、归档状态。
+- 复用 BasicTree 的树行为和 BasicTreeNodeView 的节点视觉结构。
+
+边界：
+
+- 不展示 Section 内部结构。
+- 不展示 SectionItem、ContentBlock、版本或生成记录。
+- 不跳转页面。
+- 不调用 API。
+- 不接入实际页面，必须先在 ComponentLab 中用 Mock Data 验收。
 
 ComponentLabPage 验收：
 
-- 后续开发 `ContentBlock` 操作区时，应先在 ComponentLabPage 中验证 Word 编辑按钮的展示、loading、错误和成功反馈。
-- ComponentLabPage 中仍只使用 Mock Data；真实 API 接入必须在 `SectionPage` 页面级完成。
+- 本轮只放 TeachingTopicTree 相关验收内容。
+- 点击节点后，右侧显示当前选中的 TeachingTopic Mock 信息。
+- 展开 / 折叠、选中态、禁用态、长标题必须沿用 BasicTree 行为。
 
-## 当前补充约定：Section 动作集合 / Composables
+### TeachingTopicTreeContextMenu
 
-`SectionPage` 中的真实动作不得写入业务展示组件。
+TeachingTopicTreeContextMenu 表示 TeachingTopicTree 节点上的右键上下文菜单。
 
-适用范围：
+职责：
+
+- 覆盖浏览器默认右键菜单。
+- 显示当前右键目标 TeachingTopic 的菜单操作。
+- 通过事件把菜单动作交给父级处理。
+- 使用 BasicTree 的 context target 高亮能力。
+- 支持 Escape 和点击外部关闭。
+
+菜单项：
+
+1. 新增子节点
+2. 新增后续节点
+3. 删除
+
+边界：
+
+- 右键节点时只高亮该节点，不默认选中该节点。
+- 右键不改变当前选中的 TeachingTopic。
+- 本轮只在 ComponentLabPage 中使用 Mock Data 验收。
+- 本轮不真实新增 TeachingTopic。
+- 本轮不真实删除 TeachingTopic。
+- 本轮不调用 API。
+- 本轮不接入实际页面。
+
+ComponentLabPage 验收：
+
+- 放置一个 TeachingTopicTree 进行联动测试。
+- 点击节点时更新 selectedTopicId。
+- 右键节点时只更新 context target。
+- 右键菜单出现时浏览器原生菜单不出现。
+- 选择菜单项后只显示 Mock 反馈，不改树数据。
+
+## 褰撳墠琛ュ厖绾﹀畾锛欴ifficulty Theme Tokens
+
+Difficulty Theme Tokens 鐢ㄤ簬缁熶竴鏄剧ず ContentBlock銆丄tomicSection銆丆ompositeBlock銆丼ectionTree 鑺傜偣涓殑闅惧害瑙嗚鏍囪銆?
+
+褰撳墠璇箟锛?
+
+- difficulty-unset锛氭湭璁剧疆銆?
+- difficulty-basic锛氬熀纭?锛屼綆闅惧害锛屽亸缁胯壊銆?
+- difficulty-medium锛氫腑妗ｏ紝涓瓑闅惧害锛屽亸钃濊壊銆?
+- difficulty-advanced锛氭彁楂橈紝杈冮珮闅惧害锛屽亸姗欒壊銆?
+- difficulty-top锛氬帇杞达紝鏈?楂橀毦搴︼紝鍋忕孩鑹层??
+
+浣跨敤瑙勫垯锛?
+
+- `ContentBlockDisplay` 鐨勯毦搴﹀皬鐐瑰繀椤讳娇鐢ㄤ笂杩? token銆?
+- `SectionTreeNode` 鐨勯毦搴︾煭绔栫嚎蹇呴』浣跨敤涓婅堪 token銆?
+- 涓氬姟缁勪欢涓笉寰楃洿鎺ュ啓鍏蜂綋棰滆壊鍊笺??
+- 濡傛灉鍚庣画瑕佽皟鏁撮毦搴﹂鑹诧紝鍙慨鏀? theme token锛屼笉鍦ㄧ粍浠朵腑鏀逛竴娆℃?ч鑹层??
+## 褰撳墠琛ュ厖绾﹀畾锛欰tomicSection 鐨? SectionItemView 鎿嶄綔鍖?
+
+褰? `SectionItemView` 鎵胯浇鐨勬槸 `AtomicSectionBlock` 鏃讹紝鍙充晶鎿嶄綔鍖哄彧鏄剧ず锛?
+
+- 鏂板缓瀛愮骇 `ContentBlock`銆?
+- 涓婄Щ銆?
+- 涓嬬Щ銆?
+- 閲嶅懡鍚? `AtomicSection`銆?
+- 绉婚櫎褰撳墠 `SectionItem` 寮曠敤銆?
+
+杈圭晫锛?
+
+- 鏂板缓瀛愮骇 `ContentBlock` 琛ㄧず鍦ㄥ綋鍓? `AtomicSection` 鍐呴儴鍒涘缓骞跺姞鍏? `AtomicSectionItem`锛屼笉鏄湪褰撳墠 `Section` 椤跺眰鏂板鍏勫紵 `SectionItem`銆?
+- 閲嶅懡鍚嶄慨鏀圭殑鏄? `AtomicSection` 鏈綋鍚嶇О锛屼笉鏄? `SectionItem` 鐨勬爣棰樿鐩栥??
+- 绉婚櫎鍙垹闄ゅ綋鍓? `SectionItem` 寮曠敤锛屼笉鍒犻櫎 `AtomicSection` 鏈綋锛屼篃涓嶅垹闄ゅ畠鍐呴儴宸叉湁鐨? `ContentBlock`銆?
+- 涓婄Щ / 涓嬬Щ鍙皟鏁村綋鍓? `Section` 鍐呰 `SectionItem` 鐨勯『搴忥紝涓嶅仛缂╄繘銆佸弽缂╄繘鎴栨嫋鎷姐??
+- `SectionItemView` 浠嶇劧涓嶇洿鎺ヨ皟鐢? API锛涚湡瀹炲姩浣滅敱 `SectionPage` 缂栨帓锛岀粍浠跺彧閫氳繃 emits 鏆撮湶浜嬩欢銆?
+
+## 褰撳墠琛ュ厖绾﹀畾锛欳ontentBlock 鐨? Word 缂栬緫鎿嶄綔鍖?
+
+褰? `SectionItemView` 鎵胯浇鐨勬槸 `ContentBlockDisplay` 鏃讹紝鍙充晶鎿嶄綔鍖哄彲浠ユ彁渚? Word 缂栬緫鍏ュ彛銆?
+
+缁勪欢杈圭晫锛?
+
+- `ContentBlockDisplay` 涓嶇洿鎺ヨ皟鐢? API銆?
+- `SectionItemView` 涓嶇洿鎺ヨ皟鐢? API銆?
+- 缁勪欢鍙? emit `openWord` 鎴栫瓑浠蜂簨浠躲??
+- `SectionPage` 鎴栭〉闈㈢骇 composable 璐熻矗璋冪敤 CMS V2 鍚庣銆?
+- 缁勪欢涓嶅緱鏋勯?犳湰鍦? DOCX 璺緞銆?
+- 缁勪欢涓嶅緱鏋勯?? `ms-word:`銆乣file://` 鎴栧叾浠栨湰鍦版墦寮? URI銆?
+- 缁勪欢涓嶅緱璋冪敤 V1 `缂栬緫浼氳瘽` 鎺ュ彛銆?
+
+鍚庣杈圭晫锛?
+
+- Word 缂栬緫鍏ュ彛蹇呴』閫氳繃 CMS V2 鍚庣缂栬緫浼氳瘽 API銆?
+- 鏈湴 Word 鍚姩鏂瑰紡鐢卞悗绔瓥鐣ュ皝瑁呫??
+- 鏈潵杩佺Щ鍒颁簯绔椂锛屽簲鏇挎崲鍚庣 `ContentBlock` 缂栬緫浼氳瘽鍚姩绛栫暐锛岃?屼笉鏄慨鏀逛笟鍔＄粍浠躲??
+
+ComponentLabPage 楠屾敹锛?
+
+- 鍚庣画寮?鍙? `ContentBlock` 鎿嶄綔鍖烘椂锛屽簲鍏堝湪 ComponentLabPage 涓獙璇? Word 缂栬緫鎸夐挳鐨勫睍绀恒?乴oading銆侀敊璇拰鎴愬姛鍙嶉銆?
+- ComponentLabPage 涓粛鍙娇鐢? Mock Data锛涚湡瀹? API 鎺ュ叆蹇呴』鍦? `SectionPage` 椤甸潰绾у畬鎴愩??
+
+## 褰撳墠琛ュ厖绾﹀畾锛歋ection 鍔ㄤ綔闆嗗悎 / Composables
+
+`SectionPage` 涓殑鐪熷疄鍔ㄤ綔涓嶅緱鍐欏叆涓氬姟灞曠ず缁勪欢銆?
+
+閫傜敤鑼冨洿锛?
 
 - `SectionItemView`
 - `AtomicSectionBlock`
@@ -871,15 +871,15 @@ ComponentLabPage 验收：
 - `SectionTree`
 - `SectionInspector`
 
-固定规则：
+鍥哄畾瑙勫垯锛?
 
-- 组件只负责展示 UI 和 emit 事件。
-- 组件不直接调用 `cmsV2Client`。
-- 组件不直接修改 Section / AtomicSection / ContentBlock 数据。
-- 真实动作统一进入页面级 action composable。
-- 同一动作必须能被 Workspace、SectionTree 右键菜单、Inspector、快捷键等入口复用。
+- 缁勪欢鍙礋璐ｅ睍绀? UI 鍜? emit 浜嬩欢銆?
+- 缁勪欢涓嶇洿鎺ヨ皟鐢? `cmsV2Client`銆?
+- 缁勪欢涓嶇洿鎺ヤ慨鏀? Section / AtomicSection / ContentBlock 鏁版嵁銆?
+- 鐪熷疄鍔ㄤ綔缁熶竴杩涘叆椤甸潰绾? action composable銆?
+- 鍚屼竴鍔ㄤ綔蹇呴』鑳借 Workspace銆丼ectionTree 鍙抽敭鑿滃崟銆両nspector銆佸揩鎹烽敭绛夊叆鍙ｅ鐢ㄣ??
 
-推荐 composable：
+鎺ㄨ崘 composable锛?
 
 ```text
 frontend-v2/src/composables/useSectionItemActions.ts
@@ -887,33 +887,33 @@ frontend-v2/src/composables/useAtomicSectionActions.ts
 frontend-v2/src/composables/useContentBlockActions.ts
 ```
 
-命名语义：
+鍛藉悕璇箟锛?
 
-- `removeSectionItemReference`：从当前 Section 中移除一个 SectionItem 引用。
-- `deleteAtomicSectionEntity`：真正删除 AtomicSection 本体；这是更高风险动作，不能和移除引用混用。
-- `removeAtomicSectionChildItem`：从 AtomicSection 内部移除一个 ContentBlock 引用。
-- `renameAtomicSection`：重命名 AtomicSection 本体。
-- `createContentBlockInsideAtomicSection`：在 AtomicSection 内部新建 ContentBlock 并加入 AtomicSectionItem。
+- `removeSectionItemReference`锛氫粠褰撳墠 Section 涓Щ闄や竴涓? SectionItem 寮曠敤銆?
+- `deleteAtomicSectionEntity`锛氱湡姝ｅ垹闄? AtomicSection 鏈綋锛涜繖鏄洿楂橀闄╁姩浣滐紝涓嶈兘鍜岀Щ闄ゅ紩鐢ㄦ贩鐢ㄣ??
+- `removeAtomicSectionChildItem`锛氫粠 AtomicSection 鍐呴儴绉婚櫎涓?涓? ContentBlock 寮曠敤銆?
+- `renameAtomicSection`锛氶噸鍛藉悕 AtomicSection 鏈綋銆?
+- `createContentBlockInsideAtomicSection`锛氬湪 AtomicSection 鍐呴儴鏂板缓 ContentBlock 骞跺姞鍏? AtomicSectionItem銆?
 
-当前 Workspace 中 AtomicSection 的“删除”按钮语义是：
+褰撳墠 Workspace 涓? AtomicSection 鐨勨?滃垹闄も?濇寜閽涔夋槸锛?
 
 ```text
 removeSectionItemReference
 ```
 
-不是：
+涓嶆槸锛?
 
 ```text
 deleteAtomicSectionEntity
 ```
 
-开发要求：
+寮?鍙戣姹傦細
 
-- 后续新增任何删除、移动、重命名、Word 编辑、新建子块等真实动作，必须先判断它是否应该进入 action composable。
-- 不允许因为某个动作最先出现在 Workspace，就把真实方法写死在 Workspace 或具体展示组件中。
-- action composable 可以调用 API、触发 server-confirmed refresh、设置反馈消息；展示组件不做这些事情。
+- 鍚庣画鏂板浠讳綍鍒犻櫎銆佺Щ鍔ㄣ?侀噸鍛藉悕銆乄ord 缂栬緫銆佹柊寤哄瓙鍧楃瓑鐪熷疄鍔ㄤ綔锛屽繀椤诲厛鍒ゆ柇瀹冩槸鍚﹀簲璇ヨ繘鍏? action composable銆?
+- 涓嶅厑璁稿洜涓烘煇涓姩浣滄渶鍏堝嚭鐜板湪 Workspace锛屽氨鎶婄湡瀹炴柟娉曞啓姝诲湪 Workspace 鎴栧叿浣撳睍绀虹粍浠朵腑銆?
+- action composable 鍙互璋冪敤 API銆佽Е鍙? server-confirmed refresh銆佽缃弽棣堟秷鎭紱灞曠ず缁勪欢涓嶅仛杩欎簺浜嬫儏銆?
 
-详细实施计划见：
+璇︾粏瀹炴柦璁″垝瑙侊細
 
 ```text
 docs/superpowers/plans/2026-06-17-section-action-composables.md

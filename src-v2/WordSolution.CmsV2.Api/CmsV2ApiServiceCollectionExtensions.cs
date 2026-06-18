@@ -37,16 +37,21 @@ public static class CmsV2ApiServiceCollectionExtensions
         services.AddSingleton<ICmsV2FileAssetPathProvider, CmsV2FileAssetPathProvider>();
         services.AddSingleton<IContentBlockFileStore, LocalContentBlockFileStore>();
         services.AddSingleton<IContentBlockDocumentProcessor, AsposeContentBlockDocumentProcessor>();
+        services.AddSingleton<IContentBlockEditSessionStore, LocalContentBlockEditSessionStore>();
+        services.AddSingleton<IContentBlockEditSessionFileStore, LocalContentBlockEditSessionFileStore>();
+        services.AddSingleton<IContentBlockEditSessionLauncher, LocalContentBlockEditSessionLauncher>();
         services.AddSingleton<IHandoutDocumentGenerator, AsposeHandoutDocumentGenerator>();
 
         services.AddScoped<ContentBlockUseCases>();
         services.AddScoped<ContentBlockDocumentUseCases>();
+        services.AddScoped<ContentBlockEditSessionUseCases>();
         services.AddScoped<ContentBlockRelationUseCases>();
         services.AddScoped<SectionUseCases>();
         services.AddScoped<AtomicSectionUseCases>();
         services.AddScoped<SectionVariantUseCases>();
         services.AddScoped<HandoutUseCases>();
         services.AddScoped<HandoutGenerationUseCases>();
+        services.AddHostedService<ContentBlockEditSessionBackgroundService>();
 
         return services;
     }

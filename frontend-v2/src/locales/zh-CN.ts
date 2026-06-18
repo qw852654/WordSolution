@@ -420,6 +420,12 @@ const zhCN = {
       },
       contentBlockActions: {
         wordEditPending: 'ContentBlock Word 编辑 API 尚未接入',
+        wordEditStarted: 'ContentBlock Word 编辑会话已启动，保存 Word 后页面会自动同步。',
+        wordEditSyncing: '正在同步 ContentBlock Word 编辑内容...',
+        wordEditSynced: 'ContentBlock Word 编辑内容已自动同步。',
+        wordEditNoChanges: 'ContentBlock Word 编辑内容没有变化。',
+        wordEditCancelled: 'ContentBlock Word 编辑会话已取消。',
+        wordEditFailed: 'ContentBlock Word 编辑会话同步失败。',
         removeConfirm:
           '确认从当前 Section 移除这个 ContentBlock 引用？不会删除源 ContentBlock。ContentBlock：{title}',
         operationFailed: 'ContentBlock 操作失败，请稍后重试。',

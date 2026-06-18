@@ -192,9 +192,13 @@ const contentBlockActions = useContentBlockActions({
   setFeedback: (message) => {
     insertFeedback.value = message
   },
-  contentBlockWordEditApiPendingMessage: t(
-    'sectionPage.workspace.contentBlockActions.wordEditPending',
-  ),
+  refreshSection: loadCurrentSectionPage,
+  wordEditStartedMessage: t('sectionPage.workspace.contentBlockActions.wordEditStarted'),
+  wordEditSyncingMessage: t('sectionPage.workspace.contentBlockActions.wordEditSyncing'),
+  wordEditSyncedMessage: t('sectionPage.workspace.contentBlockActions.wordEditSynced'),
+  wordEditNoChangesMessage: t('sectionPage.workspace.contentBlockActions.wordEditNoChanges'),
+  wordEditCancelledMessage: t('sectionPage.workspace.contentBlockActions.wordEditCancelled'),
+  wordEditFailedMessage: t('sectionPage.workspace.contentBlockActions.wordEditFailed'),
 })
 
 const contentBlockRelationActions = useContentBlockRelationActions({

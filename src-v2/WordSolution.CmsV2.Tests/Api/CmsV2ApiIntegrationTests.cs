@@ -7,6 +7,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using WordSolution.CmsV2.Application.AtomicSections;
 using WordSolution.CmsV2.Application.ContentBlocks;
 using WordSolution.CmsV2.Application.Handouts;
@@ -40,15 +41,22 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ICmsV2FileAssetPathProvider>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IContentBlockFileStore>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IContentBlockDocumentProcessor>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IContentBlockEditSessionStore>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IContentBlockEditSessionFileStore>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IContentBlockEditSessionLauncher>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IHandoutDocumentGenerator>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ContentBlockUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ContentBlockDocumentUseCases>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<ContentBlockEditSessionUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ContentBlockRelationUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<SectionUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<AtomicSectionUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<SectionVariantUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<HandoutUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<HandoutGenerationUseCases>());
+        Assert.Contains(
+            factory.Services.GetServices<IHostedService>(),
+            service => service.GetType().Name == "ContentBlockEditSessionBackgroundService");
     }
 
     [Fact]
@@ -109,6 +117,89 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.Equal(2, imported.GetProperty("versionNumber").GetInt32());
         Assert.Equal(2, updatedVersions.Length);
         Assert.Equal(firstVersionId, setCurrent.GetProperty("contentBlockVersionId").GetInt32());
+    }
+
+    [Fact]
+    public async Task ContentBlock_edit_session_endpoints_create_sync_cancel_and_return_not_found()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "Mechanics", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new
+            {
+                teachingTopicId = topic.GetProperty("id").GetInt32(),
+                title = "Energy",
+                type = "NormalCourse",
+                difficulty = "Medium",
+                status = "Draft"
+            });
+        var createdBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks/blank-document",
+            new
+            {
+                sectionId = section.GetProperty("id").GetInt32(),
+                title = "Work energy theorem",
+                blockType = "KnowledgePoint",
+                difficulty = "Basic",
+                status = "Draft"
+            });
+        var contentBlockId = createdBlock.GetProperty("contentBlockId").GetInt32();
+
+        var firstSession = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/content-blocks/{contentBlockId}/edit-session",
+            new { openWord = false });
+        var firstSessionId = firstSession.GetProperty("sessionId").GetString()!;
+        var loadedSession = await client.GetFromJsonAsync<JsonElement>(
+            $"/api/cms-v2/content-block-edit-sessions/{firstSessionId}");
+        var unchangedSync = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/content-block-edit-sessions/{firstSessionId}/sync",
+            new { });
+
+        var secondSession = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/content-blocks/{contentBlockId}/edit-session",
+            new { openWord = false });
+        var secondSessionId = secondSession.GetProperty("sessionId").GetString()!;
+        var editableDocxPath = Path.Combine(
+            factory.BankRootDirectory,
+            "edit-sessions",
+            "content-blocks",
+            secondSessionId,
+            "edit.docx");
+        File.Delete(editableDocxPath);
+        await CreateMinimalDocxAsync(editableDocxPath, "Changed content");
+        var changedSync = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/content-block-edit-sessions/{secondSessionId}/sync",
+            new { });
+
+        var thirdSession = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/content-blocks/{contentBlockId}/edit-session",
+            new { openWord = false });
+        var thirdSessionId = thirdSession.GetProperty("sessionId").GetString()!;
+        var cancelled = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/content-block-edit-sessions/{thirdSessionId}/cancel",
+            new { });
+        var missingSession = await client.GetAsync("/api/cms-v2/content-block-edit-sessions/missing-session");
+
+        Assert.Equal(contentBlockId, firstSession.GetProperty("contentBlockId").GetInt32());
+        Assert.Equal("None", firstSession.GetProperty("launchMode").GetString());
+        Assert.False(firstSession.GetProperty("openedByServer").GetBoolean());
+        Assert.Equal(firstSessionId, loadedSession.GetProperty("sessionId").GetString());
+        Assert.False(unchangedSync.GetProperty("changed").GetBoolean());
+        Assert.Equal("Synced", unchangedSync.GetProperty("status").GetString());
+        Assert.True(changedSync.GetProperty("changed").GetBoolean());
+        Assert.Equal(2, changedSync.GetProperty("currentVersionNumber").GetInt32());
+        Assert.Equal("Cancelled", cancelled.GetProperty("status").GetString());
+        Assert.Equal(HttpStatusCode.NotFound, missingSession.StatusCode);
     }
 
     [Fact]

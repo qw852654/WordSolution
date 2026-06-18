@@ -433,6 +433,13 @@ const en = {
       },
       contentBlockActions: {
         wordEditPending: 'ContentBlock Word editing API is not connected yet',
+        wordEditStarted:
+          'ContentBlock Word edit session started. The page will sync automatically after Word is saved.',
+        wordEditSyncing: 'Syncing ContentBlock Word edits...',
+        wordEditSynced: 'ContentBlock Word edits synced automatically.',
+        wordEditNoChanges: 'ContentBlock Word edits have no changes.',
+        wordEditCancelled: 'ContentBlock Word edit session cancelled.',
+        wordEditFailed: 'ContentBlock Word edit session sync failed.',
         removeConfirm:
           'Remove this ContentBlock reference from the current Section? The source ContentBlock will not be deleted. ContentBlock: {title}',
         operationFailed: 'ContentBlock operation failed. Please try again.',

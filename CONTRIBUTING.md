@@ -1,4 +1,4 @@
-﻿# CONTRIBUTING.md
+# CONTRIBUTING.md
 
 ## 当前架构依据
 

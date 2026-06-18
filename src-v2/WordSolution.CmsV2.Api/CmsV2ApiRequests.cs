@@ -37,6 +37,28 @@ public sealed record CreateContentBlockWithBlankDocumentRequest(
 
 public sealed record SetCurrentContentBlockVersionRequest(int ContentBlockVersionId);
 
+public sealed record CreateContentBlockEditSessionRequest(bool OpenWord = true);
+
+public sealed record ContentBlockEditSessionResponse(
+    string SessionId,
+    int ContentBlockId,
+    int SourceContentBlockVersionId,
+    string Status,
+    string LaunchMode,
+    bool OpenedByServer,
+    string? Message,
+    DateTimeOffset CreatedTime,
+    DateTimeOffset UpdatedTime);
+
+public sealed record SyncContentBlockEditSessionResponse(
+    string SessionId,
+    int ContentBlockId,
+    bool Changed,
+    int? NewContentBlockVersionId,
+    int? CurrentVersionNumber,
+    string Status,
+    string? Message);
+
 public sealed record AddContentBlockRelationRequest(
     int ChildBlockId,
     ReferenceMode ReferenceMode,

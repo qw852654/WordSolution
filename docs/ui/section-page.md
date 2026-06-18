@@ -1,30 +1,30 @@
-# SectionPage 小节结构编辑页
+# SectionPage 灏忚妭缁撴瀯缂栬緫椤?
 
-SectionPage 是 CMS V2 前端的核心页面之一。它的目标是教学结构编辑，不是材料收集页，也不是题目列表页。
+SectionPage 鏄? CMS V2 鍓嶇鐨勬牳蹇冮〉闈箣涓?銆傚畠鐨勭洰鏍囨槸鏁欏缁撴瀯缂栬緫锛屼笉鏄潗鏂欐敹闆嗛〉锛屼篃涓嶆槸棰樼洰鍒楄〃椤点??
 
-## 1. 页面目的
+## 1. 椤甸潰鐩殑
 
-SectionPage 回答的问题：
+SectionPage 鍥炵瓟鐨勯棶棰橈細
 
 ```text
-这个教学主题应该怎么讲？
+杩欎釜鏁欏涓婚搴旇鎬庝箞璁诧紵
 ```
 
-页面核心任务：
+椤甸潰鏍稿績浠诲姟锛?
 
-- 编排 Section 内部结构。
-- 组织 ContentBlock 和 AtomicSection。
-- 选择或创建 SectionVariant。
-- 管理 SectionItem 的顺序、层级和引用模式。
-- 在结构编辑过程中快速查看内容块预览和元数据。
+- 缂栨帓 Section 鍐呴儴缁撴瀯銆?
+- 缁勭粐 ContentBlock 鍜? AtomicSection銆?
+- 閫夋嫨鎴栧垱寤? SectionVariant銆?
+- 绠＄悊 SectionItem 鐨勯『搴忋?佸眰绾у拰寮曠敤妯″紡銆?
+- 鍦ㄧ粨鏋勭紪杈戣繃绋嬩腑蹇?熸煡鐪嬪唴瀹瑰潡棰勮鍜屽厓鏁版嵁銆?
 
-## 2. 内容模型理解
+## 2. 鍐呭妯″瀷鐞嗚В
 
 ### ContentBlock
 
-可编辑内容单元。
+鍙紪杈戝唴瀹瑰崟鍏冦??
 
-示例：
+绀轰緥锛?
 
 ```text
 Question
@@ -34,38 +34,38 @@ Note
 Method Explanation
 ```
 
-特点：
+鐗圭偣锛?
 
-- 长期保存为 `.docx` 内容资产。
-- 可以打开 Word 精细编辑。
-- 可以生成 HTML 预览。
-- 可以被 Section、AtomicSection、Handout 引用。
+- 闀挎湡淇濆瓨涓? `.docx` 鍐呭璧勪骇銆?
+- 鍙互鎵撳紑 Word 绮剧粏缂栬緫銆?
+- 鍙互鐢熸垚 HTML 棰勮銆?
+- 鍙互琚? Section銆丄tomicSection銆丠andout 寮曠敤銆?
 
 ### AtomicSection
 
-最小教学结构单元。
+鏈?灏忔暀瀛︾粨鏋勫崟鍏冦??
 
-特点：
+鐗圭偣锛?
 
-- 组织多个 ContentBlock。
-- 自身不直接包含可编辑文档正文。
-- 不嵌套 AtomicSection。
-- 适合沉淀可复用的讲解片段。
+- 缁勭粐澶氫釜 ContentBlock銆?
+- 鑷韩涓嶇洿鎺ュ寘鍚彲缂栬緫鏂囨。姝ｆ枃銆?
+- 涓嶅祵濂? AtomicSection銆?
+- 閫傚悎娌夋穩鍙鐢ㄧ殑璁茶В鐗囨銆?
 
 ### Section
 
-教学组织结构。
+鏁欏缁勭粐缁撴瀯銆?
 
-特点：
+鐗圭偣锛?
 
-- 属于 TeachingTopic。
-- 由 SectionItem 组成。
-- SectionItem 可以引用 ContentBlock 或 AtomicSection。
-- Section 不直接编辑文档内容，它编辑教学结构。
+- 灞炰簬 TeachingTopic銆?
+- 鐢? SectionItem 缁勬垚銆?
+- SectionItem 鍙互寮曠敤 ContentBlock 鎴? AtomicSection銆?
+- Section 涓嶇洿鎺ョ紪杈戞枃妗ｅ唴瀹癸紝瀹冪紪杈戞暀瀛︾粨鏋勩??
 
-## 3. 页面布局
+## 3. 椤甸潰甯冨眬
 
-SectionPage 使用三段式工作台：
+SectionPage 浣跨敤涓夋寮忓伐浣滃彴锛?
 
 ```text
 Toolbar
@@ -80,62 +80,62 @@ Right:
 SectionInspector
 ```
 
-左侧 `SectionStructurePanel`：
+宸︿晶 `SectionStructurePanel`锛?
 
 ```text
-固定宽度
-可折叠
-可停靠
-显示当前 Section 的结构树
-用于快速定位和调整结构
+鍥哄畾瀹藉害
+鍙姌鍙?
+鍙仠闈?
+鏄剧ず褰撳墠 Section 鐨勭粨鏋勬爲
+鐢ㄤ簬蹇?熷畾浣嶅拰璋冩暣缁撴瀯
 ```
 
-中间 `SectionWorkspace`：
+涓棿 `SectionWorkspace`锛?
 
 ```text
-弹性宽度
-主工作区
-占用最大空间
-显示展开后的教学内容结构
-承载主要编辑操作
+寮规?у搴?
+涓诲伐浣滃尯
+鍗犵敤鏈?澶х┖闂?
+鏄剧ず灞曞紑鍚庣殑鏁欏鍐呭缁撴瀯
+鎵胯浇涓昏缂栬緫鎿嶄綔
 ```
 
-右侧 `SectionInspector`：
+鍙充晶 `SectionInspector`锛?
 
 ```text
-固定宽度
-可折叠
-可停靠
-显示当前选中节点详情
-提供版本、预览、备注、引用模式等上下文操作
+鍥哄畾瀹藉害
+鍙姌鍙?
+鍙仠闈?
+鏄剧ず褰撳墠閫変腑鑺傜偣璇︽儏
+鎻愪緵鐗堟湰銆侀瑙堛?佸娉ㄣ?佸紩鐢ㄦā寮忕瓑涓婁笅鏂囨搷浣?
 ```
 
-原则：
+鍘熷垯锛?
 
-- 中间工作区必须获得最多注意力。
-- 左右侧栏服务于结构定位和细节检查，不应成为主操作区域。
-- 页面不应出现四栏常驻布局。
+- 涓棿宸ヤ綔鍖哄繀椤昏幏寰楁渶澶氭敞鎰忓姏銆?
+- 宸﹀彸渚ф爮鏈嶅姟浜庣粨鏋勫畾浣嶅拰缁嗚妭妫?鏌ワ紝涓嶅簲鎴愪负涓绘搷浣滃尯鍩熴??
+- 椤甸潰涓嶅簲鍑虹幇鍥涙爮甯搁┗甯冨眬銆?
 
-## 4. Toolbar 职责
+## 4. Toolbar 鑱岃矗
 
-Toolbar 提供页面级命令：
+Toolbar 鎻愪緵椤甸潰绾у懡浠わ細
 
 ```text
-返回主题工作台
-切换 SectionVariant
-新建 AtomicSection
-插入 ContentBlock
-打开内容选择器
-打开二级工作流 Drawer
-保存结构
-刷新预览
+杩斿洖涓婚宸ヤ綔鍙?
+鍒囨崲 SectionVariant
+鏂板缓 AtomicSection
+鎻掑叆 ContentBlock
+鎵撳紑鍐呭閫夋嫨鍣?
+鎵撳紑浜岀骇宸ヤ綔娴? Drawer
+淇濆瓨缁撴瀯
+鍒锋柊棰勮
 ```
 
-Toolbar 不承载大量筛选器。复杂筛选进入 Drawer 或 Dialog。
+Toolbar 涓嶆壙杞藉ぇ閲忕瓫閫夊櫒銆傚鏉傜瓫閫夎繘鍏? Drawer 鎴? Dialog銆?
 
 ## 5. Secondary Workflows
 
-以下区域不应成为 SectionPage 的常驻主区域：
+浠ヤ笅鍖哄煙涓嶅簲鎴愪负 SectionPage 鐨勫父椹讳富鍖哄煙锛?
 
 ```text
 Question Staging Area
@@ -144,7 +144,7 @@ Temporary Collections
 Content Import Queue
 ```
 
-它们属于二级工作流，应通过以下方式进入：
+瀹冧滑灞炰簬浜岀骇宸ヤ綔娴侊紝搴旈?氳繃浠ヤ笅鏂瑰紡杩涘叆锛?
 
 ```text
 Toolbar Entry
@@ -153,120 +153,120 @@ Dialog
 Secondary Panel
 ```
 
-原因：
+鍘熷洜锛?
 
-- SectionPage 的主任务是编辑教学结构。
-- 暂存区和材料收集会分散结构编辑注意力。
-- 用户应能在需要时打开辅助流程，用完后关闭。
+- SectionPage 鐨勪富浠诲姟鏄紪杈戞暀瀛︾粨鏋勩??
+- 鏆傚瓨鍖哄拰鏉愭枡鏀堕泦浼氬垎鏁ｇ粨鏋勭紪杈戞敞鎰忓姏銆?
+- 鐢ㄦ埛搴旇兘鍦ㄩ渶瑕佹椂鎵撳紑杈呭姪娴佺▼锛岀敤瀹屽悗鍏抽棴銆?
 
-## 6. 交互规则
+## 6. 浜や簰瑙勫垯
 
-### 6.1 选择节点
+### 6.1 閫夋嫨鑺傜偣
 
-用户点击结构树或工作区中的节点时：
-
-```text
-更新当前 selectedNode
-中间工作区滚动到对应节点
-右侧 Inspector 显示节点详情
-```
-
-### 6.2 插入内容
-
-插入内容使用明确入口：
+鐢ㄦ埛鐐瑰嚮缁撴瀯鏍戞垨宸ヤ綔鍖轰腑鐨勮妭鐐规椂锛?
 
 ```text
-在选中节点前插入
-在选中节点后插入
-作为子项插入
-追加到末尾
+鏇存柊褰撳墠 selectedNode
+涓棿宸ヤ綔鍖烘粴鍔ㄥ埌瀵瑰簲鑺傜偣
+鍙充晶 Inspector 鏄剧ず鑺傜偣璇︽儏
 ```
 
-如果目标是 ContentBlock，打开 `ContentBlockPicker`。  
-如果目标是 AtomicSection，打开 `AtomicSectionPicker` 或新建 Dialog。
+### 6.2 鎻掑叆鍐呭
 
-当前已确认的 InsertPoint 交互规则：
+鎻掑叆鍐呭浣跨敤鏄庣‘鍏ュ彛锛?
 
 ```text
-InsertPoint 不再使用单个“插入”按钮。
-
-InsertPoint 直接展示三个具体操作：
-
-1. 新建 ContentBlock
-2. 新建 AtomicSection
-3. 插入已有块
+鍦ㄩ?変腑鑺傜偣鍓嶆彃鍏?
+鍦ㄩ?変腑鑺傜偣鍚庢彃鍏?
+浣滀负瀛愰」鎻掑叆
+杩藉姞鍒版湯灏?
 ```
 
-规则：
+濡傛灉鐩爣鏄? ContentBlock锛屾墦寮? `ContentBlockPicker`銆?  
+濡傛灉鐩爣鏄? AtomicSection锛屾墦寮? `AtomicSectionPicker` 鎴栨柊寤? Dialog銆?
 
-- 点击“新建 ContentBlock”进入新建 ContentBlock 流程。
-- 点击“新建 AtomicSection”进入新建 AtomicSection 流程。
-- 点击“插入已有块”打开后续单独开发的块搜索组件。
-- 块搜索组件的搜索范围必须同时包含 ContentBlock 和 AtomicSection。
-- 块搜索组件本轮不实现；后续必须先在 ComponentLab 中用 Mock Data 验收，再接入 SectionPage。
-
-新建 ContentBlock / AtomicSection 的插入流程使用 `InsertCreateOverlay`。
-
-展示规则：
-
-- 点击“新建 ContentBlock”或“新建 AtomicSection”后，打开最上层插入面板。
-- 面板打开时，背后的整个 SectionPage 模糊。
-- 面板不放在右侧 Inspector。
-- 面板不作为普通文档流内联块。
-- ComponentLab 中使用 Mock Data 验收面板；接入 SectionPage 后，提交必须调用 CMS V2 API 创建真实对象并重新读取 Section 数据。
-
-字段规则：
-
-当 targetType = ContentBlock：
-
-- 所属 Section：默认显示当前 Section 名称，当前阶段不可修改；提交时后端记录当前 SectionId。
-- 名称，可选；没有名称时不阻止新建
-- 类型：知识点 / 例题 / 变式题 / 练习题 / 变式题组 / 练习题组
-- 难度：基础 / 中档 / 提高 / 压轴
-
-当 targetType = AtomicSection：
-
-- 所属 Section：默认显示当前 Section 名称，当前阶段不可修改；提交时后端记录当前 SectionId。
-- 名称
-- 难度：基础 / 中档 / 提高 / 压轴
-- 备注，可选
-
-字段说明：
-
-- 所属 Section 在 UI 中显示名称，但持久化使用 SectionId，避免 Section 改名后归属断裂。
-- ContentBlock 名称可为空；展示时由类型、预览摘要或上下文兜底。
-- AtomicSection 名称仍必填，难度是独立字段，不映射到 Description。
-- 这些字段是当前插入面板的最小创建字段，不代表后续完整编辑 DTO 已经固定。
-
-### 6.3 调整顺序
-
-第一版优先支持稳定操作：
+褰撳墠宸茬‘璁ょ殑 InsertPoint 浜や簰瑙勫垯锛?
 
 ```text
-上移
-下移
-缩进
-取消缩进
-移除引用
+InsertPoint 涓嶅啀浣跨敤鍗曚釜鈥滄彃鍏モ?濇寜閽??
+
+InsertPoint 鐩存帴灞曠ず涓変釜鍏蜂綋鎿嶄綔锛?
+
+1. 鏂板缓 ContentBlock
+2. 鏂板缓 AtomicSection
+3. 鎻掑叆宸叉湁鍧?
 ```
 
-拖拽排序可以后续再做，不作为第一版必要条件。
+瑙勫垯锛?
 
-### 6.4 引用模式
+- 鐐瑰嚮鈥滄柊寤? ContentBlock鈥濊繘鍏ユ柊寤? ContentBlock 娴佺▼銆?
+- 鐐瑰嚮鈥滄柊寤? AtomicSection鈥濊繘鍏ユ柊寤? AtomicSection 娴佺▼銆?
+- 鐐瑰嚮鈥滄彃鍏ュ凡鏈夊潡鈥濇墦寮?鍚庣画鍗曠嫭寮?鍙戠殑鍧楁悳绱㈢粍浠躲??
+- 鍧楁悳绱㈢粍浠剁殑鎼滅储鑼冨洿蹇呴』鍚屾椂鍖呭惈 ContentBlock 鍜? AtomicSection銆?
+- 鍧楁悳绱㈢粍浠舵湰杞笉瀹炵幇锛涘悗缁繀椤诲厛鍦? ComponentLab 涓敤 Mock Data 楠屾敹锛屽啀鎺ュ叆 SectionPage銆?
 
-ContentBlock 引用必须显示：
+鏂板缓 ContentBlock / AtomicSection 鐨勬彃鍏ユ祦绋嬩娇鐢? `InsertCreateOverlay`銆?
+
+灞曠ず瑙勫垯锛?
+
+- 鐐瑰嚮鈥滄柊寤? ContentBlock鈥濇垨鈥滄柊寤? AtomicSection鈥濆悗锛屾墦寮?鏈?涓婂眰鎻掑叆闈㈡澘銆?
+- 闈㈡澘鎵撳紑鏃讹紝鑳屽悗鐨勬暣涓? SectionPage 妯＄硦銆?
+- 闈㈡澘涓嶆斁鍦ㄥ彸渚? Inspector銆?
+- 闈㈡澘涓嶄綔涓烘櫘閫氭枃妗ｆ祦鍐呰仈鍧椼??
+- ComponentLab 涓娇鐢? Mock Data 楠屾敹闈㈡澘锛涙帴鍏? SectionPage 鍚庯紝鎻愪氦蹇呴』璋冪敤 CMS V2 API 鍒涘缓鐪熷疄瀵硅薄骞堕噸鏂拌鍙? Section 鏁版嵁銆?
+
+瀛楁瑙勫垯锛?
+
+褰? targetType = ContentBlock锛?
+
+- 鎵?灞? Section锛氶粯璁ゆ樉绀哄綋鍓? Section 鍚嶇О锛屽綋鍓嶉樁娈典笉鍙慨鏀癸紱鎻愪氦鏃跺悗绔褰曞綋鍓? SectionId銆?
+- 鍚嶇О锛屽彲閫夛紱娌℃湁鍚嶇О鏃朵笉闃绘鏂板缓
+- 绫诲瀷锛氱煡璇嗙偣 / 渚嬮 / 鍙樺紡棰? / 缁冧範棰? / 鍙樺紡棰樼粍 / 缁冧範棰樼粍
+- 闅惧害锛氬熀纭? / 涓。 / 鎻愰珮 / 鍘嬭酱
+
+褰? targetType = AtomicSection锛?
+
+- 鎵?灞? Section锛氶粯璁ゆ樉绀哄綋鍓? Section 鍚嶇О锛屽綋鍓嶉樁娈典笉鍙慨鏀癸紱鎻愪氦鏃跺悗绔褰曞綋鍓? SectionId銆?
+- 鍚嶇О
+- 闅惧害锛氬熀纭? / 涓。 / 鎻愰珮 / 鍘嬭酱
+- 澶囨敞锛屽彲閫?
+
+瀛楁璇存槑锛?
+
+- 鎵?灞? Section 鍦? UI 涓樉绀哄悕绉帮紝浣嗘寔涔呭寲浣跨敤 SectionId锛岄伩鍏? Section 鏀瑰悕鍚庡綊灞炴柇瑁傘??
+- ContentBlock 鍚嶇О鍙负绌猴紱灞曠ず鏃剁敱绫诲瀷銆侀瑙堟憳瑕佹垨涓婁笅鏂囧厹搴曘??
+- AtomicSection 鍚嶇О浠嶅繀濉紝闅惧害鏄嫭绔嬪瓧娈碉紝涓嶆槧灏勫埌 Description銆?
+- 杩欎簺瀛楁鏄綋鍓嶆彃鍏ラ潰鏉跨殑鏈?灏忓垱寤哄瓧娈碉紝涓嶄唬琛ㄥ悗缁畬鏁寸紪杈? DTO 宸茬粡鍥哄畾銆?
+
+### 6.3 璋冩暣椤哄簭
+
+绗竴鐗堜紭鍏堟敮鎸佺ǔ瀹氭搷浣滐細
+
+```text
+涓婄Щ
+涓嬬Щ
+缂╄繘
+鍙栨秷缂╄繘
+绉婚櫎寮曠敤
+```
+
+鎷栨嫿鎺掑簭鍙互鍚庣画鍐嶅仛锛屼笉浣滀负绗竴鐗堝繀瑕佹潯浠躲??
+
+### 6.4 寮曠敤妯″紡
+
+ContentBlock 寮曠敤蹇呴』鏄剧ず锛?
 
 ```text
 FollowLatest
 LockedVersion
 ```
 
-当锁定版本时，必须显示版本号或版本 ID。  
-AtomicSection 引用不应用 ContentBlock 版本锁定。
+褰撻攣瀹氱増鏈椂锛屽繀椤绘樉绀虹増鏈彿鎴栫増鏈? ID銆?  
+AtomicSection 寮曠敤涓嶅簲鐢? ContentBlock 鐗堟湰閿佸畾銆?
 
-## 7. 页面状态建议
+## 7. 椤甸潰鐘舵?佸缓璁?
 
-Page State：
+Page State锛?
 
 ```text
 currentSection
@@ -281,7 +281,7 @@ loadingState
 errorState
 ```
 
-Store State 只有在多个页面共享时才考虑，例如：
+Store State 鍙湁鍦ㄥ涓〉闈㈠叡浜椂鎵嶈?冭檻锛屼緥濡傦細
 
 ```text
 currentTeachingTopicId
@@ -289,99 +289,99 @@ globalBankStatus
 userUiPreferences
 ```
 
-如需引入 store，必须先说明跨页面使用场景。
+濡傞渶寮曞叆 store锛屽繀椤诲厛璇存槑璺ㄩ〉闈娇鐢ㄥ満鏅??
 
 
-### 6.5 SectionTree �Ҽ��˵�
+### 6.5 SectionTree 右键菜单
 
-SectionTree ֧�ֽڵ��Ҽ������Ĳ˵������ұ��븲�������ԭ���Ҽ��˵���
+SectionTree 支持节点右键上下文菜单，并且必须覆盖浏览器原生右键菜单。
 
-��������
+交互规则：
 
-- �Ҽ��ڵ�ʱ����Ĭ��ѡ�иýڵ㡣
-- �Ҽ��ڵ�ʱ��ֻ�Ѹýڵ���Ϊ context target ��ʱ������
-- ��ǰ selectedNodeId ���ֲ��䡣
-- �Ҳ� Inspector ���ֵ�ǰѡ�нڵ����鲻�䡣
-- Workspace ��ǰѡ��̬���ֲ��䡣
-- ����˵������ҳ��򸸼�������������������
-- ������ѡ��ڵ�ʱ���Ÿ��� selectedNodeId��Inspector �� Workspace ѡ��̬��
+- 右键节点时，不默认选中该节点。
+- 右键节点时，只把该节点作为 context target 临时高亮。
+- 当前 selectedNodeId 保持不变。
+- 右侧 Inspector 保持当前选中节点详情不变。
+- Workspace 当前选中态保持不变。
+- 点击菜单项后，由页面或父级容器决定后续动作。
+- 点击左键选择节点时，才更新 selectedNodeId、Inspector 和 Workspace 选中态。
 
-��һ��˵��
+第一版菜单项：
 
-1. �½� ContentBlock
-2. �½� AtomicSection
-3. �������п�
-4. �Ƴ�
+1. 新建 ContentBlock
+2. 新建 AtomicSection
+3. 插入已有块
+4. 移除
 
-��ǰ�������Ҽ��˵��Ĳ�����
+当前不进入右键菜单的操作：
 
-- ����
-- ����
-- ����
-- ������
+- 上移
+- 下移
+- 缩进
+- 反缩进
 
-�������������� ComponentLab ��ʹ�� Mock Data ���գ��ٽ��� SectionPage��
+本能力必须先在 ComponentLab 中使用 Mock Data 验收，再接入 SectionPage。
 
-## ��ǰ����Լ����SectionPage �־û�����ģʽ
+## 当前补充约定：SectionPage 持久化更新模式
 
-SectionPage ����������ʵ API ʱ������ server-confirmed update ģʽ��
+SectionPage 后续接入真实 API 时，采用 server-confirmed update 模式。
 
-Ҳ����˵��
+也就是说：
 
 ```text
-�û�������Ҫ�־û��Ķ���
-��
-ǰ�˵��� /api/cms-v2
-��
-�������޸Ĳ�������������
-��
-ǰ���ú�˷��ص����ݸ���ҳ��
+用户触发需要持久化的动作
+↓
+前端调用 /api/cms-v2
+↓
+后端完成修改并返回最新数据
+↓
+前端用后端返回的数据更新页面
 ```
 
-����
+规则：
 
-- ������ǰ���ֶ�����ṹģʽ��
-- ������ optimistic update��
-- ������ǰ���Ȱѽṹ��˳�����ù�ϵ���ֶ�ֵ�ĳɱ��سɹ�̬���ٵȴ����ȷ�ϡ�
-- API ʧ��ʱ��ǰ�˱��뱣��ԭ����ȷ�����ݲ��䣬����ʾ������ʾ��
-- API �ɹ�ʱ��ǰ�˱����Ժ�˷��ص����� Section / SectionItem / ContentBlock / AtomicSection ����Ϊ׼������Ⱦ��
-- �����˽ӿ���ʱֻ���ز�������������ؾۺ����ݣ�ǰ�˱����ڳɹ������¶�ȡ��Ӧ�ۺ����ݣ��ٸ���ҳ�档
-- `����ṹ` ������Ϊ SectionPage ������������������롢�Ƴ��������ֶα༭�ȶ������Դ�����Ӧ API��
-- `dirtyState` ����Ϊ��������ṹ���ĺ���״̬��ֻ�������ڷǳ־û� UI ��ʾ����δ����ȷ��ƵĲݸ�������
+- 不采用前端手动保存结构模式。
+- 不采用 optimistic update。
+- 不允许前端先把结构、顺序、引用关系或字段值改成本地成功态，再等待后端确认。
+- API 失败时，前端必须保持原有已确认数据不变，并显示错误提示。
+- API 成功时，前端必须以后端返回的最新 Section / SectionItem / ContentBlock / AtomicSection 数据为准重新渲染。
+- 如果后端接口暂时只返回操作结果而不返回聚合数据，前端必须在成功后重新读取对应聚合数据，再更新页面。
+- `保存结构` 不再作为 SectionPage 主流程命令；新增、插入、移除、排序、字段编辑等动作各自触发对应 API。
+- `dirtyState` 不作为“待保存结构”的核心状态；只允许用于非持久化 UI 提示，或未来明确设计的草稿能力。
 
-��Ҫ�־û��ĵ��Ͷ�����
+需要持久化的典型动作：
 
-- �½� ContentBlock��
-- �½� AtomicSection��
-- �������п顣
-- �Ƴ� SectionItem��
-- ���� SectionItem ˳���㼶��
-- �޸� ContentBlock / AtomicSection / SectionItem �ֶΡ�
+- 新建 ContentBlock。
+- 新建 AtomicSection。
+- 插入已有块。
+- 移除 SectionItem。
+- 调整 SectionItem 顺序或层级。
+- 修改 ContentBlock / AtomicSection / SectionItem 字段。
 
-����Ҫ�־û��� UI ״̬��
+不需要持久化的 UI 状态：
 
-- ��ǰѡ�нڵ㡣
-- չ�� / �۵�״̬��
-- hover ״̬��
-- �Ҽ��˵���ʱĿ�ꡣ
-- ��������״̬��
-- �����ύǰ����ʱ���롣
+- 当前选中节点。
+- 展开 / 折叠状态。
+- hover 状态。
+- 右键菜单临时目标。
+- 插入面板打开状态。
+- 表单提交前的临时输入。
 
-## 当前补充约定：ContentBlock Word 编辑入口
+## 褰撳墠琛ュ厖绾﹀畾锛欳ontentBlock Word 缂栬緫鍏ュ彛
 
-`SectionPage` 中的 `ContentBlock` 操作区需要提供 Word 编辑入口，但前端不直接打开本地 DOCX、`ms-word:` URI 或任何操作系统路径。
+`SectionPage` 涓殑 `ContentBlock` 鎿嶄綔鍖洪渶瑕佹彁渚? Word 缂栬緫鍏ュ彛锛屼絾鍓嶇涓嶇洿鎺ユ墦寮?鏈湴 DOCX銆乣ms-word:` URI 鎴栦换浣曟搷浣滅郴缁熻矾寰勩??
 
-固定边界：
+鍥哄畾杈圭晫锛?
 
-- `ContentBlockDisplay` / `SectionItemView` 只负责显示按钮并 emit Word 编辑意图。
-- `SectionPage` 或页面级 composable 负责调用 CMS V2 后端 API。
-- 后端必须提供稳定的 `ContentBlock` 编辑会话接口。
-- 本地打开 Word、未来云端编辑、外部 URI 跳转等实现差异，必须封装在后端策略中。
-- 前端只关心会话创建、状态、同步、取消和错误提示。
-- 不允许在 V2 前端中调用 V1 `编辑会话` 接口。
-- 不允许在 V2 前端中拼接 `/api/题库实例/...`。
+- `ContentBlockDisplay` / `SectionItemView` 鍙礋璐ｆ樉绀烘寜閽苟 emit Word 缂栬緫鎰忓浘銆?
+- `SectionPage` 鎴栭〉闈㈢骇 composable 璐熻矗璋冪敤 CMS V2 鍚庣 API銆?
+- 鍚庣蹇呴』鎻愪緵绋冲畾鐨? `ContentBlock` 缂栬緫浼氳瘽鎺ュ彛銆?
+- 鏈湴鎵撳紑 Word銆佹湭鏉ヤ簯绔紪杈戙?佸閮? URI 璺宠浆绛夊疄鐜板樊寮傦紝蹇呴』灏佽鍦ㄥ悗绔瓥鐣ヤ腑銆?
+- 鍓嶇鍙叧蹇冧細璇濆垱寤恒?佺姸鎬併?佸悓姝ャ?佸彇娑堝拰閿欒鎻愮ず銆?
+- 涓嶅厑璁稿湪 V2 鍓嶇涓皟鐢? V1 `缂栬緫浼氳瘽` 鎺ュ彛銆?
+- 涓嶅厑璁稿湪 V2 鍓嶇涓嫾鎺? `/api/棰樺簱瀹炰緥/...`銆?
 
-推荐后端 API 语义：
+鎺ㄨ崘鍚庣 API 璇箟锛?
 
 ```text
 POST /api/cms-v2/content-blocks/{contentBlockId}/edit-session
@@ -390,31 +390,31 @@ POST /api/cms-v2/content-block-edit-sessions/{sessionId}/sync
 POST /api/cms-v2/content-block-edit-sessions/{sessionId}/cancel
 ```
 
-第一版 `ContentBlock` 操作区接入真实动作时，Word 编辑按钮应等待上述 V2 API 完成后再接入真实行为。
+绗竴鐗? `ContentBlock` 鎿嶄綔鍖烘帴鍏ョ湡瀹炲姩浣滄椂锛學ord 缂栬緫鎸夐挳搴旂瓑寰呬笂杩? V2 API 瀹屾垚鍚庡啀鎺ュ叆鐪熷疄琛屼负銆?
 
-## 当前补充约定：SectionPage 动作编排层
+## 褰撳墠琛ュ厖绾﹀畾锛歋ectionPage 鍔ㄤ綔缂栨帓灞?
 
-`SectionPage` 需要区分三层职责：
+`SectionPage` 闇?瑕佸尯鍒嗕笁灞傝亴璐ｏ細
 
 ```text
-展示组件
-  只 emit 事件
+灞曠ず缁勪欢
+  鍙? emit 浜嬩欢
 
-SectionPage 页面编排
-  接收事件，提供当前 Section / 选中节点 / 插入上下文
+SectionPage 椤甸潰缂栨帓
+  鎺ユ敹浜嬩欢锛屾彁渚涘綋鍓? Section / 閫変腑鑺傜偣 / 鎻掑叆涓婁笅鏂?
 
 Action composables
-  统一执行真实动作，调用 CMS V2 API，刷新数据并设置反馈
+  缁熶竴鎵ц鐪熷疄鍔ㄤ綔锛岃皟鐢? CMS V2 API锛屽埛鏂版暟鎹苟璁剧疆鍙嶉
 ```
 
-因此：
+鍥犳锛?
 
-- Workspace 中的删除、移动、重命名、新建子块，不应直接写在 `SectionItemView` 或 `AtomicSectionBlock` 里。
-- SectionTree 右键菜单以后也会触发删除、新增、重命名等动作，必须复用同一套 action composable。
-- Inspector 后续如果提供操作按钮，也必须复用同一套 action composable。
-- 快捷键后续如果触发操作，也必须复用同一套 action composable。
+- Workspace 涓殑鍒犻櫎銆佺Щ鍔ㄣ?侀噸鍛藉悕銆佹柊寤哄瓙鍧楋紝涓嶅簲鐩存帴鍐欏湪 `SectionItemView` 鎴? `AtomicSectionBlock` 閲屻??
+- SectionTree 鍙抽敭鑿滃崟浠ュ悗涔熶細瑙﹀彂鍒犻櫎銆佹柊澧炪?侀噸鍛藉悕绛夊姩浣滐紝蹇呴』澶嶇敤鍚屼竴濂? action composable銆?
+- Inspector 鍚庣画濡傛灉鎻愪緵鎿嶄綔鎸夐挳锛屼篃蹇呴』澶嶇敤鍚屼竴濂? action composable銆?
+- 蹇嵎閿悗缁鏋滆Е鍙戞搷浣滐紝涔熷繀椤诲鐢ㄥ悓涓?濂? action composable銆?
 
-第一批建议抽取：
+绗竴鎵瑰缓璁娊鍙栵細
 
 ```text
 useSectionItemActions
@@ -422,50 +422,50 @@ useAtomicSectionActions
 useContentBlockActions
 ```
 
-删除语义必须精确：
+鍒犻櫎璇箟蹇呴』绮剧‘锛?
 
-- 从 Workspace 移除 AtomicSection 当前项 = `removeSectionItemReference`。
-- 删除 AtomicSection 本体 = `deleteAtomicSectionEntity`，当前不作为 Workspace 默认动作。
-- 从 AtomicSection 内部移除 ContentBlock = `removeAtomicSectionChildItem`。
+- 浠? Workspace 绉婚櫎 AtomicSection 褰撳墠椤? = `removeSectionItemReference`銆?
+- 鍒犻櫎 AtomicSection 鏈綋 = `deleteAtomicSectionEntity`锛屽綋鍓嶄笉浣滀负 Workspace 榛樿鍔ㄤ綔銆?
+- 浠? AtomicSection 鍐呴儴绉婚櫎 ContentBlock = `removeAtomicSectionChildItem`銆?
 
-该规则用于避免 Workspace、SectionTree、Inspector 各自复制一套真实动作逻辑。
+璇ヨ鍒欑敤浜庨伩鍏? Workspace銆丼ectionTree銆両nspector 鍚勮嚜澶嶅埗涓?濂楃湡瀹炲姩浣滈?昏緫銆?
 
-## 后续待实现：移除引用后的空壳对象清理
+## 鍚庣画寰呭疄鐜帮細绉婚櫎寮曠敤鍚庣殑绌哄３瀵硅薄娓呯悊
 
-状态：Planned / Deferred，当前不实现。
+鐘舵?侊細Planned / Deferred锛屽綋鍓嶄笉瀹炵幇銆?
 
-背景：
+鑳屾櫙锛?
 
-- `SectionPage` 当前删除动作语义仍是“移除引用”。
-- 后续希望在移除引用后，由后端判断被移除对象是否为空壳。
-- 如果目标对象为空壳，并且不再被其他对象引用，后端可以同时删除该对象本体。
-- 该逻辑涉及引用统计、文件资产、版本、组合关系和删除顺序，容易引入误删，因此先记录为后续专项能力。
+- `SectionPage` 褰撳墠鍒犻櫎鍔ㄤ綔璇箟浠嶆槸鈥滅Щ闄ゅ紩鐢ㄢ?濄??
+- 鍚庣画甯屾湜鍦ㄧЩ闄ゅ紩鐢ㄥ悗锛岀敱鍚庣鍒ゆ柇琚Щ闄ゅ璞℃槸鍚︿负绌哄３銆?
+- 濡傛灉鐩爣瀵硅薄涓虹┖澹筹紝骞朵笖涓嶅啀琚叾浠栧璞″紩鐢紝鍚庣鍙互鍚屾椂鍒犻櫎璇ュ璞℃湰浣撱??
+- 璇ラ?昏緫娑夊強寮曠敤缁熻銆佹枃浠惰祫浜с?佺増鏈?佺粍鍚堝叧绯诲拰鍒犻櫎椤哄簭锛屽鏄撳紩鍏ヨ鍒狅紝鍥犳鍏堣褰曚负鍚庣画涓撻」鑳藉姏銆?
 
-目标语义：
+鐩爣璇箟锛?
 
-1. 前端仍只提交“移除引用”请求，不在前端判断目标对象是否为空。
-2. 后端应用层在同一业务用例中执行：
-   - 删除当前引用。
-   - 判断被移除目标是否为空壳。
-   - 判断被移除目标是否仍被其他对象引用。
-   - 只有“空壳 + 无其他引用”同时成立时，才删除目标对象本体。
-3. 后续 API 返回结果应能表达：
+1. 鍓嶇浠嶅彧鎻愪氦鈥滅Щ闄ゅ紩鐢ㄢ?濊姹傦紝涓嶅湪鍓嶇鍒ゆ柇鐩爣瀵硅薄鏄惁涓虹┖銆?
+2. 鍚庣搴旂敤灞傚湪鍚屼竴涓氬姟鐢ㄤ緥涓墽琛岋細
+   - 鍒犻櫎褰撳墠寮曠敤銆?
+   - 鍒ゆ柇琚Щ闄ょ洰鏍囨槸鍚︿负绌哄３銆?
+   - 鍒ゆ柇琚Щ闄ょ洰鏍囨槸鍚︿粛琚叾浠栧璞″紩鐢ㄣ??
+   - 鍙湁鈥滅┖澹? + 鏃犲叾浠栧紩鐢ㄢ?濆悓鏃舵垚绔嬫椂锛屾墠鍒犻櫎鐩爣瀵硅薄鏈綋銆?
+3. 鍚庣画 API 杩斿洖缁撴灉搴旇兘琛ㄨ揪锛?
    - `removedReference`
    - `deletedEmptyTarget`
    - `deletedTargetType`
    - `deletedTargetId`
 
-候选清理规则：
+鍊欓?夋竻鐞嗚鍒欙細
 
-- `ContentBlock`：只有在无 `ContentBlockVersion` / 无 DOCX 内容资产、无 `ContentBlockRelation` children，并且没有 `SectionItem`、`AtomicSectionItem`、`ContentBlockRelation`、`HandoutVersionItem` 等其他引用时，才允许清理。
-- `AtomicSection`：只有在无 `AtomicSectionItem`，并且没有其他 `SectionItem` 引用时，才允许清理。
-- `CompositeBlock` 本质仍是 `ContentBlock`；如果作为 child relation 被移除，清理规则按 `ContentBlock` 执行。
-- 删除 parent `CompositeBlock` 自身不应由删除其内部 child relation 自动触发。
+- `ContentBlock`锛氬彧鏈夊湪鏃? `ContentBlockVersion` / 鏃? DOCX 鍐呭璧勪骇銆佹棤 `ContentBlockRelation` children锛屽苟涓旀病鏈? `SectionItem`銆乣AtomicSectionItem`銆乣ContentBlockRelation`銆乣HandoutVersionItem` 绛夊叾浠栧紩鐢ㄦ椂锛屾墠鍏佽娓呯悊銆?
+- `AtomicSection`锛氬彧鏈夊湪鏃? `AtomicSectionItem`锛屽苟涓旀病鏈夊叾浠? `SectionItem` 寮曠敤鏃讹紝鎵嶅厑璁告竻鐞嗐??
+- `CompositeBlock` 鏈川浠嶆槸 `ContentBlock`锛涘鏋滀綔涓? child relation 琚Щ闄わ紝娓呯悊瑙勫垯鎸? `ContentBlock` 鎵ц銆?
+- 鍒犻櫎 parent `CompositeBlock` 鑷韩涓嶅簲鐢卞垹闄ゅ叾鍐呴儴 child relation 鑷姩瑙﹀彂銆?
 
-边界：
+杈圭晫锛?
 
-- 不改变展示组件职责。
-- 不允许前端直接删除实体。
-- 不允许仅凭标题为空判断 `ContentBlock` 为空。
-- 不允许删除已有版本、DOCX、HTML、PlainText 或被其他结构引用的内容资产。
-- 后续实现前必须先补后端用例测试，再实现业务逻辑。
+- 涓嶆敼鍙樺睍绀虹粍浠惰亴璐ｃ??
+- 涓嶅厑璁稿墠绔洿鎺ュ垹闄ゅ疄浣撱??
+- 涓嶅厑璁镐粎鍑爣棰樹负绌哄垽鏂? `ContentBlock` 涓虹┖銆?
+- 涓嶅厑璁稿垹闄ゅ凡鏈夌増鏈?丏OCX銆丠TML銆丳lainText 鎴栬鍏朵粬缁撴瀯寮曠敤鐨勫唴瀹硅祫浜с??
+- 鍚庣画瀹炵幇鍓嶅繀椤诲厛琛ュ悗绔敤渚嬫祴璇曪紝鍐嶅疄鐜颁笟鍔￠?昏緫銆?

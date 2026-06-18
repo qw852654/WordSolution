@@ -158,6 +158,29 @@ public static class CmsV2ApiEndpointExtensions
             return Results.Ok(result);
         });
 
+        group.MapPost("/content-blocks/{id:int}/edit-session", async (
+            int id,
+            CreateContentBlockEditSessionRequest request,
+            ContentBlockEditSessionUseCases useCases,
+            ICmsV2UnitOfWork unitOfWork,
+            IOptions<CmsV2ApiOptions> options,
+            CancellationToken cancellationToken) =>
+        {
+            if (await unitOfWork.ContentBlocks.GetByIdAsync(id, cancellationToken) is null)
+            {
+                return NotFoundProblem($"ContentBlock {id} was not found.");
+            }
+
+            var session = await useCases.CreateAsync(
+                new CreateContentBlockEditSessionCommand(
+                    options.Value.BankRootDirectory,
+                    id,
+                    request.OpenWord),
+                cancellationToken);
+
+            return Results.Ok(ToContentBlockEditSessionResponse(session));
+        });
+
         group.MapGet("/content-blocks/{id:int}/versions", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
         {
             if (await unitOfWork.ContentBlocks.GetByIdAsync(id, cancellationToken) is null)
@@ -301,6 +324,63 @@ public static class CmsV2ApiEndpointExtensions
                 cancellationToken);
 
             return Results.NoContent();
+        });
+
+        group.MapGet("/content-block-edit-sessions/{sessionId}", async (
+            string sessionId,
+            ContentBlockEditSessionUseCases useCases,
+            IOptions<CmsV2ApiOptions> options,
+            CancellationToken cancellationToken) =>
+        {
+            var session = await useCases.GetAsync(
+                new GetContentBlockEditSessionCommand(options.Value.BankRootDirectory, sessionId),
+                cancellationToken);
+
+            return session is null
+                ? NotFoundProblem($"ContentBlockEditSession {sessionId} was not found.")
+                : Results.Ok(ToContentBlockEditSessionResponse(session));
+        });
+
+        group.MapPost("/content-block-edit-sessions/{sessionId}/sync", async (
+            string sessionId,
+            ContentBlockEditSessionUseCases useCases,
+            IOptions<CmsV2ApiOptions> options,
+            CancellationToken cancellationToken) =>
+        {
+            var session = await useCases.GetAsync(
+                new GetContentBlockEditSessionCommand(options.Value.BankRootDirectory, sessionId),
+                cancellationToken);
+            if (session is null)
+            {
+                return NotFoundProblem($"ContentBlockEditSession {sessionId} was not found.");
+            }
+
+            var result = await useCases.SyncAsync(
+                new SyncContentBlockEditSessionCommand(options.Value.BankRootDirectory, sessionId),
+                cancellationToken);
+
+            return Results.Ok(ToSyncContentBlockEditSessionResponse(result));
+        });
+
+        group.MapPost("/content-block-edit-sessions/{sessionId}/cancel", async (
+            string sessionId,
+            ContentBlockEditSessionUseCases useCases,
+            IOptions<CmsV2ApiOptions> options,
+            CancellationToken cancellationToken) =>
+        {
+            var session = await useCases.GetAsync(
+                new GetContentBlockEditSessionCommand(options.Value.BankRootDirectory, sessionId),
+                cancellationToken);
+            if (session is null)
+            {
+                return NotFoundProblem($"ContentBlockEditSession {sessionId} was not found.");
+            }
+
+            var cancelled = await useCases.CancelAsync(
+                new CancelContentBlockEditSessionCommand(options.Value.BankRootDirectory, sessionId),
+                cancellationToken);
+
+            return Results.Ok(ToContentBlockEditSessionResponse(cancelled));
         });
     }
 
@@ -804,6 +884,33 @@ public static class CmsV2ApiEndpointExtensions
         }
 
         return Results.Text(html, "text/html; charset=utf-8");
+    }
+
+    private static ContentBlockEditSessionResponse ToContentBlockEditSessionResponse(ContentBlockEditSession session)
+    {
+        return new ContentBlockEditSessionResponse(
+            session.SessionId,
+            session.ContentBlockId,
+            session.SourceContentBlockVersionId,
+            session.Status.ToString(),
+            session.LaunchMode.ToString(),
+            session.OpenedByServer,
+            session.Message,
+            session.CreatedTime,
+            session.UpdatedTime);
+    }
+
+    private static SyncContentBlockEditSessionResponse ToSyncContentBlockEditSessionResponse(
+        SyncContentBlockEditSessionResult result)
+    {
+        return new SyncContentBlockEditSessionResponse(
+            result.SessionId,
+            result.ContentBlockId,
+            result.Changed,
+            result.NewContentBlockVersionId,
+            result.CurrentVersionNumber,
+            result.Status.ToString(),
+            result.Message);
     }
 
     private static async Task<IResult> OkOrNotFoundAsync<T>(Task<T?> entityTask)
