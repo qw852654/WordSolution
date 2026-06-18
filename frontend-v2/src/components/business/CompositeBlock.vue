@@ -8,7 +8,13 @@ import SectionItemView from '@/components/business/SectionItemView.vue'
 import EmptyState from '@/components/presentation/EmptyState.vue'
 import StructuredContainer from '@/components/presentation/StructuredContainer.vue'
 import { Button } from '@/components/ui/button'
-import type { StructuredBlockModel } from '@/types'
+import type {
+  ContentBlockRelationActionPayload,
+  ContentBlockRelationMovePayload,
+  SectionItemViewAction,
+  StructuredBlockChildModel,
+  StructuredBlockModel,
+} from '@/types'
 
 defineOptions({
   name: 'CompositeBlock',
@@ -27,6 +33,9 @@ const emit = defineEmits<{
   openWord: [id: string]
   refreshPreview: [id: string]
   openContentBlockMore: [id: string]
+  openContentBlockRelationWord: [payload: ContentBlockRelationActionPayload]
+  moveContentBlockRelation: [payload: ContentBlockRelationMovePayload]
+  removeContentBlockRelation: [payload: ContentBlockRelationActionPayload]
 }>()
 
 const { t } = useI18n()
@@ -34,6 +43,52 @@ const difficultyMarkerClass = computed(() => getDifficultyMarkerClass(props.bloc
 const difficultyMarkerLabel = computed(
   () => `${t('components.contentBlockDisplay.difficulty')}: ${props.block.difficulty}`,
 )
+const childContentBlockActions: SectionItemViewAction[] = [
+  'OpenWord',
+  'MoveUp',
+  'MoveDown',
+  'Remove',
+]
+
+function createRelationActionPayload(
+  child: StructuredBlockChildModel,
+): ContentBlockRelationActionPayload | undefined {
+  if (!child.parentBlockId || !child.relationId || !child.contentBlockId) {
+    return undefined
+  }
+
+  return {
+    nodeId: child.nodeId,
+    parentBlockId: child.parentBlockId,
+    relationId: child.relationId,
+    contentBlockId: child.contentBlockId,
+    title: child.block.title,
+  }
+}
+
+function emitRelationWord(child: StructuredBlockChildModel) {
+  const payload = createRelationActionPayload(child)
+
+  if (payload) {
+    emit('openContentBlockRelationWord', payload)
+  }
+}
+
+function emitRelationMove(child: StructuredBlockChildModel, direction: 'Up' | 'Down') {
+  const payload = createRelationActionPayload(child)
+
+  if (payload) {
+    emit('moveContentBlockRelation', { ...payload, direction })
+  }
+}
+
+function emitRelationRemove(child: StructuredBlockChildModel) {
+  const payload = createRelationActionPayload(child)
+
+  if (payload) {
+    emit('removeContentBlockRelation', payload)
+  }
+}
 </script>
 
 <template>
@@ -77,9 +132,13 @@ const difficultyMarkerLabel = computed(
         :item-id="child.id"
         :selected="child.selected"
         :disabled="child.disabled"
+        :actions="childContentBlockActions"
         :data-workspace-node-id="nodeIdMap?.[child.nodeId] ?? child.nodeId"
         @select="emit('selectContentBlock', $event)"
-        @open-word="emit('openWord', $event)"
+        @open-word="emitRelationWord(child)"
+        @move-up="emitRelationMove(child, 'Up')"
+        @move-down="emitRelationMove(child, 'Down')"
+        @remove="emitRelationRemove(child)"
       >
         <ContentBlockDisplay
           v-if="child.kind === 'ContentBlock'"
@@ -97,6 +156,9 @@ const difficultyMarkerLabel = computed(
           @open-word="emit('openWord', $event)"
           @refresh-preview="emit('refreshPreview', $event)"
           @open-content-block-more="emit('openContentBlockMore', $event)"
+          @open-content-block-relation-word="emit('openContentBlockRelationWord', $event)"
+          @move-content-block-relation="emit('moveContentBlockRelation', $event)"
+          @remove-content-block-relation="emit('removeContentBlockRelation', $event)"
         />
       </SectionItemView>
     </div>

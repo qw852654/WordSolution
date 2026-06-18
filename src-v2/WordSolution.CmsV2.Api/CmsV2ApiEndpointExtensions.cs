@@ -270,6 +270,38 @@ public static class CmsV2ApiEndpointExtensions
 
             return Results.Ok(result);
         });
+
+        group.MapPost("/content-blocks/{id:int}/relations/children/{relationId:int}/move", async (
+            int id,
+            int relationId,
+            MoveContentBlockRelationRequest request,
+            ContentBlockRelationUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            if (!Enum.TryParse<ContentBlockRelationMoveDirection>(request.Direction, ignoreCase: true, out var direction))
+            {
+                return Results.BadRequest(new { message = "Direction must be Up or Down." });
+            }
+
+            await useCases.MoveContentBlockRelationAsync(
+                new MoveContentBlockRelationCommand(id, relationId, direction),
+                cancellationToken);
+
+            return Results.Ok(new { parentBlockId = id, relationId, direction = direction.ToString() });
+        });
+
+        group.MapDelete("/content-blocks/{id:int}/relations/children/{relationId:int}", async (
+            int id,
+            int relationId,
+            ContentBlockRelationUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            await useCases.RemoveContentBlockRelationAsync(
+                new RemoveContentBlockRelationCommand(id, relationId),
+                cancellationToken);
+
+            return Results.NoContent();
+        });
     }
 
     private static void MapSections(RouteGroupBuilder group)
@@ -432,6 +464,38 @@ public static class CmsV2ApiEndpointExtensions
                 cancellationToken);
 
             return Results.Ok(result);
+        });
+
+        group.MapPost("/atomic-sections/{id:int}/items/{itemId:int}/move", async (
+            int id,
+            int itemId,
+            MoveAtomicSectionItemRequest request,
+            AtomicSectionUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            if (!Enum.TryParse<AtomicSectionItemMoveDirection>(request.Direction, ignoreCase: true, out var direction))
+            {
+                return Results.BadRequest(new { message = "Direction must be Up or Down." });
+            }
+
+            await useCases.MoveAtomicSectionItemAsync(
+                new MoveAtomicSectionItemCommand(id, itemId, direction),
+                cancellationToken);
+
+            return Results.Ok(new { atomicSectionId = id, atomicSectionItemId = itemId, direction = direction.ToString() });
+        });
+
+        group.MapDelete("/atomic-sections/{id:int}/items/{itemId:int}", async (
+            int id,
+            int itemId,
+            AtomicSectionUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            await useCases.RemoveAtomicSectionItemAsync(
+                new RemoveAtomicSectionItemCommand(id, itemId),
+                cancellationToken);
+
+            return Results.NoContent();
         });
     }
 

@@ -57,4 +57,12 @@ public sealed class ContentBlockRelation
     public string? Note { get; private set; }
 
     public DateTimeOffset UpdatedTime { get; private set; }
+
+    public void ChangeSortOrder(int sortOrder, DateTimeOffset? updatedTime = null)
+    {
+        DomainGuard.NonNegative(sortOrder, nameof(SortOrder));
+
+        SortOrder = sortOrder;
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+    }
 }

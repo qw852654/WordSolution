@@ -12,6 +12,10 @@ import StatusPill from '@/components/presentation/StatusPill.vue'
 import WeakScrollArea from '@/components/presentation/WeakScrollArea.vue'
 import { Card } from '@/components/ui/card'
 import type {
+  AtomicSectionItemActionPayload,
+  AtomicSectionItemMovePayload,
+  ContentBlockRelationActionPayload,
+  ContentBlockRelationMovePayload,
   ContentBlockDisplayModel,
   InsertActionType,
   InsertPointModel,
@@ -55,6 +59,15 @@ const emit = defineEmits<{
   requestAtomicMove: [request: AtomicSectionWorkspaceMovePayload]
   requestAtomicRename: [request: AtomicSectionWorkspaceActionPayload]
   requestAtomicRemove: [request: AtomicSectionWorkspaceActionPayload]
+  requestAtomicSectionItemOpenWord: [request: AtomicSectionItemActionPayload]
+  requestAtomicSectionItemMove: [request: AtomicSectionItemMovePayload]
+  requestAtomicSectionItemRemove: [request: AtomicSectionItemActionPayload]
+  requestContentBlockOpenWord: [request: ContentBlockWorkspaceActionPayload]
+  requestContentBlockMove: [request: ContentBlockWorkspaceMovePayload]
+  requestContentBlockRemove: [request: ContentBlockWorkspaceActionPayload]
+  requestContentBlockRelationOpenWord: [request: ContentBlockRelationActionPayload]
+  requestContentBlockRelationMove: [request: ContentBlockRelationMovePayload]
+  requestContentBlockRelationRemove: [request: ContentBlockRelationActionPayload]
 }>()
 
 const workspaceRoot = ref<HTMLElement | null>(null)
@@ -63,6 +76,18 @@ const atomicSectionActions: SectionItemViewAction[] = [
   'MoveUp',
   'MoveDown',
   'Rename',
+  'Remove',
+]
+const contentBlockActions: SectionItemViewAction[] = [
+  'OpenWord',
+  'MoveUp',
+  'MoveDown',
+  'Remove',
+]
+const compositeBlockActions: SectionItemViewAction[] = [
+  'OpenWord',
+  'MoveUp',
+  'MoveDown',
   'Remove',
 ]
 
@@ -74,6 +99,17 @@ interface AtomicSectionWorkspaceActionPayload {
 }
 
 interface AtomicSectionWorkspaceMovePayload extends AtomicSectionWorkspaceActionPayload {
+  direction: 'Up' | 'Down'
+}
+
+interface ContentBlockWorkspaceActionPayload {
+  nodeId: string
+  sectionItemId: number
+  contentBlockId: number
+  title: string
+}
+
+interface ContentBlockWorkspaceMovePayload extends ContentBlockWorkspaceActionPayload {
   direction: 'Up' | 'Down'
 }
 
@@ -183,6 +219,52 @@ function emitAtomicRemove(item: SectionWorkspaceFlowItemModel) {
   if (payload) {
     emit('requestAtomicRemove', payload)
   }
+}
+
+function createContentBlockActionPayload(item: SectionWorkspaceFlowItemModel) {
+  if (item.kind === 'AtomicSection' || !item.sectionItemId || !item.targetId) {
+    return undefined
+  }
+
+  return {
+    nodeId: item.nodeId,
+    sectionItemId: item.sectionItemId,
+    contentBlockId: item.targetId,
+    title: item.block.title,
+  }
+}
+
+function emitContentBlockOpenWord(item: SectionWorkspaceFlowItemModel) {
+  const payload = createContentBlockActionPayload(item)
+  if (payload) {
+    emit('requestContentBlockOpenWord', payload)
+  }
+}
+
+function emitContentBlockMove(item: SectionWorkspaceFlowItemModel, direction: 'Up' | 'Down') {
+  const payload = createContentBlockActionPayload(item)
+  if (payload) {
+    emit('requestContentBlockMove', { ...payload, direction })
+  }
+}
+
+function emitContentBlockRemove(item: SectionWorkspaceFlowItemModel) {
+  const payload = createContentBlockActionPayload(item)
+  if (payload) {
+    emit('requestContentBlockRemove', payload)
+  }
+}
+
+function getWorkspaceItemActions(item: SectionWorkspaceFlowItemModel) {
+  if (item.kind === 'AtomicSection') {
+    return atomicSectionActions
+  }
+
+  if (item.kind === 'ContentBlock') {
+    return contentBlockActions
+  }
+
+  return compositeBlockActions
 }
 
 function findWorkspaceNodeElement(nodeId: string) {
@@ -319,14 +401,15 @@ watch(
               :item-id="item.id"
               :selected="item.selected"
               :disabled="item.disabled"
-              :actions="item.kind === 'AtomicSection' ? atomicSectionActions : undefined"
+              :actions="getWorkspaceItemActions(item)"
               :data-workspace-node-id="item.nodeId"
               @select="emitWorkspaceSelection"
               @insert-child-content-block="emitAtomicChildContentBlock(item)"
-              @move-up="emitAtomicMove(item, 'Up')"
-              @move-down="emitAtomicMove(item, 'Down')"
+              @move-up="item.kind === 'AtomicSection' ? emitAtomicMove(item, 'Up') : emitContentBlockMove(item, 'Up')"
+              @move-down="item.kind === 'AtomicSection' ? emitAtomicMove(item, 'Down') : emitContentBlockMove(item, 'Down')"
               @rename="emitAtomicRename(item)"
-              @remove="emitAtomicRemove(item)"
+              @remove="item.kind === 'AtomicSection' ? emitAtomicRemove(item) : emitContentBlockRemove(item)"
+              @open-word="emitContentBlockOpenWord(item)"
             >
               <ContentBlockDisplay
                 v-if="item.kind === 'ContentBlock'"
@@ -338,6 +421,12 @@ watch(
                 :node-id-map="workspaceNodeMap"
                 @select="emitWorkspaceSelection"
                 @select-content-block="emitWorkspaceSelection"
+                @open-content-block-relation-word="emit('requestContentBlockRelationOpenWord', $event)"
+                @move-content-block-relation="emit('requestContentBlockRelationMove', $event)"
+                @remove-content-block-relation="emit('requestContentBlockRelationRemove', $event)"
+                @open-atomic-section-item-word="emit('requestAtomicSectionItemOpenWord', $event)"
+                @move-atomic-section-item="emit('requestAtomicSectionItemMove', $event)"
+                @remove-atomic-section-item="emit('requestAtomicSectionItemRemove', $event)"
               />
               <CompositeBlock
                 v-else
@@ -345,6 +434,9 @@ watch(
                 :node-id-map="workspaceNodeMap"
                 @select="emitWorkspaceSelection"
                 @select-content-block="emitWorkspaceSelection"
+                @open-content-block-relation-word="emit('requestContentBlockRelationOpenWord', $event)"
+                @move-content-block-relation="emit('requestContentBlockRelationMove', $event)"
+                @remove-content-block-relation="emit('requestContentBlockRelationRemove', $event)"
               />
             </SectionItemView>
           </template>

@@ -78,6 +78,61 @@ public sealed class AtomicSectionUseCases
         return result!;
     }
 
+    public async Task MoveAtomicSectionItemAsync(
+        MoveAtomicSectionItemCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+        {
+            var item = await GetAtomicSectionItemForCommandAsync(
+                command.AtomicSectionId,
+                command.AtomicSectionItemId,
+                transactionCancellationToken);
+            var siblings = (await _unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(
+                    command.AtomicSectionId,
+                    transactionCancellationToken))
+                .OrderBy(candidate => candidate.SortOrder)
+                .ThenBy(candidate => candidate.Id)
+                .ToList();
+            var currentIndex = siblings.FindIndex(candidate => candidate.Id == item.Id);
+            var targetIndex = command.Direction == AtomicSectionItemMoveDirection.Up
+                ? currentIndex - 1
+                : currentIndex + 1;
+
+            if (currentIndex < 0 || targetIndex < 0 || targetIndex >= siblings.Count)
+            {
+                return;
+            }
+
+            siblings.RemoveAt(currentIndex);
+            siblings.Insert(targetIndex, item);
+
+            for (var index = 0; index < siblings.Count; index++)
+            {
+                siblings[index].ChangeSortOrder((index + 1) * 10);
+                _unitOfWork.AtomicSectionItems.Update(siblings[index]);
+            }
+
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+        }, cancellationToken);
+    }
+
+    public async Task RemoveAtomicSectionItemAsync(
+        RemoveAtomicSectionItemCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+        {
+            var item = await GetAtomicSectionItemForCommandAsync(
+                command.AtomicSectionId,
+                command.AtomicSectionItemId,
+                transactionCancellationToken);
+
+            _unitOfWork.AtomicSectionItems.Remove(item);
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+        }, cancellationToken);
+    }
+
     private async Task EnsureLockedVersionBelongsToContentBlockAsync(
         int? contentBlockVersionId,
         int contentBlockId,
@@ -93,5 +148,20 @@ public sealed class AtomicSectionUseCases
         {
             throw new CmsV2ApplicationException("Locked content block version does not belong to the referenced ContentBlock.");
         }
+    }
+
+    private async Task<AtomicSectionItem> GetAtomicSectionItemForCommandAsync(
+        int atomicSectionId,
+        int atomicSectionItemId,
+        CancellationToken cancellationToken)
+    {
+        var item = await _unitOfWork.AtomicSectionItems.GetByIdAsync(atomicSectionItemId, cancellationToken);
+        if (item is null || item.AtomicSectionId != atomicSectionId)
+        {
+            throw new CmsV2ApplicationException(
+                $"AtomicSectionItem {atomicSectionItemId} was not found in AtomicSection {atomicSectionId}.");
+        }
+
+        return item;
     }
 }

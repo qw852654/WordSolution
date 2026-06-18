@@ -11,6 +11,21 @@ public sealed record AddAtomicSectionItemCommand(
     string? TitleOverride = null,
     string? Note = null);
 
+public enum AtomicSectionItemMoveDirection
+{
+    Up,
+    Down
+}
+
+public sealed record MoveAtomicSectionItemCommand(
+    int AtomicSectionId,
+    int AtomicSectionItemId,
+    AtomicSectionItemMoveDirection Direction);
+
+public sealed record RemoveAtomicSectionItemCommand(
+    int AtomicSectionId,
+    int AtomicSectionItemId);
+
 public sealed record RenameAtomicSectionCommand(
     int AtomicSectionId,
     string Title);

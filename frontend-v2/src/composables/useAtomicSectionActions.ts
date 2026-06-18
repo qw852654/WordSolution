@@ -1,4 +1,4 @@
-import { cmsV2Api } from '@/apis/cmsV2Client'
+import { cmsV2Api, type CmsV2MoveAtomicSectionItemRequest } from '@/apis/cmsV2Client'
 
 export interface AtomicSectionActionsOptions {
   refreshSection: () => Promise<void>
@@ -50,8 +50,34 @@ export function useAtomicSectionActions(options: AtomicSectionActionsOptions) {
     }
   }
 
+  async function moveAtomicSectionItem(
+    atomicSectionId: number,
+    atomicSectionItemId: number,
+    direction: CmsV2MoveAtomicSectionItemRequest['direction'],
+  ) {
+    await cmsV2Api.moveAtomicSectionItem(atomicSectionId, atomicSectionItemId, { direction })
+    await options.refreshSection()
+  }
+
+  async function moveAtomicSectionItemUp(atomicSectionId: number, atomicSectionItemId: number) {
+    await moveAtomicSectionItem(atomicSectionId, atomicSectionItemId, 'Up')
+  }
+
+  async function moveAtomicSectionItemDown(atomicSectionId: number, atomicSectionItemId: number) {
+    await moveAtomicSectionItem(atomicSectionId, atomicSectionItemId, 'Down')
+  }
+
+  async function removeAtomicSectionItem(atomicSectionId: number, atomicSectionItemId: number) {
+    await cmsV2Api.removeAtomicSectionItem(atomicSectionId, atomicSectionItemId)
+    await options.refreshSection()
+  }
+
   return {
     renameAtomicSection,
     createContentBlockInsideAtomicSection,
+    moveAtomicSectionItem,
+    moveAtomicSectionItemUp,
+    moveAtomicSectionItemDown,
+    removeAtomicSectionItem,
   }
 }

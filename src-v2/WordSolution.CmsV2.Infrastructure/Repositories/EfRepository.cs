@@ -50,6 +50,7 @@ public abstract class EfRepository<TEntity> : IRepository<TEntity>
     {
         ArgumentNullException.ThrowIfNull(entity);
 
+        DetachAlreadyTrackedEntityWithSameKey(entity);
         Set.Remove(entity);
     }
 

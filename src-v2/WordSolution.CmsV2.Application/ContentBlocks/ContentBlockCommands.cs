@@ -33,3 +33,18 @@ public sealed record AddContentBlockRelationCommand(
     int SortOrder,
     string? TitleOverride = null,
     string? Note = null);
+
+public enum ContentBlockRelationMoveDirection
+{
+    Up,
+    Down
+}
+
+public sealed record MoveContentBlockRelationCommand(
+    int ParentBlockId,
+    int RelationId,
+    ContentBlockRelationMoveDirection Direction);
+
+public sealed record RemoveContentBlockRelationCommand(
+    int ParentBlockId,
+    int RelationId);

@@ -45,6 +45,8 @@ public sealed record AddContentBlockRelationRequest(
     string? TitleOverride = null,
     string? Note = null);
 
+public sealed record MoveContentBlockRelationRequest(string Direction);
+
 public sealed record AddSectionItemRequest(
     SectionItemTargetType TargetType,
     int TargetId,
@@ -67,6 +69,8 @@ public sealed record AddAtomicSectionItemRequest(
     int SortOrder,
     string? TitleOverride = null,
     string? Note = null);
+
+public sealed record MoveAtomicSectionItemRequest(string Direction);
 
 public sealed record RenameAtomicSectionRequest(string Title);
 

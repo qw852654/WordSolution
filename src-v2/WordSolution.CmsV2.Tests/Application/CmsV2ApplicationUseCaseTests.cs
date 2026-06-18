@@ -141,6 +141,79 @@ public sealed class CmsV2ApplicationUseCaseTests
     }
 
     [Fact]
+    public async Task ContentBlockRelation_use_case_can_move_and_remove_child_relations()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var relations = new ContentBlockRelationUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+
+        var parent = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "parent", ContentBlockType.ExampleGroup, "parent/v1.docx"));
+        var firstChild = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "first", ContentBlockType.Question, "first/v1.docx"));
+        var secondChild = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "second", ContentBlockType.Question, "second/v1.docx"));
+
+        var firstRelation = await relations.AddContentBlockRelationAsync(
+            new AddContentBlockRelationCommand(parent.Id, firstChild.Id, ReferenceMode.FollowLatest, null, SortOrder: 10));
+        var secondRelation = await relations.AddContentBlockRelationAsync(
+            new AddContentBlockRelationCommand(parent.Id, secondChild.Id, ReferenceMode.FollowLatest, null, SortOrder: 20));
+
+        await relations.MoveContentBlockRelationAsync(
+            new MoveContentBlockRelationCommand(parent.Id, secondRelation.Id, ContentBlockRelationMoveDirection.Up));
+
+        var movedChildren = await unitOfWork.ContentBlockRelations.ListChildrenAsync(parent.Id);
+        Assert.Equal([secondRelation.Id, firstRelation.Id], movedChildren.Select(relation => relation.Id));
+
+        await relations.RemoveContentBlockRelationAsync(
+            new RemoveContentBlockRelationCommand(parent.Id, secondRelation.Id));
+
+        var remainingChildren = await unitOfWork.ContentBlockRelations.ListChildrenAsync(parent.Id);
+        Assert.Equal([firstRelation.Id], remainingChildren.Select(relation => relation.Id));
+        Assert.Null(await unitOfWork.ContentBlockRelations.GetByIdAsync(secondRelation.Id));
+    }
+
+    [Fact]
+    public async Task AtomicSection_use_case_can_move_and_remove_child_items()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var atomicSections = new AtomicSectionUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+
+        var atomicSection = new AtomicSection(sectionId, "atomic");
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+
+        var firstChild = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "first", ContentBlockType.Question, "atomic-first/v1.docx"));
+        var secondChild = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "second", ContentBlockType.Question, "atomic-second/v1.docx"));
+
+        var firstItem = await atomicSections.AddAtomicSectionItemAsync(
+            new AddAtomicSectionItemCommand(atomicSection.Id, firstChild.Id, ReferenceMode.FollowLatest, null, SortOrder: 10));
+        var secondItem = await atomicSections.AddAtomicSectionItemAsync(
+            new AddAtomicSectionItemCommand(atomicSection.Id, secondChild.Id, ReferenceMode.FollowLatest, null, SortOrder: 20));
+
+        await atomicSections.MoveAtomicSectionItemAsync(
+            new MoveAtomicSectionItemCommand(atomicSection.Id, secondItem.Id, AtomicSectionItemMoveDirection.Up));
+
+        var movedItems = await unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(atomicSection.Id);
+        Assert.Equal([secondItem.Id, firstItem.Id], movedItems.Select(item => item.Id));
+
+        await atomicSections.RemoveAtomicSectionItemAsync(
+            new RemoveAtomicSectionItemCommand(atomicSection.Id, secondItem.Id));
+
+        var remainingItems = await unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(atomicSection.Id);
+        Assert.Equal([firstItem.Id], remainingItems.Select(item => item.Id));
+        Assert.Null(await unitOfWork.AtomicSectionItems.GetByIdAsync(secondItem.Id));
+        Assert.NotNull(await unitOfWork.ContentBlocks.GetByIdAsync(secondChild.Id));
+    }
+
+    [Fact]
     public async Task Section_and_atomic_section_use_cases_validate_targets_and_locked_versions()
     {
         await using var context = await CreateMigratedContextAsync();

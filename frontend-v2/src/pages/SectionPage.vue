@@ -12,6 +12,8 @@ import SectionTopToolbar from '@/components/containers/SectionTopToolbar.vue'
 import SectionWorkspace from '@/components/containers/SectionWorkspace.vue'
 import { cmsV2Api } from '@/apis/cmsV2Client'
 import { useAtomicSectionActions } from '@/composables/useAtomicSectionActions'
+import { useContentBlockActions } from '@/composables/useContentBlockActions'
+import { useContentBlockRelationActions } from '@/composables/useContentBlockRelationActions'
 import { useSectionItemActions } from '@/composables/useSectionItemActions'
 import { loadSectionPageData, type SectionPageDataModel } from '@/composables/useSectionPageData'
 import { resolveAtomicSectionChildContentBlockTitle } from '@/utils/sectionInsertDefaults'
@@ -21,6 +23,10 @@ import type {
   InsertCreatePanelModel,
   InsertCreateSubmitPayload,
   InsertRequestModel,
+  AtomicSectionItemActionPayload,
+  AtomicSectionItemMovePayload,
+  ContentBlockRelationActionPayload,
+  ContentBlockRelationMovePayload,
   SectionPageShellModel,
   SectionTreeContextMenuActionPayload,
   SectionTreeContextMenuModel,
@@ -58,6 +64,17 @@ interface AtomicSectionWorkspaceActionPayload {
 }
 
 interface AtomicSectionWorkspaceMovePayload extends AtomicSectionWorkspaceActionPayload {
+  direction: 'Up' | 'Down'
+}
+
+interface ContentBlockWorkspaceActionPayload {
+  nodeId: string
+  sectionItemId: number
+  contentBlockId: number
+  title: string
+}
+
+interface ContentBlockWorkspaceMovePayload extends ContentBlockWorkspaceActionPayload {
   direction: 'Up' | 'Down'
 }
 
@@ -166,6 +183,19 @@ const sectionItemActions = useSectionItemActions({
 })
 
 const atomicSectionActions = useAtomicSectionActions({
+  refreshSection: loadCurrentSectionPage,
+})
+
+const contentBlockActions = useContentBlockActions({
+  setFeedback: (message) => {
+    insertFeedback.value = message
+  },
+  contentBlockWordEditApiPendingMessage: t(
+    'sectionPage.workspace.contentBlockActions.wordEditPending',
+  ),
+})
+
+const contentBlockRelationActions = useContentBlockRelationActions({
   refreshSection: loadCurrentSectionPage,
 })
 
@@ -338,6 +368,187 @@ async function requestAtomicRemove(payload: AtomicSectionWorkspaceActionPayload)
   } catch (error) {
     sectionPageError.value =
       error instanceof Error ? error.message : t('sectionPage.workspace.atomicSectionActions.operationFailed')
+  }
+}
+
+async function requestAtomicSectionItemOpenWord(payload: AtomicSectionItemActionPayload) {
+  try {
+    await contentBlockActions.startContentBlockWordEdit(payload.contentBlockId)
+    selectedStructureNodeId.value = payload.nodeId
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error
+        ? error.message
+        : t('sectionPage.workspace.atomicSectionItemActions.operationFailed')
+  }
+}
+
+async function requestAtomicSectionItemMove(payload: AtomicSectionItemMovePayload) {
+  try {
+    if (payload.direction === 'Up') {
+      await atomicSectionActions.moveAtomicSectionItemUp(
+        payload.atomicSectionId,
+        payload.atomicSectionItemId,
+      )
+    } else {
+      await atomicSectionActions.moveAtomicSectionItemDown(
+        payload.atomicSectionId,
+        payload.atomicSectionItemId,
+      )
+    }
+
+    selectedStructureNodeId.value = payload.nodeId
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error
+        ? error.message
+        : t('sectionPage.workspace.atomicSectionItemActions.operationFailed')
+  }
+}
+
+async function requestAtomicSectionItemRemove(payload: AtomicSectionItemActionPayload) {
+  const confirmed = window.confirm(
+    t('sectionPage.workspace.atomicSectionItemActions.removeConfirm', {
+      title: payload.title || 'ContentBlock',
+    }),
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    await atomicSectionActions.removeAtomicSectionItem(
+      payload.atomicSectionId,
+      payload.atomicSectionItemId,
+    )
+    selectedStructureNodeId.value = undefined
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error
+        ? error.message
+        : t('sectionPage.workspace.atomicSectionItemActions.operationFailed')
+  }
+}
+
+async function requestContentBlockOpenWord(payload: ContentBlockWorkspaceActionPayload) {
+  try {
+    await contentBlockActions.startContentBlockWordEdit(payload.contentBlockId)
+    selectedStructureNodeId.value = payload.nodeId
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error ? error.message : t('sectionPage.workspace.contentBlockActions.operationFailed')
+  }
+}
+
+async function requestContentBlockMove(payload: ContentBlockWorkspaceMovePayload) {
+  const currentSectionId = getCurrentNumericSectionId()
+
+  if (!currentSectionId) {
+    return
+  }
+
+  try {
+    if (payload.direction === 'Up') {
+      await sectionItemActions.moveSectionItemUp(currentSectionId, payload.sectionItemId)
+    } else {
+      await sectionItemActions.moveSectionItemDown(currentSectionId, payload.sectionItemId)
+    }
+
+    selectedStructureNodeId.value = payload.nodeId
+    workspaceScrollTargetNodeId.value = payload.nodeId
+    workspaceScrollRequestKey.value += 1
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error ? error.message : t('sectionPage.workspace.contentBlockActions.operationFailed')
+  }
+}
+
+async function requestContentBlockRemove(payload: ContentBlockWorkspaceActionPayload) {
+  const currentSectionId = getCurrentNumericSectionId()
+
+  if (!currentSectionId) {
+    return
+  }
+
+  const confirmed = window.confirm(
+    t('sectionPage.workspace.contentBlockActions.removeConfirm', {
+      title: payload.title || 'ContentBlock',
+    }),
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    await sectionItemActions.removeSectionItemReference(currentSectionId, payload.sectionItemId)
+    selectedStructureNodeId.value = undefined
+    workspaceScrollTargetNodeId.value = selectedStructureNodeId.value
+    workspaceScrollRequestKey.value += 1
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error ? error.message : t('sectionPage.workspace.contentBlockActions.operationFailed')
+  }
+}
+
+async function requestContentBlockRelationOpenWord(payload: ContentBlockRelationActionPayload) {
+  try {
+    await contentBlockActions.startContentBlockWordEdit(payload.contentBlockId)
+    selectedStructureNodeId.value = payload.nodeId
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error
+        ? error.message
+        : t('sectionPage.workspace.contentBlockRelationActions.operationFailed')
+  }
+}
+
+async function requestContentBlockRelationMove(payload: ContentBlockRelationMovePayload) {
+  try {
+    if (payload.direction === 'Up') {
+      await contentBlockRelationActions.moveContentBlockRelationUp(
+        payload.parentBlockId,
+        payload.relationId,
+      )
+    } else {
+      await contentBlockRelationActions.moveContentBlockRelationDown(
+        payload.parentBlockId,
+        payload.relationId,
+      )
+    }
+
+    selectedStructureNodeId.value = payload.nodeId
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error
+        ? error.message
+        : t('sectionPage.workspace.contentBlockRelationActions.operationFailed')
+  }
+}
+
+async function requestContentBlockRelationRemove(payload: ContentBlockRelationActionPayload) {
+  const confirmed = window.confirm(
+    t('sectionPage.workspace.contentBlockRelationActions.removeConfirm', {
+      title: payload.title || 'ContentBlock',
+    }),
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    await contentBlockRelationActions.removeContentBlockRelation(
+      payload.parentBlockId,
+      payload.relationId,
+    )
+    selectedStructureNodeId.value = undefined
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error
+        ? error.message
+        : t('sectionPage.workspace.contentBlockRelationActions.operationFailed')
   }
 }
 
@@ -648,6 +859,15 @@ watch(sectionId, () => {
         @request-atomic-move="requestAtomicMove"
         @request-atomic-rename="requestAtomicRename"
         @request-atomic-remove="requestAtomicRemove"
+        @request-atomic-section-item-open-word="requestAtomicSectionItemOpenWord"
+        @request-atomic-section-item-move="requestAtomicSectionItemMove"
+        @request-atomic-section-item-remove="requestAtomicSectionItemRemove"
+        @request-content-block-open-word="requestContentBlockOpenWord"
+        @request-content-block-move="requestContentBlockMove"
+        @request-content-block-remove="requestContentBlockRemove"
+        @request-content-block-relation-open-word="requestContentBlockRelationOpenWord"
+        @request-content-block-relation-move="requestContentBlockRelationMove"
+        @request-content-block-relation-remove="requestContentBlockRelationRemove"
       />
 
       <aside class="flex min-h-0 flex-col gap-3">

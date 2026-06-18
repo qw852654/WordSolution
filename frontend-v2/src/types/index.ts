@@ -190,6 +190,11 @@ export type StructuredBlockChildModel =
       kind: 'ContentBlock'
       id: string
       nodeId: string
+      atomicSectionId?: number
+      atomicSectionItemId?: number
+      parentBlockId?: number
+      relationId?: number
+      contentBlockId?: number
       selected?: boolean
       disabled?: boolean
       block: ContentBlockDisplayModel
@@ -198,6 +203,11 @@ export type StructuredBlockChildModel =
       kind: 'CompositeBlock'
       id: string
       nodeId: string
+      atomicSectionId?: number
+      atomicSectionItemId?: number
+      parentBlockId?: number
+      relationId?: number
+      contentBlockId?: number
       selected?: boolean
       disabled?: boolean
       block: StructuredBlockModel
@@ -207,6 +217,7 @@ export interface StructuredBlockModel {
   id: string
   title: string
   blockKind: StructuredBlockKind
+  contentBlockId?: number
   status: string
   difficulty: string
   summary: string
@@ -238,6 +249,30 @@ export type SectionWorkspaceFlowItemModel =
       disabled?: boolean
       block: StructuredBlockModel
     }
+
+export interface ContentBlockRelationActionPayload {
+  nodeId: string
+  parentBlockId: number
+  relationId: number
+  contentBlockId: number
+  title: string
+}
+
+export interface ContentBlockRelationMovePayload extends ContentBlockRelationActionPayload {
+  direction: 'Up' | 'Down'
+}
+
+export interface AtomicSectionItemActionPayload {
+  nodeId: string
+  atomicSectionId: number
+  atomicSectionItemId: number
+  contentBlockId: number
+  title: string
+}
+
+export interface AtomicSectionItemMovePayload extends AtomicSectionItemActionPayload {
+  direction: 'Up' | 'Down'
+}
 
 export interface InsertPointModel {
   id: string

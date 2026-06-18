@@ -148,6 +148,14 @@ export interface CmsV2MoveSectionItemRequest {
   direction: 'Up' | 'Down'
 }
 
+export interface CmsV2MoveContentBlockRelationRequest {
+  direction: 'Up' | 'Down'
+}
+
+export interface CmsV2MoveAtomicSectionItemRequest {
+  direction: 'Up' | 'Down'
+}
+
 export interface CmsV2AddAtomicSectionItemRequest {
   contentBlockId: number
   referenceMode: 'FollowLatest' | 'LockedVersion'
@@ -273,6 +281,17 @@ export const cmsV2Api = {
     atomicSectionId: number,
     request: CmsV2AddAtomicSectionItemRequest,
   ) => cmsV2PostJson<CmsV2CreatedEntityResultDto>(`/atomic-sections/${atomicSectionId}/items`, request),
+  moveAtomicSectionItem: (
+    atomicSectionId: number,
+    atomicSectionItemId: number,
+    request: CmsV2MoveAtomicSectionItemRequest,
+  ) =>
+    cmsV2PostJson(
+      `/atomic-sections/${atomicSectionId}/items/${atomicSectionItemId}/move`,
+      request,
+    ),
+  removeAtomicSectionItem: (atomicSectionId: number, atomicSectionItemId: number) =>
+    cmsV2Delete(`/atomic-sections/${atomicSectionId}/items/${atomicSectionItemId}`),
   getContentBlock: (contentBlockId: number) =>
     cmsV2FetchJson<CmsV2ContentBlockDto>(`/content-blocks/${contentBlockId}`),
   createContentBlockWithBlankDocument: (request: CmsV2CreateContentBlockWithBlankDocumentRequest) =>
@@ -290,4 +309,15 @@ export const cmsV2Api = {
     cmsV2FetchJson<CmsV2ContentBlockRelationDto[]>(
       `/content-blocks/${contentBlockId}/relations/children`,
     ),
+  moveContentBlockRelation: (
+    parentBlockId: number,
+    relationId: number,
+    request: CmsV2MoveContentBlockRelationRequest,
+  ) =>
+    cmsV2PostJson(
+      `/content-blocks/${parentBlockId}/relations/children/${relationId}/move`,
+      request,
+    ),
+  removeContentBlockRelation: (parentBlockId: number, relationId: number) =>
+    cmsV2Delete(`/content-blocks/${parentBlockId}/relations/children/${relationId}`),
 }

@@ -9,7 +9,15 @@ import SectionItemView from '@/components/business/SectionItemView.vue'
 import EmptyState from '@/components/presentation/EmptyState.vue'
 import StructuredContainer from '@/components/presentation/StructuredContainer.vue'
 import { Button } from '@/components/ui/button'
-import type { StructuredBlockModel } from '@/types'
+import type {
+  AtomicSectionItemActionPayload,
+  AtomicSectionItemMovePayload,
+  ContentBlockRelationActionPayload,
+  ContentBlockRelationMovePayload,
+  SectionItemViewAction,
+  StructuredBlockChildModel,
+  StructuredBlockModel,
+} from '@/types'
 
 const props = defineProps<{
   block: StructuredBlockModel
@@ -24,6 +32,12 @@ const emit = defineEmits<{
   openWord: [id: string]
   refreshPreview: [id: string]
   openContentBlockMore: [id: string]
+  openAtomicSectionItemWord: [payload: AtomicSectionItemActionPayload]
+  moveAtomicSectionItem: [payload: AtomicSectionItemMovePayload]
+  removeAtomicSectionItem: [payload: AtomicSectionItemActionPayload]
+  openContentBlockRelationWord: [payload: ContentBlockRelationActionPayload]
+  moveContentBlockRelation: [payload: ContentBlockRelationMovePayload]
+  removeContentBlockRelation: [payload: ContentBlockRelationActionPayload]
 }>()
 
 const { t } = useI18n()
@@ -31,6 +45,52 @@ const difficultyMarkerClass = computed(() => getDifficultyMarkerClass(props.bloc
 const difficultyMarkerLabel = computed(
   () => `${t('components.contentBlockDisplay.difficulty')}: ${props.block.difficulty}`,
 )
+const childContentBlockActions: SectionItemViewAction[] = [
+  'OpenWord',
+  'MoveUp',
+  'MoveDown',
+  'Remove',
+]
+
+function createAtomicSectionItemActionPayload(
+  child: StructuredBlockChildModel,
+): AtomicSectionItemActionPayload | undefined {
+  if (!child.atomicSectionId || !child.atomicSectionItemId || !child.contentBlockId) {
+    return undefined
+  }
+
+  return {
+    nodeId: child.nodeId,
+    atomicSectionId: child.atomicSectionId,
+    atomicSectionItemId: child.atomicSectionItemId,
+    contentBlockId: child.contentBlockId,
+    title: child.block.title,
+  }
+}
+
+function emitAtomicSectionItemWord(child: StructuredBlockChildModel) {
+  const payload = createAtomicSectionItemActionPayload(child)
+
+  if (payload) {
+    emit('openAtomicSectionItemWord', payload)
+  }
+}
+
+function emitAtomicSectionItemMove(child: StructuredBlockChildModel, direction: 'Up' | 'Down') {
+  const payload = createAtomicSectionItemActionPayload(child)
+
+  if (payload) {
+    emit('moveAtomicSectionItem', { ...payload, direction })
+  }
+}
+
+function emitAtomicSectionItemRemove(child: StructuredBlockChildModel) {
+  const payload = createAtomicSectionItemActionPayload(child)
+
+  if (payload) {
+    emit('removeAtomicSectionItem', payload)
+  }
+}
 </script>
 
 <template>
@@ -74,9 +134,13 @@ const difficultyMarkerLabel = computed(
         :item-id="child.id"
         :selected="child.selected"
         :disabled="child.disabled"
+        :actions="childContentBlockActions"
         :data-workspace-node-id="nodeIdMap?.[child.nodeId] ?? child.nodeId"
         @select="emit('selectContentBlock', $event)"
-        @open-word="emit('openWord', $event)"
+        @open-word="emitAtomicSectionItemWord(child)"
+        @move-up="emitAtomicSectionItemMove(child, 'Up')"
+        @move-down="emitAtomicSectionItemMove(child, 'Down')"
+        @remove="emitAtomicSectionItemRemove(child)"
       >
         <ContentBlockDisplay
           v-if="child.kind === 'ContentBlock'"
@@ -94,6 +158,12 @@ const difficultyMarkerLabel = computed(
           @open-word="emit('openWord', $event)"
           @refresh-preview="emit('refreshPreview', $event)"
           @open-content-block-more="emit('openContentBlockMore', $event)"
+          @open-content-block-relation-word="emit('openContentBlockRelationWord', $event)"
+          @move-content-block-relation="emit('moveContentBlockRelation', $event)"
+          @remove-content-block-relation="emit('removeContentBlockRelation', $event)"
+          @open-atomic-section-item-word="emit('openAtomicSectionItemWord', $event)"
+          @move-atomic-section-item="emit('moveAtomicSectionItem', $event)"
+          @remove-atomic-section-item="emit('removeAtomicSectionItem', $event)"
         />
       </SectionItemView>
     </div>

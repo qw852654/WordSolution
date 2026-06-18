@@ -34,6 +34,14 @@ interface ResolvedContentBlock {
   versions: CmsV2ContentBlockVersionDto[]
 }
 
+interface StructuredBlockChildContext {
+  atomicSectionId?: number
+  atomicSectionItemId?: number
+  parentBlockId?: number
+  relationId?: number
+  contentBlockId?: number
+}
+
 const compositeContentBlockTypes = new Set(['ExampleGroup', 'ExerciseGroup', 'VariantGroup'])
 
 function isCompositeContentBlockType(blockType?: string | null) {
@@ -392,13 +400,14 @@ async function buildSectionFlowItem(
     targetId: item.targetId,
     sortOrder: item.sortOrder,
     disabled: item.status === 'Archived' || resolvedBlock.block.status === 'Archived',
-    block: {
-      id: nodeId,
-      title: item.titleOverride || resolvedBlock.block.title,
-      blockKind: 'CompositeBlock',
-      status: mapStatus(resolvedBlock.block.status),
-      difficulty: mapDifficulty(resolvedBlock.block.difficulty),
-      summary: resolvedBlock.block.summary || '',
+      block: {
+        id: nodeId,
+        title: item.titleOverride || resolvedBlock.block.title,
+        blockKind: 'CompositeBlock',
+        contentBlockId: item.targetId,
+        status: mapStatus(resolvedBlock.block.status),
+        difficulty: mapDifficulty(resolvedBlock.block.difficulty),
+        summary: resolvedBlock.block.summary || '',
       children,
       disabled: item.status === 'Archived' || resolvedBlock.block.status === 'Archived',
     },
@@ -423,6 +432,11 @@ async function buildStructuredBlockChildFromAtomicSectionItem(
     item.lockedContentBlockVersionId,
     item.titleOverride,
     context,
+    {
+      atomicSectionId: item.atomicSectionId,
+      atomicSectionItemId: item.id,
+      contentBlockId: item.contentBlockId,
+    },
   )
 }
 
@@ -444,6 +458,11 @@ async function buildStructuredBlockChildFromRelation(
     relation.lockedContentBlockVersionId,
     relation.titleOverride,
     context,
+    {
+      parentBlockId: relation.parentBlockId,
+      relationId: relation.id,
+      contentBlockId: relation.childBlockId,
+    },
   )
 }
 
@@ -458,6 +477,7 @@ async function buildStructuredBlockChild(
     workspaceNodeMap: Record<string, string>
     blockCache: Map<number, Promise<ResolvedContentBlock>>
   },
+  childContext: StructuredBlockChildContext = {},
 ): Promise<StructuredBlockChildModel> {
   const disabled = resolvedBlock.block.status === 'Archived'
 
@@ -466,6 +486,11 @@ async function buildStructuredBlockChild(
       kind: 'ContentBlock',
       id: nodeId,
       nodeId,
+      atomicSectionId: childContext.atomicSectionId,
+      atomicSectionItemId: childContext.atomicSectionItemId,
+      parentBlockId: childContext.parentBlockId,
+      relationId: childContext.relationId,
+      contentBlockId: childContext.contentBlockId ?? resolvedBlock.block.id,
       disabled,
       block: await buildContentBlockDisplay(
         nodeId,
@@ -486,11 +511,17 @@ async function buildStructuredBlockChild(
     kind: 'CompositeBlock',
     id: nodeId,
     nodeId,
+    atomicSectionId: childContext.atomicSectionId,
+    atomicSectionItemId: childContext.atomicSectionItemId,
+    parentBlockId: childContext.parentBlockId,
+    relationId: childContext.relationId,
+    contentBlockId: childContext.contentBlockId ?? resolvedBlock.block.id,
     disabled,
     block: {
       id: nodeId,
       title: titleOverride || resolvedBlock.block.title,
       blockKind: 'CompositeBlock',
+      contentBlockId: resolvedBlock.block.id,
       status: mapStatus(resolvedBlock.block.status),
       difficulty: mapDifficulty(resolvedBlock.block.difficulty),
       summary: resolvedBlock.block.summary || '',

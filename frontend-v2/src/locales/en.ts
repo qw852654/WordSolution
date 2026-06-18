@@ -425,6 +425,22 @@ const en = {
         operationFailed: 'AtomicSection operation failed. Please try again.',
         untitledContentBlock: 'Untitled ContentBlock',
       },
+      atomicSectionItemActions: {
+        removeConfirm:
+          'Remove this ContentBlock reference from the current AtomicSection? The source ContentBlock will not be deleted. ContentBlock: {title}',
+        operationFailed: 'AtomicSection child ContentBlock operation failed. Please try again.',
+      },
+      contentBlockActions: {
+        wordEditPending: 'ContentBlock Word editing API is not connected yet',
+        removeConfirm:
+          'Remove this ContentBlock reference from the current Section? The source ContentBlock will not be deleted. ContentBlock: {title}',
+        operationFailed: 'ContentBlock operation failed. Please try again.',
+      },
+      contentBlockRelationActions: {
+        removeConfirm:
+          'Remove this child ContentBlock reference from the current CompositeBlock? The source ContentBlock will not be deleted. ContentBlock: {title}',
+        operationFailed: 'CompositeBlock child ContentBlock operation failed. Please try again.',
+      },
       mock: {
         contentBlockPlaceholderTitle: 'ContentBlockDisplay placeholder',
         contentBlockPlaceholderDescription:

@@ -412,6 +412,22 @@ const zhCN = {
         operationFailed: 'AtomicSection 操作失败，请稍后重试。',
         untitledContentBlock: '未命名 ContentBlock',
       },
+      atomicSectionItemActions: {
+        removeConfirm:
+          '确认从当前 AtomicSection 中移除这个 ContentBlock 引用？不会删除源 ContentBlock。ContentBlock：{title}',
+        operationFailed: 'AtomicSection 内部 ContentBlock 操作失败，请稍后重试。',
+      },
+      contentBlockActions: {
+        wordEditPending: 'ContentBlock Word 编辑 API 尚未接入',
+        removeConfirm:
+          '确认从当前 Section 移除这个 ContentBlock 引用？不会删除源 ContentBlock。ContentBlock：{title}',
+        operationFailed: 'ContentBlock 操作失败，请稍后重试。',
+      },
+      contentBlockRelationActions: {
+        removeConfirm:
+          '确认从当前 CompositeBlock 中移除这个子级 ContentBlock 引用？不会删除源 ContentBlock。ContentBlock：{title}',
+        operationFailed: 'CompositeBlock 子级 ContentBlock 操作失败，请稍后重试。',
+      },
       mock: {
         contentBlockPlaceholderTitle: 'ContentBlockDisplay 占位',
         contentBlockPlaceholderDescription:
