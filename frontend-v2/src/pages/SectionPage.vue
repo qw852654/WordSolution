@@ -5,6 +5,7 @@ import { useRoute } from 'vue-router'
 import SectionInspector from '@/components/business/SectionInspector.vue'
 import SectionTreeContextMenu from '@/components/business/SectionTreeContextMenu.vue'
 import TeachingTopicTree from '@/components/business/TeachingTopicTree.vue'
+import TeachingTopicTreeContextMenu from '@/components/business/TeachingTopicTreeContextMenu.vue'
 import InsertCreateOverlay from '@/components/containers/InsertCreateOverlay.vue'
 import SectionStructurePanel from '@/components/containers/SectionStructurePanel.vue'
 import SectionTopToolbar from '@/components/containers/SectionTopToolbar.vue'
@@ -17,7 +18,7 @@ import { useContentBlockRelationActions } from '@/composables/useContentBlockRel
 import { useSectionItemActions } from '@/composables/useSectionItemActions'
 import { loadSectionPageData, type SectionPageDataModel } from '@/composables/useSectionPageData'
 import { resolveAtomicSectionChildContentBlockTitle } from '@/utils/sectionInsertDefaults'
-import { findTeachingTopicTreeNodePath } from '@/utils/teachingStructureTree'
+import { createTeachingTopicNodeId, findTeachingTopicTreeNodePath } from '@/utils/teachingStructureTree'
 import type {
   InsertCreateContentBlockType,
   InsertCreateDifficulty,
@@ -34,6 +35,9 @@ import type {
   SectionTreeContextMenuPayload,
   SectionTreeNodeModel,
   SectionWorkspaceFlowItemModel,
+  TeachingTopicTreeContextMenuActionPayload,
+  TeachingTopicTreeContextMenuModel,
+  TeachingTopicTreeContextMenuPayload,
   TeachingTopicTreeNodeModel,
 } from '@/types'
 
@@ -44,6 +48,7 @@ const selectedStructureNodeId = ref<string>()
 const activeInsertPointId = ref<string>()
 const activeCreatePanel = ref<InsertCreatePanelModel | null>(null)
 const sectionTreeContextMenu = ref<SectionTreeContextMenuModel | null>(null)
+const teachingTopicTreeContextMenu = ref<TeachingTopicTreeContextMenuModel | null>(null)
 const insertFeedback = ref('')
 const insertCreateError = ref('')
 const wrapSelectionMode = ref(false)
@@ -183,6 +188,7 @@ const selectedStructureNode = computed(() =>
 )
 
 const contextTargetNodeId = computed(() => sectionTreeContextMenu.value?.node.id)
+const teachingTopicContextTargetNodeId = computed(() => teachingTopicTreeContextMenu.value?.node.id)
 
 async function loadCurrentSectionPage() {
   const loadId = ++sectionPageLoadSequence
@@ -276,6 +282,7 @@ function openTeachingTopicDrawer() {
 function closeTeachingTopicDrawer() {
   stopTeachingTopicDrawerTimer()
   teachingTopicDrawerOpen.value = false
+  closeTeachingTopicTreeContextMenu()
 }
 
 function clearActiveInsertPoint() {
@@ -981,6 +988,116 @@ function handleSectionTreeContextMenuAction(payload: SectionTreeContextMenuActio
 
 function selectTeachingTopic(topicId: string) {
   selectedTeachingTopicId.value = topicId
+  closeTeachingTopicTreeContextMenu()
+}
+
+function openTeachingTopicTreeContextMenu(payload: TeachingTopicTreeContextMenuPayload) {
+  teachingTopicTreeContextMenu.value = {
+    node: payload.node,
+    position: {
+      x: payload.x,
+      y: payload.y,
+    },
+  }
+}
+
+function closeTeachingTopicTreeContextMenu() {
+  teachingTopicTreeContextMenu.value = null
+}
+
+function getTeachingTopicContextNode() {
+  const node = teachingTopicTreeContextMenu.value?.node
+
+  if (
+    !node ||
+    node.kind === 'SectionVariant' ||
+    !node.teachingTopicId ||
+    node.disabled ||
+    node.readOnly
+  ) {
+    return undefined
+  }
+
+  return node
+}
+
+function promptTeachingTopicName(messageKey: string, defaultValue: string) {
+  const value = window.prompt(t(messageKey), defaultValue)
+
+  return value?.trim()
+}
+
+async function handleTeachingTopicTreeContextMenuAction(
+  payload: TeachingTopicTreeContextMenuActionPayload,
+) {
+  const contextNode = getTeachingTopicContextNode()
+  closeTeachingTopicTreeContextMenu()
+
+  if (!contextNode?.teachingTopicId) {
+    return
+  }
+
+  try {
+    if (payload.actionType === 'AddChild') {
+      const name = promptTeachingTopicName(
+        'sectionPage.teachingTopicDrawer.promptAddChild',
+        t('sectionPage.teachingTopicDrawer.defaultChildName'),
+      )
+
+      if (!name) {
+        return
+      }
+
+      const createdTopic = await cmsV2Api.createTeachingTopicChild(contextNode.teachingTopicId, {
+        name,
+        status: 'Active',
+      })
+      await loadCurrentSectionPage()
+      selectedTeachingTopicId.value = createTeachingTopicNodeId(createdTopic.id)
+      return
+    }
+
+    if (payload.actionType === 'AddAfter') {
+      const name = promptTeachingTopicName(
+        'sectionPage.teachingTopicDrawer.promptAddAfter',
+        t('sectionPage.teachingTopicDrawer.defaultSiblingName'),
+      )
+
+      if (!name) {
+        return
+      }
+
+      const createdTopic = await cmsV2Api.createTeachingTopicNextSibling(contextNode.teachingTopicId, {
+        name,
+        status: 'Active',
+      })
+      await loadCurrentSectionPage()
+      selectedTeachingTopicId.value = createTeachingTopicNodeId(createdTopic.id)
+      return
+    }
+
+    if (payload.actionType === 'Delete') {
+      if (!contextNode.canDelete) {
+        window.alert(t('sectionPage.teachingTopicDrawer.deleteDisabledMessage'))
+        return
+      }
+
+      const confirmed = window.confirm(
+        t('sectionPage.teachingTopicDrawer.confirmDelete', { title: contextNode.title }),
+      )
+
+      if (!confirmed) {
+        return
+      }
+
+      await cmsV2Api.deleteTeachingTopic(contextNode.teachingTopicId)
+      await loadCurrentSectionPage()
+    }
+  } catch (error) {
+    window.alert(
+      error instanceof Error ? error.message : t('sectionPage.teachingTopicDrawer.actionFailed'),
+    )
+  }
 }
 
 function setSelectedTeachingTopicAsDisplayRoot() {
@@ -1114,6 +1231,13 @@ watch(sectionId, () => {
       @request-action="handleSectionTreeContextMenuAction"
     />
 
+    <TeachingTopicTreeContextMenu
+      :model="teachingTopicTreeContextMenu"
+      :open="teachingTopicTreeContextMenu !== null"
+      @close="closeTeachingTopicTreeContextMenu"
+      @request-action="handleTeachingTopicTreeContextMenuAction"
+    />
+
     <Teleport to="body">
       <div
         v-if="teachingTopicDrawerOpen"
@@ -1174,9 +1298,11 @@ watch(sectionId, () => {
           <TeachingTopicTree
             :nodes="visibleTeachingTopicTreeNodes"
             :selected-topic-id="selectedTeachingTopicId"
+            :context-target-topic-id="teachingTopicContextTargetNodeId"
             :default-expanded-depth="teachingTopicDisplayRootNode ? 2 : 1"
             full-width-content
             @select-topic="selectTeachingTopic"
+            @node-context-menu="openTeachingTopicTreeContextMenu"
           />
         </aside>
       </div>

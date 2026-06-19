@@ -384,6 +384,14 @@ const en = {
       backToParentRoot: 'Back to parent',
       backToAllRoots: 'Back to all roots',
       setDisplayRoot: 'Set display root',
+      promptAddChild: 'Enter the new child node name',
+      promptAddAfter: 'Enter the new following node name',
+      defaultChildName: 'New child node',
+      defaultSiblingName: 'New following node',
+      confirmDelete: 'Delete empty TeachingTopic: {title}?',
+      deleteDisabledMessage:
+        'Only an empty TeachingTopic with no children and no bound Section can be deleted.',
+      actionFailed: 'teachingStructureTree action failed. Please try again later.',
     },
     api: {
       loadingTitle: 'Loading Section',

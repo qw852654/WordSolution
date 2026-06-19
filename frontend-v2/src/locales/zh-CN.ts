@@ -371,6 +371,13 @@ const zhCN = {
       backToParentRoot: '返回上一级',
       backToAllRoots: '返回全库根',
       setDisplayRoot: '设为显示根',
+      promptAddChild: '请输入新增子节点名称',
+      promptAddAfter: '请输入新增后续节点名称',
+      defaultChildName: '新子节点',
+      defaultSiblingName: '新后续节点',
+      confirmDelete: '确认删除空 TeachingTopic：{title}？',
+      deleteDisabledMessage: '只有没有子节点且没有绑定 Section 的空 TeachingTopic 可以删除。',
+      actionFailed: 'teachingStructureTree 操作失败，请稍后重试。',
     },
     api: {
       loadingTitle: '正在加载 Section',
