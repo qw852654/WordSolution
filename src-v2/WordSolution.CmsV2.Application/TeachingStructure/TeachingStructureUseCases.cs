@@ -165,17 +165,28 @@ public sealed class TeachingStructureUseCases
         RenameTeachingTopicCommand command,
         CancellationToken cancellationToken = default)
     {
-        var topic = await _unitOfWork.TeachingTopics.GetByIdAsync(command.TopicId, cancellationToken);
-        if (topic is null)
+        return await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
         {
-            throw new CmsV2ApplicationException($"TeachingTopic {command.TopicId} was not found.");
-        }
+            var topic = await _unitOfWork.TeachingTopics.GetByIdAsync(command.TopicId, transactionCancellationToken);
+            if (topic is null)
+            {
+                throw new CmsV2ApplicationException($"TeachingTopic {command.TopicId} was not found.");
+            }
 
-        topic.Rename(command.Name, command.Description);
-        _unitOfWork.TeachingTopics.Update(topic);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+            topic.Rename(command.Name, command.Description);
+            _unitOfWork.TeachingTopics.Update(topic);
 
-        return topic;
+            var boundSections = await _unitOfWork.Sections.ListByTeachingTopicAsync(topic.Id, transactionCancellationToken);
+            foreach (var section in boundSections)
+            {
+                section.Rename(topic.Name);
+                _unitOfWork.Sections.Update(section);
+            }
+
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+
+            return topic;
+        }, cancellationToken);
     }
 
     public async Task DeleteTopicAsync(DeleteTeachingTopicCommand command, CancellationToken cancellationToken = default)

@@ -54,4 +54,12 @@ public sealed class Section
     public int SortOrder { get; private set; }
 
     public DateTimeOffset UpdatedTime { get; private set; }
+
+    public void Rename(string title, DateTimeOffset? updatedTime = null)
+    {
+        DomainGuard.NotWhiteSpace(title, nameof(Title));
+
+        Title = title.Trim();
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+    }
 }

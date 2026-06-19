@@ -82,6 +82,26 @@ public sealed class TeachingStructureUseCaseTests
     }
 
     [Fact]
+    public async Task Rename_topic_also_renames_bound_section_title()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var useCases = new TeachingStructureUseCases(unitOfWork);
+        var topic = new TeachingTopic("Old topic");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+        var section = await useCases.CreateSectionForTopicAsync(
+            new CreateSectionForTeachingTopicCommand(topic.Id, "Old section", "section note"));
+
+        await useCases.RenameTopicAsync(new RenameTeachingTopicCommand(topic.Id, " New topic ", "topic note"));
+        var reloadedSection = await unitOfWork.Sections.GetByIdAsync(section.Id);
+
+        Assert.NotNull(reloadedSection);
+        Assert.Equal("New topic", reloadedSection!.Title);
+        Assert.Equal("section note", reloadedSection.Description);
+    }
+
+    [Fact]
     public async Task Get_teaching_structure_returns_topic_tree_section_variants_and_ui_flags()
     {
         await using var context = await CreateMigratedContextAsync();

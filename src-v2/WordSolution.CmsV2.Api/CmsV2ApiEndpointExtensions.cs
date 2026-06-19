@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using WordSolution.CmsV2.Application.Common;
 using WordSolution.CmsV2.Application.AtomicSections;
 using WordSolution.CmsV2.Application.ContentBlocks;
 using WordSolution.CmsV2.Application.Handouts;
@@ -480,6 +481,12 @@ public static class CmsV2ApiEndpointExtensions
             if (await unitOfWork.TeachingTopics.GetByIdAsync(request.TeachingTopicId, cancellationToken) is null)
             {
                 return NotFoundProblem($"TeachingTopic {request.TeachingTopicId} was not found.");
+            }
+
+            var existingSections = await unitOfWork.Sections.ListByTeachingTopicAsync(request.TeachingTopicId, cancellationToken);
+            if (existingSections.Count > 0)
+            {
+                throw new CmsV2ApplicationException("TeachingTopic already has a bound Section.");
             }
 
             var section = new Section(

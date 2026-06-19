@@ -637,9 +637,17 @@ public sealed class CmsV2ApiIntegrationTests
             "/api/cms-v2/sections",
             new { teachingTopicId = 404, title = "孤立小节" });
 
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "Duplicate Section Topic" });
+        var topicId = topic.GetProperty("id").GetInt32();
+        await PostJsonAsync(client, "/api/cms-v2/sections", new { teachingTopicId = topicId, title = "First Section" });
+        var duplicateSection = await client.PostAsJsonAsync(
+            "/api/cms-v2/sections",
+            new { teachingTopicId = topicId, title = "Duplicate Section" });
+
         Assert.Equal(HttpStatusCode.BadRequest, invalidBlock.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, missingBlock.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, missingParent.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, duplicateSection.StatusCode);
     }
 
     private static async Task<ImportedContentBlock> CreateImportedContentBlockAsync(
