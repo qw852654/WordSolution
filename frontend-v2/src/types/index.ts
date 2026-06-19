@@ -87,13 +87,25 @@ export interface SectionTreeContextMenuActionPayload {
   actionType: SectionTreeContextActionType
 }
 
+export type TeachingTopicTreeNodeKind = 'TeachingTopic' | 'SectionVariant'
+
 export interface TeachingTopicTreeNodeModel {
   id: string
+  kind?: TeachingTopicTreeNodeKind
   title: string
+  teachingTopicId?: number
+  sectionId?: number
+  sectionVariantId?: number
+  sectionTitle?: string
+  variantCount?: number
   status?: string
   sectionCount?: number
   handoutCount?: number
   archived?: boolean
+  readOnly?: boolean
+  isEmptyTopic?: boolean
+  canSetDisplayRoot?: boolean
+  canDelete?: boolean
   disabled?: boolean
   expanded?: boolean
   children?: TeachingTopicTreeNodeModel[]

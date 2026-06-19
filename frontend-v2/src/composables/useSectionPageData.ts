@@ -7,8 +7,12 @@ import type {
   CmsV2ContentBlockVersionDto,
   CmsV2SectionDto,
   CmsV2SectionItemDto,
-  CmsV2TeachingTopicDto,
 } from '@/apis/cmsV2Client'
+import {
+  createTeachingTopicNodeId,
+  findTeachingStructureTopicTitle,
+  mapTeachingStructureNodesToTreeNodes,
+} from '@/utils/teachingStructureTree'
 import type {
   ContentBlockDisplayModel,
   SectionPageShellModel,
@@ -49,13 +53,12 @@ function isCompositeContentBlockType(blockType?: string | null) {
 }
 
 export async function loadSectionPageData(routeSectionId?: string): Promise<SectionPageDataModel> {
-  const [sections, topics] = await Promise.all([
+  const [sections, teachingStructure] = await Promise.all([
     cmsV2Api.listSections(),
-    cmsV2Api.listTeachingTopics(),
+    cmsV2Api.getTeachingStructure(),
   ])
 
   const section = await resolveSection(routeSectionId, sections)
-  const topicById = new Map(topics.map((topic) => [topic.id, topic]))
   const sectionItems = await cmsV2Api.listSectionItems(section.id)
   const sortedSectionItems = sortByOrder(sectionItems).filter((item) => !item.parentItemId)
 
@@ -100,13 +103,15 @@ export async function loadSectionPageData(routeSectionId?: string): Promise<Sect
     section: {
       sectionId: String(section.id),
       title: section.title,
-      teachingTopicTitle: topicById.get(section.teachingTopicId)?.name ?? 'TeachingTopic',
+      teachingTopicTitle:
+        findTeachingStructureTopicTitle(teachingStructure, section.teachingTopicId) ??
+        'TeachingTopic',
       status: mapStatus(section.status),
     },
     treeNodes,
     flowItems,
     workspaceNodeMap,
-    teachingTopicNodes: buildTeachingTopicTree(topics, sections),
+    teachingTopicNodes: mapTeachingStructureNodesToTreeNodes(teachingStructure),
     selectedTeachingTopicId: createTeachingTopicNodeId(section.teachingTopicId),
     defaultSelectedNodeId: sectionChildren[0]?.id ?? rootNodeId,
   }
@@ -590,40 +595,6 @@ function extractBodyHtml(html: string) {
   return (bodyMatch?.[1] ?? html).trim()
 }
 
-function buildTeachingTopicTree(
-  topics: CmsV2TeachingTopicDto[],
-  sections: CmsV2SectionDto[],
-): TeachingTopicTreeNodeModel[] {
-  const childrenByParent = new Map<number | null, CmsV2TeachingTopicDto[]>()
-  const sectionCountByTopic = new Map<number, number>()
-
-  for (const section of sections) {
-    sectionCountByTopic.set(section.teachingTopicId, (sectionCountByTopic.get(section.teachingTopicId) ?? 0) + 1)
-  }
-
-  for (const topic of topics) {
-    const parentId = topic.parentId ?? null
-    const siblings = childrenByParent.get(parentId) ?? []
-    siblings.push(topic)
-    childrenByParent.set(parentId, siblings)
-  }
-
-  function build(parentId: number | null): TeachingTopicTreeNodeModel[] {
-    return sortByOrder(childrenByParent.get(parentId) ?? []).map((topic) => ({
-      id: createTeachingTopicNodeId(topic.id),
-      title: topic.name,
-      status: mapStatus(topic.status),
-      sectionCount: sectionCountByTopic.get(topic.id) ?? 0,
-      archived: topic.status === 'Archived',
-      disabled: topic.status === 'Archived',
-      expanded: true,
-      children: build(topic.id),
-    }))
-  }
-
-  return build(null)
-}
-
 function countQuestionNodes(nodes: SectionTreeNodeModel[]) {
   return nodes.filter((node) => node.typeLabel.includes('题')).length
 }
@@ -646,10 +617,6 @@ function createAtomicSectionItemNodeId(itemId: number) {
 
 function createContentRelationNodeId(relationId: number) {
   return `content-block-relation-${relationId}`
-}
-
-function createTeachingTopicNodeId(topicId: number) {
-  return `topic-${topicId}`
 }
 
 function mapDifficulty(value?: string | null) {

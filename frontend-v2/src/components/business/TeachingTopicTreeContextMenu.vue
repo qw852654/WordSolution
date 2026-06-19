@@ -49,12 +49,14 @@ const actions = computed<
     disabled?: boolean
   }[]
 >(() => {
-  const disabled = Boolean(props.model?.node.disabled)
+  const node = props.model?.node
+  const disabled = Boolean(node?.disabled || node?.readOnly || node?.kind === 'SectionVariant')
+  const deleteDisabled = disabled || node?.canDelete === false
 
   return [
     { type: 'AddChild', icon: Plus, disabled },
     { type: 'AddAfter', icon: ListPlus, disabled },
-    { type: 'Delete', icon: Trash2, destructive: true, disabled },
+    { type: 'Delete', icon: Trash2, destructive: true, disabled: deleteDisabled },
   ]
 })
 

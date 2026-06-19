@@ -22,6 +22,28 @@ export interface CmsV2SectionDto {
   updatedTime: string
 }
 
+export interface CmsV2SectionVariantDto {
+  id: number
+  sectionId: number
+  title: string
+  description?: string | null
+  type: string
+  difficulty: string
+  status: string
+  sortOrder: number
+  updatedTime: string
+}
+
+export interface CmsV2TeachingStructureNodeDto {
+  teachingTopic: CmsV2TeachingTopicDto
+  section?: CmsV2SectionDto | null
+  sectionVariants: CmsV2SectionVariantDto[]
+  children: CmsV2TeachingStructureNodeDto[]
+  isEmptyTopic: boolean
+  canSetDisplayRoot: boolean
+  canDelete: boolean
+}
+
 export interface CmsV2SectionItemDto {
   id: number
   sectionId: number
@@ -180,6 +202,31 @@ export interface CmsV2AddSectionItemRequest {
   note?: string | null
 }
 
+export interface CmsV2CreateTeachingTopicChildRequest {
+  name: string
+  description?: string | null
+  status?: string
+}
+
+export interface CmsV2CreateTeachingTopicNextSiblingRequest {
+  name: string
+  description?: string | null
+  status?: string
+}
+
+export interface CmsV2RenameTeachingTopicRequest {
+  name: string
+  description?: string | null
+}
+
+export interface CmsV2CreateSectionForTeachingTopicRequest {
+  title?: string | null
+  description?: string | null
+  type?: string
+  difficulty?: string
+  status?: string
+}
+
 export interface CmsV2MoveSectionItemRequest {
   direction: 'Up' | 'Down'
 }
@@ -305,7 +352,25 @@ function withQuery(path: string, query: Record<string, string | number | undefin
 }
 
 export const cmsV2Api = {
+  getTeachingStructure: () =>
+    cmsV2FetchJson<CmsV2TeachingStructureNodeDto[]>('/teaching-structure'),
   listTeachingTopics: () => cmsV2FetchJson<CmsV2TeachingTopicDto[]>('/teaching-topics'),
+  createTeachingTopicChild: (
+    topicId: number,
+    request: CmsV2CreateTeachingTopicChildRequest,
+  ) => cmsV2PostJson<CmsV2TeachingTopicDto>(`/teaching-topics/${topicId}/children`, request),
+  createTeachingTopicNextSibling: (
+    topicId: number,
+    request: CmsV2CreateTeachingTopicNextSiblingRequest,
+  ) =>
+    cmsV2PostJson<CmsV2TeachingTopicDto>(`/teaching-topics/${topicId}/next-sibling`, request),
+  renameTeachingTopic: (topicId: number, request: CmsV2RenameTeachingTopicRequest) =>
+    cmsV2PostJson<CmsV2TeachingTopicDto>(`/teaching-topics/${topicId}/rename`, request),
+  deleteTeachingTopic: (topicId: number) => cmsV2Delete(`/teaching-topics/${topicId}`),
+  createSectionForTeachingTopic: (
+    topicId: number,
+    request: CmsV2CreateSectionForTeachingTopicRequest,
+  ) => cmsV2PostJson<CmsV2SectionDto>(`/teaching-topics/${topicId}/section`, request),
   listSections: (teachingTopicId?: number) =>
     cmsV2FetchJson<CmsV2SectionDto[]>(withQuery('/sections', { teachingTopicId })),
   getSection: (sectionId: number) => cmsV2FetchJson<CmsV2SectionDto>(`/sections/${sectionId}`),

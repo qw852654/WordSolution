@@ -7,7 +7,7 @@ import TeachingTopicTree from '@/components/business/TeachingTopicTree.vue'
 import TeachingTopicTreeContextMenu from '@/components/business/TeachingTopicTreeContextMenu.vue'
 import PageHeader from '@/components/presentation/PageHeader.vue'
 import { Button } from '@/components/ui/button'
-import { mockTeachingTopicTreeNodes } from '@/mocks'
+import { mockTeachingStructureNodes, mockTeachingTopicTreeNodes } from '@/mocks'
 import type {
   TeachingTopicTreeContextMenuActionPayload,
   TeachingTopicTreeContextMenuModel,
@@ -17,9 +17,10 @@ import type {
 
 const { t } = useI18n()
 
-const selectedTopicId = ref('topic-mechanical-energy')
+const selectedTopicId = ref('topic-2')
 const contextMenu = ref<TeachingTopicTreeContextMenuModel | null>(null)
 const feedback = ref('')
+const mockDtoRootCount = computed(() => mockTeachingStructureNodes.length)
 
 const selectedTopic = computed(() =>
   findTeachingTopicNode(mockTeachingTopicTreeNodes, selectedTopicId.value),
@@ -143,6 +144,24 @@ function handleMenuAction(payload: TeachingTopicTreeContextMenuActionPayload) {
                   <p>{{ selectedTopic.status ?? t('components.sectionInspector.notSet') }}</p>
                 </div>
                 <div>
+                  <p class="text-xs text-muted-foreground">DTO</p>
+                  <p>{{ selectedTopic.kind ?? t('components.sectionInspector.notSet') }}</p>
+                </div>
+                <div>
+                  <p class="text-xs text-muted-foreground">Section</p>
+                  <p>{{ selectedTopic.sectionTitle ?? t('components.sectionInspector.notSet') }}</p>
+                </div>
+                <div>
+                  <p class="text-xs text-muted-foreground">SectionVariant</p>
+                  <p>
+                    {{
+                      typeof selectedTopic.variantCount === 'number'
+                        ? selectedTopic.variantCount
+                        : t('components.sectionInspector.notSet')
+                    }}
+                  </p>
+                </div>
+                <div>
                   <p class="text-xs text-muted-foreground">
                     {{ t('components.teachingTopicTree.sectionCountLabel') }}
                   </p>
@@ -199,6 +218,7 @@ function handleMenuAction(payload: TeachingTopicTreeContextMenuActionPayload) {
               </p>
               <p class="mt-1 text-xs text-muted-foreground">
                 {{ t('lab.sections.teachingTopicTree.contextRule') }}
+                DTO root: {{ mockDtoRootCount }}
               </p>
             </div>
 

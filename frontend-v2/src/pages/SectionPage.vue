@@ -5,18 +5,19 @@ import { useRoute } from 'vue-router'
 import SectionInspector from '@/components/business/SectionInspector.vue'
 import SectionTreeContextMenu from '@/components/business/SectionTreeContextMenu.vue'
 import TeachingTopicTree from '@/components/business/TeachingTopicTree.vue'
-import TeachingTopicTreeContextMenu from '@/components/business/TeachingTopicTreeContextMenu.vue'
 import InsertCreateOverlay from '@/components/containers/InsertCreateOverlay.vue'
 import SectionStructurePanel from '@/components/containers/SectionStructurePanel.vue'
 import SectionTopToolbar from '@/components/containers/SectionTopToolbar.vue'
 import SectionWorkspace from '@/components/containers/SectionWorkspace.vue'
 import { cmsV2Api } from '@/apis/cmsV2Client'
+import { Button } from '@/components/ui/button'
 import { useAtomicSectionActions } from '@/composables/useAtomicSectionActions'
 import { useContentBlockActions } from '@/composables/useContentBlockActions'
 import { useContentBlockRelationActions } from '@/composables/useContentBlockRelationActions'
 import { useSectionItemActions } from '@/composables/useSectionItemActions'
 import { loadSectionPageData, type SectionPageDataModel } from '@/composables/useSectionPageData'
 import { resolveAtomicSectionChildContentBlockTitle } from '@/utils/sectionInsertDefaults'
+import { findTeachingTopicTreeNodePath } from '@/utils/teachingStructureTree'
 import type {
   InsertCreateContentBlockType,
   InsertCreateDifficulty,
@@ -33,9 +34,7 @@ import type {
   SectionTreeContextMenuPayload,
   SectionTreeNodeModel,
   SectionWorkspaceFlowItemModel,
-  TeachingTopicTreeContextMenuActionPayload,
-  TeachingTopicTreeContextMenuModel,
-  TeachingTopicTreeContextMenuPayload,
+  TeachingTopicTreeNodeModel,
 } from '@/types'
 
 const route = useRoute()
@@ -56,7 +55,7 @@ const workspaceScrollRequestKey = ref(0)
 const collapsedWorkspaceNodeIds = ref(new Set<string>())
 const teachingTopicDrawerOpen = ref(false)
 const selectedTeachingTopicId = ref<string>()
-const teachingTopicTreeContextMenu = ref<TeachingTopicTreeContextMenuModel | null>(null)
+const teachingTopicDisplayRootNodeId = ref<string | null>(null)
 const isLoadingSectionPage = ref(false)
 const sectionPageError = ref('')
 const isSubmittingInsertCreate = ref(false)
@@ -112,6 +111,33 @@ const sectionWorkspaceFlowItems = computed(() => sectionPageData.value?.flowItem
 const workspaceNodeMap = computed(() => sectionPageData.value?.workspaceNodeMap ?? {})
 const collapsedWorkspaceNodeIdList = computed(() => Array.from(collapsedWorkspaceNodeIds.value))
 const teachingTopicTreeNodes = computed(() => sectionPageData.value?.teachingTopicNodes ?? [])
+const teachingTopicDisplayRootPath = computed(() =>
+  teachingTopicDisplayRootNodeId.value
+    ? findTeachingTopicTreeNodePath(teachingTopicTreeNodes.value, teachingTopicDisplayRootNodeId.value)
+    : [],
+)
+const teachingTopicDisplayRootNode = computed(
+  () => teachingTopicDisplayRootPath.value.at(-1),
+)
+const visibleTeachingTopicTreeNodes = computed(() =>
+  teachingTopicDisplayRootNode.value ? [teachingTopicDisplayRootNode.value] : teachingTopicTreeNodes.value,
+)
+const selectedTeachingTopicNodePath = computed(() =>
+  selectedTeachingTopicId.value
+    ? findTeachingTopicTreeNodePath(teachingTopicTreeNodes.value, selectedTeachingTopicId.value)
+    : [],
+)
+const selectedTeachingTopicNode = computed(() => selectedTeachingTopicNodePath.value.at(-1))
+const canSetSelectedTeachingTopicAsDisplayRoot = computed(() => {
+  const node = selectedTeachingTopicNode.value
+
+  return Boolean(
+    node &&
+      node.kind !== 'SectionVariant' &&
+      node.canSetDisplayRoot &&
+      teachingTopicDisplayRootNodeId.value !== node.id,
+  )
+})
 const activeCreatePanelModel = computed(() =>
   activeCreatePanel.value
     ? {
@@ -157,7 +183,6 @@ const selectedStructureNode = computed(() =>
 )
 
 const contextTargetNodeId = computed(() => sectionTreeContextMenu.value?.node.id)
-const teachingTopicContextTargetId = computed(() => teachingTopicTreeContextMenu.value?.node.id)
 
 async function loadCurrentSectionPage() {
   const loadId = ++sectionPageLoadSequence
@@ -173,6 +198,13 @@ async function loadCurrentSectionPage() {
 
     sectionPageData.value = data
     selectedTeachingTopicId.value = data.selectedTeachingTopicId
+    if (
+      teachingTopicDisplayRootNodeId.value &&
+      !findTeachingTopicTreeNodePath(data.teachingTopicNodes, teachingTopicDisplayRootNodeId.value)
+        .length
+    ) {
+      teachingTopicDisplayRootNodeId.value = null
+    }
 
     if (
       !selectedStructureNodeId.value ||
@@ -244,7 +276,6 @@ function openTeachingTopicDrawer() {
 function closeTeachingTopicDrawer() {
   stopTeachingTopicDrawerTimer()
   teachingTopicDrawerOpen.value = false
-  closeTeachingTopicTreeContextMenu()
 }
 
 function clearActiveInsertPoint() {
@@ -950,27 +981,34 @@ function handleSectionTreeContextMenuAction(payload: SectionTreeContextMenuActio
 
 function selectTeachingTopic(topicId: string) {
   selectedTeachingTopicId.value = topicId
-  closeTeachingTopicTreeContextMenu()
 }
 
-function openTeachingTopicTreeContextMenu(payload: TeachingTopicTreeContextMenuPayload) {
-  teachingTopicTreeContextMenu.value = {
-    node: payload.node,
-    position: {
-      x: payload.x,
-      y: payload.y,
-    },
+function setSelectedTeachingTopicAsDisplayRoot() {
+  if (!canSetSelectedTeachingTopicAsDisplayRoot.value || !selectedTeachingTopicNode.value) {
+    return
   }
+
+  teachingTopicDisplayRootNodeId.value = selectedTeachingTopicNode.value.id
 }
 
-function closeTeachingTopicTreeContextMenu() {
-  teachingTopicTreeContextMenu.value = null
+function showParentTeachingTopicDisplayRoot() {
+  if (teachingTopicDisplayRootPath.value.length <= 1) {
+    teachingTopicDisplayRootNodeId.value = null
+    return
+  }
+
+  teachingTopicDisplayRootNodeId.value =
+    teachingTopicDisplayRootPath.value[teachingTopicDisplayRootPath.value.length - 2].id
 }
 
-function handleTeachingTopicTreeContextMenuAction(
-  _payload: TeachingTopicTreeContextMenuActionPayload,
-) {
-  closeTeachingTopicTreeContextMenu()
+function showAllTeachingTopicRoots() {
+  teachingTopicDisplayRootNodeId.value = null
+}
+
+function formatTeachingTopicDisplayRootPath(path: TeachingTopicTreeNodeModel[]) {
+  return path.length
+    ? path.map((node) => node.title).join(' / ')
+    : t('sectionPage.teachingTopicDrawer.allRoots')
 }
 
 function handleDocumentKeydown(event: KeyboardEvent) {
@@ -1094,24 +1132,54 @@ watch(sectionId, () => {
         <aside
           class="relative z-10 m-3 max-h-[calc(100vh-1.5rem)] w-max max-w-[calc(100vw-1.5rem)] overflow-auto rounded-lg border bg-card p-3 text-card-foreground"
         >
+          <div class="mb-3 flex min-w-80 items-start justify-between gap-3 border-b pb-3">
+            <div class="min-w-0">
+              <p class="text-xs text-muted-foreground">
+                {{ t('sectionPage.teachingTopicDrawer.displayRootLabel') }}
+              </p>
+              <p class="mt-1 max-w-[56rem] truncate text-sm font-medium">
+                {{ formatTeachingTopicDisplayRootPath(teachingTopicDisplayRootPath) }}
+              </p>
+            </div>
+            <div class="flex shrink-0 flex-wrap justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                :disabled="teachingTopicDisplayRootPath.length === 0"
+                @click="showParentTeachingTopicDisplayRoot"
+              >
+                {{ t('sectionPage.teachingTopicDrawer.backToParentRoot') }}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                :disabled="teachingTopicDisplayRootPath.length === 0"
+                @click="showAllTeachingTopicRoots"
+              >
+                {{ t('sectionPage.teachingTopicDrawer.backToAllRoots') }}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                :disabled="!canSetSelectedTeachingTopicAsDisplayRoot"
+                @click="setSelectedTeachingTopicAsDisplayRoot"
+              >
+                {{ t('sectionPage.teachingTopicDrawer.setDisplayRoot') }}
+              </Button>
+            </div>
+          </div>
+
           <TeachingTopicTree
-            :nodes="teachingTopicTreeNodes"
+            :nodes="visibleTeachingTopicTreeNodes"
             :selected-topic-id="selectedTeachingTopicId"
-            :context-target-topic-id="teachingTopicContextTargetId"
             full-width-content
             @select-topic="selectTeachingTopic"
-            @node-context-menu="openTeachingTopicTreeContextMenu"
           />
         </aside>
       </div>
     </Teleport>
-
-    <TeachingTopicTreeContextMenu
-      :model="teachingTopicTreeContextMenu"
-      :open="teachingTopicTreeContextMenu !== null"
-      @close="closeTeachingTopicTreeContextMenu"
-      @request-action="handleTeachingTopicTreeContextMenuAction"
-    />
 
     <Teleport to="body">
       <div
