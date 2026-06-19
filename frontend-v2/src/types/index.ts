@@ -117,7 +117,12 @@ export interface TeachingTopicTreeContextMenuPayload {
   y: number
 }
 
-export type TeachingTopicTreeContextActionType = 'AddChild' | 'AddAfter' | 'Delete'
+export type TeachingTopicTreeContextActionType =
+  | 'AddChild'
+  | 'AddAfter'
+  | 'CreateSection'
+  | 'Rename'
+  | 'Delete'
 
 export interface TeachingTopicTreeContextMenuModel {
   node: TeachingTopicTreeNodeModel

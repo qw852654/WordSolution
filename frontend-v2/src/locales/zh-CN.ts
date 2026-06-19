@@ -269,6 +269,8 @@ const zhCN = {
       actions: {
         AddChild: '新增子节点',
         AddAfter: '新增后续节点',
+        CreateSection: '创建 Section',
+        Rename: '重命名',
         Delete: '删除',
       },
     },
@@ -373,6 +375,7 @@ const zhCN = {
       setDisplayRoot: '设为显示根',
       promptAddChild: '请输入新增子节点名称',
       promptAddAfter: '请输入新增后续节点名称',
+      promptRename: '请输入新的 TeachingTopic 名称',
       defaultChildName: '新子节点',
       defaultSiblingName: '新后续节点',
       confirmDelete: '确认删除空 TeachingTopic：{title}？',

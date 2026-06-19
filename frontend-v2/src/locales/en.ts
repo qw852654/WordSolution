@@ -280,6 +280,8 @@ const en = {
       actions: {
         AddChild: 'Add child node',
         AddAfter: 'Add following node',
+        CreateSection: 'Create Section',
+        Rename: 'Rename',
         Delete: 'Delete',
       },
     },
@@ -386,6 +388,7 @@ const en = {
       setDisplayRoot: 'Set display root',
       promptAddChild: 'Enter the new child node name',
       promptAddAfter: 'Enter the new following node name',
+      promptRename: 'Enter the new TeachingTopic name',
       defaultChildName: 'New child node',
       defaultSiblingName: 'New following node',
       confirmDelete: 'Delete empty TeachingTopic: {title}?',

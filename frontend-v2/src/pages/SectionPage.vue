@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import SectionInspector from '@/components/business/SectionInspector.vue'
 import SectionTreeContextMenu from '@/components/business/SectionTreeContextMenu.vue'
 import TeachingTopicTree from '@/components/business/TeachingTopicTree.vue'
@@ -42,6 +42,7 @@ import type {
 } from '@/types'
 
 const route = useRoute()
+const router = useRouter()
 const { t } = useI18n()
 const sectionPageData = ref<SectionPageDataModel | null>(null)
 const selectedStructureNodeId = ref<string>()
@@ -1076,6 +1077,38 @@ async function handleTeachingTopicTreeContextMenuAction(
       return
     }
 
+    if (payload.actionType === 'CreateSection') {
+      if (contextNode.sectionId) {
+        return
+      }
+
+      await cmsV2Api.createSectionForTeachingTopic(contextNode.teachingTopicId, {
+        title: contextNode.title,
+        status: 'Draft',
+      })
+      await loadCurrentSectionPage()
+      selectedTeachingTopicId.value = contextNode.id
+      return
+    }
+
+    if (payload.actionType === 'Rename') {
+      const name = promptTeachingTopicName(
+        'sectionPage.teachingTopicDrawer.promptRename',
+        contextNode.title,
+      )
+
+      if (!name) {
+        return
+      }
+
+      await cmsV2Api.renameTeachingTopic(contextNode.teachingTopicId, {
+        name,
+      })
+      await loadCurrentSectionPage()
+      selectedTeachingTopicId.value = contextNode.id
+      return
+    }
+
     if (payload.actionType === 'Delete') {
       if (!contextNode.canDelete) {
         window.alert(t('sectionPage.teachingTopicDrawer.deleteDisabledMessage'))
@@ -1098,6 +1131,11 @@ async function handleTeachingTopicTreeContextMenuAction(
       error instanceof Error ? error.message : t('sectionPage.teachingTopicDrawer.actionFailed'),
     )
   }
+}
+
+function openTeachingTopicSection(sectionId: number) {
+  closeTeachingTopicDrawer()
+  void router.push(`/sections/${sectionId}`)
 }
 
 function setSelectedTeachingTopicAsDisplayRoot() {
@@ -1302,6 +1340,7 @@ watch(sectionId, () => {
             :default-expanded-depth="teachingTopicDisplayRootNode ? 2 : 1"
             full-width-content
             @select-topic="selectTeachingTopic"
+            @open-section="openTeachingTopicSection"
             @node-context-menu="openTeachingTopicTreeContextMenu"
           />
         </aside>

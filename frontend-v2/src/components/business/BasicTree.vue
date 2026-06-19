@@ -13,6 +13,7 @@ const props = defineProps<{
 
 defineEmits<{
   select: [id: string]
+  nodeDoubleClick: [node: BasicTreeNode]
   nodeContextMenu: [payload: BasicTreeContextMenuPayload]
 }>()
 
@@ -126,6 +127,7 @@ function toggleNode(nodeId: string) {
         ]"
         :disabled="node.disabled"
         @click="$emit('select', node.id)"
+        @dblclick="$emit('nodeDoubleClick', node)"
       >
         <slot
           :node="node"

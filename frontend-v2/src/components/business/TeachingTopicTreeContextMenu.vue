@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { ListPlus, Plus, Trash2 } from 'lucide-vue-next'
+import { FilePlus2, ListPlus, Pencil, Plus, Trash2 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import type {
@@ -51,11 +51,14 @@ const actions = computed<
 >(() => {
   const node = props.model?.node
   const disabled = Boolean(node?.disabled || node?.readOnly || node?.kind === 'SectionVariant')
+  const createSectionDisabled = disabled || Boolean(node?.sectionId)
   const deleteDisabled = disabled || node?.canDelete === false
 
   return [
     { type: 'AddChild', icon: Plus, disabled },
     { type: 'AddAfter', icon: ListPlus, disabled },
+    { type: 'CreateSection', icon: FilePlus2, disabled: createSectionDisabled },
+    { type: 'Rename', icon: Pencil, disabled },
     { type: 'Delete', icon: Trash2, destructive: true, disabled: deleteDisabled },
   ]
 })

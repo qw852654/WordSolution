@@ -21,6 +21,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   selectTopic: [id: string]
+  openSection: [sectionId: number]
   nodeContextMenu: [payload: TeachingTopicTreeContextMenuPayload]
 }>()
 
@@ -67,6 +68,16 @@ function handleNodeContextMenu(payload: BasicTreeContextMenuPayload) {
     y: payload.y,
   })
 }
+
+function handleNodeDoubleClick(node: BasicTreeNode) {
+  const topicNode = getTeachingTopicNode(node)
+
+  if (topicNode.kind !== 'TeachingTopic' || !topicNode.sectionId) {
+    return
+  }
+
+  emit('openSection', topicNode.sectionId)
+}
 </script>
 
 <template>
@@ -104,6 +115,7 @@ function handleNodeContextMenu(payload: BasicTreeContextMenuPayload) {
       :expand-label="t('components.basicTree.expand')"
       :collapse-label="t('components.basicTree.collapse')"
       @select="emit('selectTopic', $event)"
+      @node-double-click="handleNodeDoubleClick"
       @node-context-menu="handleNodeContextMenu"
     >
       <template #default="{ node }">
