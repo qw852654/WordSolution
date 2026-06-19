@@ -425,9 +425,9 @@ const en = {
       teachingNoteColumnLabel: 'TeachingNoteColumn reserved area',
       teachingNoteColumnDescription:
         'Teaching Note Mode will show contextual notes beside content later. This is not the right-side Inspector.',
-      emptyTitle: 'SectionItemView document flow pending',
+      emptyTitle: 'Insert the first block',
       emptyDescription:
-        'This round does not render fake body content, ContentBlockDisplay, AtomicSectionBlock, or InsertPoint.',
+        'This Section has no content yet. Create a ContentBlock, create an AtomicSection, or insert an existing block.',
       wrap: {
         enterAction: 'Upgrade to as',
         confirmAction: 'Confirm upgrade to as',
@@ -448,6 +448,7 @@ const en = {
       },
       insertPanel: {
         insertPositionLabel: 'Current selected insert position',
+        firstInsertPositionLabel: 'First block',
         feedbackCreateContentBlock: 'Selected this position for creating ContentBlock.',
         feedbackCreateAtomicSection: 'Selected this position for creating AtomicSection.',
         feedbackSubmitting: 'Submitting to the CMS V2 API...',

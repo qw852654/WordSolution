@@ -411,9 +411,9 @@ const zhCN = {
       teachingNoteColumnLabel: 'TeachingNoteColumn 预留区',
       teachingNoteColumnDescription:
         '后续 Teaching Note Mode 会在这里显示与内容块并排的教学备注；它不是右侧 Inspector。',
-      emptyTitle: 'SectionItemView 文档流待接入',
+      emptyTitle: '插入第一个块',
       emptyDescription:
-        '本轮不展示假正文、不实现 ContentBlockDisplay、AtomicSectionBlock 或 InsertPoint。',
+        '当前 Section 还没有内容，可以先新建 ContentBlock、新建 AtomicSection，或插入已有块。',
       wrap: {
         enterAction: '升级为 as',
         confirmAction: '确认升级为 as',
@@ -432,6 +432,7 @@ const zhCN = {
       },
       insertPanel: {
         insertPositionLabel: '当前选中的插入位置',
+        firstInsertPositionLabel: '第一个块',
         feedbackCreateContentBlock: '已选择在此处新建 ContentBlock',
         feedbackCreateAtomicSection: '已选择在此处新建 AtomicSection',
         feedbackSubmitting: '正在提交到 CMS V2 API...',

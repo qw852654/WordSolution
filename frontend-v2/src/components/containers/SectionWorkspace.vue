@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { PanelsTopLeft } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import AtomicSectionBlock from '@/components/business/AtomicSectionBlock.vue'
 import CompositeBlock from '@/components/business/CompositeBlock.vue'
 import ContentBlockDisplay from '@/components/business/ContentBlockDisplay.vue'
 import SectionItemView from '@/components/business/SectionItemView.vue'
-import EmptyState from '@/components/presentation/EmptyState.vue'
 import InsertPoint from '@/components/presentation/InsertPoint.vue'
 import StatusPill from '@/components/presentation/StatusPill.vue'
 import WeakScrollArea from '@/components/presentation/WeakScrollArea.vue'
@@ -107,6 +105,10 @@ const compositeBlockActions: SectionItemViewAction[] = [
 const collapsedWorkspaceNodeIdSet = computed(() => new Set(props.collapsedWorkspaceNodeIds))
 const wrapSelectedNodeIdSet = computed(() => new Set(props.wrapSelectedNodeIds))
 const wrapSelectedCount = computed(() => props.wrapSelectedNodeIds.length)
+const firstInsertPoint = computed<InsertPointModel>(() => ({
+  id: 'insert-first-section-item',
+  label: t('sectionPage.workspace.emptyTitle'),
+}))
 
 interface AtomicSectionWorkspaceActionPayload {
   nodeId: string
@@ -556,15 +558,27 @@ watch(
           </template>
         </div>
 
-        <EmptyState
-          v-else
-          :title="t('sectionPage.workspace.emptyTitle')"
-          :description="t('sectionPage.workspace.emptyDescription')"
-        >
-          <template #icon>
-            <PanelsTopLeft class="size-5" aria-hidden="true" />
-          </template>
-        </EmptyState>
+        <div v-else class="flex min-h-full items-center justify-center p-4">
+          <div class="w-full max-w-2xl rounded-md border border-dashed bg-muted/10 p-4">
+            <p class="text-sm font-medium">{{ t('sectionPage.workspace.emptyTitle') }}</p>
+            <p class="mt-1 text-sm leading-6 text-muted-foreground">
+              {{ t('sectionPage.workspace.emptyDescription') }}
+            </p>
+            <div class="mt-3">
+              <InsertPoint
+                :point="firstInsertPoint"
+                selected
+                @request-action="emitInsertRequest($event.insertPointId, $event.actionType)"
+              />
+              <p
+                v-if="isInsertPointActive(firstInsertPoint.id) && insertFeedback"
+                class="mt-2 rounded-md border bg-muted/20 px-2 py-1 text-xs text-muted-foreground"
+              >
+                {{ insertFeedback }}
+              </p>
+            </div>
+          </div>
+        </div>
       </WeakScrollArea>
 
       <WeakScrollArea

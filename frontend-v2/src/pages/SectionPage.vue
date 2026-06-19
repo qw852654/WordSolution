@@ -382,6 +382,12 @@ function toggleWorkspaceNodeCollapse(nodeId: string) {
   collapsedWorkspaceNodeIds.value = next
 }
 
+function getInsertPositionLabel(insertPointId: string) {
+  return insertPointId === 'insert-first-section-item'
+    ? t('sectionPage.workspace.insertPanel.firstInsertPositionLabel')
+    : t('sectionPage.workspace.insertPanel.insertPositionLabel')
+}
+
 function requestInsert(request: InsertRequestModel) {
   cancelWrapSelectionMode()
   activeInsertPointId.value = request.insertPointId
@@ -399,7 +405,7 @@ function requestInsert(request: InsertRequestModel) {
     activeCreatePanel.value = {
       insertPointId: request.insertPointId,
       targetType: request.actionType === 'CreateContentBlock' ? 'ContentBlock' : 'AtomicSection',
-      insertPositionLabel: t('sectionPage.workspace.insertPanel.insertPositionLabel'),
+      insertPositionLabel: getInsertPositionLabel(request.insertPointId),
       sectionId: currentSectionId,
       sectionTitle: sectionShell.value.title,
       insertMode: 'SectionItem',
