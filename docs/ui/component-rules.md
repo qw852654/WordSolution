@@ -1056,3 +1056,75 @@ ComponentLab 规则：
 
 - 如果后续抽出独立 `WrapAsAtomicSectionToolbar`、`WrapAsAtomicSectionPanel` 或升级模式高亮组件，必须先放入 `ComponentLab` 使用 Mock Data 验收。
 - 当前若只在 `SectionPage` / `SectionWorkspace` 内调整页面级联动，不强制新增 ComponentLab 展示。
+## 当前补充约定：SectionWorkspace 内部插入点与 CompositeBlock 渲染
+
+本节记录 2026-06-19 已确认的组件职责边界。
+
+### InsertPoint 在嵌套结构中的使用规则
+
+`InsertPoint` 不只服务顶层 SectionItem。
+
+允许出现的位置：
+
+- SectionWorkspace 顶层 flow item 之间。
+- AtomicSectionBlock 内部 child item 之间。
+- CompositeBlock 内部 child relation 之间。
+- 空 Section、空 AtomicSectionBlock、空 CompositeBlock 的首个插入入口。
+
+组件职责保持不变：
+
+- `InsertPoint` 只展示当前插入位置允许的操作按钮。
+- `InsertPoint` 只通过 emit 抛出用户意图。
+- `InsertPoint` 不直接创建数据。
+- `InsertPoint` 不调用 API。
+- `InsertPoint` 不持有 SectionPage 页面状态。
+
+父级容器必须传入明确上下文，至少区分：
+
+```text
+Section
+AtomicSection
+CompositeBlock
+```
+
+因为三类插入的真实写入目标不同：
+
+```text
+Section -> SectionItem
+AtomicSection -> AtomicSectionItem
+CompositeBlock -> ContentBlockRelation
+```
+
+### CompositeBlock 的自身正文与子块列表
+
+`CompositeBlock` 是组类型 ContentBlock 的工作区展示组件。
+
+它必须同时承载两部分内容：
+
+```text
+1. CompositeBlock 自己的 docx/html 预览
+2. CompositeBlock 通过 ContentBlockRelation 展开的子块列表
+```
+
+实现规则：
+
+- CompositeBlock 不能只渲染 children。
+- CompositeBlock 自己的正文预览必须复用 `ContentBlockDisplay` 或同等正文展示能力。
+- CompositeBlock 的 children 继续使用 `SectionItemView` 包裹后展示。
+- CompositeBlock 内部的 children 之间也必须有 `InsertPoint`。
+- CompositeBlock 自身正文和 children 之间应保持文档流连续，不使用重卡片、阴影或装饰背景。
+
+建议 view model：
+
+```text
+StructuredBlockModel
+  selfContent?: ContentBlockDisplayModel
+  children: StructuredBlockChildModel[]
+```
+
+其中：
+
+- `selfContent` 表示 CompositeBlock 自身 docx/html 正文。
+- `children` 表示 CompositeBlock 的组合关系展开内容。
+
+`AtomicSectionBlock` 不等同于 ContentBlock，因此不需要 `selfContent`；它只展示自身结构信息和内部 AtomicSectionItem。

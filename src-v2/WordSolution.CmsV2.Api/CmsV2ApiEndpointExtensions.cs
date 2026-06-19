@@ -189,6 +189,25 @@ public static class CmsV2ApiEndpointExtensions
         group.MapGet("/content-blocks/{id:int}", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
             await OkOrNotFoundAsync(unitOfWork.ContentBlocks.GetByIdAsync(id, cancellationToken)));
 
+        group.MapPost("/content-blocks", async (
+            CreateContentBlockRequest request,
+            ContentBlockUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.CreateContentBlockAsync(
+                new CreateContentBlockCommand(
+                    request.SectionId,
+                    request.Title,
+                    request.BlockType,
+                    request.Difficulty,
+                    request.Summary,
+                    request.QuestionType,
+                    request.Status),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
         group.MapPost("/content-blocks/blank-document", async (
             CreateContentBlockWithBlankDocumentRequest request,
             ContentBlockDocumentUseCases useCases,
@@ -594,23 +613,18 @@ public static class CmsV2ApiEndpointExtensions
 
         group.MapPost("/atomic-sections", async (
             CreateAtomicSectionRequest request,
-            ICmsV2UnitOfWork unitOfWork,
+            AtomicSectionUseCases useCases,
             CancellationToken cancellationToken) =>
         {
-            if (await unitOfWork.Sections.GetByIdAsync(request.SectionId, cancellationToken) is null)
-            {
-                return NotFoundProblem($"Section {request.SectionId} was not found.");
-            }
-
-            var atomicSection = new AtomicSection(
-                request.SectionId,
-                request.Title,
-                request.Description,
-                request.Type,
-                request.Difficulty,
-                request.Status);
-            await unitOfWork.AtomicSections.AddAsync(atomicSection, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
+            var atomicSection = await useCases.CreateAtomicSectionAsync(
+                new CreateAtomicSectionCommand(
+                    request.SectionId,
+                    request.Title,
+                    request.Description,
+                    request.Type,
+                    request.Difficulty,
+                    request.Status),
+                cancellationToken);
 
             return Results.Ok(atomicSection);
         });

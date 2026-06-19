@@ -36,7 +36,7 @@ public sealed class ContentBlockEditSessionUseCases
     {
         ValidateBankRootDirectory(command.BankRootDirectory);
         var contentBlock = await RequireContentBlockAsync(command.ContentBlockId, cancellationToken);
-        var currentVersion = await RequireCurrentVersionAsync(contentBlock, cancellationToken);
+        var currentVersion = await EnsureCurrentVersionAsync(command.BankRootDirectory, contentBlock, cancellationToken);
         var sourceDocx = await _contentBlockFileStore.ReadContentBlockDocxAsync(
             currentVersion.DocxPath,
             cancellationToken);
@@ -237,13 +237,22 @@ public sealed class ContentBlockEditSessionUseCases
             ?? throw new CmsV2ApplicationException($"ContentBlock {contentBlockId} was not found.");
     }
 
-    private async Task<ContentBlockVersion> RequireCurrentVersionAsync(
+    private async Task<ContentBlockVersion> EnsureCurrentVersionAsync(
+        string bankRootDirectory,
         ContentBlock contentBlock,
         CancellationToken cancellationToken)
     {
         if (!contentBlock.CurrentVersionId.HasValue)
         {
-            throw new CmsV2ApplicationException($"ContentBlock {contentBlock.Id} does not have a current version.");
+            var result = await _documentUseCases.CreateBlankContentBlockVersionAsync(
+                new CreateBlankContentBlockVersionCommand(
+                    bankRootDirectory,
+                    contentBlock.Id,
+                    SetAsCurrent: true),
+                cancellationToken);
+
+            return await _unitOfWork.ContentBlockVersions.GetByIdAsync(result.ContentBlockVersionId, cancellationToken)
+                ?? throw new CmsV2ApplicationException($"ContentBlockVersion {result.ContentBlockVersionId} was not found.");
         }
 
         return await _unitOfWork.ContentBlockVersions.GetByIdAsync(contentBlock.CurrentVersionId.Value, cancellationToken)

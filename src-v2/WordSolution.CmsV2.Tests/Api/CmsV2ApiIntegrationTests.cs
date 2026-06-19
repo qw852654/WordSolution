@@ -410,7 +410,7 @@ public sealed class CmsV2ApiIntegrationTests
         var secondSectionItemId = secondSectionItem.GetProperty("id").GetInt32();
         var createdBlock = await PostJsonAsync(
             client,
-            "/api/cms-v2/content-blocks/blank-document",
+            "/api/cms-v2/content-blocks",
             new
             {
                 sectionId,
@@ -419,7 +419,7 @@ public sealed class CmsV2ApiIntegrationTests
                 difficulty = "Basic",
                 status = "Draft"
             });
-        var contentBlockId = createdBlock.GetProperty("contentBlockId").GetInt32();
+        var contentBlockId = createdBlock.GetProperty("id").GetInt32();
 
         await PostJsonAsync(
             client,
@@ -428,7 +428,7 @@ public sealed class CmsV2ApiIntegrationTests
         await PostJsonAsync(
             client,
             $"/api/cms-v2/atomic-sections/{firstAtomicId}/items",
-            new { contentBlockId, referenceMode = "FollowLatest", sortOrder = 10 });
+            new { contentBlockId, referenceMode = "FollowLatest", sortOrder = 40 });
         await PostJsonAsync(
             client,
             $"/api/cms-v2/sections/{sectionId}/items/{firstSectionItemId}/move",
@@ -444,8 +444,10 @@ public sealed class CmsV2ApiIntegrationTests
             ?? [];
 
         Assert.Equal("Renamed Atomic", renamedAtomic.GetProperty("title").GetString());
-        Assert.Single(atomicChildren);
-        Assert.Equal(contentBlockId, atomicChildren[0].GetProperty("contentBlockId").GetInt32());
+        Assert.Equal(4, atomicChildren.Length);
+        Assert.Contains(
+            atomicChildren,
+            item => item.GetProperty("contentBlockId").GetInt32() == contentBlockId);
         Assert.Single(sectionItems);
         Assert.Equal(secondSectionItemId, sectionItems[0].GetProperty("id").GetInt32());
     }

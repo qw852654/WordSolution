@@ -74,6 +74,61 @@ public sealed class ContentBlockDocumentUseCases
         }
     }
 
+    public async Task<ContentBlockDocumentVersionResult> CreateBlankContentBlockVersionAsync(
+        CreateBlankContentBlockVersionCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateBankRootDirectory(command.BankRootDirectory);
+
+        var generatedFilePaths = new List<string>();
+
+        try
+        {
+            return await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+            {
+                var contentBlock = await RequireContentBlockAsync(command.ContentBlockId, transactionCancellationToken);
+                var existingVersions = await _unitOfWork.ContentBlockVersions.ListByContentBlockAsync(
+                    command.ContentBlockId,
+                    transactionCancellationToken);
+                var nextVersionNumber = existingVersions.Count == 0
+                    ? 1
+                    : existingVersions.Max(version => version.VersionNumber) + 1;
+
+                var result = await CreateVersionFilesAndMetadataAsync(
+                    command.BankRootDirectory,
+                    contentBlock,
+                    nextVersionNumber,
+                    docxStream: null,
+                    command.SetAsCurrent,
+                    generatedFilePaths,
+                    transactionCancellationToken);
+
+                if (command.SetAsCurrent)
+                {
+                    foreach (var existingVersion in existingVersions)
+                    {
+                        existingVersion.MarkNotCurrent();
+                        _unitOfWork.ContentBlockVersions.Update(existingVersion);
+                    }
+
+                    await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+                }
+
+                return result;
+            }, cancellationToken);
+        }
+        catch (CmsV2ApplicationException)
+        {
+            await CleanupGeneratedFilesAsync(generatedFilePaths);
+            throw;
+        }
+        catch (Exception exception)
+        {
+            await CleanupGeneratedFilesAsync(generatedFilePaths);
+            throw new CmsV2ApplicationException("ContentBlock document processing failed.", exception);
+        }
+    }
+
     public async Task<ContentBlockDocumentVersionResult> ImportContentBlockDocxVersionAsync(
         ImportContentBlockDocxVersionCommand command,
         CancellationToken cancellationToken = default)

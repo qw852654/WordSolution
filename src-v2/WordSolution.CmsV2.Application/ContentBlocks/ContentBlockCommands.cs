@@ -2,6 +2,15 @@ using WordSolution.CmsV2.Domain.Enums;
 
 namespace WordSolution.CmsV2.Application.ContentBlocks;
 
+public sealed record CreateContentBlockCommand(
+    int SectionId,
+    string Title,
+    ContentBlockType BlockType,
+    Difficulty Difficulty = Difficulty.Unset,
+    string? Summary = null,
+    QuestionType? QuestionType = null,
+    ContentBlockStatus Status = ContentBlockStatus.Draft);
+
 public sealed record CreateContentBlockWithInitialVersionCommand(
     int SectionId,
     string Title,

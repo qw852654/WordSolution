@@ -1,16 +1,74 @@
 using WordSolution.CmsV2.Application.Common;
 using WordSolution.CmsV2.Domain.Entities;
+using WordSolution.CmsV2.Domain.Enums;
 using WordSolution.CmsV2.Domain.Repositories;
 
 namespace WordSolution.CmsV2.Application.AtomicSections;
 
 public sealed class AtomicSectionUseCases
 {
+    private static readonly ContentBlockType[] DefaultChildBlockTypes =
+    [
+        ContentBlockType.KnowledgePoint,
+        ContentBlockType.ExampleGroup,
+        ContentBlockType.ExerciseGroup
+    ];
+
     private readonly ICmsV2UnitOfWork _unitOfWork;
 
     public AtomicSectionUseCases(ICmsV2UnitOfWork unitOfWork)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+    }
+
+    public async Task<AtomicSection> CreateAtomicSectionAsync(
+        CreateAtomicSectionCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        AtomicSection? result = null;
+
+        await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+        {
+            if (await _unitOfWork.Sections.GetByIdAsync(command.SectionId, transactionCancellationToken) is null)
+            {
+                throw new CmsV2ApplicationException($"Section {command.SectionId} was not found.");
+            }
+
+            var atomicSection = new AtomicSection(
+                command.SectionId,
+                command.Title,
+                command.Description,
+                command.Type,
+                command.Difficulty,
+                command.Status);
+            await _unitOfWork.AtomicSections.AddAsync(atomicSection, transactionCancellationToken);
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+
+            for (var index = 0; index < DefaultChildBlockTypes.Length; index++)
+            {
+                var contentBlock = new ContentBlock(
+                    command.SectionId,
+                    atomicSection.Title,
+                    DefaultChildBlockTypes[index],
+                    difficulty: atomicSection.Difficulty,
+                    status: ContentBlockStatus.Draft);
+                await _unitOfWork.ContentBlocks.AddAsync(contentBlock, transactionCancellationToken);
+                await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+
+                var item = new AtomicSectionItem(
+                    atomicSection.Id,
+                    contentBlock.Id,
+                    ReferenceMode.FollowLatest,
+                    lockedContentBlockVersionId: null,
+                    sortOrder: (index + 1) * 10);
+                await _unitOfWork.AtomicSectionItems.AddAsync(item, transactionCancellationToken);
+            }
+
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+            result = atomicSection;
+        }, cancellationToken);
+
+        return result!;
     }
 
     public async Task<CreatedEntityResult> AddAtomicSectionItemAsync(

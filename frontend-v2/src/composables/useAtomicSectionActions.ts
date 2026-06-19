@@ -23,7 +23,7 @@ export function useAtomicSectionActions(options: AtomicSectionActionsOptions) {
   async function createContentBlockInsideAtomicSection(
     input: CreateContentBlockInsideAtomicSectionInput,
   ) {
-    const createdContentBlock = await cmsV2Api.createContentBlockWithBlankDocument({
+    const createdContentBlock = await cmsV2Api.createContentBlock({
       sectionId: input.sectionId,
       title: input.title,
       blockType: input.blockType,
@@ -34,7 +34,7 @@ export function useAtomicSectionActions(options: AtomicSectionActionsOptions) {
     })
 
     const createdAtomicSectionItem = await cmsV2Api.addAtomicSectionItem(input.atomicSectionId, {
-      contentBlockId: createdContentBlock.contentBlockId,
+      contentBlockId: createdContentBlock.id,
       referenceMode: 'FollowLatest',
       lockedContentBlockVersionId: null,
       sortOrder: input.sortOrder,

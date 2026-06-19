@@ -847,7 +847,7 @@ async function submitAtomicSectionChildContentBlock(payload: InsertCreateSubmitP
 }
 
 async function createContentBlockForInsert(payload: InsertCreateSubmitPayload) {
-  const created = await cmsV2Api.createContentBlockWithBlankDocument({
+  const created = await cmsV2Api.createContentBlock({
     sectionId: payload.sectionId,
     title: payload.title,
     blockType: mapInsertContentBlockType(payload.contentBlockType),
@@ -857,7 +857,7 @@ async function createContentBlockForInsert(payload: InsertCreateSubmitPayload) {
     status: 'Draft',
   })
 
-  return { id: created.contentBlockId }
+  return { id: created.id }
 }
 
 async function createAtomicSectionForInsert(payload: InsertCreateSubmitPayload) {

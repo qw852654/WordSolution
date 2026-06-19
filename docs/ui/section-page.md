@@ -629,3 +629,78 @@ SectionPage 支持在 Workspace 中把多个连续的顶层块升级为一个新
 - 阻塞期间禁止 `Workspace` 选择、插入、删除、移动、Word 编辑、右键菜单和 `SectionTree` 操作。
 - 成功后重新读取 `Section` 数据，不做 optimistic update。
 - 失败时保持原页面数据不变，并显示错误提示。
+## 当前补充约定：Workspace 内部插入点与 CompositeBlock 自身正文
+
+本节记录 2026-06-19 已确认的 SectionPage 细节，用于约束后续实现。
+
+### 1. InsertPoint 不只存在于顶层 SectionItem 之间
+
+`InsertPoint` 是 SectionWorkspace 文档流中的通用插入入口，不应只出现在顶层 SectionItem 之间。
+
+后续实现必须覆盖三类位置：
+
+```text
+Section 顶层 flow item 之间
+AtomicSectionBlock 内部 child item 之间
+CompositeBlock 内部 child relation 之间
+```
+
+空容器也必须保留插入入口：
+
+```text
+空 Section：显示插入第一个块的入口
+空 AtomicSectionBlock：显示插入第一个子块的入口
+空 CompositeBlock：显示插入第一个子块的入口
+```
+
+不同层级的插入语义不同，不能简单复制顶层插入逻辑：
+
+```text
+Section 顶层插入
+  -> 创建或插入 SectionItem
+
+AtomicSectionBlock 内部插入
+  -> 创建或插入 AtomicSectionItem
+
+CompositeBlock 内部插入
+  -> 创建或插入 ContentBlockRelation
+```
+
+因此，插入点必须携带明确上下文：
+
+```text
+insertContext.parentType = Section | AtomicSection | CompositeBlock
+insertContext.parentId
+insertContext.beforeItemId / afterItemId
+insertContext.allowedActions
+```
+
+`InsertPoint` 组件本身仍然只负责 UI 和 emit，不直接判断业务规则，不调用 API。
+
+### 2. CompositeBlock 必须显示自身 docx/html 正文
+
+`CompositeBlock` 本质仍然是 `ContentBlock`，不是一个只负责展示子块的空壳。
+
+因此，CompositeBlock 在 SectionWorkspace 中的渲染顺序应为：
+
+```text
+CompositeBlock 容器
+  CompositeBlock 自身 docx/html 预览
+  CompositeBlock 子块列表
+```
+
+也就是说：
+
+- CompositeBlock 自己有 `ContentBlockVersion`、docx、html preview。
+- CompositeBlock 自身正文必须使用 `ContentBlockDisplay` 或等价正文展示能力渲染。
+- CompositeBlock 的 children 只表示组合关系展开结果，不能替代它自己的正文。
+- 如果 CompositeBlock 自身没有 docx/html，则显示清晰空状态，但仍然保留子块列表。
+
+后续数据映射中，CompositeBlock 的 view model 必须同时包含：
+
+```text
+selfContent: ContentBlockDisplayModel
+children: StructuredBlockChildModel[]
+```
+
+其中 `selfContent` 表示 CompositeBlock 自身正文，`children` 表示它包含的子块。

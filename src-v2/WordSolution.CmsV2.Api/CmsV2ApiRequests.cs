@@ -56,6 +56,15 @@ public sealed record CreateContentBlockWithBlankDocumentRequest(
     QuestionType? QuestionType = null,
     ContentBlockStatus Status = ContentBlockStatus.Draft);
 
+public sealed record CreateContentBlockRequest(
+    int SectionId,
+    string Title,
+    ContentBlockType BlockType,
+    string? Summary = null,
+    Difficulty Difficulty = Difficulty.Unset,
+    QuestionType? QuestionType = null,
+    ContentBlockStatus Status = ContentBlockStatus.Draft);
+
 public sealed record SetCurrentContentBlockVersionRequest(int ContentBlockVersionId);
 
 public sealed record CreateContentBlockEditSessionRequest(bool OpenWord = true);

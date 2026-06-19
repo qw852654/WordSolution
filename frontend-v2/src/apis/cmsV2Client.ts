@@ -179,6 +179,16 @@ export interface CmsV2CreateContentBlockWithBlankDocumentRequest {
   status: string
 }
 
+export interface CmsV2CreateContentBlockRequest {
+  sectionId: number
+  title: string
+  blockType: string
+  summary?: string | null
+  difficulty: string
+  questionType?: string | null
+  status: string
+}
+
 export interface CmsV2CreateAtomicSectionRequest {
   sectionId: number
   title: string
@@ -420,6 +430,8 @@ export const cmsV2Api = {
     cmsV2Delete(`/atomic-sections/${atomicSectionId}/items/${atomicSectionItemId}`),
   getContentBlock: (contentBlockId: number) =>
     cmsV2FetchJson<CmsV2ContentBlockDto>(`/content-blocks/${contentBlockId}`),
+  createContentBlock: (request: CmsV2CreateContentBlockRequest) =>
+    cmsV2PostJson<CmsV2CreatedEntityResultDto>('/content-blocks', request),
   createContentBlockWithBlankDocument: (request: CmsV2CreateContentBlockWithBlankDocumentRequest) =>
     cmsV2PostJson<CmsV2ContentBlockDocumentVersionResultDto>(
       '/content-blocks/blank-document',

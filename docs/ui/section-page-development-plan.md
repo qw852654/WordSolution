@@ -745,3 +745,73 @@ frontend-v2/src/composables/useContentBlockActions.ts
 ```text
 docs/superpowers/plans/2026-06-17-section-action-composables.md
 ```
+## 当前待办：Workspace 内部插入点与 CompositeBlock 自身正文
+
+本待办记录 2026-06-19 已确认的下一轮修正范围。
+
+### 背景问题
+
+当前 SectionWorkspace 中存在两个实现缺口：
+
+1. `InsertPoint` 目前主要只出现在顶层 SectionItem 之间。
+2. `CompositeBlock` 当前主要展示 children，但没有展示它自己作为 ContentBlock 的 docx/html 正文。
+
+### 下一轮最小开发范围
+
+只处理以下两点，不顺手扩展其他功能：
+
+1. 在 `AtomicSectionBlock` 内部 child 之间补 `InsertPoint`。
+2. 在 `CompositeBlock` 内部 child 之间补 `InsertPoint`。
+3. 在空 `AtomicSectionBlock` / 空 `CompositeBlock` 中保留插入第一个子块的入口。
+4. 为 `CompositeBlock` 增加自身正文展示。
+
+### 插入点语义
+
+不同父级下的插入点必须对应不同写入目标：
+
+```text
+Section 顶层插入 -> SectionItem
+AtomicSection 内部插入 -> AtomicSectionItem
+CompositeBlock 内部插入 -> ContentBlockRelation
+```
+
+因此实现时需要为插入点补充上下文，而不是复用一个只适合顶层的 id 解析逻辑。
+
+### CompositeBlock 渲染语义
+
+CompositeBlock 本质仍然是 ContentBlock。
+
+正确渲染结构：
+
+```text
+CompositeBlock
+  自身 ContentBlockDisplay
+  InsertPoint
+  子块 SectionItemView
+  InsertPoint
+  子块 SectionItemView
+```
+
+其中：
+
+- 自身 `ContentBlockDisplay` 显示 CompositeBlock 自己的 docx/html。
+- 子块列表显示 ContentBlockRelation 展开结果。
+- 子块之间的插入点用于新增或插入 relation。
+
+### 本轮不做
+
+- 不修改后端。
+- 不新增 API。
+- 不做块搜索组件。
+- 不调整 CompositeBlock 的领域模型。
+- 不改变 SectionTree 行为。
+- 不改变 Word 编辑链路。
+
+### 验收点
+
+- 顶层 SectionItem 之间仍有插入入口。
+- AtomicSection 内部块之间出现插入入口。
+- CompositeBlock 内部块之间出现插入入口。
+- 空 AtomicSection / 空 CompositeBlock 有插入第一个子块入口。
+- CompositeBlock 自己的 docx/html 正文显示在子块列表之前。
+- CompositeBlock 子块列表仍然正常显示。

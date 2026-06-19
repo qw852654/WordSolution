@@ -12,6 +12,11 @@ public sealed record CreateContentBlockWithBlankDocumentCommand(
     QuestionType? QuestionType = null,
     ContentBlockStatus Status = ContentBlockStatus.Draft);
 
+public sealed record CreateBlankContentBlockVersionCommand(
+    string BankRootDirectory,
+    int ContentBlockId,
+    bool SetAsCurrent = true);
+
 public sealed record ImportContentBlockDocxVersionCommand(
     string BankRootDirectory,
     int ContentBlockId,

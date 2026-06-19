@@ -100,6 +100,32 @@ public sealed class CmsV2ApplicationUseCaseTests
     }
 
     [Fact]
+    public async Task CreateContentBlock_creates_metadata_without_docx_version()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var useCases = new ContentBlockUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+
+        var created = await useCases.CreateContentBlockAsync(
+            new CreateContentBlockCommand(
+                sectionId,
+                string.Empty,
+                ContentBlockType.KnowledgePoint,
+                Difficulty.Basic));
+        var block = await unitOfWork.ContentBlocks.GetByIdAsync(created.Id);
+        var versions = await unitOfWork.ContentBlockVersions.ListByContentBlockAsync(created.Id);
+
+        Assert.NotNull(block);
+        Assert.Equal(sectionId, block.SectionId);
+        Assert.Equal(string.Empty, block.Title);
+        Assert.Equal(ContentBlockType.KnowledgePoint, block.BlockType);
+        Assert.Equal(Difficulty.Basic, block.Difficulty);
+        Assert.Null(block.CurrentVersionId);
+        Assert.Empty(versions);
+    }
+
+    [Fact]
     public async Task ContentBlockRelation_use_case_validates_locked_version_and_recursive_cycles()
     {
         await using var context = await CreateMigratedContextAsync();
@@ -211,6 +237,46 @@ public sealed class CmsV2ApplicationUseCaseTests
         Assert.Equal([firstItem.Id], remainingItems.Select(item => item.Id));
         Assert.Null(await unitOfWork.AtomicSectionItems.GetByIdAsync(secondItem.Id));
         Assert.NotNull(await unitOfWork.ContentBlocks.GetByIdAsync(secondChild.Id));
+    }
+
+    [Fact]
+    public async Task CreateAtomicSection_initializes_default_child_blocks_without_docx_versions()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var atomicSections = new AtomicSectionUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+
+        var atomicSection = await atomicSections.CreateAtomicSectionAsync(
+            new CreateAtomicSectionCommand(
+                sectionId,
+                "AS Alpha",
+                "AS note",
+                AtomicSectionType.Custom,
+                Difficulty.Advanced,
+                AtomicSectionStatus.Draft));
+
+        var items = await unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(atomicSection.Id);
+        var contentBlocks = await unitOfWork.ContentBlocks.ListAsync();
+        var versions = await unitOfWork.ContentBlockVersions.ListAsync();
+
+        Assert.Equal(sectionId, atomicSection.SectionId);
+        Assert.Equal("AS Alpha", atomicSection.Title);
+        Assert.Equal("AS note", atomicSection.Description);
+        Assert.Equal(Difficulty.Advanced, atomicSection.Difficulty);
+        Assert.Equal([10, 20, 30], items.Select(item => item.SortOrder));
+        Assert.Equal(
+            [ContentBlockType.KnowledgePoint, ContentBlockType.ExampleGroup, ContentBlockType.ExerciseGroup],
+            contentBlocks.OrderBy(block => block.Id).Select(block => block.BlockType));
+        Assert.All(contentBlocks, block =>
+        {
+            Assert.Equal(sectionId, block.SectionId);
+            Assert.Equal("AS Alpha", block.Title);
+            Assert.Equal(Difficulty.Advanced, block.Difficulty);
+            Assert.Null(block.CurrentVersionId);
+        });
+        Assert.Equal(contentBlocks.OrderBy(block => block.Id).Select(block => block.Id), items.Select(item => item.ContentBlockId));
+        Assert.Empty(versions);
     }
 
     [Fact]

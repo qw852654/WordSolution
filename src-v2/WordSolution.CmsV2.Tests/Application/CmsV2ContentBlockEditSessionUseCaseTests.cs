@@ -100,6 +100,53 @@ public sealed class CmsV2ContentBlockEditSessionUseCaseTests
     }
 
     [Fact]
+    public async Task Create_session_creates_initial_template_version_when_content_block_has_no_current_version()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        var documentUseCases = CreateDocumentUseCases(unitOfWork);
+        var sessionStore = new LocalContentBlockEditSessionStore();
+        var sessionFileStore = new LocalContentBlockEditSessionFileStore();
+        var useCases = CreateEditSessionUseCases(
+            unitOfWork,
+            documentUseCases,
+            sessionStore,
+            sessionFileStore,
+            new RecordingContentBlockEditSessionLauncher());
+        var topic = new WordSolution.CmsV2.Domain.Entities.TeachingTopic("Topic");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+        var section = new WordSolution.CmsV2.Domain.Entities.Section(topic.Id, "Section");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+        var contentBlock = new WordSolution.CmsV2.Domain.Entities.ContentBlock(
+            section.Id,
+            string.Empty,
+            ContentBlockType.KnowledgePoint,
+            difficulty: Difficulty.Basic);
+        await unitOfWork.ContentBlocks.AddAsync(contentBlock);
+        await unitOfWork.SaveChangesAsync();
+
+        var session = await useCases.CreateAsync(
+            new CreateContentBlockEditSessionCommand(bankRootDirectory, contentBlock.Id, OpenWord: false));
+        var versions = await unitOfWork.ContentBlockVersions.ListByContentBlockAsync(contentBlock.Id);
+        var currentVersion = await unitOfWork.ContentBlockVersions.GetCurrentByContentBlockAsync(contentBlock.Id);
+        var reloadedBlock = await unitOfWork.ContentBlocks.GetByIdAsync(contentBlock.Id);
+
+        var version = Assert.Single(versions);
+        Assert.NotNull(currentVersion);
+        Assert.Equal(currentVersion.Id, version.Id);
+        Assert.Equal(version.Id, reloadedBlock?.CurrentVersionId);
+        Assert.Equal(1, version.VersionNumber);
+        Assert.True(version.IsCurrent);
+        Assert.Equal(version.Id, session.SourceContentBlockVersionId);
+        Assert.True(File.Exists(version.DocxPath));
+        Assert.True(File.Exists(version.HtmlPreviewPath));
+        Assert.True(File.Exists(session.EditableDocxPath));
+    }
+
+    [Fact]
     public async Task Sync_unchanged_session_does_not_create_new_version()
     {
         await using var context = await CreateMigratedContextAsync();

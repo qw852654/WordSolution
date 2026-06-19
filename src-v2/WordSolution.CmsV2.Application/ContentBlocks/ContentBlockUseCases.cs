@@ -13,6 +13,34 @@ public sealed class ContentBlockUseCases
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
+    public async Task<CreatedEntityResult> CreateContentBlockAsync(
+        CreateContentBlockCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        CreatedEntityResult? result = null;
+
+        await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+        {
+            await RequireSectionAsync(command.SectionId, transactionCancellationToken);
+
+            var contentBlock = new ContentBlock(
+                command.SectionId,
+                command.Title,
+                command.BlockType,
+                command.Summary,
+                command.Difficulty,
+                command.QuestionType,
+                command.Status);
+
+            await _unitOfWork.ContentBlocks.AddAsync(contentBlock, transactionCancellationToken);
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+
+            result = new CreatedEntityResult(contentBlock.Id);
+        }, cancellationToken);
+
+        return result!;
+    }
+
     public async Task<CreatedEntityResult> CreateContentBlockWithInitialVersionAsync(
         CreateContentBlockWithInitialVersionCommand command,
         CancellationToken cancellationToken = default)
