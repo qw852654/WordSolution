@@ -1174,6 +1174,7 @@ watch(sectionId, () => {
           <TeachingTopicTree
             :nodes="visibleTeachingTopicTreeNodes"
             :selected-topic-id="selectedTeachingTopicId"
+            :default-expanded-depth="teachingTopicDisplayRootNode ? 2 : 1"
             full-width-content
             @select-topic="selectTeachingTopic"
           />

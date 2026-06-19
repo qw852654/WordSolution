@@ -16,6 +16,7 @@ const props = defineProps<{
   selectedTopicId?: string
   contextTargetTopicId?: string
   fullWidthContent?: boolean
+  defaultExpandedDepth?: number
 }>()
 
 const emit = defineEmits<{
@@ -25,16 +26,27 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-const basicNodes = computed(() => props.nodes.map(toBasicTreeNode))
+const defaultExpandedDepth = computed(() => props.defaultExpandedDepth ?? 1)
 
-function toBasicTreeNode(node: TeachingTopicTreeNodeModel): BasicTreeNode {
+const basicNodes = computed(() => props.nodes.map((node) => toBasicTreeNode(node, 1)))
+
+const treeResetKey = computed(() =>
+  [
+    defaultExpandedDepth.value,
+    ...props.nodes.map((node) => node.id),
+  ].join(':'),
+)
+
+function toBasicTreeNode(node: TeachingTopicTreeNodeModel, level: number): BasicTreeNode {
+  const children = node.children?.map((child) => toBasicTreeNode(child, level + 1))
+
   return {
     id: node.id,
     label: node.title,
     payload: node,
     disabled: node.disabled,
-    expanded: node.expanded,
-    children: node.children?.map(toBasicTreeNode),
+    expanded: Boolean(children?.length) && level <= defaultExpandedDepth.value,
+    children,
   }
 }
 
@@ -85,6 +97,7 @@ function handleNodeContextMenu(payload: BasicTreeContextMenuPayload) {
 
     <BasicTree
       v-if="basicNodes.length"
+      :key="treeResetKey"
       :nodes="basicNodes"
       :selected-node-id="selectedTopicId"
       :context-target-node-id="contextTargetTopicId"
