@@ -17,6 +17,7 @@ import type {
   ContentBlockRelationMovePayload,
   ContentBlockDisplayModel,
   InsertActionType,
+  InsertPointContext,
   InsertPointModel,
   InsertRequestModel,
   SectionPageShellModel,
@@ -108,6 +109,11 @@ const wrapSelectedCount = computed(() => props.wrapSelectedNodeIds.length)
 const firstInsertPoint = computed<InsertPointModel>(() => ({
   id: 'insert-first-section-item',
   label: t('sectionPage.workspace.emptyTitle'),
+  context: {
+    parentType: 'Section',
+    parentId: Number(props.section.sectionId),
+    parentTitle: props.section.title,
+  },
 }))
 
 interface AtomicSectionWorkspaceActionPayload {
@@ -177,10 +183,18 @@ function withStructuredChildSelection(child: StructuredBlockChildModel): Structu
 }
 
 function withStructuredSelection(block: StructuredBlockModel): StructuredBlockModel {
+  const selected = isWorkspaceItemSelected(block.id, block.selected)
+
   return {
     ...block,
     expanded: isStructuredBlockExpanded(block.id, block.expanded),
-    selected: isWorkspaceItemSelected(block.id, block.selected),
+    selected,
+    selfContent: block.selfContent
+      ? withContentSelection({
+          ...block.selfContent,
+          selected,
+        })
+      : undefined,
     children: block.children.map((child) => withStructuredChildSelection(child)),
   }
 }
@@ -222,10 +236,21 @@ function handleNestedWorkspaceSelection(itemId: string, event?: MouseEvent) {
   emitWorkspaceSelection(itemId, event)
 }
 
-function getInsertPointBefore(item: SectionWorkspaceFlowItemModel, index: number): InsertPointModel {
+function getInsertPointAt(index: number): InsertPointModel {
+  const previous = flowItems.value[index - 1]
+  const next = flowItems.value[index]
+  const anchor = next ? `before-${next.nodeId}` : previous ? `after-${previous.nodeId}` : 'first'
+
   return {
-    id: `insert-before-${item.nodeId}-${index}`,
+    id: `insert-section-${anchor}-${index}`,
     label: t('components.insertPoint.insert'),
+    context: {
+      parentType: 'Section',
+      parentId: Number(props.section.sectionId),
+      parentTitle: props.section.title,
+      afterSortOrder: previous?.sortOrder,
+      beforeSortOrder: next?.sortOrder,
+    },
   }
 }
 
@@ -233,8 +258,12 @@ function isInsertPointActive(insertPointId: string) {
   return props.activeInsertPointId === insertPointId
 }
 
-function emitInsertRequest(insertPointId: string, actionType: InsertActionType) {
-  emit('requestInsert', { insertPointId, actionType })
+function emitInsertRequest(
+  insertPointId: string,
+  actionType: InsertActionType,
+  context?: InsertPointContext,
+) {
+  emit('requestInsert', { insertPointId, actionType, context })
 }
 
 function createAtomicSectionActionPayload(item: SectionWorkspaceFlowItemModel) {
@@ -496,14 +525,20 @@ watch(
             v-for="(item, index) in flowItems"
             :key="item.id"
           >
-            <div v-if="index > 0" class="space-y-1">
+            <div class="space-y-1">
               <InsertPoint
-                :point="getInsertPointBefore(item, index)"
-                :selected="isInsertPointActive(getInsertPointBefore(item, index).id)"
-                @request-action="emitInsertRequest($event.insertPointId, $event.actionType)"
+                :point="getInsertPointAt(index)"
+                :selected="isInsertPointActive(getInsertPointAt(index).id)"
+                @request-action="
+                  emitInsertRequest(
+                    $event.insertPointId,
+                    $event.actionType,
+                    getInsertPointAt(index).context,
+                  )
+                "
               />
               <p
-                v-if="isInsertPointActive(getInsertPointBefore(item, index).id) && insertFeedback"
+                v-if="isInsertPointActive(getInsertPointAt(index).id) && insertFeedback"
                 class="mx-4 rounded-md border bg-muted/20 px-2 py-1 text-xs text-muted-foreground"
               >
                 {{ insertFeedback }}
@@ -528,13 +563,17 @@ watch(
               <ContentBlockDisplay
                 v-if="item.kind === 'ContentBlock'"
                 :block="item.block"
+                @open-word="emitContentBlockOpenWord(item)"
               />
               <AtomicSectionBlock
                 v-else-if="item.kind === 'AtomicSection'"
                 :block="item.block"
                 :node-id-map="workspaceNodeMap"
+                :active-insert-point-id="activeInsertPointId"
+                :insert-feedback="insertFeedback"
                 @select="handleNestedWorkspaceSelection"
                 @select-content-block="handleNestedWorkspaceSelection"
+                @request-insert="emit('requestInsert', $event)"
                 @toggle-collapse="emit('toggleWorkspaceNodeCollapse', $event)"
                 @open-content-block-relation-word="emit('requestContentBlockRelationOpenWord', $event)"
                 @move-content-block-relation="emit('requestContentBlockRelationMove', $event)"
@@ -547,8 +586,12 @@ watch(
                 v-else
                 :block="item.block"
                 :node-id-map="workspaceNodeMap"
+                :active-insert-point-id="activeInsertPointId"
+                :insert-feedback="insertFeedback"
                 @select="handleNestedWorkspaceSelection"
                 @select-content-block="handleNestedWorkspaceSelection"
+                @request-insert="emit('requestInsert', $event)"
+                @open-word="emitContentBlockOpenWord(item)"
                 @toggle-collapse="emit('toggleWorkspaceNodeCollapse', $event)"
                 @open-content-block-relation-word="emit('requestContentBlockRelationOpenWord', $event)"
                 @move-content-block-relation="emit('requestContentBlockRelationMove', $event)"
@@ -556,6 +599,25 @@ watch(
               />
             </SectionItemView>
           </template>
+          <div class="space-y-1">
+            <InsertPoint
+              :point="getInsertPointAt(flowItems.length)"
+              :selected="isInsertPointActive(getInsertPointAt(flowItems.length).id)"
+              @request-action="
+                emitInsertRequest(
+                  $event.insertPointId,
+                  $event.actionType,
+                  getInsertPointAt(flowItems.length).context,
+                )
+              "
+            />
+            <p
+              v-if="isInsertPointActive(getInsertPointAt(flowItems.length).id) && insertFeedback"
+              class="mx-4 rounded-md border bg-muted/20 px-2 py-1 text-xs text-muted-foreground"
+            >
+              {{ insertFeedback }}
+            </p>
+          </div>
         </div>
 
         <div v-else class="flex min-h-full items-center justify-center p-4">
@@ -568,7 +630,13 @@ watch(
               <InsertPoint
                 :point="firstInsertPoint"
                 selected
-                @request-action="emitInsertRequest($event.insertPointId, $event.actionType)"
+                @request-action="
+                  emitInsertRequest(
+                    $event.insertPointId,
+                    $event.actionType,
+                    firstInsertPoint.context,
+                  )
+                "
               />
               <p
                 v-if="isInsertPointActive(firstInsertPoint.id) && insertFeedback"

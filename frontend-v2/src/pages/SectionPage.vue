@@ -33,6 +33,8 @@ import type {
   SectionTreeContextMenuActionPayload,
   SectionTreeContextMenuModel,
   SectionTreeContextMenuPayload,
+  StructuredBlockModel,
+  StructuredBlockChildModel,
   SectionTreeNodeModel,
   SectionWorkspaceFlowItemModel,
   TeachingTopicTreeContextMenuActionPayload,
@@ -382,8 +384,20 @@ function toggleWorkspaceNodeCollapse(nodeId: string) {
   collapsedWorkspaceNodeIds.value = next
 }
 
-function getInsertPositionLabel(insertPointId: string) {
-  return insertPointId === 'insert-first-section-item'
+function getInsertPositionLabel(request: InsertRequestModel) {
+  if (request.context?.parentType === 'AtomicSection') {
+    return t('sectionPage.workspace.atomicSectionActions.insertChildPosition', {
+      title: request.context.parentTitle ?? 'AtomicSection',
+    })
+  }
+
+  if (request.context?.parentType === 'CompositeBlock') {
+    return t('sectionPage.workspace.compositeBlockActions.insertChildPosition', {
+      title: request.context.parentTitle ?? 'CompositeBlock',
+    })
+  }
+
+  return request.insertPointId === 'insert-first-section-item'
     ? t('sectionPage.workspace.insertPanel.firstInsertPositionLabel')
     : t('sectionPage.workspace.insertPanel.insertPositionLabel')
 }
@@ -402,13 +416,35 @@ function requestInsert(request: InsertRequestModel) {
     }
 
     insertFeedback.value = ''
+    const insertSortOrder = getSortOrderForInsertRequest(request)
+    const parentType = request.context?.parentType ?? 'Section'
+
+    if (request.actionType === 'CreateAtomicSection' && parentType !== 'Section') {
+      insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackAtomicSectionOnlyTopLevel')
+      return
+    }
+
     activeCreatePanel.value = {
       insertPointId: request.insertPointId,
       targetType: request.actionType === 'CreateContentBlock' ? 'ContentBlock' : 'AtomicSection',
-      insertPositionLabel: getInsertPositionLabel(request.insertPointId),
+      insertPositionLabel: getInsertPositionLabel(request),
       sectionId: currentSectionId,
       sectionTitle: sectionShell.value.title,
-      insertMode: 'SectionItem',
+      insertMode:
+        parentType === 'AtomicSection'
+          ? 'AtomicSectionChild'
+          : parentType === 'CompositeBlock'
+            ? 'CompositeBlockChild'
+            : 'SectionItem',
+      atomicSectionId:
+        parentType === 'AtomicSection' ? request.context?.parentId : undefined,
+      atomicSectionTitle:
+        parentType === 'AtomicSection' ? request.context?.parentTitle : undefined,
+      compositeBlockId:
+        parentType === 'CompositeBlock' ? request.context?.parentId : undefined,
+      compositeBlockTitle:
+        parentType === 'CompositeBlock' ? request.context?.parentTitle : undefined,
+      insertSortOrder,
     }
     return
   }
@@ -755,7 +791,16 @@ async function submitInsertCreateOverlay(payload: InsertCreateSubmitPayload) {
       return
     }
 
-    const sortOrder = getSortOrderForInsertPoint(payload.insertPointId)
+    if (
+      payload.targetType === 'ContentBlock' &&
+      payload.insertMode === 'CompositeBlockChild' &&
+      payload.compositeBlockId
+    ) {
+      await submitCompositeBlockChildContentBlock(payload)
+      return
+    }
+
+    const sortOrder = payload.insertSortOrder ?? getSortOrderForInsertPoint(payload.insertPointId)
     const createdTarget =
       payload.targetType === 'ContentBlock'
         ? await createContentBlockForInsert(payload)
@@ -836,13 +881,30 @@ async function submitAtomicSectionChildContentBlock(payload: InsertCreateSubmitP
     title: contentBlockTitle,
     blockType: mapInsertContentBlockType(payload.contentBlockType),
     difficulty: mapInsertDifficulty(payload.difficulty),
-    sortOrder: getAtomicSectionChildSortOrder(payload.atomicSectionId!),
+    sortOrder: payload.insertSortOrder ?? getAtomicSectionChildSortOrder(payload.atomicSectionId!),
   })
 
   activeCreatePanel.value = null
   activeInsertPointId.value = undefined
   insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackCreateAtomicChildSubmitted', {
     title: contentBlockTitle || t('sectionPage.workspace.atomicSectionActions.untitledContentBlock'),
+  })
+}
+
+async function submitCompositeBlockChildContentBlock(payload: InsertCreateSubmitPayload) {
+  await contentBlockRelationActions.createContentBlockInsideCompositeBlock({
+    parentBlockId: payload.compositeBlockId!,
+    sectionId: payload.sectionId,
+    title: payload.title,
+    blockType: mapInsertContentBlockType(payload.contentBlockType),
+    difficulty: mapInsertDifficulty(payload.difficulty),
+    sortOrder: payload.insertSortOrder ?? getCompositeBlockChildSortOrder(payload.compositeBlockId!),
+  })
+
+  activeCreatePanel.value = null
+  activeInsertPointId.value = undefined
+  insertFeedback.value = t('sectionPage.workspace.compositeBlockActions.feedbackCreateChildSubmitted', {
+    title: payload.title || t('sectionPage.workspace.atomicSectionActions.untitledContentBlock'),
   })
 }
 
@@ -903,6 +965,33 @@ function getSortOrderForInsertPoint(insertPointId: string) {
   return lastSortOrder + 10
 }
 
+function getSortOrderForInsertRequest(request: InsertRequestModel) {
+  const after = request.context?.afterSortOrder
+  const before = request.context?.beforeSortOrder
+
+  if (typeof after === 'number' && typeof before === 'number' && before - after > 1) {
+    return Math.floor((after + before) / 2)
+  }
+
+  if (typeof before === 'number') {
+    return before
+  }
+
+  if (typeof after === 'number') {
+    return after + 10
+  }
+
+  if (request.context?.parentType === 'AtomicSection' && request.context.parentId) {
+    return getAtomicSectionChildSortOrder(request.context.parentId)
+  }
+
+  if (request.context?.parentType === 'CompositeBlock' && request.context.parentId) {
+    return getCompositeBlockChildSortOrder(request.context.parentId)
+  }
+
+  return getSortOrderForInsertPoint(request.insertPointId)
+}
+
 function getAtomicSectionChildSortOrder(atomicSectionId: number) {
   const atomicItem = sectionWorkspaceFlowItems.value.find(
     (item) => item.kind === 'AtomicSection' && item.targetId === atomicSectionId,
@@ -913,6 +1002,64 @@ function getAtomicSectionChildSortOrder(atomicSectionId: number) {
   }
 
   return (atomicItem.block.children.length + 1) * 10
+}
+
+function getCompositeBlockChildSortOrder(compositeBlockId: number) {
+  const compositeBlock = findCompositeBlockByContentBlockId(
+    sectionWorkspaceFlowItems.value,
+    compositeBlockId,
+  )
+
+  if (!compositeBlock) {
+    return 10
+  }
+
+  return (compositeBlock.children.length + 1) * 10
+}
+
+function findCompositeBlockByContentBlockId(
+  items: SectionWorkspaceFlowItemModel[],
+  contentBlockId: number,
+): StructuredBlockModel | undefined {
+  for (const item of items) {
+    if (item.kind === 'CompositeBlock' && item.block.contentBlockId === contentBlockId) {
+      return item.block
+    }
+
+    if (item.kind !== 'ContentBlock') {
+      const match = findCompositeBlockInChildren(item.block.children, contentBlockId)
+
+      if (match) {
+        return match
+      }
+    }
+  }
+
+  return undefined
+}
+
+function findCompositeBlockInChildren(
+  children: StructuredBlockChildModel[],
+  contentBlockId: number,
+): StructuredBlockModel | undefined {
+  for (const child of children) {
+    if (child.kind === 'CompositeBlock') {
+      if (child.block.contentBlockId === contentBlockId) {
+        return child.block
+      }
+
+      const nestedMatch: StructuredBlockModel | undefined = findCompositeBlockInChildren(
+        child.block.children,
+        contentBlockId,
+      )
+
+      if (nestedMatch) {
+        return nestedMatch
+      }
+    }
+  }
+
+  return undefined
 }
 
 function mapInsertContentBlockType(type?: InsertCreateContentBlockType) {

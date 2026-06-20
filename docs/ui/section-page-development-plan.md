@@ -815,3 +815,79 @@ CompositeBlock
 - 空 AtomicSection / 空 CompositeBlock 有插入第一个子块入口。
 - CompositeBlock 自己的 docx/html 正文显示在子块列表之前。
 - CompositeBlock 子块列表仍然正常显示。
+
+## 当前待办：SectionVariant 创建与默认选择
+
+本待办记录 2026-06-20 已确认的 SectionVariant 第一版开发方向。它只定义后续开发范围，不代表本轮已经实现。
+
+### 目标完整模型
+
+SectionVariant 是从 Section 派生出的教学用途方案。Section 是完整知识池，SectionVariant 负责从 Section 中选出适合某个教学用途和难度层级的内容。
+
+完整目标模型需要支持：
+
+- SectionVariant 自身拥有 `Difficulty`。
+- SectionVariant 可以选择顶层 SectionItem。
+- 如果顶层 SectionItem 引用 AtomicSection，后续应允许对该 AtomicSection 内部的 AtomicSectionItem 进行部分选择。
+- 内部部分选择可以由用户手动调整，也可以由后续规则根据 Difficulty 给出建议。
+- 自动规则只负责初始化或建议，不应在用户保存后自动覆盖用户已经确认的选择。
+
+### 第一版范围
+
+第一版只做顶层 SectionItem 选择。
+
+创建入口只允许出现在：
+
+```text
+SectionPage -> SectionTree -> Section 根节点右键菜单
+```
+
+不在 Toolbar、TeachingStructureTree、Inspector 或普通 SectionItem 右键菜单中创建 SectionVariant。
+
+创建 SectionVariant 时必须先选择 Difficulty。默认选中规则：
+
+```text
+Basic    -> Basic
+Medium   -> Basic + Medium
+Advanced -> Basic + Medium + Advanced
+Top      -> Basic + Medium + Advanced + Top
+```
+
+`Unset / 未设置` 不参与默认选中，只保留给用户手动选择。
+
+顶层判断规则：
+
+- ContentBlock：按 `ContentBlock.Difficulty`。
+- CompositeBlock：本质是 ContentBlock，按 `ContentBlock.Difficulty`。
+- AtomicSection：按 `AtomicSection.Difficulty` 判断整个 as。
+
+第一版不做：
+
+- AtomicSection 内部 AtomicSectionItem 部分选择。
+- Variant 内独立排序。
+- 根据规则刷新已保存 Variant。
+- TeachingStructureTree 中创建 SectionVariant。
+- 多入口创建 SectionVariant。
+
+### 后续预留
+
+后续如果进入“按学生深度自动选择”能力，需要补充内部选择模型，例如：
+
+```text
+SectionVariantAtomicItemSelection
+  SectionVariantId
+  AtomicSectionId
+  AtomicSectionItemId
+  Note
+```
+
+也可以引入规则模型：
+
+```text
+SectionVariantSelectionRule
+  MaxDifficulty
+  IncludeUnset
+  IncludeAtomicSectionChildren
+```
+
+这些后续模型不得反向破坏第一版的顶层 SectionVariantItem 选择。

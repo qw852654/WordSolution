@@ -257,6 +257,12 @@ UI Verification
 
 ### ContentBlockDisplay
 
+当前补充约定：
+
+- 当 `htmlPreviewState` 为 `empty` 时，`ContentBlockDisplay` 在正文预览区显示“尚未创建 Word 文档”的轻量提示，并提供 `Word 编辑`按钮。
+- 该按钮只 emit `openWord`，不直接创建 docx、不直接调用 API、不构造本地文件路径。
+- `loading` / `error` 等非空预览状态仍显示状态文本，不伪装成“未创建文档”。
+
 琛ㄧず ContentBlock 鍦?SectionWorkspace 鏂囨。娴佷腑鐨勬鏂囧睍绀恒??
 
 鑱岃矗锛?
@@ -1069,6 +1075,7 @@ ComponentLab 规则：
 - SectionWorkspace 顶层 flow item 之间。
 - AtomicSectionBlock 内部 child item 之间。
 - CompositeBlock 内部 child relation 之间。
+- 非空 Section / AtomicSectionBlock / CompositeBlock 的第一个块前方和最后一个块后方。
 - 空 Section、空 AtomicSectionBlock、空 CompositeBlock 的首个插入入口。
 
 组件职责保持不变：
@@ -1128,3 +1135,47 @@ StructuredBlockModel
 - `children` 表示 CompositeBlock 的组合关系展开内容。
 
 `AtomicSectionBlock` 不等同于 ContentBlock，因此不需要 `selfContent`；它只展示自身结构信息和内部 AtomicSectionItem。
+
+## 当前补充约定：SectionVariant 创建入口
+
+SectionVariant 第一版创建入口只允许出现在 SectionPage 的 SectionTree 中。
+
+允许入口：
+
+```text
+SectionTree -> Section 根节点 -> 右键菜单 -> 新建 SectionVariant
+```
+
+禁止入口：
+
+- SectionPage 顶部 Toolbar。
+- TeachingStructureTree / TeachingTopicTree。
+- SectionItem / AtomicSection / ContentBlock / CompositeBlock 节点右键菜单。
+- SectionInspector。
+- Workspace 内容块操作区。
+
+SectionTreeContextMenu 后续实现 `新建 SectionVariant` 时必须遵守：
+
+- 仅当右键目标是当前 Section 根节点时显示。
+- 右键只设置 context target，不自动改变 selectedNodeId。
+- 打开创建面板前，不修改 Section 数据。
+- 创建面板必须先选择 `Difficulty`。
+- 默认选入逻辑由页面或后端用例统一处理，不写入 SectionTreeContextMenu 组件内部。
+
+Difficulty 默认选择规则：
+
+```text
+Basic    -> Basic
+Medium   -> Basic + Medium
+Advanced -> Basic + Medium + Advanced
+Top      -> Basic + Medium + Advanced + Top
+```
+
+`Unset / 未设置` 不自动选入。
+
+第一版判断顶层 SectionItem：
+
+- ContentBlock / CompositeBlock：使用 ContentBlock Difficulty。
+- AtomicSection：使用 AtomicSection Difficulty。
+
+SectionTreeContextMenu 组件只 emit 创建请求事件，不调用 API，不直接创建 SectionVariant。

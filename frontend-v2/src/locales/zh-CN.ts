@@ -145,6 +145,8 @@ const zhCN = {
       openWord: 'Word 编辑',
       refreshPreview: '刷新预览',
       more: '更多',
+      missingDocumentTitle: '这个 ContentBlock 还没有 Word 文档',
+      missingDocumentDescription: '点击 Word 编辑后会创建文档并打开编辑。',
       previewState: {
         ready: '预览已就绪',
         loading: '预览加载中',
@@ -441,6 +443,8 @@ const zhCN = {
           '已在当前 AtomicSection 内部新建子级 ContentBlock：{title}。',
         feedbackCreateFailed: '新建失败，请稍后重试。',
         feedbackMissingSection: '当前没有可用的 Section，不能新建块。',
+        feedbackAtomicSectionOnlyTopLevel:
+          'AtomicSection 只能作为 Section 顶层块新建，当前内部插入位置只支持 ContentBlock。',
         feedbackSearchExistingBlock:
           '已选择在此处插入已有块；BlockSearchPicker 后续接入。',
       },
@@ -456,6 +460,11 @@ const zhCN = {
         removeConfirm:
           '确认从当前 AtomicSection 中移除这个 ContentBlock 引用？不会删除源 ContentBlock。ContentBlock：{title}',
         operationFailed: 'AtomicSection 内部 ContentBlock 操作失败，请稍后重试。',
+      },
+      compositeBlockActions: {
+        insertChildPosition: 'CompositeBlock 内部：{title}',
+        feedbackCreateChildSubmitted:
+          '已在当前 CompositeBlock 内部新建子级 ContentBlock：{title}。',
       },
       contentBlockActions: {
         wordEditPending: 'ContentBlock Word 编辑 API 尚未接入',

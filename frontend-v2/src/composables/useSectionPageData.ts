@@ -44,6 +44,7 @@ interface StructuredBlockChildContext {
   parentBlockId?: number
   relationId?: number
   contentBlockId?: number
+  sortOrder?: number
 }
 
 const compositeContentBlockTypes = new Set(['ExampleGroup', 'ExerciseGroup', 'VariantGroup'])
@@ -363,6 +364,7 @@ async function buildSectionFlowItem(
         id: nodeId,
         title: item.titleOverride || atomicSection.title,
         blockKind: 'AtomicSection',
+        atomicSectionId: item.targetId,
         status: mapStatus(atomicSection.status),
         difficulty: mapDifficulty(atomicSection.difficulty),
         summary: atomicSection.description || '',
@@ -413,6 +415,13 @@ async function buildSectionFlowItem(
         status: mapStatus(resolvedBlock.block.status),
         difficulty: mapDifficulty(resolvedBlock.block.difficulty),
         summary: resolvedBlock.block.summary || '',
+        selfContent: await buildContentBlockDisplay(
+          nodeId,
+          resolvedBlock,
+          item.referenceMode,
+          item.lockedContentBlockVersionId,
+          item.titleOverride,
+        ),
       children,
       disabled: item.status === 'Archived' || resolvedBlock.block.status === 'Archived',
     },
@@ -441,6 +450,7 @@ async function buildStructuredBlockChildFromAtomicSectionItem(
       atomicSectionId: item.atomicSectionId,
       atomicSectionItemId: item.id,
       contentBlockId: item.contentBlockId,
+      sortOrder: item.sortOrder,
     },
   )
 }
@@ -467,6 +477,7 @@ async function buildStructuredBlockChildFromRelation(
       parentBlockId: relation.parentBlockId,
       relationId: relation.id,
       contentBlockId: relation.childBlockId,
+      sortOrder: relation.sortOrder,
     },
   )
 }
@@ -496,6 +507,7 @@ async function buildStructuredBlockChild(
       parentBlockId: childContext.parentBlockId,
       relationId: childContext.relationId,
       contentBlockId: childContext.contentBlockId ?? resolvedBlock.block.id,
+      sortOrder: childContext.sortOrder,
       disabled,
       block: await buildContentBlockDisplay(
         nodeId,
@@ -521,6 +533,7 @@ async function buildStructuredBlockChild(
     parentBlockId: childContext.parentBlockId,
     relationId: childContext.relationId,
     contentBlockId: childContext.contentBlockId ?? resolvedBlock.block.id,
+    sortOrder: childContext.sortOrder,
     disabled,
     block: {
       id: nodeId,
@@ -530,6 +543,13 @@ async function buildStructuredBlockChild(
       status: mapStatus(resolvedBlock.block.status),
       difficulty: mapDifficulty(resolvedBlock.block.difficulty),
       summary: resolvedBlock.block.summary || '',
+      selfContent: await buildContentBlockDisplay(
+        nodeId,
+        resolvedBlock,
+        referenceMode,
+        lockedVersionId,
+        titleOverride,
+      ),
       children,
       disabled,
     },

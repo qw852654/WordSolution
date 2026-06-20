@@ -212,6 +212,7 @@ export type StructuredBlockChildModel =
       parentBlockId?: number
       relationId?: number
       contentBlockId?: number
+      sortOrder?: number
       selected?: boolean
       disabled?: boolean
       block: ContentBlockDisplayModel
@@ -225,6 +226,7 @@ export type StructuredBlockChildModel =
       parentBlockId?: number
       relationId?: number
       contentBlockId?: number
+      sortOrder?: number
       selected?: boolean
       disabled?: boolean
       block: StructuredBlockModel
@@ -234,10 +236,12 @@ export interface StructuredBlockModel {
   id: string
   title: string
   blockKind: StructuredBlockKind
+  atomicSectionId?: number
   contentBlockId?: number
   status: string
   difficulty: string
   summary: string
+  selfContent?: ContentBlockDisplayModel
   children: StructuredBlockChildModel[]
   expanded?: boolean
   selected?: boolean
@@ -296,13 +300,26 @@ export interface InsertPointModel {
   id: string
   label: string
   disabled?: boolean
+  allowedActions?: InsertActionType[]
+  context?: InsertPointContext
 }
 
 export type InsertActionType = 'CreateContentBlock' | 'CreateAtomicSection' | 'SearchExistingBlock'
 
+export type InsertParentType = 'Section' | 'AtomicSection' | 'CompositeBlock'
+
+export interface InsertPointContext {
+  parentType: InsertParentType
+  parentId?: number
+  parentTitle?: string
+  beforeSortOrder?: number
+  afterSortOrder?: number
+}
+
 export interface InsertRequestModel {
   insertPointId: string
   actionType: InsertActionType
+  context?: InsertPointContext
 }
 
 export type InsertCreateTargetType = 'ContentBlock' | 'AtomicSection'
@@ -323,9 +340,12 @@ export interface InsertCreatePanelModel {
   insertPositionLabel: string
   sectionId: number
   sectionTitle: string
-  insertMode?: 'SectionItem' | 'AtomicSectionChild' | 'WrapAsAtomicSection'
+  insertMode?: 'SectionItem' | 'AtomicSectionChild' | 'CompositeBlockChild' | 'WrapAsAtomicSection'
   atomicSectionId?: number
   atomicSectionTitle?: string
+  compositeBlockId?: number
+  compositeBlockTitle?: string
+  insertSortOrder?: number
   wrapSectionItemIds?: number[]
   disabled?: boolean
 }
@@ -334,9 +354,12 @@ export interface InsertCreateSubmitPayload {
   insertPointId: string
   targetType: InsertCreateTargetType
   sectionId: number
-  insertMode?: 'SectionItem' | 'AtomicSectionChild' | 'WrapAsAtomicSection'
+  insertMode?: 'SectionItem' | 'AtomicSectionChild' | 'CompositeBlockChild' | 'WrapAsAtomicSection'
   atomicSectionId?: number
   atomicSectionTitle?: string
+  compositeBlockId?: number
+  compositeBlockTitle?: string
+  insertSortOrder?: number
   wrapSectionItemIds?: number[]
   title: string
   contentBlockType?: InsertCreateContentBlockType

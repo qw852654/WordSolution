@@ -645,6 +645,13 @@ AtomicSectionBlock 内部 child item 之间
 CompositeBlock 内部 child relation 之间
 ```
 
+非空容器也必须覆盖首尾位置：
+
+```text
+第一个块前方必须有 InsertPoint
+最后一个块后方必须有 InsertPoint
+```
+
 空容器也必须保留插入入口：
 
 ```text
@@ -704,3 +711,149 @@ children: StructuredBlockChildModel[]
 ```
 
 其中 `selfContent` 表示 CompositeBlock 自身正文，`children` 表示它包含的子块。
+
+## 当前补充约定：SectionVariant 创建与难度默认选择
+
+本节记录 2026-06-20 已确认的 SectionVariant 设计共识。它用于约束后续 SectionPage 中 SectionVariant 创建、选择和显示能力。
+
+### 1. SectionVariant 的领域位置
+
+```text
+TeachingTopic
+  -> Section（上帝小节 / 完整知识池 / 完整教学结构）
+    -> SectionVariant（基础讲解版 / 提高版 / 一轮复习版 / 冲刺版）
+```
+
+Section 本身就是完整知识池和完整教学结构。SectionVariant 不是 Section 本体，也不是“上帝版本”，而是从 Section 派生出的教学用途方案。
+
+### 2. Difficulty 使用同一套系统
+
+SectionVariant 自身必须有 `Difficulty`。
+
+当前系统中的 Difficulty 统一使用 CMS V2 后端同一套枚举：
+
+```text
+Unset    未设置
+Basic    基础
+Medium   中档
+Advanced 提高
+Top      压轴
+```
+
+同一套 Difficulty 适用于：
+
+- Section
+- SectionVariant
+- AtomicSection
+- ContentBlock
+
+不适用于：
+
+- SectionItem
+- ContentBlockVersion
+- HandoutVersion
+
+前端显示难度时继续使用统一 Difficulty Theme Token，不允许为 SectionVariant 单独写一套颜色。
+
+### 3. 第一版创建入口
+
+第一版只允许一个创建入口：
+
+```text
+SectionPage -> SectionTree -> Section 根节点右键菜单 -> 新建 SectionVariant
+```
+
+禁止作为第一版入口：
+
+- 顶部 Toolbar。
+- TeachingStructureTree。
+- SectionItem / AtomicSection / ContentBlock / CompositeBlock 右键菜单。
+- Inspector 内部按钮。
+
+只有 SectionTree 的 Section 根节点允许出现 `新建 SectionVariant`。
+
+### 4. 第一版默认选择规则
+
+创建 SectionVariant 时，用户必须先选择 Variant 难度。
+
+创建后默认选中所有“难度小于等于 Variant 难度”的内容。
+
+规则：
+
+```text
+Variant = Basic
+  默认选中 Basic
+
+Variant = Medium
+  默认选中 Basic + Medium
+
+Variant = Advanced
+  默认选中 Basic + Medium + Advanced
+
+Variant = Top
+  默认选中 Basic + Medium + Advanced + Top
+```
+
+`Unset / 未设置` 不参与默认选中。Unset 内容只保留给用户后续手动选择，避免未整理内容被自动混入 Variant。
+
+第一版选择对象以顶层 SectionItem 为主：
+
+- 顶层 ContentBlock：按 `ContentBlock.Difficulty` 判断。
+- 顶层 CompositeBlock：本质是 ContentBlock，按 `ContentBlock.Difficulty` 判断。
+- 顶层 AtomicSection：按 `AtomicSection.Difficulty` 判断整个 as 是否默认选中。
+
+第一版不进入 AtomicSection 内部逐块选择。
+
+### 5. 第一版排序规则
+
+第一版 SectionVariant 不提供独立排序。
+
+Variant 中被选中的内容按 Section 原始结构顺序展示：
+
+```text
+SectionItem.SortOrder
+```
+
+`SectionVariantItem.SortOrder` 可以保留为后端字段，但第一版 UI 不暴露“Variant 内独立排序”能力。
+
+### 6. 后续完整能力预留
+
+完整目标模型需要支持 AtomicSection 内部的部分选择。
+
+原因：
+
+- AtomicSection 表达一个讲解最小单元。
+- 一个 AtomicSection 内部可能同时包含知识点、例题、变式题、练习题。
+- 这些内部 ContentBlock 可能有不同 Difficulty。
+- 不同学生需要同一讲解单元的不同学习深度。
+
+后续完整模型应支持：
+
+- SectionVariant 先选择顶层 SectionItem。
+- 对选中的 AtomicSection，可以进一步选择内部 AtomicSectionItem。
+- 内部选择可由用户手动调整。
+- 后续可以按 Difficulty 自动生成建议选择。
+- 自动规则只生成建议或初始化结果，不应在用户保存 Variant 后自动改写已保存选择。
+
+后续可能需要新增独立的内部选择模型，例如：
+
+```text
+SectionVariantAtomicItemSelection
+  SectionVariantId
+  AtomicSectionId
+  AtomicSectionItemId
+  IsIncluded / 或只保存已选项
+  Note
+```
+
+也可以在后续设计规则层：
+
+```text
+SectionVariantSelectionRule
+  SectionVariantId
+  MaxDifficulty
+  IncludeUnset
+  IncludeAtomicSectionChildren
+```
+
+但第一版只实现顶层 SectionItem 选择，不实现内部 AtomicSectionItem 选择表，也不实现规则刷新。

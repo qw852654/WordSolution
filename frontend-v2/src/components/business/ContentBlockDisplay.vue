@@ -21,6 +21,8 @@ const { t } = useI18n()
 
 const previewStateLabel = computed(() => t(`components.contentBlockDisplay.previewState.${props.block.htmlPreviewState}`))
 const difficultyMarkerClass = computed(() => getDifficultyMarkerClass(props.block.difficulty))
+const hasHtmlPreview = computed(() => props.block.htmlPreviewState === 'ready' && Boolean(props.block.htmlPreview))
+const showMissingDocumentPrompt = computed(() => props.block.htmlPreviewState === 'empty')
 </script>
 
 <template>
@@ -75,10 +77,32 @@ const difficultyMarkerClass = computed(() => getDifficultyMarkerClass(props.bloc
       </div>
 
       <div
-        v-if="block.htmlPreviewState === 'ready' && block.htmlPreview"
+        v-if="hasHtmlPreview"
         class="content-block-display-preview text-sm leading-7"
         v-html="block.htmlPreview"
       />
+      <div v-else-if="showMissingDocumentPrompt" class="flex items-start gap-2 py-1 text-sm">
+        <FileText class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+        <div class="min-w-0 space-y-1">
+          <p class="font-medium text-foreground">
+            {{ t('components.contentBlockDisplay.missingDocumentTitle') }}
+          </p>
+          <p class="text-muted-foreground">
+            {{ t('components.contentBlockDisplay.missingDocumentDescription') }}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            class="mt-1 h-7 px-2 text-xs"
+            :disabled="block.disabled"
+            @click.stop="$emit('openWord', block.id)"
+          >
+            <FileText class="size-3.5" />
+            {{ t('components.contentBlockDisplay.openWord') }}
+          </Button>
+        </div>
+      </div>
       <p v-else class="text-sm text-muted-foreground">
         {{ previewStateLabel }}
       </p>

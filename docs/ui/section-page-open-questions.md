@@ -53,6 +53,23 @@ SectionItemView
 - 页面级开发可以把完整页面 mock 放入 ComponentLab，让用户直接确认本轮结果。
 - 每轮交付时，必须说明本轮开发内容和 ComponentLab 中的具体验收区域。
 
+### SectionVariant 创建与 Difficulty
+
+已确认：
+
+- SectionVariant 自身必须有 `Difficulty`。
+- Difficulty 使用 CMS V2 后端同一套枚举：`Unset / Basic / Medium / Advanced / Top`。
+- Difficulty 同时适用于 `Section`、`SectionVariant`、`AtomicSection`、`ContentBlock`。
+- `SectionItem`、`ContentBlockVersion`、`HandoutVersion` 不保存 Difficulty。
+- 创建 SectionVariant 时必须先选择 Difficulty。
+- 默认选中所有小于等于 Variant Difficulty 的内容。
+- `Unset / 未设置` 不参与默认选中，只允许用户后续手动选择。
+- 第一版顶层 `ContentBlock` / `CompositeBlock` 按 `ContentBlock.Difficulty` 判断。
+- 第一版顶层 `AtomicSection` 按 `AtomicSection.Difficulty` 判断整个 as。
+- 第一版不做 AtomicSection 内部 `AtomicSectionItem` 部分选择，但文档必须保留后续完整模型的扩展口子。
+- 第一版唯一创建入口是 `SectionPage -> SectionTree -> Section 根节点右键菜单`。
+- 第一版不允许在 Toolbar、TeachingStructureTree、Inspector 或普通节点右键菜单中创建 SectionVariant。
+
 ## 1. 新前端工程目录如何落地？
 
 当前结论：
@@ -140,19 +157,14 @@ SectionItemView
 - `Section`
 - `SectionVariant`
 - `ContentBlock`
+- `AtomicSection`
 
 都已有 `Difficulty`
 
-缺口：
+已解决：
 
-- `AtomicSection` 当前领域模型没有 `Difficulty`
-
-需确认：
-
-- SectionPage 第一版里的 AtomicSection difficulty 是：
-  - 先不做
-  - 前端 mock 预留
-  - 还是要求先补后端模型
+- AtomicSection 已有 `Difficulty` 字段。
+- 第一版 SectionVariant 默认选择时，AtomicSection 按自身 `Difficulty` 判断整个 as 是否被默认选中。
 
 ## 8. Word 编辑入口第一版只显示按钮，还是要接现有编辑链路？
 
