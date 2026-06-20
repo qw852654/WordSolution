@@ -158,8 +158,6 @@ const en = {
       openWord: 'Word edit',
       refreshPreview: 'Refresh preview',
       more: 'More',
-      missingDocumentTitle: 'This ContentBlock does not have a Word document yet',
-      missingDocumentDescription: 'Click Word edit to create the document and open it for editing.',
       previewState: {
         ready: 'Preview ready',
         loading: 'Preview loading',
@@ -459,8 +457,6 @@ const en = {
           'Created child ContentBlock inside the current AtomicSection: {title}.',
         feedbackCreateFailed: 'Create failed. Please try again.',
         feedbackMissingSection: 'No valid Section is available, so a block cannot be created.',
-        feedbackAtomicSectionOnlyTopLevel:
-          'AtomicSection can only be created as a top-level Section block. This nested insert position only supports ContentBlock.',
         feedbackSearchExistingBlock:
           'Selected this position for inserting an existing block. BlockSearchPicker will be connected later.',
       },
@@ -476,11 +472,6 @@ const en = {
         removeConfirm:
           'Remove this ContentBlock reference from the current AtomicSection? The source ContentBlock will not be deleted. ContentBlock: {title}',
         operationFailed: 'AtomicSection child ContentBlock operation failed. Please try again.',
-      },
-      compositeBlockActions: {
-        insertChildPosition: 'Inside CompositeBlock: {title}',
-        feedbackCreateChildSubmitted:
-          'Created child ContentBlock inside the current CompositeBlock: {title}.',
       },
       contentBlockActions: {
         wordEditPending: 'ContentBlock Word editing API is not connected yet',

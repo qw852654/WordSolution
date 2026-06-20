@@ -355,55 +355,6 @@ type SectionVariantDto = {
 }
 ```
 
-#### SectionVariantSelection 目标模型
-
-SectionVariant 的完整目标不是简单“复制一份 Section”，而是从 Section 这个完整知识池中选择适合某个教学用途、难度层级和学生深度的内容。
-
-第一版只使用已有顶层选择模型：
-
-```ts
-type SectionVariantItemDto = {
-  id: number
-  sectionVariantId: number
-  sectionItemId: number
-  sortOrder: number
-  note?: string | null
-  updatedTime: string
-}
-```
-
-第一版创建 SectionVariant 时，必须先选择 `difficulty`。默认选择规则由 `difficulty` 决定：
-
-```text
-Basic    -> 默认选择 Basic
-Medium   -> 默认选择 Basic + Medium
-Advanced -> 默认选择 Basic + Medium + Advanced
-Top      -> 默认选择 Basic + Medium + Advanced + Top
-```
-
-`Unset` 不进入默认选择，只能由用户后续手动选择。
-
-第一版顶层对象的难度来源：
-
-- `ContentBlock`：使用 `ContentBlock.difficulty`。
-- `CompositeBlock`：本质是 `ContentBlock`，使用 `ContentBlock.difficulty`。
-- `AtomicSection`：使用 `AtomicSection.difficulty` 判断整个 as 是否选入。
-
-第一版不支持 `AtomicSection` 内部的部分选择。后续完整模型需要为 `AtomicSectionItem` 选择预留扩展，例如：
-
-```ts
-type SectionVariantAtomicItemSelectionDto = {
-  id: number
-  sectionVariantId: number
-  atomicSectionId: number
-  atomicSectionItemId: number
-  note?: string | null
-  updatedTime: string
-}
-```
-
-后续也可以引入规则建议模型，但规则只能用于初始化或建议，不应自动覆盖用户已经保存的 SectionVariant 选择。
-
 #### TeachingNoteDto
 
 ```ts

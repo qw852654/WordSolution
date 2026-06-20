@@ -96,9 +96,6 @@ function handleSubmit() {
     insertMode: props.model.insertMode,
     atomicSectionId: props.model.atomicSectionId,
     atomicSectionTitle: props.model.atomicSectionTitle,
-    compositeBlockId: props.model.compositeBlockId,
-    compositeBlockTitle: props.model.compositeBlockTitle,
-    insertSortOrder: props.model.insertSortOrder,
     wrapSectionItemIds: props.model.wrapSectionItemIds,
     title,
     contentBlockType: isContentBlock.value ? form.contentBlockType : undefined,
@@ -114,7 +111,6 @@ watch(
     () => props.model.targetType,
     () => props.model.insertMode,
     () => props.model.atomicSectionId,
-    () => props.model.compositeBlockId,
   ],
   () => {
     if (props.open) {

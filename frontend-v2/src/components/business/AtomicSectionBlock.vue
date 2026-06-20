@@ -7,7 +7,6 @@ import ContentBlockDisplay from '@/components/business/ContentBlockDisplay.vue'
 import { getDifficultyMarkerClass } from '@/components/business/difficultyTone'
 import SectionItemView from '@/components/business/SectionItemView.vue'
 import EmptyState from '@/components/presentation/EmptyState.vue'
-import InsertPoint from '@/components/presentation/InsertPoint.vue'
 import StructuredContainer from '@/components/presentation/StructuredContainer.vue'
 import { Button } from '@/components/ui/button'
 import type {
@@ -15,8 +14,6 @@ import type {
   AtomicSectionItemMovePayload,
   ContentBlockRelationActionPayload,
   ContentBlockRelationMovePayload,
-  InsertPointModel,
-  InsertRequestModel,
   SectionItemViewAction,
   StructuredBlockChildModel,
   StructuredBlockModel,
@@ -25,8 +22,6 @@ import type {
 const props = defineProps<{
   block: StructuredBlockModel
   nodeIdMap?: Record<string, string>
-  activeInsertPointId?: string
-  insertFeedback?: string
 }>()
 
 const emit = defineEmits<{
@@ -43,7 +38,6 @@ const emit = defineEmits<{
   openContentBlockRelationWord: [payload: ContentBlockRelationActionPayload]
   moveContentBlockRelation: [payload: ContentBlockRelationMovePayload]
   removeContentBlockRelation: [payload: ContentBlockRelationActionPayload]
-  requestInsert: [request: InsertRequestModel]
 }>()
 
 const { t } = useI18n()
@@ -58,43 +52,6 @@ const childContentBlockActions: SectionItemViewAction[] = [
   'MoveDown',
   'Remove',
 ]
-const childInsertActions = ['CreateContentBlock', 'SearchExistingBlock'] as const
-
-function isInsertPointActive(insertPointId: string) {
-  return props.activeInsertPointId === insertPointId
-}
-
-function getChildInsertPointAt(index: number): InsertPointModel {
-  const previous = props.block.children[index - 1]
-  const next = props.block.children[index]
-  const anchor = next ? `before-${next.nodeId}` : previous ? `after-${previous.nodeId}` : 'first-child'
-
-  return {
-    id: `insert-atomic-${props.block.atomicSectionId ?? props.block.id}-${anchor}-${index}`,
-    label: t('components.insertPoint.insert'),
-    disabled: !props.block.atomicSectionId,
-    allowedActions: [...childInsertActions],
-    context: {
-      parentType: 'AtomicSection',
-      parentId: props.block.atomicSectionId,
-      parentTitle: props.block.title,
-      afterSortOrder: previous?.sortOrder,
-      beforeSortOrder: next?.sortOrder,
-    },
-  }
-}
-
-function getFirstChildInsertPoint(): InsertPointModel {
-  return getChildInsertPointAt(0)
-}
-
-function emitInsertRequest(point: InsertPointModel, actionType: InsertRequestModel['actionType']) {
-  emit('requestInsert', {
-    insertPointId: point.id,
-    actionType,
-    context: point.context,
-  })
-}
 
 function createAtomicSectionItemActionPayload(
   child: StructuredBlockChildModel,
@@ -174,24 +131,9 @@ function emitAtomicSectionItemRemove(child: StructuredBlockChildModel) {
     <template v-if="isExpanded">
     <p class="text-sm leading-6 text-muted-foreground">{{ block.summary }}</p>
     <div v-if="block.children.length">
-      <template
-        v-for="(child, index) in block.children"
-        :key="child.id"
-      >
-      <div class="space-y-1">
-        <InsertPoint
-          :point="getChildInsertPointAt(index)"
-          :selected="isInsertPointActive(getChildInsertPointAt(index).id)"
-          @request-action="emitInsertRequest(getChildInsertPointAt(index), $event.actionType)"
-        />
-        <p
-          v-if="isInsertPointActive(getChildInsertPointAt(index).id) && insertFeedback"
-          class="mx-4 rounded-md border bg-muted/20 px-2 py-1 text-xs text-muted-foreground"
-        >
-          {{ insertFeedback }}
-        </p>
-      </div>
       <SectionItemView
+        v-for="child in block.children"
+        :key="child.id"
         :item-id="child.id"
         :selected="child.selected"
         :disabled="child.disabled"
@@ -214,15 +156,12 @@ function emitAtomicSectionItemRemove(child: StructuredBlockChildModel) {
           v-else
           :block="child.block"
           :node-id-map="nodeIdMap"
-          :active-insert-point-id="activeInsertPointId"
-          :insert-feedback="insertFeedback"
           @select="emit('selectContentBlock', $event)"
           @select-content-block="emit('selectContentBlock', $event)"
           @toggle-collapse="emit('toggleCollapse', $event)"
-          @open-word="emitAtomicSectionItemWord(child)"
+          @open-word="emit('openWord', $event)"
           @refresh-preview="emit('refreshPreview', $event)"
           @open-content-block-more="emit('openContentBlockMore', $event)"
-          @request-insert="emit('requestInsert', $event)"
           @open-content-block-relation-word="emit('openContentBlockRelationWord', $event)"
           @move-content-block-relation="emit('moveContentBlockRelation', $event)"
           @remove-content-block-relation="emit('removeContentBlockRelation', $event)"
@@ -231,23 +170,9 @@ function emitAtomicSectionItemRemove(child: StructuredBlockChildModel) {
           @remove-atomic-section-item="emit('removeAtomicSectionItem', $event)"
         />
       </SectionItemView>
-      </template>
-      <div class="space-y-1">
-        <InsertPoint
-          :point="getChildInsertPointAt(block.children.length)"
-          :selected="isInsertPointActive(getChildInsertPointAt(block.children.length).id)"
-          @request-action="emitInsertRequest(getChildInsertPointAt(block.children.length), $event.actionType)"
-        />
-        <p
-          v-if="isInsertPointActive(getChildInsertPointAt(block.children.length).id) && insertFeedback"
-          class="mx-4 rounded-md border bg-muted/20 px-2 py-1 text-xs text-muted-foreground"
-        >
-          {{ insertFeedback }}
-        </p>
-      </div>
     </div>
-    <div v-else class="space-y-2">
     <EmptyState
+      v-else
       :title="t('components.structuredBlock.emptyTitle')"
       :description="t('components.structuredBlock.atomicEmptyDescription')"
     >
@@ -255,18 +180,6 @@ function emitAtomicSectionItemRemove(child: StructuredBlockChildModel) {
         <Rows3 class="size-5" aria-hidden="true" />
       </template>
     </EmptyState>
-      <InsertPoint
-        :point="getFirstChildInsertPoint()"
-        :selected="isInsertPointActive(getFirstChildInsertPoint().id)"
-        @request-action="emitInsertRequest(getFirstChildInsertPoint(), $event.actionType)"
-      />
-      <p
-        v-if="isInsertPointActive(getFirstChildInsertPoint().id) && insertFeedback"
-        class="mx-4 rounded-md border bg-muted/20 px-2 py-1 text-xs text-muted-foreground"
-      >
-        {{ insertFeedback }}
-      </p>
-    </div>
     </template>
   </StructuredContainer>
 </template>

@@ -262,15 +262,6 @@ export interface CmsV2MoveContentBlockRelationRequest {
   direction: 'Up' | 'Down'
 }
 
-export interface CmsV2AddContentBlockRelationRequest {
-  childBlockId: number
-  referenceMode: 'FollowLatest' | 'LockedVersion'
-  lockedContentBlockVersionId?: number | null
-  sortOrder: number
-  titleOverride?: string | null
-  note?: string | null
-}
-
 export interface CmsV2MoveAtomicSectionItemRequest {
   direction: 'Up' | 'Down'
 }
@@ -477,14 +468,6 @@ export const cmsV2Api = {
   listContentBlockChildren: (contentBlockId: number) =>
     cmsV2FetchJson<CmsV2ContentBlockRelationDto[]>(
       `/content-blocks/${contentBlockId}/relations/children`,
-    ),
-  addContentBlockRelation: (
-    parentBlockId: number,
-    request: CmsV2AddContentBlockRelationRequest,
-  ) =>
-    cmsV2PostJson<CmsV2CreatedEntityResultDto>(
-      `/content-blocks/${parentBlockId}/relations/children`,
-      request,
     ),
   moveContentBlockRelation: (
     parentBlockId: number,

@@ -4,46 +4,7 @@ export interface ContentBlockRelationActionsOptions {
   refreshSection: () => Promise<void>
 }
 
-export interface CreateContentBlockInsideCompositeBlockInput {
-  parentBlockId: number
-  sectionId: number
-  title: string
-  blockType: string
-  difficulty: string
-  sortOrder: number
-}
-
 export function useContentBlockRelationActions(options: ContentBlockRelationActionsOptions) {
-  async function createContentBlockInsideCompositeBlock(
-    input: CreateContentBlockInsideCompositeBlockInput,
-  ) {
-    const createdContentBlock = await cmsV2Api.createContentBlock({
-      sectionId: input.sectionId,
-      title: input.title,
-      blockType: input.blockType,
-      summary: null,
-      difficulty: input.difficulty,
-      questionType: null,
-      status: 'Draft',
-    })
-
-    const createdRelation = await cmsV2Api.addContentBlockRelation(input.parentBlockId, {
-      childBlockId: createdContentBlock.id,
-      referenceMode: 'FollowLatest',
-      lockedContentBlockVersionId: null,
-      sortOrder: input.sortOrder,
-      titleOverride: null,
-      note: null,
-    })
-
-    await options.refreshSection()
-
-    return {
-      contentBlock: createdContentBlock,
-      relation: createdRelation,
-    }
-  }
-
   async function moveContentBlockRelation(
     parentBlockId: number,
     relationId: number,
@@ -67,7 +28,6 @@ export function useContentBlockRelationActions(options: ContentBlockRelationActi
   }
 
   return {
-    createContentBlockInsideCompositeBlock,
     moveContentBlockRelation,
     moveContentBlockRelationUp,
     moveContentBlockRelationDown,
