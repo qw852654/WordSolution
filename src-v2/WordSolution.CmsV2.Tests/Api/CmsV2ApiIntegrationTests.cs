@@ -15,6 +15,7 @@ using WordSolution.CmsV2.Application.SectionVariants;
 using WordSolution.CmsV2.Application.Sections;
 using WordSolution.CmsV2.Application.TeachingStructure;
 using WordSolution.CmsV2.Domain.Documents;
+using WordSolution.CmsV2.Domain.Enums;
 using WordSolution.CmsV2.Domain.Repositories;
 using WordSolution.CmsV2.Infrastructure.Persistence;
 
@@ -329,7 +330,7 @@ public sealed class CmsV2ApiIntegrationTests
         var variant = await PostJsonAsync(
             client,
             "/api/cms-v2/section-variants",
-            new { sectionId = section.GetProperty("id").GetInt32(), title = "Basic lecture", type = "Lecture", status = "Draft" });
+            new { sectionId = section.GetProperty("id").GetInt32(), title = "Basic lecture", type = "Lecture", difficulty = "Basic", status = "Draft" });
 
         var duplicateSection = await client.PostAsJsonAsync(
             $"/api/cms-v2/teaching-topics/{sibling.GetProperty("id").GetInt32()}/section",
@@ -650,6 +651,157 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.Equal(HttpStatusCode.NotFound, missingBlock.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, missingParent.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, duplicateSection.StatusCode);
+    }
+
+    [Fact]
+    public async Task SectionVariant_selection_preview_endpoint_returns_default_candidates()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "功能关系", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "机械能守恒", type = "NormalCourse", difficulty = "Medium", status = "Draft" });
+        var sectionId = section.GetProperty("id").GetInt32();
+        var basicBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks",
+            new { sectionId, title = "基础知识点", blockType = "KnowledgePoint", difficulty = "Basic", status = "Draft" });
+        var advancedBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks",
+            new { sectionId, title = "提高例题", blockType = "Question", difficulty = "Advanced", status = "Draft" });
+        var basicItem = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/sections/{sectionId}/items",
+            new
+            {
+                targetType = "ContentBlock",
+                targetId = basicBlock.GetProperty("id").GetInt32(),
+                referenceMode = "FollowLatest",
+                sortOrder = 20
+            });
+        var advancedItem = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/sections/{sectionId}/items",
+            new
+            {
+                targetType = "ContentBlock",
+                targetId = advancedBlock.GetProperty("id").GetInt32(),
+                referenceMode = "FollowLatest",
+                sortOrder = 10
+            });
+
+        var preview = await PostJsonAsync(
+            client,
+            "/api/cms-v2/section-variants/selection-preview",
+            new { sectionId, difficulty = "Medium" });
+        var candidates = preview.EnumerateArray().ToArray();
+        var invalidDifficulty = await client.PostAsJsonAsync(
+            "/api/cms-v2/section-variants/selection-preview",
+            new { sectionId, difficulty = "Unset" });
+        var missingSection = await client.PostAsJsonAsync(
+            "/api/cms-v2/section-variants/selection-preview",
+            new { sectionId = 999_999, difficulty = "Basic" });
+
+        Assert.Equal(2, candidates.Length);
+        Assert.Equal(advancedItem.GetProperty("id").GetInt32(), candidates[0].GetProperty("sectionItemId").GetInt32());
+        Assert.Equal(basicItem.GetProperty("id").GetInt32(), candidates[1].GetProperty("sectionItemId").GetInt32());
+        Assert.Equal("ContentBlock", candidates[0].GetProperty("targetType").GetString());
+        Assert.Equal("Advanced", candidates[0].GetProperty("resolvedDifficulty").GetString());
+        Assert.False(candidates[0].GetProperty("defaultSelected").GetBoolean());
+        Assert.Equal("Basic", candidates[1].GetProperty("resolvedDifficulty").GetString());
+        Assert.True(candidates[1].GetProperty("defaultSelected").GetBoolean());
+        Assert.True(candidates[1].GetProperty("selectable").GetBoolean());
+        Assert.Equal(HttpStatusCode.BadRequest, invalidDifficulty.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, missingSection.StatusCode);
+    }
+
+    [Fact]
+    public async Task SectionVariant_create_endpoint_creates_selected_items_transactionally()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "Variant Topic", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "Variant Section", type = "NormalCourse", difficulty = "Medium", status = "Draft" });
+        var sectionId = section.GetProperty("id").GetInt32();
+        var firstBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks",
+            new { sectionId, title = "First", blockType = "KnowledgePoint", difficulty = "Basic", status = "Draft" });
+        var secondBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks",
+            new { sectionId, title = "Second", blockType = "Question", difficulty = "Medium", status = "Draft" });
+        var firstItem = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/sections/{sectionId}/items",
+            new
+            {
+                targetType = "ContentBlock",
+                targetId = firstBlock.GetProperty("id").GetInt32(),
+                referenceMode = "FollowLatest",
+                sortOrder = 20
+            });
+        var secondItem = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/sections/{sectionId}/items",
+            new
+            {
+                targetType = "ContentBlock",
+                targetId = secondBlock.GetProperty("id").GetInt32(),
+                referenceMode = "FollowLatest",
+                sortOrder = 10
+            });
+
+        var created = await PostJsonAsync(
+            client,
+            "/api/cms-v2/section-variants",
+            new
+            {
+                sectionId,
+                title = "Medium Variant",
+                type = "Lecture",
+                difficulty = "Medium",
+                selectedSectionItemIds = new[]
+                {
+                    firstItem.GetProperty("id").GetInt32(),
+                    secondItem.GetProperty("id").GetInt32()
+                }
+            });
+        var variantId = created.GetProperty("id").GetInt32();
+        var variant = await client.GetFromJsonAsync<JsonElement>($"/api/cms-v2/section-variants/{variantId}");
+        var variantItems = await client.GetFromJsonAsync<JsonElement>($"/api/cms-v2/section-variants/{variantId}/items");
+        var emptyVariant = await PostJsonAsync(
+            client,
+            "/api/cms-v2/section-variants",
+            new { sectionId, title = "Empty Variant", type = "Review", difficulty = "Basic", selectedSectionItemIds = Array.Empty<int>() });
+        var invalidDifficulty = await client.PostAsJsonAsync(
+            "/api/cms-v2/section-variants",
+            new { sectionId, title = "Unset Variant", type = "Lecture", difficulty = "Unset", selectedSectionItemIds = Array.Empty<int>() });
+        var duplicateTitle = await client.PostAsJsonAsync(
+            "/api/cms-v2/section-variants",
+            new { sectionId, title = "medium variant", type = "Lecture", difficulty = "Basic", selectedSectionItemIds = Array.Empty<int>() });
+        var missingItem = await client.PostAsJsonAsync(
+            "/api/cms-v2/section-variants",
+            new { sectionId, title = "Missing Item Variant", type = "Lecture", difficulty = "Basic", selectedSectionItemIds = new[] { 999_999 } });
+
+        var items = variantItems.EnumerateArray().ToArray();
+        Assert.Equal(SectionVariantStatus.Draft.ToString(), variant.GetProperty("status").GetString());
+        Assert.Equal(1, variant.GetProperty("sortOrder").GetInt32());
+        Assert.Equal(2, items.Length);
+        Assert.Equal(secondItem.GetProperty("id").GetInt32(), items[0].GetProperty("sectionItemId").GetInt32());
+        Assert.Equal(firstItem.GetProperty("id").GetInt32(), items[1].GetProperty("sectionItemId").GetInt32());
+        Assert.Equal(1, items[0].GetProperty("sortOrder").GetInt32());
+        Assert.Equal(2, items[1].GetProperty("sortOrder").GetInt32());
+        Assert.True(emptyVariant.GetProperty("id").GetInt32() > 0);
+        Assert.Equal(HttpStatusCode.BadRequest, invalidDifficulty.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, duplicateTitle.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, missingItem.StatusCode);
     }
 
     private static async Task<ImportedContentBlock> CreateImportedContentBlockAsync(

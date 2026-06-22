@@ -30,6 +30,40 @@ export interface SectionVariantCardModel {
   disabled?: boolean
 }
 
+export type SectionVariantCreateType =
+  | 'Lecture'
+  | 'Exercise'
+  | 'Homework'
+  | 'Review'
+  | 'ExamTraining'
+  | 'Custom'
+
+export type SectionVariantCreateDifficulty = 'Basic' | 'Medium' | 'Advanced' | 'Top'
+
+export interface SectionVariantCreateMetadata {
+  sectionId: number
+  title: string
+  description?: string
+  type: SectionVariantCreateType
+  difficulty: SectionVariantCreateDifficulty
+}
+
+export interface SectionVariantSelectionCandidateModel {
+  sectionItemId: number
+  targetType: 'ContentBlock' | 'AtomicSection'
+  title: string
+  displayType: string
+  resolvedDifficulty: 'Unset' | 'Basic' | 'Medium' | 'Advanced' | 'Top'
+  defaultSelected: boolean
+  selected: boolean
+  selectable: boolean
+  unavailableReason?: string
+}
+
+export type SectionVariantCreateSubmitPayload = SectionVariantCreateMetadata & {
+  selectedSectionItemIds: number[]
+}
+
 export interface BasicTreeNode {
   id: string
   label: string

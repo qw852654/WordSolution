@@ -1,83 +1,32 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { ArrowLeft, GitBranch, MousePointer2, Network } from 'lucide-vue-next'
+import { ArrowLeft } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
-import TeachingTopicTree from '@/components/business/TeachingTopicTree.vue'
-import TeachingTopicTreeContextMenu from '@/components/business/TeachingTopicTreeContextMenu.vue'
+import SectionVariantCreatePanel from '@/components/business/SectionVariantCreatePanel.vue'
 import PageHeader from '@/components/presentation/PageHeader.vue'
 import { Button } from '@/components/ui/button'
-import { mockTeachingStructureNodes, mockTeachingTopicTreeNodes } from '@/mocks'
-import type {
-  TeachingTopicTreeContextMenuActionPayload,
-  TeachingTopicTreeContextMenuModel,
-  TeachingTopicTreeContextMenuPayload,
-  TeachingTopicTreeNodeModel,
-} from '@/types'
+import {
+  mockSectionVariantCreateMetadata,
+  mockSectionVariantSelectionCandidates,
+} from '@/mocks'
+import type { SectionVariantCreateSubmitPayload } from '@/types'
 
 const { t } = useI18n()
 
-const selectedTopicId = ref('topic-2')
-const contextMenu = ref<TeachingTopicTreeContextMenuModel | null>(null)
-const feedback = ref('')
-const mockDtoRootCount = computed(() => mockTeachingStructureNodes.length)
-
-const selectedTopic = computed(() =>
-  findTeachingTopicNode(mockTeachingTopicTreeNodes, selectedTopicId.value),
+const submittedPayload = ref<SectionVariantCreateSubmitPayload | null>(null)
+const panelKey = ref(0)
+const payloadText = computed(() =>
+  submittedPayload.value ? JSON.stringify(submittedPayload.value, null, 2) : '',
 )
-const contextTargetTopicId = computed(() => contextMenu.value?.node.id)
 
-function findTeachingTopicNode(
-  nodes: TeachingTopicTreeNodeModel[],
-  nodeId?: string,
-): TeachingTopicTreeNodeModel | undefined {
-  if (!nodeId) {
-    return undefined
-  }
-
-  for (const node of nodes) {
-    if (node.id === nodeId) {
-      return node
-    }
-
-    const childResult = findTeachingTopicNode(node.children ?? [], nodeId)
-
-    if (childResult) {
-      return childResult
-    }
-  }
-
-  return undefined
+function handleSubmit(payload: SectionVariantCreateSubmitPayload) {
+  submittedPayload.value = payload
 }
 
-function selectTopic(topicId: string) {
-  selectedTopicId.value = topicId
-  contextMenu.value = null
-}
-
-function openContextMenu(payload: TeachingTopicTreeContextMenuPayload) {
-  contextMenu.value = {
-    node: payload.node,
-    position: {
-      x: payload.x,
-      y: payload.y,
-    },
-  }
-}
-
-function closeContextMenu() {
-  contextMenu.value = null
-}
-
-function handleMenuAction(payload: TeachingTopicTreeContextMenuActionPayload) {
-  const targetNode = contextMenu.value?.node
-  const actionLabel = t(`components.teachingTopicTreeContextMenu.actions.${payload.actionType}`)
-
-  feedback.value = t('lab.sections.teachingTopicTree.contextFeedback', {
-    action: actionLabel,
-    node: targetNode?.title ?? payload.nodeId,
-  })
-  contextMenu.value = null
+function handleCancel() {
+  submittedPayload.value = null
+  panelKey.value += 1
 }
 </script>
 
@@ -98,148 +47,48 @@ function handleMenuAction(payload: TeachingTopicTreeContextMenuActionPayload) {
       </template>
     </PageHeader>
 
-    <section class="mt-6 space-y-4" :aria-label="t('lab.sections.teachingTopicTree.title')">
-      <div class="flex items-start gap-2">
-        <Network class="mt-0.5 size-4" aria-hidden="true" />
-        <div>
-          <h2 class="text-base font-semibold">{{ t('lab.sections.teachingTopicTree.title') }}</h2>
-          <p class="text-sm text-muted-foreground">
-            {{ t('lab.sections.teachingTopicTree.description') }}
+    <section class="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
+      <div class="space-y-4">
+        <div class="rounded-lg border bg-background p-4">
+          <h2 class="text-base font-semibold">SectionVariantCreatePanel</h2>
+          <p class="mt-1 text-sm text-muted-foreground">
+            {{ t('lab.sections.sectionVariantCreate.description') }}
           </p>
         </div>
+
+        <SectionVariantCreatePanel
+          :key="panelKey"
+          :initial-metadata="mockSectionVariantCreateMetadata"
+          :candidates="mockSectionVariantSelectionCandidates"
+          :section-title="t('lab.sections.sectionVariantCreate.mockSectionTitle')"
+          @submit="handleSubmit"
+          @cancel="handleCancel"
+        />
       </div>
 
-      <div class="grid gap-4 lg:grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)]">
-        <section class="rounded-lg border bg-background p-4" :aria-label="t('components.teachingTopicTree.title')">
-          <TeachingTopicTree
-            :nodes="mockTeachingTopicTreeNodes"
-            :selected-topic-id="selectedTopicId"
-            :context-target-topic-id="contextTargetTopicId"
-            @select-topic="selectTopic"
-            @node-context-menu="openContextMenu"
-          />
-        </section>
-
-        <aside class="space-y-4">
-          <div class="rounded-lg border bg-background p-4">
-            <div class="mb-3 flex items-center gap-2">
-              <GitBranch class="size-4" aria-hidden="true" />
-              <h3 class="text-sm font-medium">
-                {{ t('lab.sections.teachingTopicTree.selectedTitle') }}
-              </h3>
-            </div>
-
-            <div v-if="selectedTopic" class="space-y-3 text-sm">
-              <div>
-                <p class="text-xs text-muted-foreground">
-                  {{ t('lab.sections.teachingTopicTree.nameLabel') }}
-                </p>
-                <p class="font-medium">{{ selectedTopic.title }}</p>
-              </div>
-              <div class="grid gap-2 sm:grid-cols-2">
-                <div>
-                  <p class="text-xs text-muted-foreground">
-                    {{ t('components.teachingTopicTree.status') }}
-                  </p>
-                  <p>{{ selectedTopic.status ?? t('components.sectionInspector.notSet') }}</p>
-                </div>
-                <div>
-                  <p class="text-xs text-muted-foreground">DTO</p>
-                  <p>{{ selectedTopic.kind ?? t('components.sectionInspector.notSet') }}</p>
-                </div>
-                <div>
-                  <p class="text-xs text-muted-foreground">Section</p>
-                  <p>{{ selectedTopic.sectionTitle ?? t('components.sectionInspector.notSet') }}</p>
-                </div>
-                <div>
-                  <p class="text-xs text-muted-foreground">SectionVariant</p>
-                  <p>
-                    {{
-                      typeof selectedTopic.variantCount === 'number'
-                        ? selectedTopic.variantCount
-                        : t('components.sectionInspector.notSet')
-                    }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-xs text-muted-foreground">
-                    {{ t('components.teachingTopicTree.sectionCountLabel') }}
-                  </p>
-                  <p>
-                    {{
-                      typeof selectedTopic.sectionCount === 'number'
-                        ? selectedTopic.sectionCount
-                        : t('components.sectionInspector.notSet')
-                    }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-xs text-muted-foreground">
-                    {{ t('components.teachingTopicTree.handoutCountLabel') }}
-                  </p>
-                  <p>
-                    {{
-                      typeof selectedTopic.handoutCount === 'number'
-                        ? selectedTopic.handoutCount
-                        : t('components.sectionInspector.notSet')
-                    }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-xs text-muted-foreground">
-                    {{ t('components.teachingTopicTree.archivedLabel') }}
-                  </p>
-                  <p>
-                    {{
-                      selectedTopic.archived
-                        ? t('components.sectionInspector.yes')
-                        : t('components.sectionInspector.no')
-                    }}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <p v-else class="text-sm text-muted-foreground">
-              {{ t('lab.sections.teachingTopicTree.emptySelected') }}
+      <aside class="rounded-lg border bg-background p-4" aria-live="polite">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-sm font-semibold">
+              {{ t('lab.sections.sectionVariantCreate.payloadTitle') }}
+            </h2>
+            <p class="mt-1 text-sm text-muted-foreground">
+              {{ t('lab.sections.sectionVariantCreate.payloadDescription') }}
             </p>
           </div>
+          <Button type="button" variant="outline" size="sm" @click="handleCancel">
+            {{ t('lab.sections.sectionVariantCreate.reset') }}
+          </Button>
+        </div>
 
-          <div class="grid gap-4 md:grid-cols-2">
-            <div class="rounded-lg border bg-background p-4">
-              <div class="mb-3 flex items-center gap-2">
-                <MousePointer2 class="size-4" aria-hidden="true" />
-                <h3 class="text-sm font-medium">
-                  {{ t('lab.sections.teachingTopicTree.contextTargetTitle') }}
-                </h3>
-              </div>
-              <p class="truncate text-sm text-foreground">
-                {{ contextMenu?.node.title ?? t('lab.sections.teachingTopicTree.emptyContextTarget') }}
-              </p>
-              <p class="mt-1 text-xs text-muted-foreground">
-                {{ t('lab.sections.teachingTopicTree.contextRule') }}
-                DTO root: {{ mockDtoRootCount }}
-              </p>
-            </div>
-
-            <div class="rounded-lg border bg-background p-4" aria-live="polite">
-              <h3 class="text-sm font-medium">
-                {{ t('lab.sections.teachingTopicTree.feedbackTitle') }}
-              </h3>
-              <p class="mt-3 text-sm text-muted-foreground">
-                {{ feedback || t('lab.sections.teachingTopicTree.emptyFeedback') }}
-              </p>
-            </div>
-          </div>
-        </aside>
-      </div>
+        <pre
+          v-if="submittedPayload"
+          class="mt-4 max-h-[28rem] overflow-auto rounded-md border bg-muted/30 p-3 text-xs text-foreground"
+        >{{ payloadText }}</pre>
+        <p v-else class="mt-4 text-sm text-muted-foreground">
+          {{ t('lab.sections.sectionVariantCreate.emptyPayload') }}
+        </p>
+      </aside>
     </section>
-
-    <TeachingTopicTreeContextMenu
-      :model="contextMenu"
-      :open="contextMenu !== null"
-      @close="closeContextMenu"
-      @request-action="handleMenuAction"
-    />
   </main>
 </template>

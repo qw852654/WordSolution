@@ -130,6 +130,54 @@ const en = {
       itemCount: 'Items',
       open: 'Open',
     },
+    sectionVariantCreate: {
+      description:
+        'Fill SectionVariant metadata first, then review and select SectionItem candidates. This uses Mock Data and does not call API.',
+      stepMetadata: 'Step 1 / Metadata',
+      stepSelection: 'Step 2 / Select SectionItem',
+      selectionTitle: 'SectionItem candidates',
+      selectionDescription:
+        'Default selections come from the backend selection preview rule. Users can add or remove selections. Empty selection is allowed.',
+      selectedSummary: '{selected} / {total} selected',
+      defaultSelected: 'Default selected',
+      unavailableReason: 'Unavailable reason',
+      emptyVariantAllowed:
+        'Creating an empty SectionVariant is allowed; selectedSectionItemIds may be an empty array.',
+      fields: {
+        title: 'Name',
+        type: 'Type',
+        difficulty: 'Difficulty',
+        description: 'Note',
+      },
+      placeholders: {
+        title: 'Enter SectionVariant name',
+        description: 'Optional note',
+      },
+      validation: {
+        titleRequired: 'Enter a name before continuing.',
+      },
+      actions: {
+        cancel: 'Cancel',
+        previous: 'Previous',
+        next: 'Next',
+        submit: 'Generate Mock payload',
+      },
+      types: {
+        Lecture: 'Lecture',
+        Exercise: 'Exercise',
+        Homework: 'Homework',
+        Review: 'Review',
+        ExamTraining: 'Exam training',
+        Custom: 'Custom',
+      },
+      difficulties: {
+        Unset: 'Unset',
+        Basic: 'Basic',
+        Medium: 'Medium',
+        Advanced: 'Advanced',
+        Top: 'Top',
+      },
+    },
     sectionItemView: {
       containerLabel: 'SectionItemView container',
       actionRailLabel: 'SectionItemView action rail placeholder',
@@ -294,6 +342,16 @@ const en = {
     backHome: 'Back to Home',
     scenarioCount: 'Scenario count:',
     sections: {
+      sectionVariantCreate: {
+        description:
+          'Validate the two-step SectionVariant create UI: fill metadata, then select SectionItem candidates. The result is only a Mock payload.',
+        mockSectionTitle: 'Mechanical energy conservation',
+        payloadTitle: 'Mock Data payload',
+        payloadDescription:
+          'After submit, inspect the final structure here and confirm selectedSectionItemIds may be an empty array.',
+        emptyPayload: 'No Mock Data has been submitted yet.',
+        reset: 'Reset',
+      },
       contentBlockDisplay: {
         title: 'ContentBlockDisplay',
         description:

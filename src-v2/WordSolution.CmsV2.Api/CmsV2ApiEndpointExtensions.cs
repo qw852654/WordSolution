@@ -708,6 +708,18 @@ public static class CmsV2ApiEndpointExtensions
         group.MapGet("/section-variants/{id:int}", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
             await OkOrNotFoundAsync(unitOfWork.SectionVariants.GetByIdAsync(id, cancellationToken)));
 
+        group.MapPost("/section-variants/selection-preview", async (
+            PreviewSectionVariantSelectionRequest request,
+            SectionVariantUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.PreviewSectionVariantSelectionAsync(
+                new PreviewSectionVariantSelectionCommand(request.SectionId, request.Difficulty),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
         group.MapPost("/section-variants", async (
             CreateSectionVariantRequest request,
             SectionVariantUseCases useCases,
@@ -720,8 +732,7 @@ public static class CmsV2ApiEndpointExtensions
                     request.Description,
                     request.Type,
                     request.Difficulty,
-                    request.Status,
-                    request.SortOrder),
+                    request.SelectedSectionItemIds),
                 cancellationToken);
 
             return Results.Ok(result);

@@ -1204,3 +1204,83 @@ SectionTree -> Section 根节点右键菜单 -> 新建 SectionVariant
 如果后续新增 `CreateSectionVariantPanel`、`VariantSelectionMode` 或 `SectionVariantSelectionCandidate`，必须先放入 `ComponentLab` 使用 Mock Data 验收。
 
 验收完成后再接入真实 `SectionPage`。
+
+## 当前补充：SectionVariant 创建组件
+
+本节记录 `SectionVariant` 创建 UI 的第一轮 Mock 组件验收约定。
+
+### SectionVariantCreatePanel
+
+职责：
+
+- 承载 `SectionVariant` 创建的两步 UI。
+- 第一步填写元数据：名称、类型、难度、备注。
+- 第二步展示 `SectionItem` 候选项并允许勾选、取消勾选。
+- 允许创建空 `SectionVariant`，即最终 `selectedSectionItemIds = []`。
+- 只在 `ComponentLab` 中使用 Mock Data 验收。
+- 提交时只 emit `SectionVariantCreateSubmitPayload`。
+
+边界：
+
+- 不调用 API。
+- 不读取 Pinia。
+- 不直接创建真实 `SectionVariant`。
+- 不持有真实 `SectionPage` 状态。
+- 不推断后端 selection preview 规则，只展示传入的候选项结果。
+- 不提交 `Status` 或 `SortOrder`，这些由后端创建用例决定。
+
+### SectionVariantMetadataForm
+
+职责：
+
+- 只负责 `SectionVariant` 元数据输入。
+- 通过 `v-model` 风格事件把元数据交给父组件。
+- 展示名称必填校验。
+
+边界：
+
+- 不切换步骤。
+- 不读取候选项。
+- 不调用 API。
+- 不决定默认勾选策略。
+
+### SectionVariantSelectionList
+
+职责：
+
+- 展示候选 `SectionItem` 列表。
+- 汇总当前已勾选数量。
+- 允许用户把所有可选项都取消勾选。
+
+边界：
+
+- 不直接修改真实数据。
+- 不调用 API。
+- 不读取 `ContentBlock` 或 `AtomicSection` 详情。
+- 不判断候选项是否可选，只使用传入的 `selectable` 和 `unavailableReason`。
+
+### SectionVariantSelectionItem
+
+职责：
+
+- 展示单个候选项。
+- 展示字段包括：标题、`ContentBlock / AtomicSection`、显示类型、难度、是否默认勾选、不可选原因。
+- 用统一难度 theme token 显示难度标记。
+- 通过 `toggle` 事件把用户意图交给父组件。
+
+边界：
+
+- 不持有列表状态。
+- 不调用 API。
+- 不理解后端默认勾选算法。
+- 不自行读取目标对象详情。
+
+### 真实入口约定
+
+后续接入真实 `SectionPage` 时，`SectionVariant` 创建入口只能来自：
+
+```text
+SectionPage -> SectionTree -> Section 根节点右键菜单 -> 新建 SectionVariant
+```
+
+禁止在 `TeachingStructureTree`、`Workspace` 顶部工具栏或其他临时位置新增第二入口。

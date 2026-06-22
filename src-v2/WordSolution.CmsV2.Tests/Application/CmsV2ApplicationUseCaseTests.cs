@@ -500,7 +500,7 @@ public sealed class CmsV2ApplicationUseCaseTests
             new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, thirdBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 30));
 
         var variant = await variantUseCases.CreateSectionVariantAsync(
-            new CreateSectionVariantCommand(sectionId, "基础讲解版"));
+            new CreateSectionVariantCommand(sectionId, "基础讲解版", Difficulty: Difficulty.Basic));
         await variantUseCases.AddSectionVariantItemAsync(
             new AddSectionVariantItemCommand(variant.Id, firstItem.Id, SortOrder: 10, Note: "before"));
         await variantUseCases.AddSectionVariantItemAsync(
@@ -599,7 +599,7 @@ public sealed class CmsV2ApplicationUseCaseTests
             new AddSectionItemCommand(sectionB.Id, SectionItemTargetType.ContentBlock, block.Id, ReferenceMode.FollowLatest, null, SortOrder: 1));
 
         var variant = await variantUseCases.CreateSectionVariantAsync(
-            new CreateSectionVariantCommand(sectionA.Id, "课堂版"));
+            new CreateSectionVariantCommand(sectionA.Id, "课堂版", Difficulty: Difficulty.Basic));
 
         await Assert.ThrowsAsync<CmsV2ApplicationException>(
             () => variantUseCases.AddSectionVariantItemAsync(
@@ -609,6 +609,255 @@ public sealed class CmsV2ApplicationUseCaseTests
             new AddSectionVariantItemCommand(variant.Id, itemA.Id, SortOrder: 1));
 
         Assert.True(variantItem.Id > 0);
+    }
+
+    [Fact]
+    public async Task CreateSectionVariantAsync_creates_variant_items_from_selected_top_level_section_items()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var sectionUseCases = new SectionUseCases(unitOfWork);
+        var variantUseCases = new SectionVariantUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+
+        await unitOfWork.SectionVariants.AddAsync(new SectionVariant(sectionId, "Existing", sortOrder: 3));
+        await unitOfWork.SaveChangesAsync();
+
+        var firstBlock = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(sectionId, "First", ContentBlockType.KnowledgePoint, Difficulty.Basic));
+        var secondBlock = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(sectionId, "Second", ContentBlockType.Question, Difficulty.Medium));
+        var childBlock = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(sectionId, "Child", ContentBlockType.Explanation, Difficulty.Basic));
+
+        var firstItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, firstBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 20));
+        var secondItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, secondBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 10));
+        await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, childBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 30, ParentItemId: firstItem.Id));
+
+        var created = await variantUseCases.CreateSectionVariantAsync(
+            new CreateSectionVariantCommand(
+                sectionId,
+                "Lecture Medium",
+                Type: SectionVariantType.Lecture,
+                Difficulty: Difficulty.Medium,
+                SelectedSectionItemIds: [firstItem.Id, secondItem.Id]));
+
+        var variant = await unitOfWork.SectionVariants.GetByIdAsync(created.Id);
+        var variantItems = await unitOfWork.SectionVariantItems.ListBySectionVariantAsync(created.Id);
+
+        Assert.NotNull(variant);
+        Assert.Equal(SectionVariantStatus.Draft, variant.Status);
+        Assert.Equal(4, variant.SortOrder);
+        Assert.Equal([secondItem.Id, firstItem.Id], variantItems.Select(item => item.SectionItemId));
+        Assert.Equal([1, 2], variantItems.Select(item => item.SortOrder));
+    }
+
+    [Fact]
+    public async Task CreateSectionVariantAsync_allows_empty_selection_and_rejects_unset_or_duplicate_title()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var variantUseCases = new SectionVariantUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+
+        var created = await variantUseCases.CreateSectionVariantAsync(
+            new CreateSectionVariantCommand(
+                sectionId,
+                " Empty Variant ",
+                Type: SectionVariantType.Review,
+                Difficulty: Difficulty.Basic,
+                SelectedSectionItemIds: []));
+
+        Assert.Empty(await unitOfWork.SectionVariantItems.ListBySectionVariantAsync(created.Id));
+
+        await Assert.ThrowsAsync<CmsV2ApplicationException>(
+            () => variantUseCases.CreateSectionVariantAsync(
+                new CreateSectionVariantCommand(
+                    sectionId,
+                    "Unset Variant",
+                    Difficulty: Difficulty.Unset,
+                    SelectedSectionItemIds: [])));
+        await Assert.ThrowsAsync<CmsV2ApplicationException>(
+            () => variantUseCases.CreateSectionVariantAsync(
+                new CreateSectionVariantCommand(
+                    sectionId,
+                    "empty variant",
+                    Difficulty: Difficulty.Basic,
+                    SelectedSectionItemIds: [])));
+    }
+
+    [Fact]
+    public async Task CreateSectionVariantAsync_rejects_invalid_selected_items_without_partial_variant()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var sectionUseCases = new SectionUseCases(unitOfWork);
+        var variantUseCases = new SectionVariantUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var otherSectionId = await CreateSectionAsync(unitOfWork);
+
+        var activeBlock = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(sectionId, "Active", ContentBlockType.KnowledgePoint, Difficulty.Basic));
+        var childBlock = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(sectionId, "Child", ContentBlockType.Explanation, Difficulty.Basic));
+        var archivedBlock = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(sectionId, "Archived", ContentBlockType.Question, Difficulty.Basic, Status: ContentBlockStatus.Archived));
+        var otherBlock = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(otherSectionId, "Other", ContentBlockType.Question, Difficulty.Basic));
+        var archivedAtomicSection = new AtomicSection(sectionId, "Archived Atomic", difficulty: Difficulty.Basic, status: AtomicSectionStatus.Archived);
+        await unitOfWork.AtomicSections.AddAsync(archivedAtomicSection);
+        await unitOfWork.SaveChangesAsync();
+
+        var topLevelItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, activeBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 10));
+        var childItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, childBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 20, ParentItemId: topLevelItem.Id));
+        var archivedBlockItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, archivedBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 30));
+        var archivedSectionItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, activeBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 40, Status: SectionStatus.Archived));
+        var archivedAtomicItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.AtomicSection, archivedAtomicSection.Id, ReferenceMode.FollowLatest, null, SortOrder: 50));
+        var otherSectionItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(otherSectionId, SectionItemTargetType.ContentBlock, otherBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 10));
+
+        var invalidSelections = new[]
+        {
+            new[] { topLevelItem.Id, topLevelItem.Id },
+            [999_999],
+            [otherSectionItem.Id],
+            [childItem.Id],
+            [archivedSectionItem.Id],
+            [archivedBlockItem.Id],
+            [archivedAtomicItem.Id],
+        };
+
+        foreach (var selection in invalidSelections)
+        {
+            await Assert.ThrowsAsync<CmsV2ApplicationException>(
+                () => variantUseCases.CreateSectionVariantAsync(
+                    new CreateSectionVariantCommand(
+                        sectionId,
+                        $"Invalid {selection[0]}",
+                        Difficulty: Difficulty.Basic,
+                        SelectedSectionItemIds: selection)));
+        }
+
+        Assert.Empty(await unitOfWork.SectionVariants.ListBySectionAsync(sectionId));
+        Assert.Empty(await unitOfWork.SectionVariantItems.ListAsync());
+    }
+
+    [Fact]
+    public async Task SectionVariant_preview_returns_top_level_candidates_and_default_selection()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var sectionUseCases = new SectionUseCases(unitOfWork);
+        var variantUseCases = new SectionVariantUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+
+        var basicBlock = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(sectionId, "基础知识点", ContentBlockType.KnowledgePoint, Difficulty.Basic));
+        var mediumGroup = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(sectionId, "中档例题组", ContentBlockType.ExampleGroup, Difficulty.Medium));
+        var advancedBlock = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(sectionId, "提高题", ContentBlockType.Question, Difficulty.Advanced));
+        var unsetBlock = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(sectionId, "未设难度", ContentBlockType.GeneralText, Difficulty.Unset));
+        var childBlock = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(sectionId, "子级内容", ContentBlockType.Explanation, Difficulty.Basic));
+        var atomicSection = new AtomicSection(sectionId, "原子小节", difficulty: Difficulty.Medium);
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+
+        var basicItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, basicBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 30));
+        var mediumGroupItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, mediumGroup.Id, ReferenceMode.FollowLatest, null, SortOrder: 10));
+        var atomicItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.AtomicSection, atomicSection.Id, ReferenceMode.FollowLatest, null, SortOrder: 20));
+        var advancedItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, advancedBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 40));
+        var unsetItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, unsetBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 50));
+        await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, childBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 60, ParentItemId: basicItem.Id));
+
+        var preview = await variantUseCases.PreviewSectionVariantSelectionAsync(
+            new PreviewSectionVariantSelectionCommand(sectionId, Difficulty.Medium));
+
+        Assert.Equal(
+            [mediumGroupItem.Id, atomicItem.Id, basicItem.Id, advancedItem.Id, unsetItem.Id],
+            preview.Select(candidate => candidate.SectionItemId));
+        Assert.All(preview, candidate => Assert.Null(candidate.ParentItemId));
+        Assert.Equal(
+            [Difficulty.Medium, Difficulty.Medium, Difficulty.Basic, Difficulty.Advanced, Difficulty.Unset],
+            preview.Select(candidate => candidate.ResolvedDifficulty));
+        Assert.Equal(
+            [true, true, true, false, false],
+            preview.Select(candidate => candidate.DefaultSelected));
+        Assert.Equal(
+            [SectionItemTargetType.ContentBlock, SectionItemTargetType.AtomicSection, SectionItemTargetType.ContentBlock, SectionItemTargetType.ContentBlock, SectionItemTargetType.ContentBlock],
+            preview.Select(candidate => candidate.TargetType));
+        Assert.All(preview, candidate => Assert.True(candidate.Selectable));
+    }
+
+    [Fact]
+    public async Task SectionVariant_preview_marks_archived_items_and_targets_unselectable()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var sectionUseCases = new SectionUseCases(unitOfWork);
+        var variantUseCases = new SectionVariantUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+
+        var activeBlock = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(sectionId, "可用知识点", ContentBlockType.KnowledgePoint, Difficulty.Basic));
+        var archivedBlock = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(sectionId, "归档知识点", ContentBlockType.KnowledgePoint, Difficulty.Basic, Status: ContentBlockStatus.Archived));
+        var archivedAtomicSection = new AtomicSection(sectionId, "归档原子小节", difficulty: Difficulty.Basic, status: AtomicSectionStatus.Archived);
+        await unitOfWork.AtomicSections.AddAsync(archivedAtomicSection);
+        await unitOfWork.SaveChangesAsync();
+
+        var archivedItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, activeBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 10, Status: SectionStatus.Archived));
+        var archivedBlockItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, archivedBlock.Id, ReferenceMode.FollowLatest, null, SortOrder: 20));
+        var archivedAtomicItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.AtomicSection, archivedAtomicSection.Id, ReferenceMode.FollowLatest, null, SortOrder: 30));
+
+        var preview = await variantUseCases.PreviewSectionVariantSelectionAsync(
+            new PreviewSectionVariantSelectionCommand(sectionId, Difficulty.Basic));
+
+        Assert.Equal([archivedItem.Id, archivedBlockItem.Id, archivedAtomicItem.Id], preview.Select(candidate => candidate.SectionItemId));
+        Assert.Equal([false, false, false], preview.Select(candidate => candidate.Selectable));
+        Assert.Equal([false, false, false], preview.Select(candidate => candidate.DefaultSelected));
+        Assert.Equal(
+            ["SectionItem is archived.", "ContentBlock is archived.", "AtomicSection is archived."],
+            preview.Select(candidate => candidate.UnavailableReason));
+    }
+
+    [Fact]
+    public async Task SectionVariant_preview_rejects_missing_section_and_unset_difficulty()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var variantUseCases = new SectionVariantUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+
+        await Assert.ThrowsAsync<CmsV2ApplicationException>(
+            () => variantUseCases.PreviewSectionVariantSelectionAsync(
+                new PreviewSectionVariantSelectionCommand(sectionId, Difficulty.Unset)));
+        await Assert.ThrowsAsync<CmsV2ApplicationException>(
+            () => variantUseCases.PreviewSectionVariantSelectionAsync(
+                new PreviewSectionVariantSelectionCommand(999_999, Difficulty.Basic)));
     }
 
     [Fact]

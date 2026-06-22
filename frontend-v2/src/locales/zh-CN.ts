@@ -117,6 +117,53 @@ const zhCN = {
       itemCount: '项目数',
       open: '打开',
     },
+    sectionVariantCreate: {
+      description:
+        '先填写 SectionVariant 元数据，再审核并勾选 SectionItem 候选项。当前只使用 Mock Data，不调用 API。',
+      stepMetadata: '步骤 1 / 元数据',
+      stepSelection: '步骤 2 / 勾选 SectionItem',
+      selectionTitle: 'SectionItem 候选项',
+      selectionDescription:
+        '默认勾选来自后端 selection preview 规则，用户可以在这里增减。允许不选择任何项。',
+      selectedSummary: '已选择 {selected} / {total}',
+      defaultSelected: '默认勾选',
+      unavailableReason: '不可选原因',
+      emptyVariantAllowed: '允许创建空 SectionVariant，最终 selectedSectionItemIds 可以为空数组。',
+      fields: {
+        title: '名称',
+        type: '类型',
+        difficulty: '难度',
+        description: '备注',
+      },
+      placeholders: {
+        title: '输入 SectionVariant 名称',
+        description: '可选备注',
+      },
+      validation: {
+        titleRequired: '请输入名称后再进入下一步。',
+      },
+      actions: {
+        cancel: '取消',
+        previous: '上一步',
+        next: '下一步',
+        submit: '生成 Mock payload',
+      },
+      types: {
+        Lecture: '讲解',
+        Exercise: '练习',
+        Homework: '作业',
+        Review: '复习',
+        ExamTraining: '考试训练',
+        Custom: '自定义',
+      },
+      difficulties: {
+        Unset: '未设置',
+        Basic: '基础',
+        Medium: '中档',
+        Advanced: '提高',
+        Top: '压轴',
+      },
+    },
     sectionItemView: {
       containerLabel: 'SectionItemView 容器',
       actionRailLabel: 'SectionItemView 右侧操作占位',
@@ -282,6 +329,16 @@ const zhCN = {
     backHome: '返回首页',
     scenarioCount: '场景数：',
     sections: {
+      sectionVariantCreate: {
+        description:
+          '验收 SectionVariant 两步创建 UI：先填元数据，再勾选 SectionItem。这里只输出 Mock payload。',
+        mockSectionTitle: '机械能守恒',
+        payloadTitle: 'Mock Data payload',
+        payloadDescription:
+          '提交后在这里查看最终结构，确认 selectedSectionItemIds 可以为空数组。',
+        emptyPayload: '尚未提交 Mock Data。',
+        reset: '重置',
+      },
       contentBlockDisplay: {
         title: 'ContentBlockDisplay',
         description:

@@ -140,8 +140,11 @@ public sealed record CreateSectionVariantRequest(
     string? Description = null,
     SectionVariantType Type = SectionVariantType.Lecture,
     Difficulty Difficulty = Difficulty.Unset,
-    SectionVariantStatus Status = SectionVariantStatus.Draft,
-    int SortOrder = 0);
+    IReadOnlyList<int>? SelectedSectionItemIds = null);
+
+public sealed record PreviewSectionVariantSelectionRequest(
+    int SectionId,
+    Difficulty Difficulty);
 
 public sealed record AddSectionVariantItemRequest(
     int SectionItemId,
