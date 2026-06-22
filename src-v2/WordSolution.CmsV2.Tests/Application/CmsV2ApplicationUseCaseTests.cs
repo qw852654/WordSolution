@@ -527,6 +527,41 @@ public sealed class CmsV2ApplicationUseCaseTests
     }
 
     [Fact]
+    public async Task RemoveSectionItem_rejects_item_referenced_by_section_variant_without_changes()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var sectionUseCases = new SectionUseCases(unitOfWork);
+        var variantUseCases = new SectionVariantUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+
+        var block = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "A", ContentBlockType.KnowledgePoint, "variant-delete-a/v1.docx"));
+        var sectionItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, block.Id, ReferenceMode.FollowLatest, null, SortOrder: 10));
+        var variant = await variantUseCases.CreateSectionVariantAsync(
+            new CreateSectionVariantCommand(
+                sectionId,
+                "基础讲解版",
+                Difficulty: Difficulty.Basic,
+                SelectedSectionItemIds: [sectionItem.Id]));
+
+        var error = await Assert.ThrowsAsync<CmsV2ApplicationException>(
+            () => sectionUseCases.RemoveSectionItemAsync(
+                new RemoveSectionItemCommand(sectionId, sectionItem.Id)));
+
+        Assert.Equal(
+            "SectionItem is referenced by SectionVariant and cannot be removed.",
+            error.Message);
+        Assert.NotNull(await unitOfWork.SectionItems.GetByIdAsync(sectionItem.Id));
+        Assert.NotNull(await unitOfWork.ContentBlocks.GetByIdAsync(block.Id));
+        Assert.Equal(
+            [sectionItem.Id],
+            (await unitOfWork.SectionVariantItems.ListBySectionVariantAsync(variant.Id)).Select(item => item.SectionItemId));
+    }
+
+    [Fact]
     public async Task WrapSectionItemsAsAtomicSection_rejects_atomic_section_selection_without_partial_changes()
     {
         await using var context = await CreateMigratedContextAsync();

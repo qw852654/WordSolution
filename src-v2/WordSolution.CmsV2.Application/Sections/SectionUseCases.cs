@@ -120,6 +120,15 @@ public sealed class SectionUseCases
                 command.SectionId,
                 command.SectionItemId,
                 transactionCancellationToken);
+            var variantReferences = await _unitOfWork.SectionVariantItems.ListBySectionItemAsync(
+                item.Id,
+                transactionCancellationToken);
+
+            if (variantReferences.Count > 0)
+            {
+                throw new CmsV2ApplicationException(
+                    "SectionItem is referenced by SectionVariant and cannot be removed.");
+            }
 
             _unitOfWork.SectionItems.Remove(item);
             await _unitOfWork.SaveChangesAsync(transactionCancellationToken);

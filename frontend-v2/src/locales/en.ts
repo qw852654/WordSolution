@@ -546,6 +546,10 @@ const en = {
         feedbackSearchExistingBlock:
           'Selected this position for inserting an existing block. BlockSearchPicker will be connected later.',
       },
+      sectionItemActions: {
+        referencedByVariant:
+          'This block is referenced by SectionVariant and cannot be removed directly. Handle the related SectionVariant first.',
+      },
       atomicSectionActions: {
         insertChildPosition: 'Inside AtomicSection: {title}',
         renamePrompt: 'Rename AtomicSection',

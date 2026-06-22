@@ -527,6 +527,10 @@ const zhCN = {
         feedbackSearchExistingBlock:
           '已选择在此处插入已有块；BlockSearchPicker 后续接入。',
       },
+      sectionItemActions: {
+        referencedByVariant:
+          '这个块已被 SectionVariant 引用，不能直接删除。请先处理对应的 SectionVariant。',
+      },
       atomicSectionActions: {
         insertChildPosition: 'AtomicSection 内部：{title}',
         renamePrompt: '重命名 AtomicSection',

@@ -48,6 +48,8 @@ import type {
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
+const SECTION_ITEM_REFERENCED_BY_VARIANT_MESSAGE =
+  'SectionItem is referenced by SectionVariant and cannot be removed.'
 const sectionPageData = ref<SectionPageDataModel | null>(null)
 const selectedStructureNodeId = ref<string>()
 const activeInsertPointId = ref<string>()
@@ -78,6 +80,14 @@ const teachingTopicDisplayRootNodeId = ref<string | null>(null)
 const isLoadingSectionPage = ref(false)
 const sectionPageError = ref('')
 const isSubmittingInsertCreate = ref(false)
+
+function resolveSectionItemRemoveError(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message === SECTION_ITEM_REFERENCED_BY_VARIANT_MESSAGE) {
+    return t('sectionPage.workspace.sectionItemActions.referencedByVariant')
+  }
+
+  return error instanceof Error ? error.message : fallback
+}
 let teachingTopicDrawerTimer: number | undefined
 let sectionPageLoadSequence = 0
 
@@ -574,8 +584,10 @@ async function requestAtomicRemove(payload: AtomicSectionWorkspaceActionPayload)
     workspaceScrollTargetNodeId.value = selectedStructureNodeId.value
     workspaceScrollRequestKey.value += 1
   } catch (error) {
-    sectionPageError.value =
-      error instanceof Error ? error.message : t('sectionPage.workspace.atomicSectionActions.operationFailed')
+    sectionPageError.value = resolveSectionItemRemoveError(
+      error,
+      t('sectionPage.workspace.atomicSectionActions.operationFailed'),
+    )
   }
 }
 
@@ -695,8 +707,10 @@ async function requestContentBlockRemove(payload: ContentBlockWorkspaceActionPay
     workspaceScrollTargetNodeId.value = selectedStructureNodeId.value
     workspaceScrollRequestKey.value += 1
   } catch (error) {
-    sectionPageError.value =
-      error instanceof Error ? error.message : t('sectionPage.workspace.contentBlockActions.operationFailed')
+    sectionPageError.value = resolveSectionItemRemoveError(
+      error,
+      t('sectionPage.workspace.contentBlockActions.operationFailed'),
+    )
   }
 }
 
