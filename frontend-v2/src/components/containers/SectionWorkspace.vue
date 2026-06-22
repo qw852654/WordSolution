@@ -48,6 +48,8 @@ const props = withDefaults(
     variantSelectionMode?: boolean
     variantSelectionCandidates?: SectionVariantSelectionCandidateModel[]
     variantSelectionFeedback?: string
+    variantSelectionError?: string
+    variantSelectionSubmitting?: boolean
     collapsedWorkspaceNodeIds?: string[]
     teachingNoteMode?: boolean
   }>(),
@@ -60,6 +62,8 @@ const props = withDefaults(
     wrapSelectedNodeIds: () => [],
     variantSelectionMode: false,
     variantSelectionCandidates: () => [],
+    variantSelectionError: '',
+    variantSelectionSubmitting: false,
     collapsedWorkspaceNodeIds: () => [],
     teachingNoteMode: false,
   },
@@ -564,6 +568,7 @@ watch(
             size="sm"
             variant="outline"
             class="h-7 px-2 text-xs"
+            :disabled="variantSelectionSubmitting"
             @click="emit('confirmVariantSelection')"
           >
             {{ t('sectionPage.workspace.variantSelection.confirmAction') }}
@@ -573,7 +578,7 @@ watch(
             size="sm"
             variant="ghost"
             class="h-7 px-2 text-xs"
-            :disabled="variantSelectedCount === 0"
+            :disabled="variantSelectedCount === 0 || variantSelectionSubmitting"
             @click="emit('clearVariantSelection')"
           >
             {{ t('sectionPage.workspace.variantSelection.clearAction') }}
@@ -583,6 +588,7 @@ watch(
             size="sm"
             variant="ghost"
             class="h-7 px-2 text-xs"
+            :disabled="variantSelectionSubmitting"
             @click="emit('cancelVariantSelection')"
           >
             {{ t('sectionPage.workspace.variantSelection.exitAction') }}
@@ -630,6 +636,18 @@ watch(
           </Button>
         </template>
       </div>
+      </div>
+
+      <div
+        v-if="variantSelectionMode && variantSelectionError"
+        class="border-b px-3 py-2"
+        role="alert"
+        aria-live="assertive"
+      >
+        <p class="rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive">
+          <span class="font-medium">{{ t('sectionPage.sectionVariantCreate.createFailed') }}</span>
+          <span class="ml-1">{{ variantSelectionError }}</span>
+        </p>
       </div>
 
       <div

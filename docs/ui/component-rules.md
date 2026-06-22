@@ -1296,9 +1296,9 @@ SectionPage -> SectionTree -> Section 根节点右键菜单 -> 新建 SectionVar
 - `difficulty`、`defaultSelected`、`selectable`、`unavailableReason` 以 API 返回为准。
 - `title` 和 `displayType` 可由当前已加载的 Workspace 数据推导。
 - preview 失败时停留在元数据步骤，展示错误，不进入第二步。
-- 第二步提交时，本轮只生成待创建 payload 供人工确认。
-- 本轮不调用 `POST /api/cms-v2/section-variants`。
-- 本轮不创建真实 `SectionVariant`，不修改 `Section` 数据。
+- Workspace 选择确认后，`SectionPage` 调用 `POST /api/cms-v2/section-variants`。
+- 创建成功后刷新当前 `SectionPage` 数据，但不自动打开或选中新建 `SectionVariant`。
+- 创建失败时保留当前 `VariantSelectionMode` 和已选项，允许用户重试。
 
 组件边界保持不变：
 
@@ -1310,6 +1310,33 @@ SectionPage -> SectionTree -> Section 根节点右键菜单 -> 新建 SectionVar
 ## Current Update: SectionVariant Workspace Selection Mode
 
 This section records the confirmed component boundary for the current SectionVariant creation round.
+
+### SectionTree SectionVariant projection
+
+`SectionVariant` is still owned by `Section` in the backend model and API relation.
+
+```text
+Section
+  -> SectionVariant[]
+```
+
+In `SectionTree`, however, `SectionVariant` must be rendered as a frontend visual projection at the same tree level as the current `Section` root node:
+
+```text
+SectionTree
+  Section
+    SectionItem / AtomicSection / ContentBlock ...
+  SectionVariant
+  SectionVariant
+```
+
+Rules:
+
+- This does not change the backend domain model.
+- `SectionVariant` nodes are read-only visibility / Inspector nodes in the first version.
+- `SectionVariant` nodes do not map to Workspace document-flow content.
+- `SectionVariant` nodes do not expose context-menu edit/delete/copy actions in the first version.
+- `SectionTree` still exposes the create entry only on the `Section` root node context menu.
 
 ### SectionVariantCreatePanel
 
@@ -1332,8 +1359,11 @@ This section records the confirmed component boundary for the current SectionVar
 - Only top-level `SectionItem` entries are selectable in the first version.
 - Nested `AtomicSectionItem` and `CompositeBlock` child relations are visible as preview content only and must not be independently selectable in this round.
 - Insert points, action rails, move, delete, and Word edit actions are disabled while `VariantSelectionMode` is active.
-- Confirming selection only emits the final selected `SectionItemId` list back to `SectionPage`.
-- This round generates a pending payload for manual inspection and does not call `POST /api/cms-v2/section-variants`.
+- Confirming selection emits the final selected `SectionItemId` list back to `SectionPage`.
+- `SectionPage` then calls `POST /api/cms-v2/section-variants` with metadata and `selectedSectionItemIds`.
+- `SectionVariantCreatePanel` remains a form component only; it must not call the create API directly.
+- While create is submitting, `SectionPage` owns the top-level blocking state.
+- If create fails, `SectionPage` keeps `VariantSelectionMode` and the current selection so the user can retry.
 ## Current Update: Shared Workspace Selection Mode
 
 This section records the confirmed shared behavior for Workspace selection modes.
@@ -1358,7 +1388,7 @@ These workflows must share one UI behavior layer instead of each feature inventi
 - selected item ids;
 - unavailable reasons;
 - confirm / cancel behavior;
-- API calls or pending payload generation;
+- API calls and create result handling;
 - page-level blocking state.
 
 `SectionWorkspace` owns shared selection interaction:
@@ -1452,7 +1482,7 @@ The disable rule belongs to the active mode config, not to `SectionItemView`.
 - entry: `SectionTree -> Section root context menu -> Create SectionVariant`;
 - selection source: `selection-preview` API result;
 - selectable / unavailable: use API result as source of truth;
-- confirm: currently creates a pending payload for manual inspection; later calls `POST /api/cms-v2/section-variants`.
+- confirm: calls `POST /api/cms-v2/section-variants` from `SectionPage`, then refreshes page data on success.
 
 ### ComponentLab rule
 

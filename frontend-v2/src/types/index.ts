@@ -84,13 +84,19 @@ export interface BasicTreeContextMenuPayload {
   y: number
 }
 
-export type SectionTreeNodeKind = 'Section' | 'AtomicSection' | 'CompositeBlock' | 'ContentBlock'
+export type SectionTreeNodeKind =
+  | 'Section'
+  | 'SectionVariant'
+  | 'AtomicSection'
+  | 'CompositeBlock'
+  | 'ContentBlock'
 
 export interface SectionTreeNodeModel {
   id: string
   title: string
   kind: SectionTreeNodeKind
   typeLabel: string
+  sectionVariantId?: number
   difficulty?: string
   status?: string
   itemCount?: number

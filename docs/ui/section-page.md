@@ -912,9 +912,40 @@ POST /api/cms-v2/section-variants/selection-preview
 
 ### Current Round Boundary
 
-- Confirming selection only generates a pending `SectionVariantCreateSubmitPayload` for manual inspection.
-- This round does not call `POST /api/cms-v2/section-variants`.
-- This round does not create or persist a real `SectionVariant`.
+- Confirming selection calls `POST /api/cms-v2/section-variants` with the metadata and final `selectedSectionItemIds`.
+- Empty `selectedSectionItemIds` is allowed and creates an empty `SectionVariant`.
+- While create is submitting, `SectionPage` is blocked with a top-level loading overlay.
+- On success, `SectionPage` refreshes current data but does not automatically open or select the new `SectionVariant`.
+- On failure, `VariantSelectionMode` stays active and keeps the user's current selection for retry.
+
+### SectionTree Variant Visibility
+
+After a `SectionVariant` is created, `SectionTree` must show it as a read-only node at the same visual level as the current `Section` root node.
+
+This is only a frontend UI projection. The backend model and API relation remain unchanged:
+
+```text
+Section
+  -> SectionVariant[]
+```
+
+The `SectionTree` visual projection is:
+
+```text
+SectionTree
+  Section
+    SectionItem / AtomicSection / ContentBlock ...
+  SectionVariant
+  SectionVariant
+```
+
+- `SectionVariant` nodes are for visibility and Inspector selection only.
+- `SectionVariant` nodes are visually sibling nodes of the `Section` root in `SectionTree`.
+- `SectionVariant` nodes still belong to the current `Section` in the backend model.
+- They do not map to `Workspace` document-flow content.
+- They do not expose context-menu edit/delete/copy actions in the first version.
+- SectionItem / AtomicSection / ContentBlock operations remain separate from `SectionVariant` display.
+
 ## Current Update: Shared Workspace Selection Modes
 
 This section records the confirmed SectionPage rule for temporary Workspace selection modes.
@@ -1042,15 +1073,10 @@ Unavailable items:
 
 Confirm behavior for the current round:
 
-- generates a pending `SectionVariantCreateSubmitPayload`;
-- does not call `POST /api/cms-v2/section-variants` yet;
+- calls `POST /api/cms-v2/section-variants`;
+- refreshes `SectionTree` / Variant visibility after server-confirmed success;
+- does not automatically open the new `SectionVariant`;
 - allows empty selection.
-
-Future confirm behavior:
-
-- call `POST /api/cms-v2/section-variants`;
-- refresh `SectionTree` / Variant visibility after server-confirmed success;
-- do not automatically open the new `SectionVariant`.
 
 ### Implementation migration rule
 

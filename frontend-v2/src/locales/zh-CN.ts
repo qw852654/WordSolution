@@ -282,6 +282,7 @@ const zhCN = {
       questionCount: '{count} 题',
       kind: {
         Section: 'Section',
+        SectionVariant: 'SectionVariant',
         AtomicSection: 'AtomicSection',
         CompositeBlock: 'CompositeBlock',
         ContentBlock: 'ContentBlock',
@@ -463,10 +464,11 @@ const zhCN = {
       dialogLabel: '新建 SectionVariant',
       closeLabel: '关闭 SectionVariant 创建面板',
       previewFailed: 'selection preview 失败，请稍后重试。',
-      pendingPayloadFeedback: '已生成待创建 SectionVariant payload，已选择 {count} 个 SectionItem。',
-      pendingPayloadTitle: '待创建 SectionVariant payload',
-      pendingPayloadDescription:
-        '本轮只用于人工确认 payload，不会提交到真实创建 API。',
+      creatingFeedback: '正在创建 SectionVariant，已选择 {count} 个 SectionItem。',
+      createdFeedback: '已创建 SectionVariant：{title}，包含 {count} 个 SectionItem。',
+      createFailed: 'SectionVariant 创建失败，请稍后重试。',
+      blockingTitle: '正在创建 SectionVariant',
+      blockingDescription: 'CMS V2 API 正在执行创建事务，SectionPage 已暂时锁定。',
     },
     structure: {
       title: 'SectionStructurePanel',

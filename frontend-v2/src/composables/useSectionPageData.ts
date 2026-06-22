@@ -7,6 +7,7 @@ import type {
   CmsV2ContentBlockVersionDto,
   CmsV2SectionDto,
   CmsV2SectionItemDto,
+  CmsV2SectionVariantDto,
 } from '@/apis/cmsV2Client'
 import {
   createTeachingTopicNodeId,
@@ -59,8 +60,12 @@ export async function loadSectionPageData(routeSectionId?: string): Promise<Sect
   ])
 
   const section = await resolveSection(routeSectionId, sections)
-  const sectionItems = await cmsV2Api.listSectionItems(section.id)
+  const [sectionItems, sectionVariants] = await Promise.all([
+    cmsV2Api.listSectionItems(section.id),
+    cmsV2Api.listSectionVariants(section.id),
+  ])
   const sortedSectionItems = sortByOrder(sectionItems).filter((item) => !item.parentItemId)
+  const sortedSectionVariants = sortByOrder(sectionVariants)
 
   const blockCache = new Map<number, Promise<ResolvedContentBlock>>()
   const atomicSectionCache = new Map<number, Promise<CmsV2AtomicSectionDto>>()
@@ -79,6 +84,7 @@ export async function loadSectionPageData(routeSectionId?: string): Promise<Sect
   const sectionChildren = await Promise.all(
     sortedSectionItems.map((item) => buildSectionItemNode(item, context)),
   )
+  const variantChildren = sortedSectionVariants.map(buildSectionVariantNode)
   const flowItems = await Promise.all(
     sortedSectionItems.map((item) => buildSectionFlowItem(item, context)),
   )
@@ -97,6 +103,7 @@ export async function loadSectionPageData(routeSectionId?: string): Promise<Sect
       disabled: section.status === 'Archived',
       children: sectionChildren,
     },
+    ...variantChildren,
   ]
 
   return {
@@ -114,6 +121,19 @@ export async function loadSectionPageData(routeSectionId?: string): Promise<Sect
     teachingTopicNodes: mapTeachingStructureNodesToTreeNodes(teachingStructure),
     selectedTeachingTopicId: createTeachingTopicNodeId(section.teachingTopicId),
     defaultSelectedNodeId: sectionChildren[0]?.id ?? rootNodeId,
+  }
+}
+
+function buildSectionVariantNode(variant: CmsV2SectionVariantDto): SectionTreeNodeModel {
+  return {
+    id: createSectionVariantNodeId(variant.id),
+    title: variant.title,
+    kind: 'SectionVariant',
+    typeLabel: 'SectionVariant',
+    sectionVariantId: variant.id,
+    difficulty: mapDifficulty(variant.difficulty),
+    status: mapStatus(variant.status),
+    disabled: variant.status === 'Archived',
   }
 }
 
@@ -605,6 +625,10 @@ function sortByOrder<T extends { sortOrder: number; id: number }>(items: T[]) {
 
 function createSectionNodeId(sectionId: number) {
   return `section-${sectionId}`
+}
+
+function createSectionVariantNodeId(sectionVariantId: number) {
+  return `section-variant-${sectionVariantId}`
 }
 
 function createSectionItemNodeId(itemId: number) {

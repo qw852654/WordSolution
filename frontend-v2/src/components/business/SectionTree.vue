@@ -57,7 +57,7 @@ function getSectionNode(node: BasicTreeNode) {
 function handleNodeContextMenu(payload: BasicTreeContextMenuPayload) {
   const sectionNode = payload.node.payload as SectionTreeNodeModel | undefined
 
-  if (!sectionNode) {
+  if (!sectionNode || sectionNode.kind === 'SectionVariant') {
     return
   }
 

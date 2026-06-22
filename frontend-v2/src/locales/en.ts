@@ -294,6 +294,7 @@ const en = {
       questionCount: '{count} questions',
       kind: {
         Section: 'Section',
+        SectionVariant: 'SectionVariant',
         AtomicSection: 'AtomicSection',
         CompositeBlock: 'CompositeBlock',
         ContentBlock: 'ContentBlock',
@@ -478,11 +479,12 @@ const en = {
       dialogLabel: 'Create SectionVariant',
       closeLabel: 'Close SectionVariant create panel',
       previewFailed: 'Selection preview failed. Please try again.',
-      pendingPayloadFeedback:
-        'Generated pending SectionVariant payload with {count} selected SectionItems.',
-      pendingPayloadTitle: 'Pending SectionVariant payload',
-      pendingPayloadDescription:
-        'This payload is for review only in this round. It has not been submitted to the create API.',
+      creatingFeedback: 'Creating SectionVariant with {count} selected SectionItems.',
+      createdFeedback: 'Created SectionVariant: {title}, with {count} SectionItems.',
+      createFailed: 'SectionVariant create failed. Please try again.',
+      blockingTitle: 'Creating SectionVariant',
+      blockingDescription:
+        'SectionPage is temporarily locked while the CMS V2 API completes the create transaction.',
     },
     structure: {
       title: 'SectionStructurePanel',

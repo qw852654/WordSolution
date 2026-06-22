@@ -32,7 +32,6 @@ import type {
   ContentBlockRelationMovePayload,
   SectionPageShellModel,
   SectionVariantCreateMetadata,
-  SectionVariantCreateSubmitPayload,
   SectionVariantPreviewState,
   SectionVariantSelectionCandidateModel,
   SectionTreeContextMenuActionPayload,
@@ -57,10 +56,11 @@ const sectionVariantCreateMetadata = ref<SectionVariantCreateMetadata | null>(nu
 const sectionVariantCreatePanelOpen = ref(false)
 const sectionVariantSelectionMode = ref(false)
 const sectionVariantSelectionFeedback = ref('')
+const sectionVariantCreateError = ref('')
 const sectionVariantCandidates = ref<SectionVariantSelectionCandidateModel[]>([])
 const sectionVariantPreviewState = ref<SectionVariantPreviewState>('idle')
 const sectionVariantPreviewError = ref('')
-const sectionVariantPendingPayload = ref<SectionVariantCreateSubmitPayload | null>(null)
+const isCreatingSectionVariant = ref(false)
 const sectionTreeContextMenu = ref<SectionTreeContextMenuModel | null>(null)
 const teachingTopicTreeContextMenu = ref<TeachingTopicTreeContextMenuModel | null>(null)
 const insertFeedback = ref('')
@@ -164,7 +164,8 @@ const activeCreatePanelModel = computed(() =>
         disabled:
           activeCreatePanel.value.disabled ||
           isSubmittingInsertCreate.value ||
-          wrappingAsAtomicSection.value,
+          wrappingAsAtomicSection.value ||
+          isCreatingSectionVariant.value,
       }
     : null,
 )
@@ -175,11 +176,6 @@ const wrapSelectedSectionItemIds = computed(() =>
   wrapSelectedFlowItems.value
     .map((item) => item.sectionItemId)
     .filter((id): id is number => typeof id === 'number'),
-)
-const sectionVariantPendingPayloadText = computed(() =>
-  sectionVariantPendingPayload.value
-    ? JSON.stringify(sectionVariantPendingPayload.value, null, 2)
-    : '',
 )
 const sectionVariantSelectedCandidateCount = computed(
   () =>
@@ -340,6 +336,10 @@ function getCurrentNumericSectionId() {
 }
 
 function selectStructureNode(nodeId: string) {
+  if (isCreatingSectionVariant.value) {
+    return
+  }
+
   selectedStructureNodeId.value = nodeId
   closeSectionTreeContextMenu()
   clearActiveInsertPoint()
@@ -352,6 +352,10 @@ function isWrappableWorkspaceItem(item: SectionWorkspaceFlowItemModel) {
 }
 
 function selectWorkspaceNode(nodeId: string, event?: MouseEvent) {
+  if (isCreatingSectionVariant.value) {
+    return
+  }
+
   if (wrapSelectionMode.value) {
     toggleWrapNodeSelection(nodeId)
     return
@@ -414,6 +418,10 @@ function getInsertPositionLabel(insertPointId: string) {
 }
 
 function requestInsert(request: InsertRequestModel) {
+  if (isCreatingSectionVariant.value) {
+    return
+  }
+
   cancelWrapSelectionMode()
   cancelSectionVariantSelectionMode()
   activeInsertPointId.value = request.insertPointId
@@ -1028,10 +1036,10 @@ function openSectionVariantCreatePanel() {
   insertCreateError.value = ''
   sectionVariantSelectionMode.value = false
   sectionVariantSelectionFeedback.value = ''
+  sectionVariantCreateError.value = ''
   sectionVariantCandidates.value = []
   sectionVariantPreviewState.value = 'idle'
   sectionVariantPreviewError.value = ''
-  sectionVariantPendingPayload.value = null
   sectionVariantCreateMetadata.value = {
     sectionId: currentSectionId,
     title: '',
@@ -1047,10 +1055,11 @@ function clearSectionVariantCreationFlow() {
   sectionVariantCreatePanelOpen.value = false
   sectionVariantSelectionMode.value = false
   sectionVariantSelectionFeedback.value = ''
+  sectionVariantCreateError.value = ''
   sectionVariantCandidates.value = []
   sectionVariantPreviewState.value = 'idle'
   sectionVariantPreviewError.value = ''
-  sectionVariantPendingPayload.value = null
+  isCreatingSectionVariant.value = false
 }
 
 function closeSectionVariantCreatePanel() {
@@ -1058,13 +1067,17 @@ function closeSectionVariantCreatePanel() {
 }
 
 async function requestSectionVariantSelectionPreview(metadata: SectionVariantCreateMetadata) {
+  if (isCreatingSectionVariant.value) {
+    return
+  }
+
   sectionVariantCreateMetadata.value = { ...metadata }
   sectionVariantCandidates.value = []
   sectionVariantSelectionMode.value = false
   sectionVariantSelectionFeedback.value = ''
+  sectionVariantCreateError.value = ''
   sectionVariantPreviewState.value = 'loading'
   sectionVariantPreviewError.value = ''
-  sectionVariantPendingPayload.value = null
 
   try {
     const candidates = await cmsV2Api.previewSectionVariantSelection({
@@ -1087,16 +1100,22 @@ async function requestSectionVariantSelectionPreview(metadata: SectionVariantCre
 }
 
 function toggleSectionVariantSelection(sectionItemId: number) {
+  if (isCreatingSectionVariant.value) {
+    return
+  }
+
   const candidate = sectionVariantCandidates.value.find(
     (item) => item.sectionItemId === sectionItemId,
   )
 
   if (!candidate?.selectable) {
+    sectionVariantCreateError.value = ''
     sectionVariantSelectionFeedback.value =
       candidate?.unavailableReason ?? t('sectionPage.workspace.variantSelection.unavailableItem')
     return
   }
 
+  sectionVariantCreateError.value = ''
   sectionVariantCandidates.value = sectionVariantCandidates.value.map((item) =>
     item.sectionItemId === sectionItemId ? { ...item, selected: !item.selected } : item,
   )
@@ -1106,40 +1125,73 @@ function toggleSectionVariantSelection(sectionItemId: number) {
 }
 
 function clearSectionVariantSelection() {
+  if (isCreatingSectionVariant.value) {
+    return
+  }
+
   sectionVariantCandidates.value = sectionVariantCandidates.value.map((candidate) =>
     candidate.selectable ? { ...candidate, selected: false } : candidate,
   )
+  sectionVariantCreateError.value = ''
   sectionVariantSelectionFeedback.value = t('sectionPage.workspace.variantSelection.feedbackCleared')
 }
 
 function cancelSectionVariantSelectionMode() {
+  if (isCreatingSectionVariant.value) {
+    return
+  }
+
   sectionVariantSelectionMode.value = false
   sectionVariantSelectionFeedback.value = ''
+  sectionVariantCreateError.value = ''
   sectionVariantCandidates.value = []
   sectionVariantCreateMetadata.value = null
   sectionVariantCreatePanelOpen.value = false
 }
 
-function confirmSectionVariantSelection() {
+async function confirmSectionVariantSelection() {
   if (!sectionVariantCreateMetadata.value) {
     return
   }
 
-  submitSectionVariantPendingPayload({
+  const payload = {
     ...sectionVariantCreateMetadata.value,
     selectedSectionItemIds: sectionVariantCandidates.value
       .filter((candidate) => candidate.selectable && candidate.selected)
       .map((candidate) => candidate.sectionItemId),
-  })
-  sectionVariantSelectionMode.value = false
-  sectionVariantSelectionFeedback.value = ''
-}
+  }
 
-function submitSectionVariantPendingPayload(payload: SectionVariantCreateSubmitPayload) {
-  sectionVariantPendingPayload.value = payload
-  insertFeedback.value = t('sectionPage.sectionVariantCreate.pendingPayloadFeedback', {
-    count: payload.selectedSectionItemIds.length,
-  })
+  try {
+    isCreatingSectionVariant.value = true
+    sectionVariantCreateError.value = ''
+    sectionVariantSelectionFeedback.value = t('sectionPage.sectionVariantCreate.creatingFeedback', {
+      count: payload.selectedSectionItemIds.length,
+    })
+
+    await cmsV2Api.createSectionVariant(payload)
+    sectionVariantSelectionMode.value = false
+    sectionVariantSelectionFeedback.value = ''
+    sectionVariantCreateError.value = ''
+    sectionVariantCandidates.value = []
+    sectionVariantCreateMetadata.value = null
+    sectionVariantCreatePanelOpen.value = false
+    sectionVariantPreviewState.value = 'idle'
+    sectionVariantPreviewError.value = ''
+    insertFeedback.value = t('sectionPage.sectionVariantCreate.createdFeedback', {
+      title: payload.title,
+      count: payload.selectedSectionItemIds.length,
+    })
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : t('sectionPage.sectionVariantCreate.createFailed')
+    sectionVariantSelectionFeedback.value = t('sectionPage.sectionVariantCreate.createFailed')
+    sectionVariantCreateError.value = message
+    return
+  } finally {
+    isCreatingSectionVariant.value = false
+  }
+
+  await loadCurrentSectionPage()
 }
 
 function openSectionTreeContextMenu(payload: SectionTreeContextMenuPayload) {
@@ -1447,6 +1499,8 @@ watch(sectionId, () => {
         :variant-selection-mode="sectionVariantSelectionMode"
         :variant-selection-candidates="sectionVariantCandidates"
         :variant-selection-feedback="sectionVariantSelectionFeedback"
+        :variant-selection-error="sectionVariantCreateError"
+        :variant-selection-submitting="isCreatingSectionVariant"
         :collapsed-workspace-node-ids="collapsedWorkspaceNodeIdList"
         @select-node="selectWorkspaceNode"
         @toggle-workspace-node-collapse="toggleWorkspaceNodeCollapse"
@@ -1518,24 +1572,6 @@ watch(sectionId, () => {
           />
         </div>
       </div>
-    </Teleport>
-
-    <Teleport to="body">
-      <section
-        v-if="sectionVariantPendingPayload"
-        class="fixed bottom-3 right-3 z-50 max-w-xl rounded-lg border bg-card p-3 text-card-foreground"
-        aria-live="polite"
-      >
-        <div class="mb-2">
-          <p class="text-sm font-medium">
-            {{ t('sectionPage.sectionVariantCreate.pendingPayloadTitle') }}
-          </p>
-          <p class="text-xs text-muted-foreground">
-            {{ t('sectionPage.sectionVariantCreate.pendingPayloadDescription') }}
-          </p>
-        </div>
-        <pre class="max-h-56 overflow-auto rounded-md border bg-muted/30 p-3 text-xs">{{ sectionVariantPendingPayloadText }}</pre>
-      </section>
     </Teleport>
 
     <SectionTreeContextMenu
@@ -1636,6 +1672,24 @@ watch(sectionId, () => {
           </p>
           <p class="mt-1 text-sm text-muted-foreground">
             {{ t('sectionPage.workspace.wrap.blockingDescription') }}
+          </p>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div
+        v-if="isCreatingSectionVariant"
+        class="fixed inset-0 z-[70] flex min-h-screen items-center justify-center bg-background/70 p-4 backdrop-blur-sm"
+        role="status"
+        aria-live="assertive"
+      >
+        <div class="w-full max-w-sm rounded-lg border bg-card p-4 text-card-foreground">
+          <p class="text-sm font-semibold">
+            {{ t('sectionPage.sectionVariantCreate.blockingTitle') }}
+          </p>
+          <p class="mt-1 text-sm text-muted-foreground">
+            {{ t('sectionPage.sectionVariantCreate.blockingDescription') }}
           </p>
         </div>
       </div>

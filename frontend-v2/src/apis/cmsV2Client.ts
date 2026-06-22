@@ -242,6 +242,15 @@ export interface CmsV2PreviewSectionVariantSelectionRequest {
   difficulty: 'Basic' | 'Medium' | 'Advanced' | 'Top'
 }
 
+export interface CmsV2CreateSectionVariantRequest {
+  sectionId: number
+  title: string
+  description?: string | null
+  type: 'Lecture' | 'Exercise' | 'Homework' | 'Review' | 'ExamTraining' | 'Custom'
+  difficulty: 'Basic' | 'Medium' | 'Advanced' | 'Top'
+  selectedSectionItemIds: number[]
+}
+
 export interface CmsV2SectionVariantSelectionCandidateDto {
   sectionItemId: number
   parentItemId?: number | null
@@ -403,6 +412,10 @@ export const cmsV2Api = {
       '/section-variants/selection-preview',
       request,
     ),
+  createSectionVariant: (request: CmsV2CreateSectionVariantRequest) =>
+    cmsV2PostJson<CmsV2CreatedEntityResultDto>('/section-variants', request),
+  listSectionVariants: (sectionId?: number) =>
+    cmsV2FetchJson<CmsV2SectionVariantDto[]>(withQuery('/section-variants', { sectionId })),
   listSections: (teachingTopicId?: number) =>
     cmsV2FetchJson<CmsV2SectionDto[]>(withQuery('/sections', { teachingTopicId })),
   getSection: (sectionId: number) => cmsV2FetchJson<CmsV2SectionDto>(`/sections/${sectionId}`),
