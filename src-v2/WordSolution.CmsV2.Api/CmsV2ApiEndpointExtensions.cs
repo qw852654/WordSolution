@@ -279,6 +279,19 @@ public static class CmsV2ApiEndpointExtensions
             return Results.Ok(ToContentBlockEditSessionResponse(session));
         });
 
+        group.MapPost("/content-blocks/{id:int}/delete-cascade", async (
+            int id,
+            ContentBlockDeletionUseCases useCases,
+            IOptions<CmsV2ApiOptions> options,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.DeleteContentBlockCascadeAsync(
+                new DeleteContentBlockCascadeCommand(options.Value.BankRootDirectory, id),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
         group.MapGet("/content-blocks/{id:int}/versions", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
         {
             if (await unitOfWork.ContentBlocks.GetByIdAsync(id, cancellationToken) is null)

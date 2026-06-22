@@ -1565,3 +1565,150 @@ First-version context menu rules:
 - `ContentBlock`, `CompositeBlock`, and `AtomicSection`: may create new blocks according to context, remove through existing server-confirmed actions, and show a placeholder for inserting existing blocks.
 - `SectionVariant`: read-only content in the first version; context menu exposes delete only, with no edit, rename, copy, or reselect actions.
 - Move, indent, outdent, and other unplanned context actions must not be reintroduced without a new confirmed plan.
+
+## Current Update: Permanent ContentBlock Delete Boundary
+
+Permanent deletion of a `ContentBlock` is a page-level dangerous action.
+
+Component boundary:
+
+- `SectionItemView` may emit ordinary reference-level intent, but must not call permanent delete APIs.
+- `ContentBlockDisplay` may display content preview and Word edit intent, but must not call permanent delete APIs.
+- `CompositeBlock` may display its own body and child relations, but must not call permanent delete APIs.
+- `SectionTree` context menus must not expose permanent `ContentBlock` deletion.
+- `SectionInspector` may expose the permanent delete entry as a danger action for selected `ContentBlock` / `CompositeBlock` nodes.
+- `SectionPage` owns the actual API call, confirmation flow, reload behavior, and error feedback.
+
+Semantic split:
+
+```text
+Remove reference
+  SectionPage action against SectionItem / AtomicSectionItem / ContentBlockRelation.
+
+Permanent ContentBlock delete
+  SectionPage + SectionInspector action against ContentBlock entity itself.
+```
+
+The permanent delete action must call the CMS V2 API only from page-level code or an approved page-level composable. Display components must remain API-free and must not duplicate delete logic.
+
+For group-type `CompositeBlock`, the display component must not decide recursive deletion behavior. The backend contract is: delete the parent `ContentBlock` and its relations, but do not recursively delete child `ContentBlock` entities.
+
+## HandoutPage Component Rules
+
+This section records the first-version `HandoutPage` component boundaries.
+
+### HandoutStructurePanel
+
+`HandoutStructurePanel` is the left-side structure tree for the current `HandoutVersion`.
+
+Responsibilities:
+
+- render the `HandoutVersion` root;
+- render top-level `HandoutVersionItem` nodes;
+- render read-only derived nodes under `SectionVariant`, `AtomicSection`, and group-type `ContentBlock`;
+- expose root-level `add to end`;
+- expose top-level item `add after`, move up, move down, remove reference, and select;
+- keep node identity based on `HandoutVersionItem.Id` for top-level occurrences.
+
+It must not:
+
+- modify source `SectionVariant`, `SectionItem`, `AtomicSectionItem`, or `ContentBlockRelation`;
+- expose add / remove actions on derived internal nodes;
+- use only `targetId` as node identity, because the same source object may appear multiple times;
+- call generation APIs.
+
+### HandoutWorkspace
+
+`HandoutWorkspace` is the middle document-structure workspace.
+
+Responsibilities:
+
+- display the expanded structure of the current `HandoutVersion`;
+- show `SectionVariant` as a read-only expanded view;
+- show directly referenced `AtomicSection` as an expanded whole unit;
+- show directly referenced `ContentBlock` with lightweight preview or preview entry;
+- keep top-level `HandoutVersionItem` operations aligned with the structure tree.
+
+It must not:
+
+- become a full Word-like browser preview in the first version;
+- edit source `SectionVariant` / `AtomicSection` / `ContentBlock` structure from derived nodes;
+- expose insert controls for internal derived nodes;
+- implement drag sorting in the first version.
+
+### HandoutInspector
+
+`HandoutInspector` shows the currently selected node.
+
+Responsibilities:
+
+- display read-only metadata for `HandoutVersion`, `HandoutVersionItem`, `SectionVariant`, `AtomicSection`, `ContentBlock`, and derived nodes;
+- allow editing only `HandoutVersionItem.TitleOverride` and `HandoutVersionItem.Note` in the first version;
+- make it clear that edits to `TitleOverride` / `Note` affect only the current handout occurrence.
+
+It must not:
+
+- mutate source object title, difficulty, content, or structure;
+- expose source deletion actions;
+- expose SectionVariant internal editing in the first version.
+
+### Picker Components
+
+First-version handout insertion uses:
+
+```text
+SectionVariantPicker
+AtomicSectionPicker
+ContentBlockPicker
+```
+
+Picker responsibilities:
+
+- query candidates through approved CMS V2 APIs or page-level composables;
+- provide simple search and filter;
+- show required metadata;
+- emit one selected target;
+- stay single-select in the first version.
+
+Picker components must not:
+
+- create source objects;
+- edit source objects;
+- batch add multiple targets;
+- implement advanced query builder behavior;
+- mutate `HandoutVersionItem` ordering.
+
+### Output Components
+
+`HandoutOutputPanel`, `OutputFormCard`, `GeneratedFileRow`, and `VersionManifestViewer` are output-side components.
+
+Responsibilities:
+
+- display `OutputTemplate`, `OutputForm`, and `GeneratedFile` information;
+- trigger Word generation only through page-level or container-level events;
+- provide download / open / manifest entry points;
+- show generation errors in Chinese.
+
+They must not:
+
+- call V1 APIs;
+- implement PDF or WordAndPdf behavior in the first version;
+- silently create `GeneratedFile` records for failed generation;
+- delete or rename `GeneratedFile` in the first version.
+
+### Reuse Rules
+
+Handout components should reuse existing V2 UI primitives and interaction patterns:
+
+- shared tree behavior from `BasicTree` / tree node components;
+- `SectionItemView` interaction ideas where applicable;
+- `StructuredContainer`;
+- `ContentBlockDisplay`;
+- `WeakScrollArea`;
+- `EmptyState`;
+- `StatusPill`;
+- shadcn-vue controls;
+- Theme Token colors;
+- Vue I18n text rules.
+
+Do not copy a second visual system for Handout. If a new reusable component is needed, document its responsibility here before implementation and verify it in `ComponentLabPage` with Mock Data first.

@@ -235,3 +235,62 @@ docs/cms-v2/backend/领域模型结构说明.md
 如果任务进入组件开发：
 
 - 新增 `CreateSectionVariantPanel`、`VariantSelectionMode` 或候选项组件时，必须先放入 `ComponentLab` 使用 Mock Data 验收。
+
+## 9. Handout 任务工作流
+
+涉及 `HandoutPage`、`HandoutVersion`、`HandoutVersionItem`、`OutputTemplate`、`OutputForm`、`GeneratedFile` 或讲义 Word 生成的开发任务开始前，必须先确认以下文档：
+
+```text
+docs/ui/handout-page.md
+docs/ui/component-rules.md
+docs/ui/ui-architecture.md
+docs/cms-v2/backend/后端数据模型开发文档.md
+docs/cms-v2/backend/后端重建阶段计划.md
+docs/cms-v2/backend/领域模型结构说明.md
+```
+
+当前定稿规则：
+
+- `HandoutPage` 以 `HandoutVersion` 为核心对象。
+- `HandoutVersionItem` 第一版允许 `SectionVariant`、`AtomicSection`、`ContentBlock`。
+- 不允许直接添加 `Section`、`SectionItem`、`AtomicSectionItem`、`TeachingTopic` 或 `ContentBlockVersion`。
+- 添加入口只在左侧 `HandoutStructurePanel`。
+- 根节点提供“添加到末尾”。
+- 顶层 `HandoutVersionItem` 提供“在此后添加”。
+- 内部派生节点只读。
+- 后端负责插入位置和 `SortOrder` 规整。
+- 第一版允许重复添加，但前端必须提示。
+- 第一版支持上移、下移、删除引用、`TitleOverride`、`Note`。
+- 第一版 `OutputForm` 只允许 Word。
+- `OutputTemplate` 是 Word 模板权威，必须保留页眉页脚和样式。
+- 讲义生成必须处理结构标题和跨 DOCX 例题编号连续。
+
+Handout 开发阶段必须按以下顺序推进：
+
+```text
+H0 冲突审计
+H1 正式文档完善
+H2 技术调研与编号 Spike
+H3 Domain 与 Persistence
+H4 Application 编排用例
+H5 Workspace Aggregate 与 API
+H6 Render Plan 与 Word 生成重构
+H7 前端基础和 HandoutIndexPage
+H8 HandoutPage 三栏与树
+H9 真实编排接入
+H10 Output 与 GeneratedFile
+H11 端到端上线验收
+```
+
+如果任务只是校正文档：
+
+- 不修改前端代码。
+- 不修改后端代码。
+- 不新增 API。
+- 不改数据库迁移。
+
+如果任务进入组件开发：
+
+- 新增 Handout 可复用组件前，先向用户说明组件职责、输入、事件和 ComponentLab 验收范围。
+- 组件必须先在 ComponentLab 使用 Mock Data 验收。
+- 真实页面接入必须另起一轮或获得用户明确确认。

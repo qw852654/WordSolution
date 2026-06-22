@@ -5,8 +5,10 @@ using WordSolution.CmsV2.Application.ContentBlocks;
 using WordSolution.CmsV2.Application.Handouts;
 using WordSolution.CmsV2.Application.Sections;
 using WordSolution.CmsV2.Application.SectionVariants;
+using WordSolution.CmsV2.Domain.Documents;
 using WordSolution.CmsV2.Domain.Entities;
 using WordSolution.CmsV2.Domain.Enums;
+using WordSolution.CmsV2.Infrastructure.Documents;
 using WordSolution.CmsV2.Infrastructure.Persistence;
 using WordSolution.CmsV2.Infrastructure.Repositories;
 
@@ -123,6 +125,148 @@ public sealed class CmsV2ApplicationUseCaseTests
         Assert.Equal(Difficulty.Basic, block.Difficulty);
         Assert.Null(block.CurrentVersionId);
         Assert.Empty(versions);
+    }
+
+    [Fact]
+    public async Task DeleteContentBlockCascadeAsync_removes_block_assets_and_all_references()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var sections = new SectionUseCases(unitOfWork);
+        var variants = new SectionVariantUseCases(unitOfWork);
+        var relations = new ContentBlockRelationUseCases(unitOfWork);
+        var handouts = new HandoutUseCases(unitOfWork);
+        var deletion = new ContentBlockDeletionUseCases(
+            unitOfWork,
+            new LocalContentBlockFileStore(),
+            new FakeContentBlockEditSessionStore());
+        var bankRootDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "cms-v2-delete-cascade-tests",
+            Guid.NewGuid().ToString("N"));
+        var sectionId = await CreateSectionAsync(unitOfWork);
+
+        var target = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(sectionId, "例题组", ContentBlockType.ExampleGroup, Difficulty.Medium));
+        var child = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(sectionId, "子题", ContentBlockType.Question, Difficulty.Basic));
+        var parent = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(sectionId, "父组合", ContentBlockType.ExerciseGroup, Difficulty.Basic));
+        var docxPath = Path.Combine(bankRootDirectory, "content-blocks", "source", target.Id.ToString(), "v1.docx");
+        var htmlPath = Path.Combine(bankRootDirectory, "content-blocks", "html", target.Id.ToString(), "v1.html");
+        Directory.CreateDirectory(Path.GetDirectoryName(docxPath)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(htmlPath)!);
+        await File.WriteAllTextAsync(docxPath, "docx placeholder");
+        await File.WriteAllTextAsync(htmlPath, "<html></html>");
+        var version = await contentBlocks.CreateContentBlockVersionAsync(
+            new CreateContentBlockVersionCommand(
+                target.Id,
+                docxPath,
+                htmlPath,
+                PlainText: "plain text",
+                SetAsCurrent: true));
+        var sectionItem = await sections.AddSectionItemAsync(
+            new AddSectionItemCommand(
+                sectionId,
+                SectionItemTargetType.ContentBlock,
+                target.Id,
+                ReferenceMode.FollowLatest,
+                null,
+                SortOrder: 10));
+        var variant = await variants.CreateSectionVariantAsync(
+            new CreateSectionVariantCommand(
+                sectionId,
+                "基础版",
+                Difficulty: Difficulty.Medium,
+                SelectedSectionItemIds: [sectionItem.Id]));
+        var atomicSection = new AtomicSection(sectionId, "原子小节", difficulty: Difficulty.Basic);
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+        var atomicItem = new AtomicSectionItem(
+            atomicSection.Id,
+            target.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10);
+        await unitOfWork.AtomicSectionItems.AddAsync(atomicItem);
+        await unitOfWork.SaveChangesAsync();
+        await relations.AddContentBlockRelationAsync(
+            new AddContentBlockRelationCommand(parent.Id, target.Id, ReferenceMode.FollowLatest, null, SortOrder: 10));
+        await relations.AddContentBlockRelationAsync(
+            new AddContentBlockRelationCommand(target.Id, child.Id, ReferenceMode.FollowLatest, null, SortOrder: 10));
+        var handout = new Handout("讲义");
+        await unitOfWork.Handouts.AddAsync(handout);
+        await unitOfWork.SaveChangesAsync();
+        var handoutVersion = await handouts.CreateHandoutVersionAsync(
+            new CreateHandoutVersionCommand(handout.Id, "讲义版本"));
+        await handouts.AddHandoutVersionItemAsync(
+            new AddHandoutVersionItemCommand(
+                handoutVersion.Id,
+                HandoutVersionItemTargetType.ContentBlock,
+                target.Id,
+                SortOrder: 10));
+
+        var result = await deletion.DeleteContentBlockCascadeAsync(
+            new DeleteContentBlockCascadeCommand(bankRootDirectory, target.Id));
+
+        Assert.Equal(target.Id, result.ContentBlockId);
+        Assert.Equal(1, result.RemovedSectionItemCount);
+        Assert.Equal(1, result.RemovedSectionVariantItemCount);
+        Assert.Equal(1, result.RemovedAtomicSectionItemCount);
+        Assert.Equal(2, result.RemovedContentBlockRelationCount);
+        Assert.Equal(1, result.RemovedHandoutVersionItemCount);
+        Assert.Equal(1, result.RemovedVersionCount);
+        Assert.Equal(2, result.DeletedAssetCount);
+        Assert.Null(await unitOfWork.ContentBlocks.GetByIdAsync(target.Id));
+        Assert.NotNull(await unitOfWork.ContentBlocks.GetByIdAsync(child.Id));
+        Assert.NotNull(await unitOfWork.ContentBlocks.GetByIdAsync(parent.Id));
+        Assert.Null(await unitOfWork.ContentBlockVersions.GetByIdAsync(version.Id));
+        Assert.Null(await unitOfWork.SectionItems.GetByIdAsync(sectionItem.Id));
+        Assert.Empty(await unitOfWork.SectionVariantItems.ListBySectionVariantAsync(variant.Id));
+        Assert.Empty(await unitOfWork.AtomicSectionItems.ListByContentBlockAsync(target.Id));
+        Assert.Empty(await unitOfWork.ContentBlockRelations.ListChildrenAsync(target.Id));
+        Assert.Empty(await unitOfWork.ContentBlockRelations.ListParentsAsync(target.Id));
+        Assert.Empty(await unitOfWork.HandoutVersionItems.ListByTargetAsync(HandoutVersionItemTargetType.ContentBlock, target.Id));
+        Assert.False(File.Exists(docxPath));
+        Assert.False(File.Exists(htmlPath));
+    }
+
+    [Fact]
+    public async Task DeleteContentBlockCascadeAsync_rejects_active_edit_session()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var target = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(sectionId, "正在编辑", ContentBlockType.KnowledgePoint, Difficulty.Basic));
+        var sessionStore = new FakeContentBlockEditSessionStore(
+        [
+            new ContentBlockEditSession(
+                "session-1",
+                target.Id,
+                SourceContentBlockVersionId: 1,
+                EditableDocxPath: "edit.docx",
+                OriginalDocxHash: "hash",
+                ContentBlockEditSessionStatus.Editing,
+                ContentBlockEditLaunchMode.LocalShell,
+                OpenedByServer: true,
+                Message: null,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow)
+        ]);
+        var deletion = new ContentBlockDeletionUseCases(
+            unitOfWork,
+            new LocalContentBlockFileStore(),
+            sessionStore);
+
+        var exception = await Assert.ThrowsAsync<CmsV2ApplicationException>(
+            () => deletion.DeleteContentBlockCascadeAsync(
+                new DeleteContentBlockCascadeCommand(Path.GetTempPath(), target.Id)));
+
+        Assert.Equal("ContentBlock has an active Word edit session. Sync or cancel it before deleting.", exception.Message);
+        Assert.NotNull(await unitOfWork.ContentBlocks.GetByIdAsync(target.Id));
     }
 
     [Fact]
@@ -1024,5 +1168,33 @@ public sealed class CmsV2ApplicationUseCaseTests
         await unitOfWork.SaveChangesAsync();
 
         return section.Id;
+    }
+
+    private sealed class FakeContentBlockEditSessionStore(
+        IReadOnlyList<ContentBlockEditSession>? activeSessions = null)
+        : IContentBlockEditSessionStore
+    {
+        public Task SaveAsync(
+            string bankRootDirectory,
+            ContentBlockEditSession session,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task<ContentBlockEditSession?> GetAsync(
+            string bankRootDirectory,
+            string sessionId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<ContentBlockEditSession?>(null);
+        }
+
+        public Task<IReadOnlyList<ContentBlockEditSession>> ListActiveAsync(
+            string bankRootDirectory,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(activeSessions ?? []);
+        }
     }
 }

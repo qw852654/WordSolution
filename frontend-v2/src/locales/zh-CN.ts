@@ -279,6 +279,11 @@ const zhCN = {
       note: '备注',
       preview: '预览',
       openWord: 'Word 编辑',
+      dangerZone: '危险操作',
+      deleteContentBlockCascade: '彻底删除 ContentBlock',
+      deleteContentBlockCascadeBusy: '正在删除 ContentBlock',
+      deleteContentBlockCascadeDescription:
+        '删除 ContentBlock 本体、版本和所有引用位置，不是移除当前引用。',
     },
     basicTree: {
       expand: '展开节点',
@@ -590,6 +595,16 @@ const zhCN = {
         removeConfirm:
           '确认从当前 CompositeBlock 中移除这个子级 ContentBlock 引用？不会删除源 ContentBlock。ContentBlock：{title}',
         operationFailed: 'CompositeBlock 子级 ContentBlock 操作失败，请稍后重试。',
+      },
+      contentBlockCascadeDelete: {
+        confirm:
+          '确认彻底删除 ContentBlock：{title}？这不是移除引用，会删除 ContentBlock 本体、版本文件，并清理所有引用位置。此操作不可撤销。',
+        compositeConfirmExtra:
+          '这是 CompositeBlock：会删除它的子块关系，但不会递归删除子 ContentBlock 本体。',
+        targetMissing: '没有找到当前节点对应的 ContentBlock，无法彻底删除。请刷新后重试。',
+        failed: 'ContentBlock 彻底删除失败，请稍后重试。',
+        deletedFeedback:
+          '已彻底删除 ContentBlock：{title}。清理 SectionItem {removedSectionItemCount} 个、AtomicSectionItem {removedAtomicSectionItemCount} 个、CompositeBlock 关系 {removedContentBlockRelationCount} 个。',
       },
       mock: {
         contentBlockPlaceholderTitle: 'ContentBlockDisplay 占位',

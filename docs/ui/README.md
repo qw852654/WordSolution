@@ -8,6 +8,7 @@
 ui-architecture.md   前端总体架构、技术栈、目录、状态和 API 边界。
 component-rules.md   组件分层、API 调用规则、mock 优先流程和 ComponentLabPage。
 section-page.md      SectionPage 小节结构编辑页设计。
+handout-page.md      HandoutPage 讲义版本编排页设计、输出闭环和阶段计划。
 focus-tree.md        FocusTree 抽象和业务树规则。
 i18n.md              Vue I18n 文案规则。
 codex-workflow.md    Codex 后续开发流程。

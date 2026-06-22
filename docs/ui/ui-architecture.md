@@ -294,3 +294,47 @@ SectionWorkspace
 - 从 Inspector 创建。
 - 从 TeachingStructureTree 创建。
 - 在前端循环调用 AddItem API 拼装 Variant。
+
+## 5.3 HandoutPage 页面模式
+
+`HandoutPage` 是以 `HandoutVersion` 为核心对象的讲义编排页面，不是 `SectionPage` 的变体，也不是教学主题工作台。
+
+路由：
+
+```text
+/handouts
+  Handout 列表、创建 Handout、创建和打开 HandoutVersion。
+
+/handouts/:handoutVersionId
+  当前 HandoutVersion 的编排、输出和生成页面。
+```
+
+页面结构：
+
+```text
+左侧：HandoutStructurePanel
+中间：HandoutWorkspace
+右侧：HandoutInspectorAndOutput
+```
+
+核心语义：
+
+- `HandoutVersion` 是当前页面的编辑对象。
+- `HandoutVersionItem` 是讲义中的顶层出现项。
+- 第一版顶层项只允许引用 `SectionVariant`、`AtomicSection`、`ContentBlock`。
+- `SectionVariant` 在讲义中是引用展开视图，不反向修改源 `Section` 或 `SectionVariant`。
+- `AtomicSection` 可以被讲义直接引用，生成时整体展开。
+- `ContentBlock` 可以被讲义直接引用，第一版使用当前版本。
+- 添加入口只在左侧 `HandoutStructurePanel`：根节点“添加到末尾”，顶层 item“在此后添加”。
+- 中间 `HandoutWorkspace` 展示结构展开，不承担完整 Word-like 预览。
+- 右侧区域同时承担 Inspector、OutputForm、GeneratedFile 和 manifest 查看入口。
+
+第一版不允许：
+
+- 从内部派生节点插入顶层 item。
+- 在讲义页面修改源 `SectionVariant`、`AtomicSection` 或 `ContentBlockRelation` 结构。
+- 通过前端自行计算 `SortOrder`。
+- 通过拖拽排序。
+- 在前端实现 PDF、条件内容、变量替换或学生 / 教师版实际过滤。
+
+详细规则见 `docs/ui/handout-page.md`。

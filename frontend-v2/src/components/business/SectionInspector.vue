@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { PackageOpen } from 'lucide-vue-next'
+import { PackageOpen, Trash2 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import EmptyState from '@/components/presentation/EmptyState.vue'
 import StatusPill from '@/components/presentation/StatusPill.vue'
 import WeakScrollArea from '@/components/presentation/WeakScrollArea.vue'
+import { Button } from '@/components/ui/button'
 import {
   Card,
   CardHeader,
@@ -16,6 +17,11 @@ const props = defineProps<{
   node?: SectionTreeNodeModel
   section?: SectionPageShellModel
   variantItemCount?: number
+  deletingContentBlockCascade?: boolean
+}>()
+
+const emit = defineEmits<{
+  deleteContentBlockCascade: []
 }>()
 
 const { t } = useI18n()
@@ -39,6 +45,10 @@ const kindLabel = computed(() => {
 
   return t(`components.sectionTree.kind.${props.node.kind}`)
 })
+
+const showContentBlockCascadeDelete = computed(() =>
+  props.node?.kind === 'ContentBlock' || props.node?.kind === 'CompositeBlock',
+)
 
 const detailRows = computed(() => {
   const node = props.node
@@ -157,5 +167,31 @@ const detailRows = computed(() => {
         </div>
       </dl>
     </WeakScrollArea>
+
+    <div v-if="showContentBlockCascadeDelete" class="border-t px-4 py-3">
+      <div class="grid gap-2">
+        <p class="text-xs font-medium text-destructive">
+          {{ t('components.sectionInspector.dangerZone') }}
+        </p>
+        <p class="text-xs text-muted-foreground">
+          {{ t('components.sectionInspector.deleteContentBlockCascadeDescription') }}
+        </p>
+        <Button
+          type="button"
+          variant="destructive"
+          size="sm"
+          class="w-full"
+          :disabled="deletingContentBlockCascade"
+          @click="emit('deleteContentBlockCascade')"
+        >
+          <Trash2 class="size-4" aria-hidden="true" />
+          {{
+            deletingContentBlockCascade
+              ? t('components.sectionInspector.deleteContentBlockCascadeBusy')
+              : t('components.sectionInspector.deleteContentBlockCascade')
+          }}
+        </Button>
+      </div>
+    </div>
   </Card>
 </template>

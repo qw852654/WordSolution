@@ -57,3 +57,17 @@ public sealed record MoveContentBlockRelationCommand(
 public sealed record RemoveContentBlockRelationCommand(
     int ParentBlockId,
     int RelationId);
+
+public sealed record DeleteContentBlockCascadeCommand(
+    string BankRootDirectory,
+    int ContentBlockId);
+
+public sealed record DeleteContentBlockCascadeResult(
+    int ContentBlockId,
+    int RemovedSectionItemCount,
+    int RemovedSectionVariantItemCount,
+    int RemovedAtomicSectionItemCount,
+    int RemovedContentBlockRelationCount,
+    int RemovedHandoutVersionItemCount,
+    int RemovedVersionCount,
+    int DeletedAssetCount);

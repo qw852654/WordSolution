@@ -50,6 +50,7 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ContentBlockUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ContentBlockDocumentUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ContentBlockEditSessionUseCases>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<ContentBlockDeletionUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ContentBlockRelationUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<SectionUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<AtomicSectionUseCases>());
@@ -120,6 +121,70 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.Equal(2, imported.GetProperty("versionNumber").GetInt32());
         Assert.Equal(2, updatedVersions.Length);
         Assert.Equal(firstVersionId, setCurrent.GetProperty("contentBlockVersionId").GetInt32());
+    }
+
+    [Fact]
+    public async Task ContentBlock_delete_cascade_endpoint_removes_block_versions_and_section_variant_references()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "删除测试", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "删除测试 Section", type = "NormalCourse", difficulty = "Medium", status = "Draft" });
+        var sectionId = section.GetProperty("id").GetInt32();
+        var created = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks/blank-document",
+            new
+            {
+                sectionId,
+                title = "待彻底删除",
+                blockType = "KnowledgePoint",
+                difficulty = "Basic",
+                status = "Draft"
+            });
+        var contentBlockId = created.GetProperty("contentBlockId").GetInt32();
+        var sectionItem = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/sections/{sectionId}/items",
+            new
+            {
+                targetType = "ContentBlock",
+                targetId = contentBlockId,
+                referenceMode = "FollowLatest",
+                lockedContentBlockVersionId = (int?)null,
+                sortOrder = 10,
+                status = "Draft"
+            });
+        var variant = await PostJsonAsync(
+            client,
+            "/api/cms-v2/section-variants",
+            new
+            {
+                sectionId,
+                title = "引用待删块",
+                type = "Lecture",
+                difficulty = "Basic",
+                selectedSectionItemIds = new[] { sectionItem.GetProperty("id").GetInt32() }
+            });
+
+        var deleteResult = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/content-blocks/{contentBlockId}/delete-cascade",
+            new { });
+        var deletedBlock = await client.GetAsync($"/api/cms-v2/content-blocks/{contentBlockId}");
+        var variantItems = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/section-variants/{variant.GetProperty("id").GetInt32()}/items")
+            ?? [];
+
+        Assert.Equal(contentBlockId, deleteResult.GetProperty("contentBlockId").GetInt32());
+        Assert.Equal(1, deleteResult.GetProperty("removedSectionItemCount").GetInt32());
+        Assert.Equal(1, deleteResult.GetProperty("removedSectionVariantItemCount").GetInt32());
+        Assert.Equal(1, deleteResult.GetProperty("removedVersionCount").GetInt32());
+        Assert.True(deleteResult.GetProperty("deletedAssetCount").GetInt32() > 0);
+        Assert.Equal(HttpStatusCode.NotFound, deletedBlock.StatusCode);
+        Assert.Empty(variantItems);
     }
 
     [Fact]

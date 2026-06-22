@@ -290,6 +290,11 @@ const en = {
       notSet: 'Not set',
       preview: 'Preview',
       openWord: 'Word edit',
+      dangerZone: 'Danger zone',
+      deleteContentBlockCascade: 'Delete ContentBlock permanently',
+      deleteContentBlockCascadeBusy: 'Deleting ContentBlock',
+      deleteContentBlockCascadeDescription:
+        'Deletes the ContentBlock itself, versions, and every reference. This is not reference removal.',
     },
     basicTree: {
       expand: 'Expand node',
@@ -613,6 +618,17 @@ const en = {
         removeConfirm:
           'Remove this child ContentBlock reference from the current CompositeBlock? The source ContentBlock will not be deleted. ContentBlock: {title}',
         operationFailed: 'CompositeBlock child ContentBlock operation failed. Please try again.',
+      },
+      contentBlockCascadeDelete: {
+        confirm:
+          'Permanently delete ContentBlock: {title}? This is not reference removal. It deletes the ContentBlock, version files, and all references. This cannot be undone.',
+        compositeConfirmExtra:
+          'This is a CompositeBlock: child relations will be deleted, but child ContentBlocks will not be recursively deleted.',
+        targetMissing:
+          'Could not resolve the ContentBlock for the current node. Refresh and try again.',
+        failed: 'Permanent ContentBlock deletion failed. Please try again.',
+        deletedFeedback:
+          'Deleted ContentBlock permanently: {title}. Removed {removedSectionItemCount} SectionItems, {removedAtomicSectionItemCount} AtomicSectionItems, and {removedContentBlockRelationCount} CompositeBlock relations.',
       },
       mock: {
         contentBlockPlaceholderTitle: 'ContentBlockDisplay placeholder',

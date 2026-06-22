@@ -46,6 +46,7 @@ public static class CmsV2ApiServiceCollectionExtensions
         services.AddScoped<ContentBlockUseCases>();
         services.AddScoped<ContentBlockDocumentUseCases>();
         services.AddScoped<ContentBlockEditSessionUseCases>();
+        services.AddScoped<ContentBlockDeletionUseCases>();
         services.AddScoped<ContentBlockRelationUseCases>();
         services.AddScoped<SectionUseCases>();
         services.AddScoped<AtomicSectionUseCases>();

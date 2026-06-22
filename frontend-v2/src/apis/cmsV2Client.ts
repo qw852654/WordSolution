@@ -178,6 +178,17 @@ export interface CmsV2SyncContentBlockEditSessionResultDto {
   message?: string | null
 }
 
+export interface CmsV2DeleteContentBlockCascadeResultDto {
+  contentBlockId: number
+  removedSectionItemCount: number
+  removedSectionVariantItemCount: number
+  removedAtomicSectionItemCount: number
+  removedContentBlockRelationCount: number
+  removedHandoutVersionItemCount: number
+  removedVersionCount: number
+  deletedAssetCount: number
+}
+
 export interface CmsV2CreateContentBlockWithBlankDocumentRequest {
   sectionId: number
   title: string
@@ -507,6 +518,11 @@ export const cmsV2Api = {
     cmsV2PostJson<CmsV2ContentBlockEditSessionDto>(
       `/content-blocks/${contentBlockId}/edit-session`,
       request,
+    ),
+  deleteContentBlockCascade: (contentBlockId: number) =>
+    cmsV2PostJson<CmsV2DeleteContentBlockCascadeResultDto>(
+      `/content-blocks/${contentBlockId}/delete-cascade`,
+      {},
     ),
   getContentBlockEditSession: (sessionId: string) =>
     cmsV2FetchJson<CmsV2ContentBlockEditSessionDto>(

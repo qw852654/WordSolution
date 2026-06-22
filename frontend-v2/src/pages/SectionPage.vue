@@ -89,6 +89,7 @@ const teachingTopicDisplayRootNodeId = ref<string | null>(null)
 const isLoadingSectionPage = ref(false)
 const sectionPageError = ref('')
 const isSubmittingInsertCreate = ref(false)
+const isDeletingContentBlockCascade = ref(false)
 
 function resolveSectionItemRemoveError(error: unknown, fallback: string) {
   const message = error instanceof Error ? error.message : ''
@@ -1457,8 +1458,101 @@ function parseSectionItemNodeId(nodeId: string) {
   return match ? Number(match[1]) : undefined
 }
 
+function findContentBlockIdInStructuredChildren(
+  children: StructuredBlockChildModel[],
+  nodeId: string,
+): number | undefined {
+  for (const child of children) {
+    if (child.nodeId === nodeId) {
+      return child.kind === 'CompositeBlock'
+        ? (child.contentBlockId ?? child.block.contentBlockId)
+        : child.contentBlockId
+    }
+
+    if (child.kind === 'CompositeBlock') {
+      const match = findContentBlockIdInStructuredChildren(child.block.children, nodeId)
+      if (typeof match === 'number') {
+        return match
+      }
+    }
+  }
+
+  return undefined
+}
+
+function findContentBlockIdForWorkspaceNode(nodeId: string): number | undefined {
+  for (const item of sectionWorkspaceFlowItems.value) {
+    if (item.nodeId === nodeId) {
+      if (item.kind === 'ContentBlock') {
+        return item.targetId
+      }
+
+      if (item.kind === 'CompositeBlock') {
+        return item.targetId ?? item.block.contentBlockId
+      }
+    }
+
+    if (item.kind === 'AtomicSection' || item.kind === 'CompositeBlock') {
+      const match = findContentBlockIdInStructuredChildren(item.block.children, nodeId)
+      if (typeof match === 'number') {
+        return match
+      }
+    }
+  }
+
+  return undefined
+}
+
 function getSectionRootNodeId() {
   return sectionTreeNodes.value.find((node) => node.kind === 'Section')?.id
+}
+
+async function requestDeleteContentBlockCascade() {
+  const node = selectedStructureNode.value
+  if (!node || (node.kind !== 'ContentBlock' && node.kind !== 'CompositeBlock')) {
+    return
+  }
+
+  const contentBlockId = findContentBlockIdForWorkspaceNode(node.id)
+  if (typeof contentBlockId !== 'number') {
+    sectionPageError.value = t('sectionPage.workspace.contentBlockCascadeDelete.targetMissing')
+    return
+  }
+
+  const title = node.title || node.typeLabel || 'ContentBlock'
+  const confirmMessage = [
+    t('sectionPage.workspace.contentBlockCascadeDelete.confirm', { title }),
+    node.kind === 'CompositeBlock'
+      ? t('sectionPage.workspace.contentBlockCascadeDelete.compositeConfirmExtra')
+      : '',
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+
+  if (!window.confirm(confirmMessage)) {
+    return
+  }
+
+  isDeletingContentBlockCascade.value = true
+  sectionPageError.value = ''
+
+  try {
+    const result = await cmsV2Api.deleteContentBlockCascade(contentBlockId)
+    insertFeedback.value = t('sectionPage.workspace.contentBlockCascadeDelete.deletedFeedback', {
+      title,
+      removedSectionItemCount: result.removedSectionItemCount,
+      removedAtomicSectionItemCount: result.removedAtomicSectionItemCount,
+      removedContentBlockRelationCount: result.removedContentBlockRelationCount,
+    })
+    selectedStructureNodeId.value = getSectionRootNodeId()
+    clearSectionVariantView()
+    await loadCurrentSectionPage()
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error ? error.message : t('sectionPage.workspace.contentBlockCascadeDelete.failed')
+  } finally {
+    isDeletingContentBlockCascade.value = false
+  }
 }
 
 function resolveSectionVariantDeleteError(error: unknown) {
@@ -2209,6 +2303,8 @@ watch(sectionId, () => {
           :node="selectedStructureNode"
           :section="sectionShell"
           :variant-item-count="sectionVariantItemCount"
+          :deleting-content-block-cascade="isDeletingContentBlockCascade"
+          @delete-content-block-cascade="requestDeleteContentBlockCascade"
         />
       </aside>
     </section>

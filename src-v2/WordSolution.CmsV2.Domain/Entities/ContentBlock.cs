@@ -77,4 +77,10 @@ public sealed class ContentBlock
         CurrentVersionId = contentBlockVersionId;
         UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
     }
+
+    public void ClearCurrentVersion(DateTimeOffset? updatedTime = null)
+    {
+        CurrentVersionId = null;
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+    }
 }

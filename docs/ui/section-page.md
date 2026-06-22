@@ -1176,3 +1176,45 @@ The following items are explicitly deferred after `SectionPage v0.1`:
 - `TeachingNoteColumn`;
 - automatic cleanup for empty shell objects;
 - `SectionVariant` management actions such as rename, copy, or content reselection; the first version only supports deleting a `SectionVariant` from the `SectionTree` context menu.
+
+## Current Update: Permanent ContentBlock Delete
+
+`SectionPage` now distinguishes two different delete meanings:
+
+```text
+Remove reference
+  Remove the current SectionItem / AtomicSectionItem / ContentBlockRelation reference only.
+  The source ContentBlock entity, versions, and files remain.
+
+Permanent ContentBlock delete
+  Delete the ContentBlock entity itself, its versions, file assets, and all references to it.
+  This is a dangerous operation and has no undo in the first version.
+```
+
+The permanent delete entry is only exposed from `SectionInspector` when the selected node is a `ContentBlock` or group-type `CompositeBlock`.
+
+It must not be exposed from:
+
+- `Workspace` action rail;
+- `SectionTree` context menu;
+- `ContentBlockDisplay`;
+- `CompositeBlock`;
+- `SectionItemView`.
+
+`SectionInspector` must show a dedicated danger area and a clear confirmation prompt:
+
+- this is not reference removal;
+- it deletes the `ContentBlock` body and versions;
+- it cleans all references from `Section`, `AtomicSection`, `CompositeBlock`, `SectionVariant`, and `HandoutVersion` structures;
+- it cannot be undone in the first version.
+
+For `CompositeBlock`, the confirmation must additionally state:
+
+```text
+Deleting the CompositeBlock deletes the CompositeBlock entity and its child relations.
+It does not recursively delete child ContentBlock entities.
+```
+
+After success, `SectionPage` must reload current `Section` data and clear the current selected content node. If the page is in `SectionVariant` read-only view, it must also refresh the currently loaded Variant items so removed references do not remain visible.
+
+If the backend rejects deletion, for example because the ContentBlock has an active Word edit session, `SectionPage` must keep the current page state and show the backend error message. It must not render a fake success state.
