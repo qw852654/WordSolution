@@ -6,6 +6,7 @@ import CompositeBlock from '@/components/business/CompositeBlock.vue'
 import ContentBlockDisplay from '@/components/business/ContentBlockDisplay.vue'
 import { getDifficultyMarkerClass } from '@/components/business/difficultyTone'
 import SectionItemView from '@/components/business/SectionItemView.vue'
+import InsertPoint from '@/components/presentation/InsertPoint.vue'
 import StructuredContainer from '@/components/presentation/StructuredContainer.vue'
 import { Button } from '@/components/ui/button'
 import type {
@@ -13,6 +14,8 @@ import type {
   AtomicSectionItemMovePayload,
   ContentBlockRelationActionPayload,
   ContentBlockRelationMovePayload,
+  InsertPointModel,
+  InsertRequestModel,
   SectionItemViewAction,
   StructuredBlockChildModel,
   StructuredBlockModel,
@@ -38,6 +41,7 @@ const emit = defineEmits<{
   openContentBlockRelationWord: [payload: ContentBlockRelationActionPayload]
   moveContentBlockRelation: [payload: ContentBlockRelationMovePayload]
   removeContentBlockRelation: [payload: ContentBlockRelationActionPayload]
+  requestInsert: [request: InsertRequestModel]
 }>()
 
 const { t } = useI18n()
@@ -92,6 +96,31 @@ function emitAtomicSectionItemRemove(child: StructuredBlockChildModel) {
     emit('removeAtomicSectionItem', payload)
   }
 }
+
+function createAtomicSectionInsertPoint(
+  beforeChild?: StructuredBlockChildModel,
+  afterChild?: StructuredBlockChildModel,
+): InsertPointModel {
+  const parentId = props.block.atomicSectionId
+  const suffix = `${afterChild?.id ?? 'start'}-${beforeChild?.id ?? 'end'}`
+
+  return {
+    id: `atomic-section-${props.block.id}-insert-${suffix}`,
+    label: t('components.insertPoint.insert'),
+    allowedActions: ['CreateContentBlock'],
+    disabled: props.block.disabled || !parentId,
+    placement: parentId
+      ? {
+          parentType: 'AtomicSection',
+          parentId,
+          beforeItemId: beforeChild?.atomicSectionItemId,
+          afterItemId: afterChild?.atomicSectionItemId,
+          beforeSortOrder: beforeChild?.sortOrder,
+          afterSortOrder: afterChild?.sortOrder,
+        }
+      : undefined,
+  }
+}
 </script>
 
 <template>
@@ -102,7 +131,7 @@ function emitAtomicSectionItemRemove(child: StructuredBlockChildModel) {
     :difficulty-marker-label="difficultyMarkerLabel"
     :selected="block.selected"
     :disabled="block.disabled"
-    @click="$emit('select', props.block.id)"
+    @select-title="$emit('select', props.block.id)"
   >
     <template #actions>
       <Button
@@ -130,53 +159,72 @@ function emitAtomicSectionItemRemove(child: StructuredBlockChildModel) {
     </template>
 
     <template v-if="isExpanded">
-    <p class="text-sm leading-6 text-muted-foreground">{{ block.summary }}</p>
-    <div v-if="block.children.length">
-      <SectionItemView
-        v-for="child in block.children"
-        :key="child.id"
-        :item-id="child.id"
-        :selected="child.selected"
-        :disabled="child.disabled"
-        :actions="readOnly ? [] : childContentBlockActions"
-        :data-workspace-node-id="nodeIdMap?.[child.nodeId] ?? child.nodeId"
-        @select="emit('selectContentBlock', $event)"
-        @open-word="emitAtomicSectionItemWord(child)"
-        @move-up="emitAtomicSectionItemMove(child, 'Up')"
-        @move-down="emitAtomicSectionItemMove(child, 'Down')"
-        @remove="emitAtomicSectionItemRemove(child)"
-      >
-        <ContentBlockDisplay
-          v-if="child.kind === 'ContentBlock'"
-          :block="child.block"
-          :read-only="readOnly"
-          @open-word="emitAtomicSectionItemWord(child)"
-          @refresh-preview="emit('refreshPreview', $event)"
-          @open-more="emit('openContentBlockMore', $event)"
+      <p class="text-sm leading-6 text-muted-foreground">{{ block.summary }}</p>
+      <div v-if="block.children.length" class="space-y-0">
+        <template v-for="(child, index) in block.children" :key="child.id">
+          <InsertPoint
+            v-if="!readOnly"
+            :point="createAtomicSectionInsertPoint(child, block.children[index - 1])"
+            @request-action="emit('requestInsert', $event)"
+          />
+          <SectionItemView
+            :item-id="child.id"
+            :selected="child.selected"
+            :disabled="child.disabled"
+            :select-on-container="child.kind === 'ContentBlock'"
+            :actions="readOnly ? [] : childContentBlockActions"
+            :data-workspace-node-id="nodeIdMap?.[child.nodeId] ?? child.nodeId"
+            @select="emit('selectContentBlock', $event)"
+            @open-word="emitAtomicSectionItemWord(child)"
+            @move-up="emitAtomicSectionItemMove(child, 'Up')"
+            @move-down="emitAtomicSectionItemMove(child, 'Down')"
+            @remove="emitAtomicSectionItemRemove(child)"
+          >
+            <ContentBlockDisplay
+              v-if="child.kind === 'ContentBlock'"
+              :block="child.block"
+              :read-only="readOnly"
+              @open-word="emitAtomicSectionItemWord(child)"
+              @refresh-preview="emit('refreshPreview', $event)"
+              @open-more="emit('openContentBlockMore', $event)"
+            />
+            <CompositeBlock
+              v-else
+              :block="child.block"
+              :node-id-map="nodeIdMap"
+              :read-only="readOnly"
+              @select="emit('selectContentBlock', $event)"
+              @select-content-block="emit('selectContentBlock', $event)"
+              @toggle-collapse="emit('toggleCollapse', $event)"
+              @open-word="emitAtomicSectionItemWord(child)"
+              @refresh-preview="emit('refreshPreview', $event)"
+              @open-content-block-more="emit('openContentBlockMore', $event)"
+              @open-content-block-relation-word="emit('openContentBlockRelationWord', $event)"
+              @move-content-block-relation="emit('moveContentBlockRelation', $event)"
+              @remove-content-block-relation="emit('removeContentBlockRelation', $event)"
+              @open-atomic-section-item-word="emit('openAtomicSectionItemWord', $event)"
+              @move-atomic-section-item="emit('moveAtomicSectionItem', $event)"
+              @remove-atomic-section-item="emit('removeAtomicSectionItem', $event)"
+              @request-insert="emit('requestInsert', $event)"
+            />
+          </SectionItemView>
+        </template>
+        <InsertPoint
+          v-if="!readOnly"
+          :point="createAtomicSectionInsertPoint(undefined, block.children[block.children.length - 1])"
+          @request-action="emit('requestInsert', $event)"
         />
-        <CompositeBlock
-          v-else
-          :block="child.block"
-          :node-id-map="nodeIdMap"
-          :read-only="readOnly"
-          @select="emit('selectContentBlock', $event)"
-          @select-content-block="emit('selectContentBlock', $event)"
-          @toggle-collapse="emit('toggleCollapse', $event)"
-          @open-word="emitAtomicSectionItemWord(child)"
-          @refresh-preview="emit('refreshPreview', $event)"
-          @open-content-block-more="emit('openContentBlockMore', $event)"
-          @open-content-block-relation-word="emit('openContentBlockRelationWord', $event)"
-          @move-content-block-relation="emit('moveContentBlockRelation', $event)"
-          @remove-content-block-relation="emit('removeContentBlockRelation', $event)"
-          @open-atomic-section-item-word="emit('openAtomicSectionItemWord', $event)"
-          @move-atomic-section-item="emit('moveAtomicSectionItem', $event)"
-          @remove-atomic-section-item="emit('removeAtomicSectionItem', $event)"
+      </div>
+      <div v-else class="space-y-0">
+        <p class="text-xs leading-4 text-destructive">
+          {{ t('components.structuredBlock.atomicEmptyDescription') }}
+        </p>
+        <InsertPoint
+          v-if="!readOnly"
+          :point="createAtomicSectionInsertPoint()"
+          @request-action="emit('requestInsert', $event)"
         />
-      </SectionItemView>
-    </div>
-    <p v-else class="text-xs leading-4 text-destructive">
-      {{ t('components.structuredBlock.atomicEmptyDescription') }}
-    </p>
+      </div>
     </template>
   </StructuredContainer>
 </template>

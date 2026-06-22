@@ -16,7 +16,6 @@ import type {
   ContentBlockRelationActionPayload,
   ContentBlockRelationMovePayload,
   ContentBlockDisplayModel,
-  InsertActionType,
   InsertPointModel,
   InsertRequestModel,
   SectionPageShellModel,
@@ -168,6 +167,7 @@ const workspaceEmptyDescription = computed(
 const firstInsertPoint = computed<InsertPointModel>(() => ({
   id: 'insert-first-section-item',
   label: workspaceEmptyTitle.value,
+  placement: getSectionInsertPointPlacement(),
 }))
 
 interface AtomicSectionWorkspaceActionPayload {
@@ -364,9 +364,32 @@ function handleNestedWorkspaceSelection(itemId: string, event?: MouseEvent) {
 }
 
 function getInsertPointBefore(item: SectionWorkspaceFlowItemModel, index: number): InsertPointModel {
+  const previous = flowItems.value[index - 1]
+
   return {
     id: `insert-before-${item.nodeId}-${index}`,
     label: t('components.insertPoint.insert'),
+    placement: getSectionInsertPointPlacement(item, previous),
+  }
+}
+
+function getSectionInsertPointPlacement(
+  beforeItem?: SectionWorkspaceFlowItemModel,
+  afterItem?: SectionWorkspaceFlowItemModel,
+): InsertPointModel['placement'] {
+  const parentId = Number(props.section.sectionId)
+
+  if (!Number.isFinite(parentId)) {
+    return undefined
+  }
+
+  return {
+    parentType: 'Section',
+    parentId,
+    beforeItemId: beforeItem?.sectionItemId,
+    afterItemId: afterItem?.sectionItemId,
+    beforeSortOrder: beforeItem?.sortOrder,
+    afterSortOrder: afterItem?.sortOrder,
   }
 }
 
@@ -374,12 +397,12 @@ function isInsertPointActive(insertPointId: string) {
   return props.activeInsertPointId === insertPointId
 }
 
-function emitInsertRequest(insertPointId: string, actionType: InsertActionType) {
+function emitInsertRequest(request: InsertRequestModel) {
   if (props.readOnlyMode) {
     return
   }
 
-  emit('requestInsert', { insertPointId, actionType })
+  emit('requestInsert', request)
 }
 
 function createAtomicSectionActionPayload(item: SectionWorkspaceFlowItemModel) {
@@ -721,7 +744,7 @@ watch(
               <InsertPoint
                 :point="getInsertPointBefore(item, index)"
                 :selected="isInsertPointActive(getInsertPointBefore(item, index).id)"
-                @request-action="emitInsertRequest($event.insertPointId, $event.actionType)"
+                @request-action="emitInsertRequest"
               />
               <p
                 v-if="isInsertPointActive(getInsertPointBefore(item, index).id) && insertFeedback"
@@ -736,6 +759,7 @@ watch(
               :selection-state="getWorkspaceItemSelectionState(item)"
               :selection-unavailable-reason="getWorkspaceItemSelectionUnavailableReason(item)"
               :disabled="item.disabled"
+              :select-on-container="item.kind === 'ContentBlock'"
               :actions="getWorkspaceItemActions(item)"
               :data-workspace-node-id="item.nodeId"
               :aria-label="getWorkspaceItemAriaLabel(item)"
@@ -757,10 +781,11 @@ watch(
                 v-else-if="item.kind === 'AtomicSection'"
                 :block="item.block"
                 :node-id-map="workspaceNodeMap"
-                :read-only="readOnlyMode"
-                @select="handleNestedWorkspaceSelection"
+                :read-only="readOnlyMode || Boolean(activeWorkspaceSelectionMode)"
+                @select="() => handleWorkspaceItemSelect(item)"
                 @select-content-block="handleNestedWorkspaceSelection"
                 @toggle-collapse="emit('toggleWorkspaceNodeCollapse', $event)"
+                @request-insert="emitInsertRequest"
                 @open-content-block-relation-word="emit('requestContentBlockRelationOpenWord', $event)"
                 @move-content-block-relation="emit('requestContentBlockRelationMove', $event)"
                 @remove-content-block-relation="emit('requestContentBlockRelationRemove', $event)"
@@ -772,10 +797,11 @@ watch(
                 v-else
                 :block="item.block"
                 :node-id-map="workspaceNodeMap"
-                :read-only="readOnlyMode"
-                @select="handleNestedWorkspaceSelection"
+                :read-only="readOnlyMode || Boolean(activeWorkspaceSelectionMode)"
+                @select="() => handleWorkspaceItemSelect(item)"
                 @select-content-block="handleNestedWorkspaceSelection"
                 @toggle-collapse="emit('toggleWorkspaceNodeCollapse', $event)"
+                @request-insert="emitInsertRequest"
                 @open-word="emitContentBlockOpenWord(item)"
                 @open-content-block-relation-word="emit('requestContentBlockRelationOpenWord', $event)"
                 @move-content-block-relation="emit('requestContentBlockRelationMove', $event)"
@@ -795,7 +821,7 @@ watch(
               <InsertPoint
                 :point="firstInsertPoint"
                 selected
-                @request-action="emitInsertRequest($event.insertPointId, $event.actionType)"
+                @request-action="emitInsertRequest"
               />
               <p
                 v-if="isInsertPointActive(firstInsertPoint.id) && insertFeedback"

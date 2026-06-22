@@ -252,6 +252,7 @@ export type StructuredBlockChildModel =
       kind: 'ContentBlock'
       id: string
       nodeId: string
+      sortOrder?: number
       atomicSectionId?: number
       atomicSectionItemId?: number
       parentBlockId?: number
@@ -265,6 +266,7 @@ export type StructuredBlockChildModel =
       kind: 'CompositeBlock'
       id: string
       nodeId: string
+      sortOrder?: number
       atomicSectionId?: number
       atomicSectionItemId?: number
       parentBlockId?: number
@@ -280,6 +282,7 @@ export interface StructuredBlockModel {
   title: string
   blockKind: StructuredBlockKind
   typeLabel?: string
+  atomicSectionId?: number
   contentBlockId?: number
   selfContent?: ContentBlockDisplayModel
   status: string
@@ -342,14 +345,28 @@ export interface AtomicSectionItemMovePayload extends AtomicSectionItemActionPay
 export interface InsertPointModel {
   id: string
   label: string
+  placement?: InsertPointPlacementModel
+  allowedActions?: InsertActionType[]
   disabled?: boolean
 }
 
 export type InsertActionType = 'CreateContentBlock' | 'CreateAtomicSection' | 'SearchExistingBlock'
 
+export type InsertParentType = 'Section' | 'AtomicSection' | 'CompositeBlock'
+
+export interface InsertPointPlacementModel {
+  parentType: InsertParentType
+  parentId: number
+  beforeItemId?: number
+  afterItemId?: number
+  beforeSortOrder?: number
+  afterSortOrder?: number
+}
+
 export interface InsertRequestModel {
   insertPointId: string
   actionType: InsertActionType
+  placement?: InsertPointPlacementModel
 }
 
 export type InsertCreateTargetType = 'ContentBlock' | 'AtomicSection'
@@ -370,9 +387,12 @@ export interface InsertCreatePanelModel {
   insertPositionLabel: string
   sectionId: number
   sectionTitle: string
-  insertMode?: 'SectionItem' | 'AtomicSectionChild' | 'WrapAsAtomicSection'
+  placement?: InsertPointPlacementModel
+  insertMode?: 'SectionItem' | 'AtomicSectionChild' | 'CompositeBlockChild' | 'WrapAsAtomicSection'
   atomicSectionId?: number
   atomicSectionTitle?: string
+  compositeBlockId?: number
+  compositeBlockTitle?: string
   wrapSectionItemIds?: number[]
   disabled?: boolean
 }
@@ -381,9 +401,12 @@ export interface InsertCreateSubmitPayload {
   insertPointId: string
   targetType: InsertCreateTargetType
   sectionId: number
-  insertMode?: 'SectionItem' | 'AtomicSectionChild' | 'WrapAsAtomicSection'
+  placement?: InsertPointPlacementModel
+  insertMode?: 'SectionItem' | 'AtomicSectionChild' | 'CompositeBlockChild' | 'WrapAsAtomicSection'
   atomicSectionId?: number
   atomicSectionTitle?: string
+  compositeBlockId?: number
+  compositeBlockTitle?: string
   wrapSectionItemIds?: number[]
   title: string
   contentBlockType?: InsertCreateContentBlockType

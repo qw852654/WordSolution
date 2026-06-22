@@ -43,6 +43,8 @@ import type {
   SectionTreeContextMenuPayload,
   SectionTreeNodeModel,
   SectionWorkspaceFlowItemModel,
+  StructuredBlockChildModel,
+  StructuredBlockModel,
   TeachingTopicTreeContextMenuActionPayload,
   TeachingTopicTreeContextMenuModel,
   TeachingTopicTreeContextMenuPayload,
@@ -538,6 +540,57 @@ function requestInsert(request: InsertRequestModel) {
       return
     }
 
+    const parentType = request.placement?.parentType
+    if (parentType === 'AtomicSection') {
+      if (request.actionType !== 'CreateContentBlock') {
+        insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackSearchExistingBlock')
+        return
+      }
+
+      const atomicSectionId = request.placement?.parentId
+      const atomicSectionTitle = getAtomicSectionTitleById(atomicSectionId)
+
+      insertFeedback.value = ''
+      activeCreatePanel.value = {
+        insertPointId: request.insertPointId,
+        targetType: 'ContentBlock',
+        insertPositionLabel: t('sectionPage.workspace.atomicSectionActions.insertChildPosition', {
+          title: atomicSectionTitle || 'AtomicSection',
+        }),
+        sectionId: currentSectionId,
+        sectionTitle: sectionShell.value.title,
+        placement: request.placement,
+        insertMode: 'AtomicSectionChild',
+        atomicSectionId,
+        atomicSectionTitle,
+      }
+      return
+    }
+
+    if (parentType === 'CompositeBlock') {
+      if (request.actionType !== 'CreateContentBlock') {
+        insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackSearchExistingBlock')
+        return
+      }
+
+      const compositeBlockId = request.placement?.parentId
+      const compositeBlockTitle = getCompositeBlockTitleById(compositeBlockId)
+
+      insertFeedback.value = ''
+      activeCreatePanel.value = {
+        insertPointId: request.insertPointId,
+        targetType: 'ContentBlock',
+        insertPositionLabel: compositeBlockTitle || 'CompositeBlock',
+        sectionId: currentSectionId,
+        sectionTitle: sectionShell.value.title,
+        placement: request.placement,
+        insertMode: 'CompositeBlockChild',
+        compositeBlockId,
+        compositeBlockTitle,
+      }
+      return
+    }
+
     insertFeedback.value = ''
     activeCreatePanel.value = {
       insertPointId: request.insertPointId,
@@ -545,6 +598,7 @@ function requestInsert(request: InsertRequestModel) {
       insertPositionLabel: getInsertPositionLabel(request.insertPointId),
       sectionId: currentSectionId,
       sectionTitle: sectionShell.value.title,
+      placement: request.placement,
       insertMode: 'SectionItem',
     }
     return
@@ -896,7 +950,16 @@ async function submitInsertCreateOverlay(payload: InsertCreateSubmitPayload) {
       return
     }
 
-    const sortOrder = getSortOrderForInsertPoint(payload.insertPointId)
+    if (
+      payload.targetType === 'ContentBlock' &&
+      payload.insertMode === 'CompositeBlockChild' &&
+      payload.compositeBlockId
+    ) {
+      await submitCompositeBlockChildContentBlock(payload)
+      return
+    }
+
+    const insertPlan = getSectionItemInsertPlan(payload)
     const createdTarget =
       payload.targetType === 'ContentBlock'
         ? await createContentBlockForInsert(payload)
@@ -906,7 +969,7 @@ async function submitInsertCreateOverlay(payload: InsertCreateSubmitPayload) {
       targetId: createdTarget.id,
       referenceMode: 'FollowLatest',
       lockedContentBlockVersionId: null,
-      sortOrder,
+      sortOrder: insertPlan.sortOrder,
       titleOverride: null,
       parentItemId: null,
       selectionLayer: null,
@@ -914,6 +977,12 @@ async function submitInsertCreateOverlay(payload: InsertCreateSubmitPayload) {
       status: 'Active',
       note: null,
     })
+
+    if (insertPlan.moveUpAfterCreate) {
+      await cmsV2Api.moveSectionItem(payload.sectionId, createdSectionItem.id, {
+        direction: 'Up',
+      })
+    }
 
     activeCreatePanel.value = null
     activeInsertPointId.value = undefined
@@ -971,14 +1040,27 @@ async function submitAtomicSectionChildContentBlock(payload: InsertCreateSubmitP
     inputTitle: payload.title,
     atomicSectionTitle: payload.atomicSectionTitle ?? '',
   })
-  await atomicSectionActions.createContentBlockInsideAtomicSection({
+  const insertPlan = getNestedInsertPlan(
+    payload,
+    getAtomicSectionChildLastSortOrder(payload.atomicSectionId!) + 10,
+  )
+  const created = await atomicSectionActions.createContentBlockInsideAtomicSection({
     atomicSectionId: payload.atomicSectionId!,
     sectionId: payload.sectionId,
     title: contentBlockTitle,
     blockType: mapInsertContentBlockType(payload.contentBlockType),
     difficulty: mapInsertDifficulty(payload.difficulty),
-    sortOrder: getAtomicSectionChildSortOrder(payload.atomicSectionId!),
+    sortOrder: insertPlan.sortOrder,
   })
+
+  if (insertPlan.moveUpAfterCreate) {
+    await cmsV2Api.moveAtomicSectionItem(
+      payload.atomicSectionId!,
+      created.atomicSectionItem.id,
+      { direction: 'Up' },
+    )
+    await loadCurrentSectionPage()
+  }
 
   activeCreatePanel.value = null
   activeInsertPointId.value = undefined
@@ -1014,46 +1096,165 @@ async function createAtomicSectionForInsert(payload: InsertCreateSubmitPayload) 
   return { id: created.id }
 }
 
-function getSortOrderForInsertPoint(insertPointId: string) {
-  const indexText = /-(\d+)$/.exec(insertPointId)?.[1]
-  const index = indexText ? Number(indexText) : Number.NaN
-  const items = sectionWorkspaceFlowItems.value
+interface SectionItemInsertPlan {
+  sortOrder: number
+  moveUpAfterCreate: boolean
+}
 
-  if (Number.isInteger(index) && index > 0 && index < items.length) {
-    const previous = items[index - 1]
-    const next = items[index]
+function getSectionItemInsertPlan(payload: InsertCreateSubmitPayload): SectionItemInsertPlan {
+  const placement = payload.placement
 
-    if (
-      typeof previous.sortOrder === 'number' &&
-      typeof next.sortOrder === 'number' &&
-      next.sortOrder - previous.sortOrder > 1
-    ) {
-      return Math.floor((previous.sortOrder + next.sortOrder) / 2)
-    }
+  if (placement?.parentType === 'Section' && placement.parentId === payload.sectionId) {
+    return getInsertPlanFromPlacement(payload, getSectionLastSortOrder() + 10)
+  }
 
-    if (typeof next.sortOrder === 'number') {
-      return next.sortOrder
+  return {
+    sortOrder: getSectionLastSortOrder() + 10,
+    moveUpAfterCreate: false,
+  }
+}
+
+function getNestedInsertPlan(
+  payload: InsertCreateSubmitPayload,
+  fallbackSortOrder: number,
+): SectionItemInsertPlan {
+  return getInsertPlanFromPlacement(payload, fallbackSortOrder)
+}
+
+function getInsertPlanFromPlacement(
+  payload: InsertCreateSubmitPayload,
+  fallbackSortOrder: number,
+): SectionItemInsertPlan {
+  const placement = payload.placement
+  const afterSortOrder = placement?.afterSortOrder
+  const beforeSortOrder = placement?.beforeSortOrder
+
+  if (
+    typeof afterSortOrder === 'number' &&
+    typeof beforeSortOrder === 'number' &&
+    beforeSortOrder - afterSortOrder > 1
+  ) {
+    return {
+      sortOrder: Math.floor((afterSortOrder + beforeSortOrder) / 2),
+      moveUpAfterCreate: false,
     }
   }
 
-  const lastSortOrder = items.reduce(
+  if (typeof beforeSortOrder === 'number') {
+    return {
+      sortOrder: beforeSortOrder,
+      moveUpAfterCreate: true,
+    }
+  }
+
+  if (typeof afterSortOrder === 'number') {
+    return {
+      sortOrder: afterSortOrder + 10,
+      moveUpAfterCreate: false,
+    }
+  }
+
+  return {
+    sortOrder: fallbackSortOrder,
+    moveUpAfterCreate: false,
+  }
+}
+
+function getSectionLastSortOrder() {
+  const items = sectionWorkspaceFlowItems.value
+  return items.reduce(
     (max, item) => Math.max(max, typeof item.sortOrder === 'number' ? item.sortOrder : 0),
     0,
   )
-
-  return lastSortOrder + 10
 }
 
-function getAtomicSectionChildSortOrder(atomicSectionId: number) {
+function getAtomicSectionBlockById(atomicSectionId?: number) {
+  if (!atomicSectionId) {
+    return undefined
+  }
+
   const atomicItem = sectionWorkspaceFlowItems.value.find(
     (item) => item.kind === 'AtomicSection' && item.targetId === atomicSectionId,
   )
 
-  if (!atomicItem || atomicItem.kind !== 'AtomicSection') {
-    return 10
+  return atomicItem?.kind === 'AtomicSection' ? atomicItem.block : undefined
+}
+
+function getAtomicSectionTitleById(atomicSectionId?: number) {
+  return getAtomicSectionBlockById(atomicSectionId)?.title
+}
+
+function getAtomicSectionChildLastSortOrder(atomicSectionId: number) {
+  const atomicBlock = getAtomicSectionBlockById(atomicSectionId)
+
+  if (!atomicBlock) {
+    return 0
   }
 
-  return (atomicItem.block.children.length + 1) * 10
+  return atomicBlock.children.reduce(
+    (max, child) => Math.max(max, typeof child.sortOrder === 'number' ? child.sortOrder : 0),
+    0,
+  )
+}
+
+function findCompositeBlockInChildren(
+  children: StructuredBlockChildModel[],
+  contentBlockId: number,
+): StructuredBlockModel | undefined {
+  for (const child of children) {
+    if (child.kind !== 'CompositeBlock') {
+      continue
+    }
+
+    if (child.contentBlockId === contentBlockId || child.block.contentBlockId === contentBlockId) {
+      return child.block
+    }
+
+    const nested = findCompositeBlockInChildren(child.block.children, contentBlockId)
+    if (nested) {
+      return nested
+    }
+  }
+
+  return undefined
+}
+
+function getCompositeBlockById(contentBlockId?: number) {
+  if (!contentBlockId) {
+    return undefined
+  }
+
+  for (const item of sectionWorkspaceFlowItems.value) {
+    if (item.kind === 'CompositeBlock' && item.targetId === contentBlockId) {
+      return item.block
+    }
+
+    if (item.kind !== 'ContentBlock') {
+      const nested = findCompositeBlockInChildren(item.block.children, contentBlockId)
+      if (nested) {
+        return nested
+      }
+    }
+  }
+
+  return undefined
+}
+
+function getCompositeBlockTitleById(contentBlockId?: number) {
+  return getCompositeBlockById(contentBlockId)?.title
+}
+
+function getCompositeBlockChildLastSortOrder(contentBlockId: number) {
+  const compositeBlock = getCompositeBlockById(contentBlockId)
+
+  if (!compositeBlock) {
+    return 0
+  }
+
+  return compositeBlock.children.reduce(
+    (max, child) => Math.max(max, typeof child.sortOrder === 'number' ? child.sortOrder : 0),
+    0,
+  )
 }
 
 function mapInsertContentBlockType(type?: InsertCreateContentBlockType) {
@@ -1228,6 +1429,37 @@ function toggleSectionVariantSelection(sectionItemId: number) {
   )
   sectionVariantSelectionFeedback.value = t('sectionPage.workspace.variantSelection.feedbackUpdated', {
     count: sectionVariantSelectedCandidateCount.value,
+  })
+}
+
+async function submitCompositeBlockChildContentBlock(payload: InsertCreateSubmitPayload) {
+  const contentBlockTitle = payload.title.trim()
+  const insertPlan = getNestedInsertPlan(
+    payload,
+    getCompositeBlockChildLastSortOrder(payload.compositeBlockId!) + 10,
+  )
+  const created = await contentBlockRelationActions.createContentBlockInsideCompositeBlock({
+    parentBlockId: payload.compositeBlockId!,
+    sectionId: payload.sectionId,
+    title: contentBlockTitle,
+    blockType: mapInsertContentBlockType(payload.contentBlockType),
+    difficulty: mapInsertDifficulty(payload.difficulty),
+    sortOrder: insertPlan.sortOrder,
+  })
+
+  if (insertPlan.moveUpAfterCreate) {
+    await cmsV2Api.moveContentBlockRelation(
+      payload.compositeBlockId!,
+      created.relation.id,
+      { direction: 'Up' },
+    )
+    await loadCurrentSectionPage()
+  }
+
+  activeCreatePanel.value = null
+  activeInsertPointId.value = undefined
+  insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackCreateAtomicChildSubmitted', {
+    title: contentBlockTitle || 'ContentBlock',
   })
 }
 

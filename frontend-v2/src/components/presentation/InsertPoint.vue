@@ -2,7 +2,7 @@
 import { Layers, Plus, Search } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
-import type { InsertActionType, InsertPointModel } from '@/types'
+import type { InsertActionType, InsertPointModel, InsertRequestModel } from '@/types'
 
 const props = defineProps<{
   point: InsertPointModel
@@ -10,14 +10,27 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  requestAction: [{ insertPointId: string; actionType: InsertActionType }]
+  requestAction: [InsertRequestModel]
 }>()
 
 const { t } = useI18n()
+const defaultActions: InsertActionType[] = [
+  'CreateContentBlock',
+  'CreateAtomicSection',
+  'SearchExistingBlock',
+]
+
+function isActionAllowed(actionType: InsertActionType) {
+  return (props.point.allowedActions ?? defaultActions).includes(actionType)
+}
 
 function emitAction(actionType: InsertActionType) {
   if (!props.point.disabled) {
-    emit('requestAction', { insertPointId: props.point.id, actionType })
+    emit('requestAction', {
+      insertPointId: props.point.id,
+      actionType,
+      placement: props.point.placement,
+    })
   }
 }
 </script>
@@ -29,6 +42,7 @@ function emitAction(actionType: InsertActionType) {
       point.disabled ? 'opacity-50' : '',
       selected ? 'border-primary/40 bg-primary/5 delay-0' : '',
     ]"
+    @click.stop
   >
     <div
       class="h-px flex-1 border-t border-dashed border-border opacity-30 transition-opacity delay-500 group-hover:opacity-100 group-focus-within:opacity-100 group-focus-within:delay-0"
@@ -40,6 +54,7 @@ function emitAction(actionType: InsertActionType) {
     >
       <slot :point="point" :request-action="emitAction">
         <Button
+          v-if="isActionAllowed('CreateContentBlock')"
           type="button"
           size="sm"
           variant="outline"
@@ -52,6 +67,7 @@ function emitAction(actionType: InsertActionType) {
           {{ t('components.insertPoint.createContentBlock') }}
         </Button>
         <Button
+          v-if="isActionAllowed('CreateAtomicSection')"
           type="button"
           size="sm"
           variant="outline"
@@ -64,6 +80,7 @@ function emitAction(actionType: InsertActionType) {
           {{ t('components.insertPoint.createAtomicSection') }}
         </Button>
         <Button
+          v-if="isActionAllowed('SearchExistingBlock')"
           type="button"
           size="sm"
           variant="outline"

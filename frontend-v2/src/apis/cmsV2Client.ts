@@ -310,6 +310,15 @@ export interface CmsV2AddAtomicSectionItemRequest {
   note?: string | null
 }
 
+export interface CmsV2AddContentBlockRelationRequest {
+  childBlockId: number
+  referenceMode: 'FollowLatest' | 'LockedVersion'
+  lockedContentBlockVersionId?: number | null
+  sortOrder: number
+  titleOverride?: string | null
+  note?: string | null
+}
+
 export function createCmsV2Url(path = ''): string {
   if (!path) {
     return CMS_V2_API_BASE
@@ -514,6 +523,14 @@ export const cmsV2Api = {
   listContentBlockChildren: (contentBlockId: number) =>
     cmsV2FetchJson<CmsV2ContentBlockRelationDto[]>(
       `/content-blocks/${contentBlockId}/relations/children`,
+    ),
+  addContentBlockRelation: (
+    parentBlockId: number,
+    request: CmsV2AddContentBlockRelationRequest,
+  ) =>
+    cmsV2PostJson<CmsV2CreatedEntityResultDto>(
+      `/content-blocks/${parentBlockId}/relations/children`,
+      request,
     ),
   moveContentBlockRelation: (
     parentBlockId: number,

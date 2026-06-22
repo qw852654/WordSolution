@@ -5,11 +5,14 @@ import { useI18n } from 'vue-i18n'
 import ContentBlockDisplay from '@/components/business/ContentBlockDisplay.vue'
 import { getDifficultyMarkerClass } from '@/components/business/difficultyTone'
 import SectionItemView from '@/components/business/SectionItemView.vue'
+import InsertPoint from '@/components/presentation/InsertPoint.vue'
 import StructuredContainer from '@/components/presentation/StructuredContainer.vue'
 import { Button } from '@/components/ui/button'
 import type {
   ContentBlockRelationActionPayload,
   ContentBlockRelationMovePayload,
+  InsertPointModel,
+  InsertRequestModel,
   SectionItemViewAction,
   StructuredBlockChildModel,
   StructuredBlockModel,
@@ -36,6 +39,7 @@ const emit = defineEmits<{
   openContentBlockRelationWord: [payload: ContentBlockRelationActionPayload]
   moveContentBlockRelation: [payload: ContentBlockRelationMovePayload]
   removeContentBlockRelation: [payload: ContentBlockRelationActionPayload]
+  requestInsert: [request: InsertRequestModel]
 }>()
 
 const { t } = useI18n()
@@ -96,6 +100,31 @@ function emitRelationRemove(child: StructuredBlockChildModel) {
     emit('removeContentBlockRelation', payload)
   }
 }
+
+function createCompositeInsertPoint(
+  beforeChild?: StructuredBlockChildModel,
+  afterChild?: StructuredBlockChildModel,
+): InsertPointModel {
+  const parentId = props.block.contentBlockId
+  const suffix = `${afterChild?.id ?? 'start'}-${beforeChild?.id ?? 'end'}`
+
+  return {
+    id: `composite-block-${props.block.id}-insert-${suffix}`,
+    label: t('components.insertPoint.insert'),
+    allowedActions: ['CreateContentBlock'],
+    disabled: props.block.disabled || !parentId,
+    placement: parentId
+      ? {
+          parentType: 'CompositeBlock',
+          parentId,
+          beforeItemId: beforeChild?.relationId,
+          afterItemId: afterChild?.relationId,
+          beforeSortOrder: beforeChild?.sortOrder,
+          afterSortOrder: afterChild?.sortOrder,
+        }
+      : undefined,
+  }
+}
 </script>
 
 <template>
@@ -106,7 +135,7 @@ function emitRelationRemove(child: StructuredBlockChildModel) {
     :difficulty-marker-label="difficultyMarkerLabel"
     :selected="block.selected"
     :disabled="block.disabled"
-    @click="$emit('select', props.block.id)"
+    @select-title="$emit('select', props.block.id)"
   >
     <template #actions>
       <Button
@@ -134,58 +163,77 @@ function emitRelationRemove(child: StructuredBlockChildModel) {
     </template>
 
     <template v-if="isExpanded">
-    <p class="text-sm leading-6 text-muted-foreground">{{ block.summary }}</p>
-    <ContentBlockDisplay
-      v-if="block.selfContent"
-      :block="block.selfContent"
-      :read-only="readOnly"
-      @open-word="emitSelfWord"
-      @refresh-preview="emit('refreshPreview', $event)"
-      @open-more="emit('openContentBlockMore', $event)"
-    />
-    <div v-if="block.children.length">
-      <SectionItemView
-        v-for="child in block.children"
-        :key="child.id"
-        :item-id="child.id"
-        :selected="child.selected"
-        :disabled="child.disabled"
-        :actions="readOnly ? [] : childContentBlockActions"
-        :data-workspace-node-id="nodeIdMap?.[child.nodeId] ?? child.nodeId"
-        @select="emit('selectContentBlock', $event)"
-        @open-word="emitRelationWord(child)"
-        @move-up="emitRelationMove(child, 'Up')"
-        @move-down="emitRelationMove(child, 'Down')"
-        @remove="emitRelationRemove(child)"
-      >
-        <ContentBlockDisplay
-          v-if="child.kind === 'ContentBlock'"
-          :block="child.block"
-          :read-only="readOnly"
-          @open-word="emitRelationWord(child)"
-          @refresh-preview="emit('refreshPreview', $event)"
-          @open-more="emit('openContentBlockMore', $event)"
+      <p class="text-sm leading-6 text-muted-foreground">{{ block.summary }}</p>
+      <ContentBlockDisplay
+        v-if="block.selfContent"
+        :block="block.selfContent"
+        :read-only="readOnly"
+        @open-word="emitSelfWord"
+        @refresh-preview="emit('refreshPreview', $event)"
+        @open-more="emit('openContentBlockMore', $event)"
+      />
+      <div v-if="block.children.length" class="space-y-0">
+        <template v-for="(child, index) in block.children" :key="child.id">
+          <InsertPoint
+            v-if="!readOnly"
+            :point="createCompositeInsertPoint(child, block.children[index - 1])"
+            @request-action="emit('requestInsert', $event)"
+          />
+          <SectionItemView
+            :item-id="child.id"
+            :selected="child.selected"
+            :disabled="child.disabled"
+            :select-on-container="child.kind === 'ContentBlock'"
+            :actions="readOnly ? [] : childContentBlockActions"
+            :data-workspace-node-id="nodeIdMap?.[child.nodeId] ?? child.nodeId"
+            @select="emit('selectContentBlock', $event)"
+            @open-word="emitRelationWord(child)"
+            @move-up="emitRelationMove(child, 'Up')"
+            @move-down="emitRelationMove(child, 'Down')"
+            @remove="emitRelationRemove(child)"
+          >
+            <ContentBlockDisplay
+              v-if="child.kind === 'ContentBlock'"
+              :block="child.block"
+              :read-only="readOnly"
+              @open-word="emitRelationWord(child)"
+              @refresh-preview="emit('refreshPreview', $event)"
+              @open-more="emit('openContentBlockMore', $event)"
+            />
+            <CompositeBlock
+              v-else
+              :block="child.block"
+              :node-id-map="nodeIdMap"
+              :read-only="readOnly"
+              @select="emit('selectContentBlock', $event)"
+              @select-content-block="emit('selectContentBlock', $event)"
+              @toggle-collapse="emit('toggleCollapse', $event)"
+              @open-word="emitRelationWord(child)"
+              @refresh-preview="emit('refreshPreview', $event)"
+              @open-content-block-more="emit('openContentBlockMore', $event)"
+              @open-content-block-relation-word="emit('openContentBlockRelationWord', $event)"
+              @move-content-block-relation="emit('moveContentBlockRelation', $event)"
+              @remove-content-block-relation="emit('removeContentBlockRelation', $event)"
+              @request-insert="emit('requestInsert', $event)"
+            />
+          </SectionItemView>
+        </template>
+        <InsertPoint
+          v-if="!readOnly"
+          :point="createCompositeInsertPoint(undefined, block.children[block.children.length - 1])"
+          @request-action="emit('requestInsert', $event)"
         />
-        <CompositeBlock
-          v-else
-          :block="child.block"
-          :node-id-map="nodeIdMap"
-          :read-only="readOnly"
-          @select="emit('selectContentBlock', $event)"
-          @select-content-block="emit('selectContentBlock', $event)"
-          @toggle-collapse="emit('toggleCollapse', $event)"
-          @open-word="emitRelationWord(child)"
-          @refresh-preview="emit('refreshPreview', $event)"
-          @open-content-block-more="emit('openContentBlockMore', $event)"
-          @open-content-block-relation-word="emit('openContentBlockRelationWord', $event)"
-          @move-content-block-relation="emit('moveContentBlockRelation', $event)"
-          @remove-content-block-relation="emit('removeContentBlockRelation', $event)"
+      </div>
+      <div v-else class="space-y-0">
+        <p class="text-xs leading-4 text-destructive">
+          {{ t('components.structuredBlock.compositeEmptyDescription') }}
+        </p>
+        <InsertPoint
+          v-if="!readOnly"
+          :point="createCompositeInsertPoint()"
+          @request-action="emit('requestInsert', $event)"
         />
-      </SectionItemView>
-    </div>
-    <p v-else class="text-xs leading-4 text-destructive">
-      {{ t('components.structuredBlock.compositeEmptyDescription') }}
-    </p>
+      </div>
     </template>
   </StructuredContainer>
 </template>

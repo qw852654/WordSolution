@@ -12,6 +12,18 @@ const props = defineProps<{
   disabled?: boolean
   class?: HTMLAttributes['class']
 }>()
+
+const emit = defineEmits<{
+  selectTitle: [event: MouseEvent | KeyboardEvent]
+}>()
+
+function emitTitleSelect(event: MouseEvent | KeyboardEvent) {
+  if (props.disabled) {
+    return
+  }
+
+  emit('selectTitle', event)
+}
 </script>
 
 <template>
@@ -24,16 +36,25 @@ const props = defineProps<{
     )"
     :aria-disabled="disabled ? 'true' : undefined"
   >
-    <InlineBorderHeader
-      :title="title"
-      :meta="meta"
-      :difficulty-marker-class="difficultyMarkerClass"
-      :difficulty-marker-label="difficultyMarkerLabel"
+    <div
+      role="button"
+      :tabindex="disabled ? -1 : 0"
+      :class="disabled ? '' : 'cursor-pointer'"
+      @click.stop="emitTitleSelect"
+      @keydown.enter.stop="emitTitleSelect"
+      @keydown.space.prevent.stop="emitTitleSelect"
     >
-      <template #actions>
-        <slot name="actions" />
-      </template>
-    </InlineBorderHeader>
+      <InlineBorderHeader
+        :title="title"
+        :meta="meta"
+        :difficulty-marker-class="difficultyMarkerClass"
+        :difficulty-marker-label="difficultyMarkerLabel"
+      >
+        <template #actions>
+          <slot name="actions" />
+        </template>
+      </InlineBorderHeader>
+    </div>
     <div class="space-y-2 px-3 pb-3 pt-1">
       <slot />
     </div>

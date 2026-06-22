@@ -40,6 +40,7 @@ interface ResolvedContentBlock {
 }
 
 interface StructuredBlockChildContext {
+  sortOrder?: number
   atomicSectionId?: number
   atomicSectionItemId?: number
   parentBlockId?: number
@@ -383,6 +384,7 @@ async function buildSectionFlowItem(
         id: nodeId,
         title: item.titleOverride || atomicSection.title,
         blockKind: 'AtomicSection',
+        atomicSectionId: item.targetId,
         status: mapStatus(atomicSection.status),
         difficulty: mapDifficulty(atomicSection.difficulty),
         summary: atomicSection.description || '',
@@ -469,6 +471,7 @@ async function buildStructuredBlockChildFromAtomicSectionItem(
       atomicSectionId: item.atomicSectionId,
       atomicSectionItemId: item.id,
       contentBlockId: item.contentBlockId,
+      sortOrder: item.sortOrder,
     },
   )
 }
@@ -495,6 +498,7 @@ async function buildStructuredBlockChildFromRelation(
       parentBlockId: relation.parentBlockId,
       relationId: relation.id,
       contentBlockId: relation.childBlockId,
+      sortOrder: relation.sortOrder,
     },
   )
 }
@@ -519,6 +523,7 @@ async function buildStructuredBlockChild(
       kind: 'ContentBlock',
       id: nodeId,
       nodeId,
+      sortOrder: childContext.sortOrder,
       atomicSectionId: childContext.atomicSectionId,
       atomicSectionItemId: childContext.atomicSectionItemId,
       parentBlockId: childContext.parentBlockId,
@@ -544,6 +549,7 @@ async function buildStructuredBlockChild(
     kind: 'CompositeBlock',
     id: nodeId,
     nodeId,
+    sortOrder: childContext.sortOrder,
     atomicSectionId: childContext.atomicSectionId,
     atomicSectionItemId: childContext.atomicSectionItemId,
     parentBlockId: childContext.parentBlockId,

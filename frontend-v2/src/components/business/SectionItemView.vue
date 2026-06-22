@@ -21,6 +21,7 @@ const props = defineProps<{
   selectionState?: WorkspaceItemSelectionState
   selectionUnavailableReason?: string
   disabled?: boolean
+  selectOnContainer?: boolean
   actions?: SectionItemViewAction[]
   ariaLabel?: string
 }>()
@@ -152,6 +153,14 @@ function emitIfEnabled(eventName: 'select' | SectionItemViewAction, event?: Mous
       break
   }
 }
+
+function handleContainerClick(event: MouseEvent) {
+  if (props.selectOnContainer === false) {
+    return
+  }
+
+  emitIfEnabled('select', event)
+}
 </script>
 
 <template>
@@ -168,7 +177,7 @@ function emitIfEnabled(eventName: 'select' | SectionItemViewAction, event?: Mous
     :aria-selected="selected || selectionSelected ? 'true' : 'false'"
     role="group"
     :style="{ '--section-item-action-rail-height': actionRailHeight }"
-    @click.stop="emitIfEnabled('select', $event)"
+    @click.stop="handleContainerClick"
   >
     <div class="min-w-0 p-2">
       <slot />
