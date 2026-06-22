@@ -16,6 +16,8 @@ public sealed record AddSectionVariantItemCommand(
     int SortOrder,
     string? Note = null);
 
+public sealed record DeleteSectionVariantCommand(int SectionVariantId);
+
 public sealed record PreviewSectionVariantSelectionCommand(
     int SectionId,
     Difficulty Difficulty);

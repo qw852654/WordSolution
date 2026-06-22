@@ -804,6 +804,53 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.Equal(HttpStatusCode.BadRequest, missingItem.StatusCode);
     }
 
+    [Fact]
+    public async Task SectionVariant_delete_endpoint_removes_variant_and_items()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "Variant Delete Topic", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "Variant Delete Section", type = "NormalCourse", difficulty = "Medium", status = "Draft" });
+        var sectionId = section.GetProperty("id").GetInt32();
+        var block = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks",
+            new { sectionId, title = "Delete Variant Item", blockType = "KnowledgePoint", difficulty = "Basic", status = "Draft" });
+        var sectionItem = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/sections/{sectionId}/items",
+            new
+            {
+                targetType = "ContentBlock",
+                targetId = block.GetProperty("id").GetInt32(),
+                referenceMode = "FollowLatest",
+                sortOrder = 1
+            });
+        var created = await PostJsonAsync(
+            client,
+            "/api/cms-v2/section-variants",
+            new
+            {
+                sectionId,
+                title = "Variant To Delete",
+                type = "Lecture",
+                difficulty = "Basic",
+                selectedSectionItemIds = new[] { sectionItem.GetProperty("id").GetInt32() }
+            });
+        var variantId = created.GetProperty("id").GetInt32();
+
+        var deleteResponse = await client.DeleteAsync($"/api/cms-v2/section-variants/{variantId}");
+        var getDeletedResponse = await client.GetAsync($"/api/cms-v2/section-variants/{variantId}");
+        var variantItems = await client.GetFromJsonAsync<JsonElement>($"/api/cms-v2/section-variants/{variantId}/items");
+
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, getDeletedResponse.StatusCode);
+        Assert.Empty(variantItems.EnumerateArray());
+    }
+
     private static async Task<ImportedContentBlock> CreateImportedContentBlockAsync(
         HttpClient client,
         string bankRootDirectory,

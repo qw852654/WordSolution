@@ -156,7 +156,7 @@ TeachingStructureNode
 - 单击 TeachingTopic 节点：只选中节点，用于查看节点信息或准备右键操作。
 - 双击已绑定 Section 的 TeachingTopic 节点：打开该 Section 本身。
 - 展开已绑定 Section 的 TeachingTopic 节点：显示该 Section 下的 SectionVariant 列表。
-- SectionVariant 第一版只读，只允许查看或打开占位，不允许新增、重命名、删除、复制。
+- SectionVariant 在 TeachingStructureTree 中第一版只读，只允许查看或打开占位，不允许新增、重命名、删除、复制；删除 SectionVariant 只允许在 SectionPage 的 SectionTree 右键菜单中执行。
 - 第一版不提供 Section 解绑能力，避免产生无法从 UI 找回的孤儿 Section。
 - 删除只允许作用于空 TeachingTopic；空 TeachingTopic 指没有子主题且没有绑定 Section。
 
@@ -209,7 +209,7 @@ SectionVariant 节点规则：
 SectionVariant：
 
 ```text
-第一版只读，不提供管理动作。
+第一版在 TeachingStructureTree 中只读，不提供管理动作；删除动作属于 SectionPage 的 SectionTree。
 ```
 
 后续方向：
@@ -943,7 +943,7 @@ SectionTree
 - `SectionVariant` nodes are visually sibling nodes of the `Section` root in `SectionTree`.
 - `SectionVariant` nodes still belong to the current `Section` in the backend model.
 - They do not map to `Workspace` document-flow content.
-- They do not expose context-menu edit/delete/copy actions in the first version.
+- They expose only a delete context-menu action in `SectionTree`; edit, rename, copy, and content reselection actions stay out of the first version.
 - SectionItem / AtomicSection / ContentBlock operations remain separate from `SectionVariant` display.
 
 ## Current Update: Shared Workspace Selection Modes
@@ -1175,4 +1175,4 @@ The following items are explicitly deferred after `SectionPage v0.1`:
 - field editing in `SectionInspector` and any required update API;
 - `TeachingNoteColumn`;
 - automatic cleanup for empty shell objects;
-- `SectionVariant` management actions such as rename, delete, copy, or content reselection.
+- `SectionVariant` management actions such as rename, copy, or content reselection; the first version only supports deleting a `SectionVariant` from the `SectionTree` context menu.

@@ -781,7 +781,7 @@ TeachingStructureNode
 - 不展示 SectionItem、ContentBlock、版本或生成记录。
 - 不展示 Handout 内部结构。
 - 不把 ContentBlock、ContentBlockVersion、GeneratedFile 混进这棵树。
-- SectionVariant 第一版只读，不在这棵树内新增、重命名、删除或复制。
+- SectionVariant 在 TeachingStructureTree 中第一版只读，不在这棵树内新增、重命名、删除或复制；删除 SectionVariant 只允许在 SectionPage 的 SectionTree 右键菜单中执行。
 - 第一版不提供 Section 解绑能力，避免出现无法从 UI 找回的孤儿 Section。
 - 组件本身不调用 API，真实读写由页面或 composable 处理。
 
@@ -860,7 +860,7 @@ TeachingStructureTreeContextMenu 表示 TeachingStructureTree 节点上的右键
 
 SectionVariant 节点：
 
-- 第一版只读，不提供管理动作。
+- 第一版在 TeachingStructureTree 中只读，不提供管理动作；删除动作属于 SectionPage 的 SectionTree。
 
 删除规则：
 
@@ -1335,7 +1335,7 @@ Rules:
 - This does not change the backend domain model.
 - `SectionVariant` nodes are read-only visibility / Inspector nodes in the first version.
 - `SectionVariant` nodes do not map to Workspace document-flow content.
-- `SectionVariant` nodes do not expose context-menu edit/delete/copy actions in the first version.
+- `SectionVariant` nodes expose only a delete context-menu action in `SectionTree`; edit, rename, copy, and content reselection actions stay out of the first version.
 - `SectionTree` still exposes the create entry only on the `Section` root node context menu.
 
 ### SectionVariantCreatePanel
@@ -1501,7 +1501,7 @@ This is a UI navigation rule only; the backend still stores `SectionVariant` und
 
 - selecting a `SectionVariant` node;
 - emitting that selection to `SectionPage`;
-- keeping `SectionVariant` context-menu actions out of the first version unless explicitly planned.
+- keeping `SectionVariant` context-menu actions limited to the explicitly planned delete action in `SectionTree`.
 
 It must not create a new persisted node type for `SectionVariant`.
 
@@ -1535,7 +1535,7 @@ In this mode it must:
 
 When the selected node is a `SectionVariant`, `SectionInspector` may show read-only Variant metadata and the loaded selected item count.
 
-It must not expose edit, delete, copy, or reselection actions for `SectionVariant` in the first version.
+It must not expose edit, copy, rename, or reselection actions for `SectionVariant` in the first version. Deleting a `SectionVariant` is a `SectionTree` context-menu action, not an Inspector action.
 
 ## SectionPage v0.1 Component Interaction Rules
 
@@ -1563,5 +1563,5 @@ First-version context menu rules:
 
 - `Section` root: may create `SectionVariant`, create new `ContentBlock`, create new `AtomicSection`, show a placeholder for inserting existing blocks, and must not be removable.
 - `ContentBlock`, `CompositeBlock`, and `AtomicSection`: may create new blocks according to context, remove through existing server-confirmed actions, and show a placeholder for inserting existing blocks.
-- `SectionVariant`: read-only in the first version; no edit/delete/copy/reselect context actions.
+- `SectionVariant`: read-only content in the first version; context menu exposes delete only, with no edit, rename, copy, or reselect actions.
 - Move, indent, outdent, and other unplanned context actions must not be reintroduced without a new confirmed plan.

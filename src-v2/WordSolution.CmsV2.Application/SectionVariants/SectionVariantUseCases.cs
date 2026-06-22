@@ -139,6 +139,39 @@ public sealed class SectionVariantUseCases
         return result!;
     }
 
+    public async Task DeleteSectionVariantAsync(
+        DeleteSectionVariantCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+        {
+            var variant = await _unitOfWork.SectionVariants.GetByIdAsync(
+                    command.SectionVariantId,
+                    transactionCancellationToken)
+                ?? throw new CmsV2ApplicationException($"SectionVariant {command.SectionVariantId} was not found.");
+
+            var handoutReferences = await _unitOfWork.HandoutVersionItems.ListByTargetAsync(
+                HandoutVersionItemTargetType.SectionVariant,
+                command.SectionVariantId,
+                transactionCancellationToken);
+            if (handoutReferences.Count > 0)
+            {
+                throw new CmsV2ApplicationException("SectionVariant is referenced by HandoutVersion and cannot be deleted.");
+            }
+
+            var variantItems = await _unitOfWork.SectionVariantItems.ListBySectionVariantAsync(
+                command.SectionVariantId,
+                transactionCancellationToken);
+            foreach (var item in variantItems)
+            {
+                _unitOfWork.SectionVariantItems.Remove(item);
+            }
+
+            _unitOfWork.SectionVariants.Remove(variant);
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+        }, cancellationToken);
+    }
+
     private async Task<SectionVariantSelectionCandidateDto> BuildSelectionCandidateAsync(
         SectionItem item,
         Difficulty selectedDifficulty,

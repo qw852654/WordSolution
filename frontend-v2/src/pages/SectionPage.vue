@@ -1457,6 +1457,47 @@ function parseSectionItemNodeId(nodeId: string) {
   return match ? Number(match[1]) : undefined
 }
 
+function getSectionRootNodeId() {
+  return sectionTreeNodes.value.find((node) => node.kind === 'Section')?.id
+}
+
+function resolveSectionVariantDeleteError(error: unknown) {
+  return error instanceof Error ? error.message : t('sectionPage.sectionVariantView.deleteFailed')
+}
+
+async function deleteSectionVariantNode(node: SectionTreeNodeModel) {
+  if (typeof node.sectionVariantId !== 'number') {
+    sectionPageError.value = t('sectionPage.sectionVariantView.deleteFailed')
+    return
+  }
+
+  const confirmed = window.confirm(
+    t('sectionPage.sectionVariantView.deleteConfirm', {
+      title: node.title || 'SectionVariant',
+    }),
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    await cmsV2Api.deleteSectionVariant(node.sectionVariantId)
+
+    if (selectedStructureNodeId.value === node.id) {
+      selectedStructureNodeId.value = getSectionRootNodeId()
+      clearSectionVariantView()
+    }
+
+    insertFeedback.value = t('sectionPage.sectionVariantView.deletedFeedback', {
+      title: node.title || 'SectionVariant',
+    })
+    await loadCurrentSectionPage()
+  } catch (error) {
+    sectionPageError.value = resolveSectionVariantDeleteError(error)
+  }
+}
+
 async function removeTopLevelSectionItemFromTreeNode(node: SectionTreeNodeModel) {
   const currentSectionId = getCurrentNumericSectionId()
   const sectionItemId = parseSectionItemNodeId(node.id)
@@ -1490,6 +1531,11 @@ async function removeTopLevelSectionItemFromTreeNode(node: SectionTreeNodeModel)
 }
 
 async function removeSectionTreeContextNode(node: SectionTreeNodeModel) {
+  if (node.kind === 'SectionVariant') {
+    await deleteSectionVariantNode(node)
+    return
+  }
+
   const context = findSectionTreeWorkspaceContext(node)
 
   if (context.child) {
@@ -1844,6 +1890,13 @@ async function handleSectionTreeContextMenuAction(payload: SectionTreeContextMen
   if (payload.actionType === 'CreateSectionVariant') {
     if (contextNode.kind === 'Section') {
       openSectionVariantCreatePanel()
+    }
+    return
+  }
+
+  if (payload.actionType === 'DeleteSectionVariant') {
+    if (contextNode.kind === 'SectionVariant') {
+      await deleteSectionVariantNode(contextNode)
     }
     return
   }

@@ -122,6 +122,7 @@ export type SectionTreeContextActionType =
   | 'CreateContentBlock'
   | 'CreateAtomicSection'
   | 'SearchExistingBlock'
+  | 'DeleteSectionVariant'
   | 'Remove'
 
 export interface SectionTreeContextMenuModel {

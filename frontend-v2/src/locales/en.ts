@@ -323,6 +323,7 @@ const en = {
         CreateContentBlock: 'Create ContentBlock',
         CreateAtomicSection: 'Create AtomicSection',
         SearchExistingBlock: 'Insert existing block',
+        DeleteSectionVariant: 'Delete SectionVariant',
         Remove: 'Remove',
       },
     },
@@ -508,6 +509,10 @@ const en = {
       loadFailed: 'Failed to load SectionVariant data.',
       emptyTitle: 'This SectionVariant has not selected any SectionItem',
       emptyDescription: 'Click the Section root node to return to the full Section editing flow.',
+      deleteConfirm:
+        'Delete SectionVariant: {title}? Its SectionVariantItems will also be deleted, but source SectionItems will remain.',
+      deleteFailed: 'Failed to delete SectionVariant. Please try again.',
+      deletedFeedback: 'Deleted SectionVariant: {title}.',
     },
     structure: {
       title: 'SectionStructurePanel',

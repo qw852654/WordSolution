@@ -311,6 +311,7 @@ const zhCN = {
         CreateContentBlock: '新建 ContentBlock',
         CreateAtomicSection: '新建 AtomicSection',
         SearchExistingBlock: '插入已有块',
+        DeleteSectionVariant: '删除 SectionVariant',
         Remove: '移除',
       },
     },
@@ -491,6 +492,9 @@ const zhCN = {
       loadFailed: 'SectionVariant 数据读取失败。',
       emptyTitle: '这个 SectionVariant 暂未选择任何 SectionItem',
       emptyDescription: '点击 Section 根节点可回到完整 Section 编辑流。',
+      deleteConfirm: '确认删除 SectionVariant：{title}？它的 SectionVariantItem 会一并删除，但不会删除源 SectionItem。',
+      deleteFailed: 'SectionVariant 删除失败，请稍后重试。',
+      deletedFeedback: '已删除 SectionVariant：{title}。',
     },
     structure: {
       title: 'SectionStructurePanel',

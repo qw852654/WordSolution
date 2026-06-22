@@ -741,6 +741,18 @@ public static class CmsV2ApiEndpointExtensions
         group.MapGet("/section-variants/{id:int}/items", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
             Results.Ok(await unitOfWork.SectionVariantItems.ListBySectionVariantAsync(id, cancellationToken)));
 
+        group.MapDelete("/section-variants/{id:int}", async (
+            int id,
+            SectionVariantUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            await useCases.DeleteSectionVariantAsync(
+                new DeleteSectionVariantCommand(id),
+                cancellationToken);
+
+            return Results.NoContent();
+        });
+
         group.MapPost("/section-variants/{id:int}/items", async (
             int id,
             AddSectionVariantItemRequest request,

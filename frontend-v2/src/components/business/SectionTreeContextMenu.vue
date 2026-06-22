@@ -53,7 +53,14 @@ const actions = computed<
   const node = props.model?.node
 
   if (node?.kind === 'SectionVariant') {
-    return []
+    return [
+      {
+        type: 'DeleteSectionVariant',
+        icon: Trash2,
+        destructive: true,
+        disabled: Boolean(node.disabled),
+      },
+    ]
   }
 
   const disabled = Boolean(node?.disabled)

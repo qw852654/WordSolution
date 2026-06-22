@@ -726,6 +726,67 @@ public sealed class CmsV2ApplicationUseCaseTests
     }
 
     [Fact]
+    public async Task DeleteSectionVariantAsync_removes_variant_and_its_items()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var sectionUseCases = new SectionUseCases(unitOfWork);
+        var variantUseCases = new SectionVariantUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+
+        var block = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(sectionId, "Variant Item", ContentBlockType.KnowledgePoint, Difficulty.Basic));
+        var sectionItem = await sectionUseCases.AddSectionItemAsync(
+            new AddSectionItemCommand(sectionId, SectionItemTargetType.ContentBlock, block.Id, ReferenceMode.FollowLatest, null, SortOrder: 1));
+        var created = await variantUseCases.CreateSectionVariantAsync(
+            new CreateSectionVariantCommand(
+                sectionId,
+                "Variant To Delete",
+                Difficulty: Difficulty.Basic,
+                SelectedSectionItemIds: [sectionItem.Id]));
+
+        await variantUseCases.DeleteSectionVariantAsync(new DeleteSectionVariantCommand(created.Id));
+
+        Assert.Null(await unitOfWork.SectionVariants.GetByIdAsync(created.Id));
+        Assert.Empty(await unitOfWork.SectionVariantItems.ListBySectionVariantAsync(created.Id));
+        Assert.NotNull(await unitOfWork.SectionItems.GetByIdAsync(sectionItem.Id));
+    }
+
+    [Fact]
+    public async Task DeleteSectionVariantAsync_rejects_handout_referenced_variant()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var variantUseCases = new SectionVariantUseCases(unitOfWork);
+        var handoutUseCases = new HandoutUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var created = await variantUseCases.CreateSectionVariantAsync(
+            new CreateSectionVariantCommand(
+                sectionId,
+                "Referenced Variant",
+                Difficulty: Difficulty.Basic,
+                SelectedSectionItemIds: []));
+        var handout = new Handout("Variant Handout");
+        await unitOfWork.Handouts.AddAsync(handout);
+        await unitOfWork.SaveChangesAsync();
+        var handoutVersion = await handoutUseCases.CreateHandoutVersionAsync(
+            new CreateHandoutVersionCommand(handout.Id, "Variant Handout Version"));
+        await handoutUseCases.AddHandoutVersionItemAsync(
+            new AddHandoutVersionItemCommand(
+                handoutVersion.Id,
+                HandoutVersionItemTargetType.SectionVariant,
+                created.Id,
+                SortOrder: 1));
+
+        var exception = await Assert.ThrowsAsync<CmsV2ApplicationException>(
+            () => variantUseCases.DeleteSectionVariantAsync(new DeleteSectionVariantCommand(created.Id)));
+
+        Assert.Equal("SectionVariant is referenced by HandoutVersion and cannot be deleted.", exception.Message);
+        Assert.NotNull(await unitOfWork.SectionVariants.GetByIdAsync(created.Id));
+    }
+
+    [Fact]
     public async Task CreateSectionVariantAsync_rejects_invalid_selected_items_without_partial_variant()
     {
         await using var context = await CreateMigratedContextAsync();

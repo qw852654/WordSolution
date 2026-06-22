@@ -432,6 +432,8 @@ export const cmsV2Api = {
     ),
   createSectionVariant: (request: CmsV2CreateSectionVariantRequest) =>
     cmsV2PostJson<CmsV2CreatedEntityResultDto>('/section-variants', request),
+  deleteSectionVariant: (sectionVariantId: number) =>
+    cmsV2Delete(`/section-variants/${sectionVariantId}`),
   listSectionVariants: (sectionId?: number) =>
     cmsV2FetchJson<CmsV2SectionVariantDto[]>(withQuery('/section-variants', { sectionId })),
   listSectionVariantItems: (sectionVariantId: number) =>
