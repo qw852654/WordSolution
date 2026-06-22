@@ -96,9 +96,14 @@ export interface SectionTreeNodeModel {
   title: string
   kind: SectionTreeNodeKind
   typeLabel: string
+  sectionId?: number
+  teachingTopicTitle?: string
   sectionVariantId?: number
   difficulty?: string
   status?: string
+  targetStatus?: string
+  hasWordDocument?: boolean
+  previewState?: HtmlPreviewState
   itemCount?: number
   questionCount?: number
   disabled?: boolean

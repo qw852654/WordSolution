@@ -1156,3 +1156,23 @@ When the selected tree node is a `SectionVariant`, `SectionInspector` displays t
 - selected `SectionItem` count.
 
 Selecting a `SectionVariant` should not automatically open a new page or switch to a future `SectionVariant` editor.
+
+## SectionPage v0.1 status checkpoint
+
+The current `SectionPage v0.1` scope is considered complete when these capabilities are available together:
+
+- `SectionVariant` creation from the `SectionTree` Section root context menu;
+- `SectionVariant` read-only view mode from a `SectionVariant` tree node;
+- shared Workspace selection behavior for `upgrade to as` and `SectionVariantSelectionMode`;
+- nested `InsertPoint` support at the beginning, between items, and at the end of `Section`, `AtomicSection`, and `CompositeBlock` flows;
+- `CompositeBlock` displays both its own `ContentBlock` document preview and its child block list;
+- a `ContentBlock` without a Word document displays its type, a concise empty-document hint, and the Word edit entry;
+- `SectionInspector` displays stable read-only properties for `Section`, `ContentBlock`, `AtomicSection`, `CompositeBlock`, and `SectionVariant`.
+
+The following items are explicitly deferred after `SectionPage v0.1`:
+
+- `BlockSearchPicker` and inserting existing blocks;
+- field editing in `SectionInspector` and any required update API;
+- `TeachingNoteColumn`;
+- automatic cleanup for empty shell objects;
+- `SectionVariant` management actions such as rename, delete, copy, or content reselection.

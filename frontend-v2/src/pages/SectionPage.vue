@@ -91,11 +91,17 @@ const sectionPageError = ref('')
 const isSubmittingInsertCreate = ref(false)
 
 function resolveSectionItemRemoveError(error: unknown, fallback: string) {
-  if (error instanceof Error && error.message === SECTION_ITEM_REFERENCED_BY_VARIANT_MESSAGE) {
+  const message = error instanceof Error ? error.message : ''
+
+  if (
+    message === SECTION_ITEM_REFERENCED_BY_VARIANT_MESSAGE ||
+    message.includes(SECTION_ITEM_REFERENCED_BY_VARIANT_MESSAGE) ||
+    (message.includes('SectionVariant') && message.includes('cannot be removed'))
+  ) {
     return t('sectionPage.workspace.sectionItemActions.referencedByVariant')
   }
 
-  return error instanceof Error ? error.message : fallback
+  return message || fallback
 }
 let teachingTopicDrawerTimer: number | undefined
 let sectionPageLoadSequence = 0
@@ -1257,6 +1263,286 @@ function getCompositeBlockChildLastSortOrder(contentBlockId: number) {
   )
 }
 
+interface SectionTreeWorkspaceContext {
+  node: SectionTreeNodeModel
+  topLevelItem?: SectionWorkspaceFlowItemModel
+  child?: StructuredBlockChildModel
+}
+
+function findStructuredChildWorkspaceContext(
+  children: StructuredBlockChildModel[],
+  nodeId: string,
+  topLevelItem: SectionWorkspaceFlowItemModel,
+): SectionTreeWorkspaceContext | undefined {
+  for (const child of children) {
+    if (child.nodeId === nodeId) {
+      return {
+        node: findSectionTreeNode(sectionTreeNodes.value, nodeId)!,
+        topLevelItem,
+        child,
+      }
+    }
+
+    if (child.kind === 'CompositeBlock') {
+      const nested = findStructuredChildWorkspaceContext(child.block.children, nodeId, topLevelItem)
+      if (nested) {
+        return nested
+      }
+    }
+  }
+
+  return undefined
+}
+
+function findSectionTreeWorkspaceContext(node: SectionTreeNodeModel): SectionTreeWorkspaceContext {
+  for (const item of sectionWorkspaceFlowItems.value) {
+    if (item.nodeId === node.id) {
+      return { node, topLevelItem: item }
+    }
+
+    if (item.kind !== 'ContentBlock') {
+      const nested = findStructuredChildWorkspaceContext(item.block.children, node.id, item)
+      if (nested) {
+        return nested
+      }
+    }
+  }
+
+  return { node }
+}
+
+function getSectionEndPlacement(): InsertRequestModel['placement'] {
+  const sectionId = getCurrentNumericSectionId()
+  const lastItem = sectionWorkspaceFlowItems.value.at(-1)
+
+  if (!sectionId) {
+    return undefined
+  }
+
+  return {
+    parentType: 'Section',
+    parentId: sectionId,
+    afterItemId: lastItem?.sectionItemId,
+    afterSortOrder: lastItem?.sortOrder,
+  }
+}
+
+function getSectionSiblingPlacementAfter(
+  item?: SectionWorkspaceFlowItemModel,
+): InsertRequestModel['placement'] {
+  const sectionId = getCurrentNumericSectionId()
+
+  if (!sectionId) {
+    return undefined
+  }
+
+  return {
+    parentType: 'Section',
+    parentId: sectionId,
+    afterItemId: item?.sectionItemId,
+    afterSortOrder: item?.sortOrder,
+  }
+}
+
+function getAtomicSectionEndPlacement(
+  item: SectionWorkspaceFlowItemModel,
+): InsertRequestModel['placement'] {
+  if (item.kind !== 'AtomicSection') {
+    return undefined
+  }
+
+  const parentId = item.block.atomicSectionId ?? item.targetId
+  const lastChild = item.block.children.at(-1)
+
+  if (!parentId) {
+    return undefined
+  }
+
+  return {
+    parentType: 'AtomicSection',
+    parentId,
+    afterItemId: lastChild?.atomicSectionItemId,
+    afterSortOrder: lastChild?.sortOrder,
+  }
+}
+
+function getCompositeBlockEndPlacement(
+  item: SectionWorkspaceFlowItemModel,
+): InsertRequestModel['placement'] {
+  if (item.kind !== 'CompositeBlock') {
+    return undefined
+  }
+
+  const parentId = item.block.contentBlockId ?? item.targetId
+  const lastChild = item.block.children.at(-1)
+
+  if (!parentId) {
+    return undefined
+  }
+
+  return {
+    parentType: 'CompositeBlock',
+    parentId,
+    afterItemId: lastChild?.relationId,
+    afterSortOrder: lastChild?.sortOrder,
+  }
+}
+
+function getNestedSiblingPlacementAfter(
+  child?: StructuredBlockChildModel,
+): InsertRequestModel['placement'] {
+  if (!child) {
+    return undefined
+  }
+
+  if (child.atomicSectionId && child.atomicSectionItemId) {
+    return {
+      parentType: 'AtomicSection',
+      parentId: child.atomicSectionId,
+      afterItemId: child.atomicSectionItemId,
+      afterSortOrder: child.sortOrder,
+    }
+  }
+
+  if (child.parentBlockId && child.relationId) {
+    return {
+      parentType: 'CompositeBlock',
+      parentId: child.parentBlockId,
+      afterItemId: child.relationId,
+      afterSortOrder: child.sortOrder,
+    }
+  }
+
+  return undefined
+}
+
+function createSectionTreeContextInsertRequest(
+  node: SectionTreeNodeModel,
+  actionType: 'CreateContentBlock' | 'CreateAtomicSection',
+): InsertRequestModel {
+  const context = findSectionTreeWorkspaceContext(node)
+  let placement: InsertRequestModel['placement']
+
+  if (node.kind === 'Section') {
+    placement = getSectionEndPlacement()
+  } else if (actionType === 'CreateAtomicSection') {
+    placement = getSectionSiblingPlacementAfter(context.topLevelItem)
+  } else if (context.child) {
+    placement = getNestedSiblingPlacementAfter(context.child)
+  } else if (context.topLevelItem?.kind === 'AtomicSection') {
+    placement = getAtomicSectionEndPlacement(context.topLevelItem)
+  } else if (context.topLevelItem?.kind === 'CompositeBlock') {
+    placement = getCompositeBlockEndPlacement(context.topLevelItem)
+  } else {
+    placement = getSectionSiblingPlacementAfter(context.topLevelItem)
+  }
+
+  return {
+    insertPointId: `section-tree-context-${node.id}-${actionType}`,
+    actionType,
+    placement,
+  }
+}
+
+function getContextChildTitle(child: StructuredBlockChildModel) {
+  if (child.kind === 'ContentBlock') {
+    return child.block.title || child.block.role || 'ContentBlock'
+  }
+
+  return child.block.title || child.block.typeLabel || 'CompositeBlock'
+}
+
+function parseSectionItemNodeId(nodeId: string) {
+  const match = /^section-item-(\d+)$/.exec(nodeId)
+  return match ? Number(match[1]) : undefined
+}
+
+async function removeTopLevelSectionItemFromTreeNode(node: SectionTreeNodeModel) {
+  const currentSectionId = getCurrentNumericSectionId()
+  const sectionItemId = parseSectionItemNodeId(node.id)
+
+  if (!currentSectionId || !sectionItemId) {
+    sectionPageError.value = t('sectionPage.workspace.sectionItemActions.removeTargetMissing')
+    return
+  }
+
+  const confirmed = window.confirm(
+    t('sectionPage.workspace.sectionItemActions.removeConfirm', {
+      title: node.title || node.typeLabel || 'SectionItem',
+    }),
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    await sectionItemActions.removeSectionItemReference(currentSectionId, sectionItemId)
+    selectedStructureNodeId.value = undefined
+    workspaceScrollTargetNodeId.value = selectedStructureNodeId.value
+    workspaceScrollRequestKey.value += 1
+  } catch (error) {
+    sectionPageError.value = resolveSectionItemRemoveError(
+      error,
+      t('sectionPage.workspace.sectionItemActions.operationFailed'),
+    )
+  }
+}
+
+async function removeSectionTreeContextNode(node: SectionTreeNodeModel) {
+  const context = findSectionTreeWorkspaceContext(node)
+
+  if (context.child) {
+    if (context.child.atomicSectionId && context.child.atomicSectionItemId && context.child.contentBlockId) {
+      await requestAtomicSectionItemRemove({
+        nodeId: context.child.nodeId,
+        atomicSectionId: context.child.atomicSectionId,
+        atomicSectionItemId: context.child.atomicSectionItemId,
+        contentBlockId: context.child.contentBlockId,
+        title: getContextChildTitle(context.child),
+      })
+      return
+    }
+
+    if (context.child.parentBlockId && context.child.relationId && context.child.contentBlockId) {
+      await requestContentBlockRelationRemove({
+        nodeId: context.child.nodeId,
+        parentBlockId: context.child.parentBlockId,
+        relationId: context.child.relationId,
+        contentBlockId: context.child.contentBlockId,
+        title: getContextChildTitle(context.child),
+      })
+      return
+    }
+
+    sectionPageError.value = t('sectionPage.workspace.sectionItemActions.removeTargetMissing')
+    return
+  }
+
+  const item = context.topLevelItem
+  if (!item?.sectionItemId || !item.targetId) {
+    await removeTopLevelSectionItemFromTreeNode(node)
+    return
+  }
+
+  if (item.kind === 'AtomicSection') {
+    await requestAtomicRemove({
+      nodeId: item.nodeId,
+      sectionItemId: item.sectionItemId,
+      atomicSectionId: item.targetId,
+      title: item.block.title,
+    })
+    return
+  }
+
+  await requestContentBlockRemove({
+    nodeId: item.nodeId,
+    sectionItemId: item.sectionItemId,
+    contentBlockId: item.targetId,
+    title: item.kind === 'ContentBlock' ? item.block.title : item.block.title,
+  })
+}
+
 function mapInsertContentBlockType(type?: InsertCreateContentBlockType) {
   const map: Record<InsertCreateContentBlockType, string> = {
     知识点: 'KnowledgePoint',
@@ -1547,7 +1833,7 @@ function closeSectionTreeContextMenu() {
   sectionTreeContextMenu.value = null
 }
 
-function handleSectionTreeContextMenuAction(payload: SectionTreeContextMenuActionPayload) {
+async function handleSectionTreeContextMenuAction(payload: SectionTreeContextMenuActionPayload) {
   const contextNode = sectionTreeContextMenu.value?.node
   closeSectionTreeContextMenu()
 
@@ -1563,24 +1849,7 @@ function handleSectionTreeContextMenuAction(payload: SectionTreeContextMenuActio
   }
 
   if (payload.actionType === 'CreateContentBlock' || payload.actionType === 'CreateAtomicSection') {
-    const currentSectionId = getCurrentNumericSectionId()
-
-    if (!currentSectionId) {
-      insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackMissingSection')
-      return
-    }
-
-    activeInsertPointId.value = `section-tree-context-${payload.nodeId}`
-    insertFeedback.value = ''
-    insertCreateError.value = ''
-    activeCreatePanel.value = {
-      insertPointId: activeInsertPointId.value,
-      targetType: payload.actionType === 'CreateContentBlock' ? 'ContentBlock' : 'AtomicSection',
-      insertPositionLabel: contextNode.typeLabel,
-      sectionId: currentSectionId,
-      sectionTitle: sectionShell.value.title,
-      insertMode: 'SectionItem',
-    }
+    requestInsert(createSectionTreeContextInsertRequest(contextNode, payload.actionType))
     return
   }
 
@@ -1588,6 +1857,11 @@ function handleSectionTreeContextMenuAction(payload: SectionTreeContextMenuActio
 
   if (payload.actionType === 'SearchExistingBlock') {
     insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackSearchExistingBlock')
+    return
+  }
+
+  if (payload.actionType === 'Remove') {
+    await removeSectionTreeContextNode(contextNode)
     return
   }
 
@@ -1880,6 +2154,7 @@ watch(sectionId, () => {
         <SectionInspector
           class="min-h-0 flex-1"
           :node="selectedStructureNode"
+          :section="sectionShell"
           :variant-item-count="sectionVariantItemCount"
         />
       </aside>

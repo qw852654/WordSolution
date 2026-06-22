@@ -1536,3 +1536,32 @@ In this mode it must:
 When the selected node is a `SectionVariant`, `SectionInspector` may show read-only Variant metadata and the loaded selected item count.
 
 It must not expose edit, delete, copy, or reselection actions for `SectionVariant` in the first version.
+
+## SectionPage v0.1 Component Interaction Rules
+
+### SectionItemView Click Boundary
+
+`SectionItemView` is the outer document-flow container.
+
+For a plain `ContentBlock`, clicking the block body may select the item because the content itself is the displayed object.
+
+For `AtomicSection` and `CompositeBlock`, clicking the internal child area must not select the parent container. Parent selection is triggered from the title/header area only. This keeps parent actions separate from child block actions and avoids accidental parent selection while editing or inserting child content.
+
+### AS / Composite Header Rule
+
+`AtomicSectionBlock` and `CompositeBlock` may display a title/header line with difficulty marker, type label, collapse control, and action trigger.
+
+That header line is the intended parent-level selection target. Child `ContentBlockDisplay` entries remain their own selectable/actionable objects.
+
+### SectionTree Context Menu Boundary
+
+Right-clicking a `SectionTree` node highlights the context target only; it must not change the current selected node.
+
+Left-click selection remains the only action that synchronizes `SectionTree`, `Workspace`, and `SectionInspector`.
+
+First-version context menu rules:
+
+- `Section` root: may create `SectionVariant`, create new `ContentBlock`, create new `AtomicSection`, show a placeholder for inserting existing blocks, and must not be removable.
+- `ContentBlock`, `CompositeBlock`, and `AtomicSection`: may create new blocks according to context, remove through existing server-confirmed actions, and show a placeholder for inserting existing blocks.
+- `SectionVariant`: read-only in the first version; no edit/delete/copy/reselect context actions.
+- Move, indent, outdent, and other unplanned context actions must not be reintroduced without a new confirmed plan.

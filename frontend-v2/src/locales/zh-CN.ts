@@ -247,6 +247,16 @@ const zhCN = {
       titleRequired: '请输入名称后再确认。',
     },
     sectionInspector: {
+      title: '标题',
+      name: '名称',
+      groupType: '组类型',
+      teachingTopic: 'TeachingTopic',
+      sectionId: 'Section ID',
+      hasWordDocument: 'Word 文档',
+      previewState: '预览状态',
+      childCount: '子块数量',
+      selectedItemCount: '选中项数量',
+      selectedItemCountValue: '{count} 项',
       kind: '节点类型',
       type: '类型',
       difficulty: '难度',
@@ -542,6 +552,10 @@ const zhCN = {
       sectionItemActions: {
         referencedByVariant:
           '这个块已被 SectionVariant 引用，不能直接删除。请先处理对应的 SectionVariant。',
+        removeConfirm:
+          '确认从当前 Section 移除这个 SectionItem 引用？不会删除源内容。SectionItem：{title}',
+        removeTargetMissing: '没有找到这个节点对应的 SectionItem，无法移除。请刷新后重试。',
+        operationFailed: 'SectionItem 移除失败，请稍后重试。',
       },
       atomicSectionActions: {
         insertChildPosition: 'AtomicSection 内部：{title}',

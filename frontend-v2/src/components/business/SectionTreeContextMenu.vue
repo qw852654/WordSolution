@@ -51,6 +51,11 @@ const actions = computed<
   }[]
 >(() => {
   const node = props.model?.node
+
+  if (node?.kind === 'SectionVariant') {
+    return []
+  }
+
   const disabled = Boolean(node?.disabled)
   const removeDisabled = disabled || node?.kind === 'Section'
 

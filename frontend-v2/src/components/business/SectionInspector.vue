@@ -5,17 +5,16 @@ import { useI18n } from 'vue-i18n'
 import EmptyState from '@/components/presentation/EmptyState.vue'
 import StatusPill from '@/components/presentation/StatusPill.vue'
 import WeakScrollArea from '@/components/presentation/WeakScrollArea.vue'
-import { Button } from '@/components/ui/button'
 import {
   Card,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import type { SectionTreeNodeModel } from '@/types'
+import type { SectionPageShellModel, SectionTreeNodeModel } from '@/types'
 
 const props = defineProps<{
   node?: SectionTreeNodeModel
+  section?: SectionPageShellModel
   variantItemCount?: number
 }>()
 
@@ -26,11 +25,11 @@ const displayTitle = computed(() => {
     return ''
   }
 
-  if (props.node.kind === 'ContentBlock' || props.node.kind === 'CompositeBlock') {
+  if (props.node.kind === 'ContentBlock') {
     return props.node.typeLabel
   }
 
-  return props.node.title
+  return props.node.title || props.node.typeLabel
 })
 
 const kindLabel = computed(() => {
@@ -47,62 +46,79 @@ const detailRows = computed(() => {
     return []
   }
 
-  const rows = [
-    {
-      id: 'kind',
-      label: t('components.sectionInspector.kind'),
-      value: kindLabel.value,
-    },
-    {
-      id: 'type',
-      label: t('components.sectionInspector.type'),
-      value: node.typeLabel || t('components.sectionInspector.notSet'),
-    },
-    {
-      id: 'difficulty',
-      label: t('components.sectionInspector.difficulty'),
-      value: node.difficulty || t('components.sectionInspector.notSet'),
-    },
-    {
-      id: 'status',
-      label: t('components.sectionInspector.status'),
-      value: node.status || t('components.sectionInspector.notSet'),
-    },
-  ]
-
-  if (typeof node.itemCount === 'number') {
-    rows.push({
-      id: 'itemCount',
-      label: t('components.sectionInspector.itemCount'),
-      value: t('components.sectionTree.itemCount', { count: node.itemCount }),
-    })
-  }
-
-  if (typeof node.questionCount === 'number') {
-    rows.push({
-      id: 'questionCount',
-      label: t('components.sectionInspector.questionCount'),
-      value: t('components.sectionTree.questionCount', { count: node.questionCount }),
-    })
-  }
-
-  if (node.kind === 'SectionVariant' && typeof props.variantItemCount === 'number') {
-    rows.push({
-      id: 'variantItemCount',
-      label: t('components.sectionInspector.variantItemCount'),
-      value: t('components.sectionInspector.variantItemCountValue', {
-        count: props.variantItemCount,
-      }),
-    })
-  }
-
-  rows.push({
-    id: 'disabled',
-    label: t('components.sectionInspector.disabled'),
-    value: node.disabled ? t('components.sectionInspector.yes') : t('components.sectionInspector.no'),
+  const notSet = t('components.sectionInspector.notSet')
+  const row = (id: string, label: string, value?: string | number | null) => ({
+    id,
+    label,
+    value: value === undefined || value === null || value === '' ? notSet : String(value),
   })
+  const previewState = node.previewState
+    ? t(`components.contentBlockDisplay.previewState.${node.previewState}`)
+    : notSet
+  const wordDocumentStatus =
+    node.hasWordDocument === undefined
+      ? notSet
+      : node.hasWordDocument
+        ? t('components.sectionInspector.yes')
+        : t('components.sectionInspector.no')
 
-  return rows
+  if (node.kind === 'Section') {
+    return [
+      row('title', t('components.sectionInspector.title'), node.title),
+      row('status', t('components.sectionInspector.status'), node.status),
+      row('difficulty', t('components.sectionInspector.difficulty'), node.difficulty),
+      row(
+        'teachingTopic',
+        t('components.sectionInspector.teachingTopic'),
+        node.teachingTopicTitle ?? props.section?.teachingTopicTitle,
+      ),
+      row('sectionId', t('components.sectionInspector.sectionId'), node.sectionId ?? props.section?.sectionId),
+    ]
+  }
+
+  if (node.kind === 'ContentBlock') {
+    return [
+      row('type', t('components.sectionInspector.type'), node.typeLabel),
+      row('difficulty', t('components.sectionInspector.difficulty'), node.difficulty),
+      row('status', t('components.sectionInspector.status'), node.targetStatus ?? node.status),
+      row('hasWordDocument', t('components.sectionInspector.hasWordDocument'), wordDocumentStatus),
+      row('previewState', t('components.sectionInspector.previewState'), previewState),
+    ]
+  }
+
+  if (node.kind === 'AtomicSection') {
+    return [
+      row('name', t('components.sectionInspector.name'), node.title),
+      row('difficulty', t('components.sectionInspector.difficulty'), node.difficulty),
+      row('status', t('components.sectionInspector.status'), node.targetStatus ?? node.status),
+      row('childCount', t('components.sectionInspector.childCount'), node.itemCount ?? 0),
+    ]
+  }
+
+  if (node.kind === 'CompositeBlock') {
+    return [
+      row('title', t('components.sectionInspector.title'), node.title),
+      row('groupType', t('components.sectionInspector.groupType'), node.typeLabel),
+      row('difficulty', t('components.sectionInspector.difficulty'), node.difficulty),
+      row('status', t('components.sectionInspector.status'), node.targetStatus ?? node.status),
+      row('hasWordDocument', t('components.sectionInspector.hasWordDocument'), wordDocumentStatus),
+      row('childCount', t('components.sectionInspector.childCount'), node.itemCount ?? 0),
+    ]
+  }
+
+  return [
+    row('name', t('components.sectionInspector.name'), node.title),
+    row('type', t('components.sectionInspector.type'), node.typeLabel),
+    row('difficulty', t('components.sectionInspector.difficulty'), node.difficulty),
+    row('status', t('components.sectionInspector.status'), node.status),
+    row(
+      'selectedItemCount',
+      t('components.sectionInspector.selectedItemCount'),
+      t('components.sectionInspector.selectedItemCountValue', {
+        count: props.variantItemCount ?? 0,
+      }),
+    ),
+  ]
 })
 </script>
 
@@ -141,14 +157,5 @@ const detailRows = computed(() => {
         </div>
       </dl>
     </WeakScrollArea>
-
-    <CardFooter class="flex flex-wrap gap-2 border-t px-4 py-3">
-      <Button type="button" size="sm" variant="outline" disabled>
-        {{ t('components.sectionInspector.preview') }}
-      </Button>
-      <Button type="button" size="sm" variant="outline" disabled>
-        {{ t('components.sectionInspector.openWord') }}
-      </Button>
-    </CardFooter>
   </Card>
 </template>

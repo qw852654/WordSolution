@@ -266,9 +266,19 @@ const en = {
       emptyDescription:
         'The inspector shows details after a SectionItem or AtomicSection is selected.',
       currentSelection: 'Current selection',
+      title: 'Title',
+      name: 'Name',
       kind: 'Node kind',
       type: 'Type',
+      groupType: 'Group type',
       difficulty: 'Difficulty',
+      teachingTopic: 'TeachingTopic',
+      sectionId: 'Section ID',
+      hasWordDocument: 'Word document',
+      previewState: 'Preview state',
+      childCount: 'Child count',
+      selectedItemCount: 'Selected items',
+      selectedItemCountValue: '{count} items',
       status: 'Status',
       itemCount: 'Child items',
       questionCount: 'Questions',
@@ -562,6 +572,11 @@ const en = {
       sectionItemActions: {
         referencedByVariant:
           'This block is referenced by SectionVariant and cannot be removed directly. Handle the related SectionVariant first.',
+        removeConfirm:
+          'Remove this SectionItem reference from the current Section? The source content will not be deleted. SectionItem: {title}',
+        removeTargetMissing:
+          'Could not find the SectionItem for this node. Refresh the page and try again.',
+        operationFailed: 'SectionItem removal failed. Please try again.',
       },
       atomicSectionActions: {
         insertChildPosition: 'Inside AtomicSection: {title}',

@@ -373,6 +373,16 @@ function getInsertPointBefore(item: SectionWorkspaceFlowItemModel, index: number
   }
 }
 
+const lastInsertPoint = computed<InsertPointModel>(() => {
+  const previous = flowItems.value.at(-1)
+
+  return {
+    id: 'insert-after-last-section-item',
+    label: t('components.insertPoint.insert'),
+    placement: getSectionInsertPointPlacement(undefined, previous),
+  }
+})
+
 function getSectionInsertPointPlacement(
   beforeItem?: SectionWorkspaceFlowItemModel,
   afterItem?: SectionWorkspaceFlowItemModel,
@@ -740,7 +750,7 @@ watch(
             v-for="(item, index) in flowItems"
             :key="item.id"
           >
-            <div v-if="index > 0 && !activeWorkspaceSelectionMode && !readOnlyMode" class="space-y-1">
+            <div v-if="!activeWorkspaceSelectionMode && !readOnlyMode" class="space-y-1">
               <InsertPoint
                 :point="getInsertPointBefore(item, index)"
                 :selected="isInsertPointActive(getInsertPointBefore(item, index).id)"
@@ -809,6 +819,19 @@ watch(
               />
             </SectionItemView>
           </template>
+          <div v-if="!activeWorkspaceSelectionMode && !readOnlyMode" class="space-y-1">
+            <InsertPoint
+              :point="lastInsertPoint"
+              :selected="isInsertPointActive(lastInsertPoint.id)"
+              @request-action="emitInsertRequest"
+            />
+            <p
+              v-if="isInsertPointActive(lastInsertPoint.id) && insertFeedback"
+              class="mx-4 rounded-md border bg-muted/20 px-2 py-1 text-xs text-muted-foreground"
+            >
+              {{ insertFeedback }}
+            </p>
+          </div>
         </div>
 
         <div v-else class="flex min-h-full items-center justify-center p-4">

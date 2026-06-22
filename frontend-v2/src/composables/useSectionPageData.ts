@@ -16,6 +16,7 @@ import {
 } from '@/utils/teachingStructureTree'
 import type {
   ContentBlockDisplayModel,
+  HtmlPreviewState,
   SectionPageShellModel,
   SectionReferenceMode,
   SectionTreeNodeModel,
@@ -91,12 +92,17 @@ export async function loadSectionPageData(routeSectionId?: string): Promise<Sect
   )
 
   const rootNodeId = createSectionNodeId(section.id)
+  const teachingTopicTitle =
+    findTeachingStructureTopicTitle(teachingStructure, section.teachingTopicId) ??
+    'TeachingTopic'
   const treeNodes: SectionTreeNodeModel[] = [
     {
       id: rootNodeId,
       title: section.title,
       kind: 'Section',
       typeLabel: 'Section',
+      sectionId: section.id,
+      teachingTopicTitle,
       difficulty: mapDifficulty(section.difficulty),
       status: mapStatus(section.status),
       itemCount: sectionChildren.length,
@@ -111,9 +117,7 @@ export async function loadSectionPageData(routeSectionId?: string): Promise<Sect
     section: {
       sectionId: String(section.id),
       title: section.title,
-      teachingTopicTitle:
-        findTeachingStructureTopicTitle(teachingStructure, section.teachingTopicId) ??
-        'TeachingTopic',
+      teachingTopicTitle,
       status: mapStatus(section.status),
     },
     treeNodes,
@@ -222,6 +226,24 @@ async function resolveContentBlockRelations(
   return await request
 }
 
+function hasContentBlockWordDocument(resolvedBlock: ResolvedContentBlock) {
+  return Boolean(getDisplayVersion(resolvedBlock.versions, 'FollowLatest'))
+}
+
+function resolveContentBlockPreviewState(
+  resolvedBlock: ResolvedContentBlock,
+  referenceMode: SectionReferenceMode,
+  lockedVersionId?: number | null,
+): HtmlPreviewState {
+  const version = getDisplayVersion(resolvedBlock.versions, referenceMode, lockedVersionId)
+
+  if (!version) {
+    return 'empty'
+  }
+
+  return version.htmlPreviewPath ? 'ready' : 'empty'
+}
+
 async function buildSectionItemNode(
   item: CmsV2SectionItemDto,
   context: {
@@ -249,6 +271,7 @@ async function buildSectionItemNode(
       typeLabel: mapAtomicSectionType(atomicSection.type),
       difficulty: mapDifficulty(atomicSection.difficulty),
       status: mapStatus(item.status),
+      targetStatus: mapStatus(atomicSection.status),
       itemCount: childNodes.length,
       expanded: true,
       disabled: item.status === 'Archived' || atomicSection.status === 'Archived',
@@ -273,6 +296,13 @@ async function buildSectionItemNode(
     typeLabel: mapContentBlockType(resolvedBlock.block.blockType),
     difficulty: mapDifficulty(resolvedBlock.block.difficulty),
     status: item.referenceMode,
+    targetStatus: mapStatus(resolvedBlock.block.status),
+    hasWordDocument: hasContentBlockWordDocument(resolvedBlock),
+    previewState: resolveContentBlockPreviewState(
+      resolvedBlock,
+      item.referenceMode,
+      item.lockedContentBlockVersionId,
+    ),
     itemCount: relationNodes.length || undefined,
     questionCount: isComposite ? countQuestionNodes(relationNodes) : undefined,
     expanded: true,
@@ -308,6 +338,13 @@ async function buildAtomicSectionItemNode(
     typeLabel: mapContentBlockType(resolvedBlock.block.blockType),
     difficulty: mapDifficulty(resolvedBlock.block.difficulty),
     status: item.referenceMode,
+    targetStatus: mapStatus(resolvedBlock.block.status),
+    hasWordDocument: hasContentBlockWordDocument(resolvedBlock),
+    previewState: resolveContentBlockPreviewState(
+      resolvedBlock,
+      item.referenceMode,
+      item.lockedContentBlockVersionId,
+    ),
     itemCount: relationNodes.length || undefined,
     questionCount: isComposite ? countQuestionNodes(relationNodes) : undefined,
     expanded: isComposite,
@@ -343,6 +380,13 @@ async function buildContentBlockRelationNode(
     typeLabel: mapContentBlockType(resolvedBlock.block.blockType),
     difficulty: mapDifficulty(resolvedBlock.block.difficulty),
     status: relation.referenceMode,
+    targetStatus: mapStatus(resolvedBlock.block.status),
+    hasWordDocument: hasContentBlockWordDocument(resolvedBlock),
+    previewState: resolveContentBlockPreviewState(
+      resolvedBlock,
+      relation.referenceMode,
+      relation.lockedContentBlockVersionId,
+    ),
     itemCount: relationNodes.length || undefined,
     questionCount: isComposite ? countQuestionNodes(relationNodes) : undefined,
     expanded: isComposite,
