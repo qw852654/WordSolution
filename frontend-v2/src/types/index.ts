@@ -62,7 +62,7 @@ export interface SectionVariantSelectionCandidateModel {
   unavailableReason?: string
 }
 
-export type SectionItemVariantSelectionState = 'none' | 'selected' | 'unselected' | 'unavailable'
+export type WorkspaceItemSelectionState = 'none' | 'selectable' | 'selected' | 'unavailable'
 
 export type SectionVariantCreateSubmitPayload = SectionVariantCreateMetadata & {
   selectedSectionItemIds: number[]

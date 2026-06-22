@@ -19,13 +19,13 @@ import type {
   InsertActionType,
   InsertPointModel,
   InsertRequestModel,
-  SectionItemVariantSelectionState,
   SectionPageShellModel,
   SectionItemViewAction,
   SectionVariantSelectionCandidateModel,
   SectionWorkspaceFlowItemModel,
   StructuredBlockChildModel,
   StructuredBlockModel,
+  WorkspaceItemSelectionState,
 } from '@/types'
 
 const { t } = useI18n()
@@ -127,6 +127,19 @@ const variantSelectedCount = computed(
     props.variantSelectionCandidates.filter((candidate) => candidate.selectable && candidate.selected)
       .length,
 )
+type WorkspaceSelectionMode = 'WrapAsAtomicSectionMode' | 'SectionVariantSelectionMode'
+
+const activeWorkspaceSelectionMode = computed<WorkspaceSelectionMode | undefined>(() => {
+  if (props.variantSelectionMode) {
+    return 'SectionVariantSelectionMode'
+  }
+
+  if (props.wrapSelectionMode) {
+    return 'WrapAsAtomicSectionMode'
+  }
+
+  return undefined
+})
 const workspaceSelectionFeedback = computed(() =>
   props.variantSelectionMode ? props.variantSelectionFeedback : props.wrapSelectionFeedback,
 )
@@ -162,7 +175,7 @@ function getNodeIdForWorkspaceItem(itemId: string, explicitNodeId?: string) {
 }
 
 function isWorkspaceItemSelected(itemId: string, fallback?: boolean, explicitNodeId?: string) {
-  if (props.variantSelectionMode) {
+  if (activeWorkspaceSelectionMode.value) {
     return false
   }
 
@@ -230,19 +243,27 @@ function isWrappableWorkspaceItem(item: SectionWorkspaceFlowItemModel) {
   return item.kind !== 'AtomicSection' && typeof item.sectionItemId === 'number'
 }
 
-function isWorkspaceItemUpgradeSelected(item: SectionWorkspaceFlowItemModel) {
-  return props.wrapSelectionMode && wrapSelectedNodeIdSet.value.has(item.nodeId)
-}
-
 function getVariantCandidateForItem(item: SectionWorkspaceFlowItemModel) {
   return typeof item.sectionItemId === 'number'
     ? variantCandidateBySectionItemId.value.get(item.sectionItemId)
     : undefined
 }
 
+function getWrapSelectionState(item: SectionWorkspaceFlowItemModel): WorkspaceItemSelectionState {
+  if (!props.wrapSelectionMode) {
+    return 'none'
+  }
+
+  if (!isWrappableWorkspaceItem(item)) {
+    return 'unavailable'
+  }
+
+  return wrapSelectedNodeIdSet.value.has(item.nodeId) ? 'selected' : 'selectable'
+}
+
 function getVariantSelectionState(
   item: SectionWorkspaceFlowItemModel,
-): SectionItemVariantSelectionState {
+): WorkspaceItemSelectionState {
   if (!props.variantSelectionMode) {
     return 'none'
   }
@@ -253,11 +274,35 @@ function getVariantSelectionState(
     return 'unavailable'
   }
 
-  return candidate.selected ? 'selected' : 'unselected'
+  return candidate.selected ? 'selected' : 'selectable'
 }
 
-function getVariantUnavailableReason(item: SectionWorkspaceFlowItemModel) {
-  return getVariantCandidateForItem(item)?.unavailableReason
+function getWorkspaceItemSelectionState(item: SectionWorkspaceFlowItemModel): WorkspaceItemSelectionState {
+  if (props.variantSelectionMode) {
+    return getVariantSelectionState(item)
+  }
+
+  if (props.wrapSelectionMode) {
+    return getWrapSelectionState(item)
+  }
+
+  return 'none'
+}
+
+function getWorkspaceItemSelectionUnavailableReason(item: SectionWorkspaceFlowItemModel) {
+  if (props.variantSelectionMode) {
+    return getVariantCandidateForItem(item)?.unavailableReason
+  }
+
+  if (props.wrapSelectionMode && !isWrappableWorkspaceItem(item)) {
+    return t('sectionPage.workspace.wrap.notWrappableLabel')
+  }
+
+  return undefined
+}
+
+function getWorkspaceItemAriaLabel(item: SectionWorkspaceFlowItemModel) {
+  return getWorkspaceItemSelectionUnavailableReason(item)
 }
 
 function handleWorkspaceItemSelect(item: SectionWorkspaceFlowItemModel, event?: MouseEvent) {
@@ -272,7 +317,9 @@ function handleWorkspaceItemSelect(item: SectionWorkspaceFlowItemModel, event?: 
   }
 
   if (props.wrapSelectionMode) {
-    emit('toggleWrapNodeSelection', item.nodeId)
+    if (isWrappableWorkspaceItem(item)) {
+      emit('toggleWrapNodeSelection', item.nodeId)
+    }
     return
   }
 
@@ -378,7 +425,7 @@ function emitContentBlockRemove(item: SectionWorkspaceFlowItemModel) {
 }
 
 function getWorkspaceItemActions(item: SectionWorkspaceFlowItemModel) {
-  if (props.variantSelectionMode) {
+  if (activeWorkspaceSelectionMode.value) {
     return []
   }
 
@@ -601,7 +648,7 @@ watch(
             v-for="(item, index) in flowItems"
             :key="item.id"
           >
-            <div v-if="index > 0 && !variantSelectionMode" class="space-y-1">
+            <div v-if="index > 0 && !activeWorkspaceSelectionMode" class="space-y-1">
               <InsertPoint
                 :point="getInsertPointBefore(item, index)"
                 :selected="isInsertPointActive(getInsertPointBefore(item, index).id)"
@@ -617,13 +664,12 @@ watch(
             <SectionItemView
               :item-id="item.id"
               :selected="item.selected"
-              :upgrade-selected="isWorkspaceItemUpgradeSelected(item)"
-              :variant-selection-state="getVariantSelectionState(item)"
-              :variant-unavailable-reason="getVariantUnavailableReason(item)"
+              :selection-state="getWorkspaceItemSelectionState(item)"
+              :selection-unavailable-reason="getWorkspaceItemSelectionUnavailableReason(item)"
               :disabled="item.disabled"
               :actions="getWorkspaceItemActions(item)"
               :data-workspace-node-id="item.nodeId"
-              :aria-label="isWrappableWorkspaceItem(item) ? undefined : t('sectionPage.workspace.wrap.notWrappableLabel')"
+              :aria-label="getWorkspaceItemAriaLabel(item)"
               @select="(_, event) => handleWorkspaceItemSelect(item, event)"
               @insert-child-content-block="emitAtomicChildContentBlock(item)"
               @move-up="item.kind === 'AtomicSection' ? emitAtomicMove(item, 'Up') : emitContentBlockMove(item, 'Up')"
@@ -671,7 +717,7 @@ watch(
             <p class="mt-1 text-sm leading-6 text-muted-foreground">
               {{ t('sectionPage.workspace.emptyDescription') }}
             </p>
-            <div v-if="!variantSelectionMode" class="mt-3">
+            <div v-if="!activeWorkspaceSelectionMode" class="mt-3">
               <InsertPoint
                 :point="firstInsertPoint"
                 selected
