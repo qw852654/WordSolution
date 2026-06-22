@@ -133,6 +133,8 @@ const en = {
     sectionVariantCreate: {
       description:
         'Fill SectionVariant metadata first, then review and select SectionItem candidates. This uses Mock Data and does not call API.',
+      workspaceDescription:
+        'Fill SectionVariant metadata first. After preview succeeds, choose SectionItem entries directly in the Workspace document flow.',
       previewLoading: 'Loading SectionItem candidates from the selection preview API...',
       previewError: 'Failed to load SectionItem candidates.',
       stepMetadata: 'Step 1 / Metadata',
@@ -516,6 +518,17 @@ const en = {
         blockingDescription:
           'SectionPage is temporarily locked while the CMS V2 API completes the transaction.',
         feedbackSuccess: 'Upgraded selected blocks to AtomicSection: {title}.',
+      },
+      variantSelection: {
+        selectedCount: '{count} SectionItems selected',
+        confirmAction: 'Confirm selection',
+        clearAction: 'Clear selection',
+        exitAction: 'Cancel selection',
+        feedbackReady:
+          'Workspace selection mode is active with {count} SectionItems selected by default.',
+        feedbackUpdated: '{count} SectionItems are currently selected.',
+        feedbackCleared: 'SectionVariant selection has been cleared.',
+        unavailableItem: 'This SectionItem is not selectable.',
       },
       insertPanel: {
         insertPositionLabel: 'Current selected insert position',

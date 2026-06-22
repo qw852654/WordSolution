@@ -13,12 +13,14 @@ import {
 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
-import type { SectionItemViewAction } from '@/types'
+import type { SectionItemVariantSelectionState, SectionItemViewAction } from '@/types'
 
 const props = defineProps<{
   itemId: string
   selected?: boolean
   upgradeSelected?: boolean
+  variantSelectionState?: SectionItemVariantSelectionState
+  variantUnavailableReason?: string
   disabled?: boolean
   actions?: SectionItemViewAction[]
   ariaLabel?: string
@@ -101,6 +103,8 @@ const actionDefinitions: Record<
 }
 
 const visibleActions = computed(() => props.actions ?? defaultActions)
+const variantSelected = computed(() => props.variantSelectionState === 'selected')
+const variantUnavailable = computed(() => props.variantSelectionState === 'unavailable')
 const actionRailHeight = computed(() => {
   const actionCount = visibleActions.value.length
   const gapCount = Math.max(actionCount - 1, 0)
@@ -157,20 +161,29 @@ function emitIfEnabled(eventName: 'select' | SectionItemViewAction, event?: Mous
       'section-item-view relative w-full overflow-visible rounded-md border border-transparent bg-background transition-colors',
       selected && !upgradeSelected ? 'bg-muted/30' : '',
       upgradeSelected ? 'section-item-view-upgrade-selected' : '',
+      variantSelected ? 'section-item-view-variant-selected' : '',
+      variantUnavailable ? 'section-item-view-variant-unavailable' : '',
       disabled ? 'opacity-60' : '',
     ]"
     :aria-label="ariaLabel ?? t('components.sectionItemView.containerLabel')"
     :aria-disabled="disabled ? 'true' : undefined"
-    :aria-selected="selected || upgradeSelected ? 'true' : 'false'"
+    :aria-selected="selected || upgradeSelected || variantSelected ? 'true' : 'false'"
     role="group"
     :style="{ '--section-item-action-rail-height': actionRailHeight }"
     @click.stop="emitIfEnabled('select', $event)"
   >
     <div class="min-w-0 p-2">
       <slot />
+      <p
+        v-if="variantUnavailable && variantUnavailableReason"
+        class="mx-2 mb-2 rounded-md border bg-muted/20 px-2 py-1 text-xs text-muted-foreground"
+      >
+        {{ variantUnavailableReason }}
+      </p>
     </div>
 
     <div
+      v-if="visibleActions.length"
       class="section-item-view-actions absolute right-0 top-0 z-10 flex min-h-full w-10 flex-col items-center gap-1 overflow-visible border-l border-transparent bg-muted/20 p-1 opacity-0 transition-opacity"
       :aria-label="t('components.sectionItemView.actionRailLabel')"
     >
@@ -211,6 +224,27 @@ function emitIfEnabled(eventName: 'select' | SectionItemViewAction, event?: Mous
   background: var(--section-item-upgrade-selection-marker);
   content: "";
   pointer-events: none;
+}
+
+.section-item-view-variant-selected {
+  background-color: hsl(var(--accent));
+  box-shadow: inset 0 0 0 1px hsl(var(--primary));
+}
+
+.section-item-view-variant-selected::before {
+  position: absolute;
+  z-index: 20;
+  inset-block: 0.35rem;
+  inset-inline-start: 0.25rem;
+  width: 0.1875rem;
+  border-radius: 9999px;
+  background: hsl(var(--primary));
+  content: "";
+  pointer-events: none;
+}
+
+.section-item-view-variant-unavailable {
+  opacity: 0.55;
 }
 
 .section-item-view:has(.section-item-view-actions:hover),

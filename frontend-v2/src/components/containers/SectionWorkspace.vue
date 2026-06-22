@@ -19,8 +19,10 @@ import type {
   InsertActionType,
   InsertPointModel,
   InsertRequestModel,
+  SectionItemVariantSelectionState,
   SectionPageShellModel,
   SectionItemViewAction,
+  SectionVariantSelectionCandidateModel,
   SectionWorkspaceFlowItemModel,
   StructuredBlockChildModel,
   StructuredBlockModel,
@@ -43,6 +45,9 @@ const props = withDefaults(
     wrapSelectionMode?: boolean
     wrapSelectedNodeIds?: string[]
     wrapSelectionFeedback?: string
+    variantSelectionMode?: boolean
+    variantSelectionCandidates?: SectionVariantSelectionCandidateModel[]
+    variantSelectionFeedback?: string
     collapsedWorkspaceNodeIds?: string[]
     teachingNoteMode?: boolean
   }>(),
@@ -53,6 +58,8 @@ const props = withDefaults(
     workspaceNodeMap: () => ({}),
     wrapSelectionMode: false,
     wrapSelectedNodeIds: () => [],
+    variantSelectionMode: false,
+    variantSelectionCandidates: () => [],
     collapsedWorkspaceNodeIds: () => [],
     teachingNoteMode: false,
   },
@@ -66,6 +73,10 @@ const emit = defineEmits<{
   clearWrapSelection: []
   toggleWrapNodeSelection: [nodeId: string]
   requestWrapAsAtomicSection: []
+  toggleVariantSelection: [sectionItemId: number]
+  clearVariantSelection: []
+  cancelVariantSelection: []
+  confirmVariantSelection: []
   requestAtomicChildContentBlock: [request: AtomicSectionWorkspaceActionPayload]
   requestAtomicMove: [request: AtomicSectionWorkspaceMovePayload]
   requestAtomicRename: [request: AtomicSectionWorkspaceActionPayload]
@@ -105,6 +116,20 @@ const compositeBlockActions: SectionItemViewAction[] = [
 const collapsedWorkspaceNodeIdSet = computed(() => new Set(props.collapsedWorkspaceNodeIds))
 const wrapSelectedNodeIdSet = computed(() => new Set(props.wrapSelectedNodeIds))
 const wrapSelectedCount = computed(() => props.wrapSelectedNodeIds.length)
+const variantCandidateBySectionItemId = computed(
+  () =>
+    new Map(
+      props.variantSelectionCandidates.map((candidate) => [candidate.sectionItemId, candidate]),
+    ),
+)
+const variantSelectedCount = computed(
+  () =>
+    props.variantSelectionCandidates.filter((candidate) => candidate.selectable && candidate.selected)
+      .length,
+)
+const workspaceSelectionFeedback = computed(() =>
+  props.variantSelectionMode ? props.variantSelectionFeedback : props.wrapSelectionFeedback,
+)
 const firstInsertPoint = computed<InsertPointModel>(() => ({
   id: 'insert-first-section-item',
   label: t('sectionPage.workspace.emptyTitle'),
@@ -137,6 +162,10 @@ function getNodeIdForWorkspaceItem(itemId: string, explicitNodeId?: string) {
 }
 
 function isWorkspaceItemSelected(itemId: string, fallback?: boolean, explicitNodeId?: string) {
+  if (props.variantSelectionMode) {
+    return false
+  }
+
   const nodeId = getNodeIdForWorkspaceItem(itemId, explicitNodeId)
   if (wrapSelectedNodeIdSet.value.has(nodeId)) {
     return true
@@ -205,7 +234,43 @@ function isWorkspaceItemUpgradeSelected(item: SectionWorkspaceFlowItemModel) {
   return props.wrapSelectionMode && wrapSelectedNodeIdSet.value.has(item.nodeId)
 }
 
+function getVariantCandidateForItem(item: SectionWorkspaceFlowItemModel) {
+  return typeof item.sectionItemId === 'number'
+    ? variantCandidateBySectionItemId.value.get(item.sectionItemId)
+    : undefined
+}
+
+function getVariantSelectionState(
+  item: SectionWorkspaceFlowItemModel,
+): SectionItemVariantSelectionState {
+  if (!props.variantSelectionMode) {
+    return 'none'
+  }
+
+  const candidate = getVariantCandidateForItem(item)
+
+  if (!candidate || !candidate.selectable) {
+    return 'unavailable'
+  }
+
+  return candidate.selected ? 'selected' : 'unselected'
+}
+
+function getVariantUnavailableReason(item: SectionWorkspaceFlowItemModel) {
+  return getVariantCandidateForItem(item)?.unavailableReason
+}
+
 function handleWorkspaceItemSelect(item: SectionWorkspaceFlowItemModel, event?: MouseEvent) {
+  if (props.variantSelectionMode) {
+    const candidate = getVariantCandidateForItem(item)
+
+    if (candidate?.selectable) {
+      emit('toggleVariantSelection', candidate.sectionItemId)
+    }
+
+    return
+  }
+
   if (props.wrapSelectionMode) {
     emit('toggleWrapNodeSelection', item.nodeId)
     return
@@ -215,7 +280,7 @@ function handleWorkspaceItemSelect(item: SectionWorkspaceFlowItemModel, event?: 
 }
 
 function handleNestedWorkspaceSelection(itemId: string, event?: MouseEvent) {
-  if (props.wrapSelectionMode) {
+  if (props.wrapSelectionMode || props.variantSelectionMode) {
     return
   }
 
@@ -313,6 +378,10 @@ function emitContentBlockRemove(item: SectionWorkspaceFlowItemModel) {
 }
 
 function getWorkspaceItemActions(item: SectionWorkspaceFlowItemModel) {
+  if (props.variantSelectionMode) {
+    return []
+  }
+
   if (item.kind === 'AtomicSection') {
     return atomicSectionActions
   }
@@ -431,13 +500,49 @@ watch(
       <span class="text-muted-foreground">{{ t('sectionPage.meta.teachingTopic') }}: {{ section.teachingTopicTitle }}</span>
       <div class="ml-auto flex flex-wrap items-center gap-2">
         <span
-          v-if="wrapSelectionMode"
+          v-if="variantSelectionMode"
+          class="text-muted-foreground"
+        >
+          {{ t('sectionPage.workspace.variantSelection.selectedCount', { count: variantSelectedCount }) }}
+        </span>
+        <span
+          v-else-if="wrapSelectionMode"
           class="text-muted-foreground"
         >
           {{ t('sectionPage.workspace.wrap.selectedCount', { count: wrapSelectedCount }) }}
         </span>
+        <template v-if="variantSelectionMode">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            class="h-7 px-2 text-xs"
+            @click="emit('confirmVariantSelection')"
+          >
+            {{ t('sectionPage.workspace.variantSelection.confirmAction') }}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            class="h-7 px-2 text-xs"
+            :disabled="variantSelectedCount === 0"
+            @click="emit('clearVariantSelection')"
+          >
+            {{ t('sectionPage.workspace.variantSelection.clearAction') }}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            class="h-7 px-2 text-xs"
+            @click="emit('cancelVariantSelection')"
+          >
+            {{ t('sectionPage.workspace.variantSelection.exitAction') }}
+          </Button>
+        </template>
         <Button
-          v-if="!wrapSelectionMode"
+          v-else-if="!wrapSelectionMode"
           type="button"
           size="sm"
           variant="outline"
@@ -487,16 +592,16 @@ watch(
       <WeakScrollArea class="rounded-md border bg-background p-3" :aria-label="t('sectionPage.workspace.mainColumnLabel')">
         <div v-if="flowItems.length" class="space-y-0">
           <p
-            v-if="wrapSelectionFeedback"
+            v-if="workspaceSelectionFeedback"
             class="mb-2 rounded-md border bg-muted/20 px-2 py-1 text-xs text-muted-foreground"
           >
-            {{ wrapSelectionFeedback }}
+            {{ workspaceSelectionFeedback }}
           </p>
           <template
             v-for="(item, index) in flowItems"
             :key="item.id"
           >
-            <div v-if="index > 0" class="space-y-1">
+            <div v-if="index > 0 && !variantSelectionMode" class="space-y-1">
               <InsertPoint
                 :point="getInsertPointBefore(item, index)"
                 :selected="isInsertPointActive(getInsertPointBefore(item, index).id)"
@@ -513,6 +618,8 @@ watch(
               :item-id="item.id"
               :selected="item.selected"
               :upgrade-selected="isWorkspaceItemUpgradeSelected(item)"
+              :variant-selection-state="getVariantSelectionState(item)"
+              :variant-unavailable-reason="getVariantUnavailableReason(item)"
               :disabled="item.disabled"
               :actions="getWorkspaceItemActions(item)"
               :data-workspace-node-id="item.nodeId"
@@ -564,7 +671,7 @@ watch(
             <p class="mt-1 text-sm leading-6 text-muted-foreground">
               {{ t('sectionPage.workspace.emptyDescription') }}
             </p>
-            <div class="mt-3">
+            <div v-if="!variantSelectionMode" class="mt-3">
               <InsertPoint
                 :point="firstInsertPoint"
                 selected

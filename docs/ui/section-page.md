@@ -862,3 +862,199 @@ SectionVariantAtomicItemSelection
   Note
   UpdatedTime
 ```
+
+## Current Update: SectionVariant Workspace Selection Mode
+
+This section records the current implementation rule for the first real SectionVariant selection interaction.
+
+### Entry
+
+The only entry remains:
+
+```text
+SectionPage -> SectionTree -> Section root node context menu -> Create SectionVariant
+```
+
+No toolbar, Workspace, Inspector, TeachingStructureTree, or child node menu may create SectionVariant.
+
+### Flow
+
+1. User opens `SectionVariantCreatePanel` from the Section root context menu.
+2. The panel only collects metadata in the real page flow:
+   - `title`
+   - `type`
+   - `difficulty`
+   - optional `description`
+3. User clicks next.
+4. `SectionPage` calls:
+
+```text
+POST /api/cms-v2/section-variants/selection-preview
+```
+
+5. If preview fails, the panel stays on metadata and shows the error.
+6. If preview succeeds:
+   - close `SectionVariantCreatePanel`
+   - enter `SectionWorkspace` `VariantSelectionMode`
+   - initialize selection state from `defaultSelected`
+   - use API `selectable / unavailableReason` as the source of truth
+
+### Workspace Selection Rule
+
+- Selection happens in the Workspace document flow, not inside a list in the create panel.
+- First version only allows selecting top-level `SectionItem`.
+- Nested `AtomicSectionItem` and `CompositeBlock` child relations are visible but not independently selectable.
+- Click selectable top-level blocks to toggle selected / unselected.
+- Unavailable blocks use weak state and cannot be toggled.
+- The mode toolbar shows selected count, clear, cancel, and confirm.
+- InsertPoint, action rail, move, delete, Word edit, and other normal editing actions are disabled while this mode is active.
+- Clearing selection is allowed and may produce an empty `selectedSectionItemIds` array.
+
+### Current Round Boundary
+
+- Confirming selection only generates a pending `SectionVariantCreateSubmitPayload` for manual inspection.
+- This round does not call `POST /api/cms-v2/section-variants`.
+- This round does not create or persist a real `SectionVariant`.
+## Current Update: Shared Workspace Selection Modes
+
+This section records the confirmed SectionPage rule for temporary Workspace selection modes.
+
+### Goal
+
+`SectionPage` will have multiple workflows where the user selects items directly in the Workspace document flow.
+These workflows must share the same interaction model and visual feedback.
+
+The current known modes are:
+
+```text
+WrapAsAtomicSectionMode
+SectionVariantSelectionMode
+```
+
+Future modes should reuse the same behavior instead of adding another one-off selection implementation.
+
+### Shared mode model
+
+Recommended page-level model:
+
+```text
+WorkspaceSelectionMode
+  modeId
+  label
+  selectedItemIds
+  candidates
+  selectionStateByItemId
+  disabledEditingActions
+  primaryAction
+  secondaryActions
+```
+
+`modeId` is a page/workspace concern. Child display components should not branch on it.
+
+`selectionStateByItemId` maps each visible top-level Workspace item to:
+
+```text
+none
+selectable
+selected
+unavailable
+```
+
+### Selection is separate from normal node selection
+
+Workspace selection mode is not the same thing as normal selected node state.
+
+Normal selection:
+
+- updates `SectionTree`;
+- updates `Workspace` active item;
+- updates `SectionInspector`.
+
+Workspace selection mode:
+
+- selects items for a temporary operation;
+- may not update Inspector;
+- must not accidentally trigger Word edit, delete, move, InsertPoint, or ordinary context-menu actions;
+- exits only through the mode toolbar actions such as confirm, cancel, or clear.
+
+### Generic click behavior
+
+When a Workspace selection mode is active:
+
+- clicking a selectable top-level item toggles selected / unselected;
+- clicking a selected item cancels its selected state;
+- clicking an unavailable item does nothing and keeps the unavailable reason visible or available;
+- clicking nested children does nothing unless the active mode explicitly supports nested selection;
+- clicking blank Workspace space does not clear the selection.
+
+Selected items must visibly change in the same strength class as the existing `as` upgrade selection feedback.
+
+### Mode: WrapAsAtomicSectionMode
+
+Entry:
+
+```text
+Workspace top-right action -> upgrade to as
+```
+
+Selectable items:
+
+- top-level `ContentBlock`;
+- top-level group-type `CompositeBlock`.
+
+Unavailable items:
+
+- existing `AtomicSection`;
+- nested children.
+
+Confirm behavior:
+
+- requires at least two selected items;
+- opens the upgrade panel;
+- later calls `/api/cms-v2/sections/{sectionId}/items/wrap-as-atomic-section`;
+- uses page-level blocking while the API is running.
+
+### Mode: SectionVariantSelectionMode
+
+Entry:
+
+```text
+SectionTree -> Section root node context menu -> Create SectionVariant
+```
+
+Flow:
+
+1. `SectionVariantCreatePanel` collects metadata.
+2. `SectionPage` calls `POST /api/cms-v2/section-variants/selection-preview`.
+3. Preview success closes the panel and enters `SectionVariantSelectionMode`.
+4. Workspace initializes selected state from `defaultSelected`.
+5. User reviews and adjusts selection in the document flow.
+
+Selectable items:
+
+- first version only supports top-level `SectionItem`.
+
+Unavailable items:
+
+- any candidate where preview API returns `selectable = false`;
+- nested `AtomicSectionItem`;
+- `CompositeBlock` child relations.
+
+Confirm behavior for the current round:
+
+- generates a pending `SectionVariantCreateSubmitPayload`;
+- does not call `POST /api/cms-v2/section-variants` yet;
+- allows empty selection.
+
+Future confirm behavior:
+
+- call `POST /api/cms-v2/section-variants`;
+- refresh `SectionTree` / Variant visibility after server-confirmed success;
+- do not automatically open the new `SectionVariant`.
+
+### Implementation migration rule
+
+Existing `as` upgrade selection and `SectionVariant` selection must be migrated to the shared Workspace selection behavior before introducing another selection mode.
+
+Do not add more mode-specific props such as `upgradeSelected` or `variantSelectionState` to `SectionItemView`.
+Use generic selection state and keep business-specific rules in `SectionPage` or mode-specific page logic.

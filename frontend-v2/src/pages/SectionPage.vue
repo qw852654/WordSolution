@@ -54,6 +54,9 @@ const selectedStructureNodeId = ref<string>()
 const activeInsertPointId = ref<string>()
 const activeCreatePanel = ref<InsertCreatePanelModel | null>(null)
 const sectionVariantCreateMetadata = ref<SectionVariantCreateMetadata | null>(null)
+const sectionVariantCreatePanelOpen = ref(false)
+const sectionVariantSelectionMode = ref(false)
+const sectionVariantSelectionFeedback = ref('')
 const sectionVariantCandidates = ref<SectionVariantSelectionCandidateModel[]>([])
 const sectionVariantPreviewState = ref<SectionVariantPreviewState>('idle')
 const sectionVariantPreviewError = ref('')
@@ -177,6 +180,11 @@ const sectionVariantPendingPayloadText = computed(() =>
   sectionVariantPendingPayload.value
     ? JSON.stringify(sectionVariantPendingPayload.value, null, 2)
     : '',
+)
+const sectionVariantSelectedCandidateCount = computed(
+  () =>
+    sectionVariantCandidates.value.filter((candidate) => candidate.selectable && candidate.selected)
+      .length,
 )
 
 function findSectionTreeNode(
@@ -336,6 +344,7 @@ function selectStructureNode(nodeId: string) {
   closeSectionTreeContextMenu()
   clearActiveInsertPoint()
   cancelWrapSelectionMode()
+  cancelSectionVariantSelectionMode()
 }
 
 function isWrappableWorkspaceItem(item: SectionWorkspaceFlowItemModel) {
@@ -352,6 +361,7 @@ function selectWorkspaceNode(nodeId: string, event?: MouseEvent) {
   closeSectionTreeContextMenu()
   clearActiveInsertPoint()
   clearWrapSelection()
+  cancelSectionVariantSelectionMode()
   void event
 }
 
@@ -405,6 +415,7 @@ function getInsertPositionLabel(insertPointId: string) {
 
 function requestInsert(request: InsertRequestModel) {
   cancelWrapSelectionMode()
+  cancelSectionVariantSelectionMode()
   activeInsertPointId.value = request.insertPointId
   insertCreateError.value = ''
 
@@ -1015,6 +1026,8 @@ function openSectionVariantCreatePanel() {
   activeCreatePanel.value = null
   insertFeedback.value = ''
   insertCreateError.value = ''
+  sectionVariantSelectionMode.value = false
+  sectionVariantSelectionFeedback.value = ''
   sectionVariantCandidates.value = []
   sectionVariantPreviewState.value = 'idle'
   sectionVariantPreviewError.value = ''
@@ -1026,19 +1039,29 @@ function openSectionVariantCreatePanel() {
     difficulty: 'Basic',
     description: '',
   }
+  sectionVariantCreatePanelOpen.value = true
 }
 
-function closeSectionVariantCreatePanel() {
+function clearSectionVariantCreationFlow() {
   sectionVariantCreateMetadata.value = null
+  sectionVariantCreatePanelOpen.value = false
+  sectionVariantSelectionMode.value = false
+  sectionVariantSelectionFeedback.value = ''
   sectionVariantCandidates.value = []
   sectionVariantPreviewState.value = 'idle'
   sectionVariantPreviewError.value = ''
   sectionVariantPendingPayload.value = null
 }
 
+function closeSectionVariantCreatePanel() {
+  clearSectionVariantCreationFlow()
+}
+
 async function requestSectionVariantSelectionPreview(metadata: SectionVariantCreateMetadata) {
   sectionVariantCreateMetadata.value = { ...metadata }
   sectionVariantCandidates.value = []
+  sectionVariantSelectionMode.value = false
+  sectionVariantSelectionFeedback.value = ''
   sectionVariantPreviewState.value = 'loading'
   sectionVariantPreviewError.value = ''
   sectionVariantPendingPayload.value = null
@@ -1051,11 +1074,65 @@ async function requestSectionVariantSelectionPreview(metadata: SectionVariantCre
 
     sectionVariantCandidates.value = candidates.map(mapSectionVariantSelectionCandidate)
     sectionVariantPreviewState.value = 'ready'
+    sectionVariantCreatePanelOpen.value = false
+    sectionVariantSelectionMode.value = true
+    sectionVariantSelectionFeedback.value = t('sectionPage.workspace.variantSelection.feedbackReady', {
+      count: sectionVariantSelectedCandidateCount.value,
+    })
   } catch (error) {
     sectionVariantPreviewState.value = 'error'
     sectionVariantPreviewError.value =
       error instanceof Error ? error.message : t('sectionPage.sectionVariantCreate.previewFailed')
   }
+}
+
+function toggleSectionVariantSelection(sectionItemId: number) {
+  const candidate = sectionVariantCandidates.value.find(
+    (item) => item.sectionItemId === sectionItemId,
+  )
+
+  if (!candidate?.selectable) {
+    sectionVariantSelectionFeedback.value =
+      candidate?.unavailableReason ?? t('sectionPage.workspace.variantSelection.unavailableItem')
+    return
+  }
+
+  sectionVariantCandidates.value = sectionVariantCandidates.value.map((item) =>
+    item.sectionItemId === sectionItemId ? { ...item, selected: !item.selected } : item,
+  )
+  sectionVariantSelectionFeedback.value = t('sectionPage.workspace.variantSelection.feedbackUpdated', {
+    count: sectionVariantSelectedCandidateCount.value,
+  })
+}
+
+function clearSectionVariantSelection() {
+  sectionVariantCandidates.value = sectionVariantCandidates.value.map((candidate) =>
+    candidate.selectable ? { ...candidate, selected: false } : candidate,
+  )
+  sectionVariantSelectionFeedback.value = t('sectionPage.workspace.variantSelection.feedbackCleared')
+}
+
+function cancelSectionVariantSelectionMode() {
+  sectionVariantSelectionMode.value = false
+  sectionVariantSelectionFeedback.value = ''
+  sectionVariantCandidates.value = []
+  sectionVariantCreateMetadata.value = null
+  sectionVariantCreatePanelOpen.value = false
+}
+
+function confirmSectionVariantSelection() {
+  if (!sectionVariantCreateMetadata.value) {
+    return
+  }
+
+  submitSectionVariantPendingPayload({
+    ...sectionVariantCreateMetadata.value,
+    selectedSectionItemIds: sectionVariantCandidates.value
+      .filter((candidate) => candidate.selectable && candidate.selected)
+      .map((candidate) => candidate.sectionItemId),
+  })
+  sectionVariantSelectionMode.value = false
+  sectionVariantSelectionFeedback.value = ''
 }
 
 function submitSectionVariantPendingPayload(payload: SectionVariantCreateSubmitPayload) {
@@ -1311,6 +1388,11 @@ function handleDocumentKeydown(event: KeyboardEvent) {
     return
   }
 
+  if (event.key === 'Escape' && sectionVariantSelectionMode.value && !sectionVariantCreatePanelOpen.value) {
+    cancelSectionVariantSelectionMode()
+    return
+  }
+
   if (event.key === 'Escape' && teachingTopicDrawerOpen.value) {
     closeTeachingTopicDrawer()
   }
@@ -1362,6 +1444,9 @@ watch(sectionId, () => {
         :wrap-selection-mode="wrapSelectionMode"
         :wrap-selected-node-ids="wrapSelectedNodeIds"
         :wrap-selection-feedback="wrapSelectionFeedback"
+        :variant-selection-mode="sectionVariantSelectionMode"
+        :variant-selection-candidates="sectionVariantCandidates"
+        :variant-selection-feedback="sectionVariantSelectionFeedback"
         :collapsed-workspace-node-ids="collapsedWorkspaceNodeIdList"
         @select-node="selectWorkspaceNode"
         @toggle-workspace-node-collapse="toggleWorkspaceNodeCollapse"
@@ -1371,6 +1456,10 @@ watch(sectionId, () => {
         @clear-wrap-selection="clearWrapSelection"
         @toggle-wrap-node-selection="toggleWrapNodeSelection"
         @request-wrap-as-atomic-section="requestWrapAsAtomicSection"
+        @toggle-variant-selection="toggleSectionVariantSelection"
+        @clear-variant-selection="clearSectionVariantSelection"
+        @cancel-variant-selection="cancelSectionVariantSelectionMode"
+        @confirm-variant-selection="confirmSectionVariantSelection"
         @request-atomic-child-content-block="requestAtomicChildContentBlock"
         @request-atomic-move="requestAtomicMove"
         @request-atomic-rename="requestAtomicRename"
@@ -1403,7 +1492,7 @@ watch(sectionId, () => {
 
     <Teleport to="body">
       <div
-        v-if="sectionVariantCreateMetadata"
+        v-if="sectionVariantCreatePanelOpen && sectionVariantCreateMetadata"
         class="fixed inset-0 z-[60] flex min-h-screen items-center justify-center p-4"
         role="dialog"
         aria-modal="true"
@@ -1423,28 +1512,30 @@ watch(sectionId, () => {
             :section-title="sectionShell.title"
             :preview-state="sectionVariantPreviewState"
             :preview-error="sectionVariantPreviewError"
+            selection-mode="workspace"
             @cancel="closeSectionVariantCreatePanel"
             @request-preview="requestSectionVariantSelectionPreview"
-            @submit="submitSectionVariantPendingPayload"
           />
-
-          <section
-            v-if="sectionVariantPendingPayload"
-            class="rounded-lg border bg-card p-3 text-card-foreground"
-            aria-live="polite"
-          >
-            <div class="mb-2">
-              <p class="text-sm font-medium">
-                {{ t('sectionPage.sectionVariantCreate.pendingPayloadTitle') }}
-              </p>
-              <p class="text-xs text-muted-foreground">
-                {{ t('sectionPage.sectionVariantCreate.pendingPayloadDescription') }}
-              </p>
-            </div>
-            <pre class="max-h-56 overflow-auto rounded-md border bg-muted/30 p-3 text-xs">{{ sectionVariantPendingPayloadText }}</pre>
-          </section>
         </div>
       </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <section
+        v-if="sectionVariantPendingPayload"
+        class="fixed bottom-3 right-3 z-50 max-w-xl rounded-lg border bg-card p-3 text-card-foreground"
+        aria-live="polite"
+      >
+        <div class="mb-2">
+          <p class="text-sm font-medium">
+            {{ t('sectionPage.sectionVariantCreate.pendingPayloadTitle') }}
+          </p>
+          <p class="text-xs text-muted-foreground">
+            {{ t('sectionPage.sectionVariantCreate.pendingPayloadDescription') }}
+          </p>
+        </div>
+        <pre class="max-h-56 overflow-auto rounded-md border bg-muted/30 p-3 text-xs">{{ sectionVariantPendingPayloadText }}</pre>
+      </section>
     </Teleport>
 
     <SectionTreeContextMenu

@@ -120,6 +120,8 @@ const zhCN = {
     sectionVariantCreate: {
       description:
         '先填写 SectionVariant 元数据，再审核并勾选 SectionItem 候选项。当前只使用 Mock Data，不调用 API。',
+      workspaceDescription:
+        '先填写 SectionVariant 元数据；预览成功后会进入 Workspace 选择模式，在文档流中选择 SectionItem。',
       previewLoading: '正在通过 selection preview API 读取 SectionItem 候选项...',
       previewError: 'SectionItem 候选项读取失败。',
       stepMetadata: '步骤 1 / 元数据',
@@ -498,6 +500,16 @@ const zhCN = {
         blockingTitle: '正在升级为 AtomicSection',
         blockingDescription: 'CMS V2 API 正在执行事务，SectionPage 已暂时锁定。',
         feedbackSuccess: '已将选中块升级为 AtomicSection：{title}。',
+      },
+      variantSelection: {
+        selectedCount: '已选择 {count} 个 SectionItem',
+        confirmAction: '确认选择',
+        clearAction: '清空选择',
+        exitAction: '取消选择',
+        feedbackReady: '已进入 Workspace 选择模式，默认选择 {count} 个 SectionItem。',
+        feedbackUpdated: '当前已选择 {count} 个 SectionItem。',
+        feedbackCleared: '已清空 SectionVariant 选择。',
+        unavailableItem: '这个 SectionItem 当前不可选。',
       },
       insertPanel: {
         insertPositionLabel: '当前选中的插入位置',

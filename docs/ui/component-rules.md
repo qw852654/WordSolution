@@ -1306,3 +1306,156 @@ SectionPage -> SectionTree -> Section 根节点右键菜单 -> 新建 SectionVar
 - `SectionVariantCreatePanel` 不读取 Pinia。
 - `SectionVariantCreatePanel` 不持有 `SectionPage` 页面状态。
 - `SectionTree` 只显示根节点右键入口并 emit 动作，不打开面板、不请求 preview。
+
+## Current Update: SectionVariant Workspace Selection Mode
+
+This section records the confirmed component boundary for the current SectionVariant creation round.
+
+### SectionVariantCreatePanel
+
+- In `selectionMode = "panel"`, the component may show the two-step mock flow in `ComponentLab`: metadata first, then `SectionVariantSelectionList`.
+- In `selectionMode = "workspace"`, the component only collects metadata and emits `requestPreview(metadata)`.
+- In real `SectionPage`, `SectionVariantCreatePanel` must not render the candidate list after preview succeeds.
+- The component still does not call API, does not read Pinia, and does not own `SectionPage` state.
+
+### SectionVariantSelectionList / SectionVariantSelectionItem
+
+- These components are kept for `ComponentLab` / Mock Data verification.
+- They are not the real `SectionPage` selection interaction.
+- The real page selection happens in `SectionWorkspace` document flow.
+
+### SectionWorkspace VariantSelectionMode
+
+- `SectionPage` calls `POST /api/cms-v2/section-variants/selection-preview`.
+- Preview success closes `SectionVariantCreatePanel` and enters `SectionWorkspace` `VariantSelectionMode`.
+- `SectionWorkspace` receives the preview candidates and displays selected / unselected / unavailable state on top-level `SectionItemView`.
+- Only top-level `SectionItem` entries are selectable in the first version.
+- Nested `AtomicSectionItem` and `CompositeBlock` child relations are visible as preview content only and must not be independently selectable in this round.
+- Insert points, action rails, move, delete, and Word edit actions are disabled while `VariantSelectionMode` is active.
+- Confirming selection only emits the final selected `SectionItemId` list back to `SectionPage`.
+- This round generates a pending payload for manual inspection and does not call `POST /api/cms-v2/section-variants`.
+## Current Update: Shared Workspace Selection Mode
+
+This section records the confirmed shared behavior for Workspace selection modes.
+It supersedes adding one-off selection props for every new feature.
+
+### Why this exists
+
+`SectionWorkspace` already has more than one temporary selection workflow:
+
+- `WrapAsAtomicSectionMode`: user selects top-level items and upgrades them into `as` / `AtomicSection`.
+- `SectionVariantSelectionMode`: user selects top-level `SectionItem` entries for a new `SectionVariant`.
+- Future modes may also require selecting document-flow items.
+
+These workflows must share one UI behavior layer instead of each feature inventing its own visual state and click handling.
+
+### Component boundary
+
+`SectionPage` owns business rules:
+
+- which selection mode is active;
+- which items are selectable;
+- selected item ids;
+- unavailable reasons;
+- confirm / cancel behavior;
+- API calls or pending payload generation;
+- page-level blocking state.
+
+`SectionWorkspace` owns shared selection interaction:
+
+- renders the active selection mode toolbar;
+- forwards item clicks as selection intents when a selection mode is active;
+- toggles selectable item selection;
+- disables normal editing interactions when required by the active mode;
+- passes generic selection state into `SectionItemView`.
+
+`SectionItemView` owns only generic selection visuals:
+
+- selected;
+- selectable but not selected;
+- unavailable;
+- none.
+
+`SectionItemView` must not understand whether the current mode is `WrapAsAtomicSectionMode`, `SectionVariantSelectionMode`, or a future selection mode.
+
+### Generic selection state
+
+Do not keep adding mode-specific props such as:
+
+```text
+upgradeSelected
+variantSelectionState
+xxxSelected
+```
+
+Use a shared state shape instead:
+
+```text
+WorkspaceItemSelectionState
+  modeId
+  state: none | selectable | selected | unavailable
+  unavailableReason?
+```
+
+Recommended component prop boundary:
+
+```text
+SectionItemView
+  selectionState?: none | selectable | selected | unavailable
+  selectionUnavailableReason?: string
+```
+
+If a toolbar or debug label needs to know the mode, keep `modeId` at `SectionWorkspace` / page level. Do not make child display components branch on feature-specific modes.
+
+### Shared visual rule
+
+Selected items in any Workspace selection mode must have a clear visual change.
+The selected feedback should be at least as visible as the existing `as` upgrade selection feedback.
+
+Use semantic theme tokens with concrete UI meaning, for example:
+
+```text
+--workspace-selection-selected-background
+--workspace-selection-selected-border
+--workspace-selection-selected-marker
+--workspace-selection-unavailable-opacity
+```
+
+Do not use ad-hoc color values in `SectionItemView`, `SectionWorkspace`, or mode-specific components.
+If the required token does not exist, add the token first instead of writing a one-off color.
+
+### Editing lock while selecting
+
+When a Workspace selection mode is active, the mode config decides which ordinary editing behaviors are disabled.
+For the current SectionPage modes, the following are disabled:
+
+- InsertPoint interactions;
+- action rail buttons;
+- move / delete;
+- Word edit;
+- context menus that mutate structure;
+- ordinary Inspector selection changes that would conflict with the mode.
+
+The disable rule belongs to the active mode config, not to `SectionItemView`.
+
+### Current mode mapping
+
+`WrapAsAtomicSectionMode`:
+
+- entry: Workspace top-right `upgrade to as` action;
+- selectable: top-level `ContentBlock` and group-type `CompositeBlock`;
+- unavailable: existing `AtomicSection`;
+- confirm: opens the upgrade panel and later calls the wrap-as-atomic-section API.
+
+`SectionVariantSelectionMode`:
+
+- entry: `SectionTree -> Section root context menu -> Create SectionVariant`;
+- selection source: `selection-preview` API result;
+- selectable / unavailable: use API result as source of truth;
+- confirm: currently creates a pending payload for manual inspection; later calls `POST /api/cms-v2/section-variants`.
+
+### ComponentLab rule
+
+If a reusable selection toolbar, selection overlay, or `WorkspaceSelectionMode` helper component is extracted, it must be placed in `ComponentLab` with Mock Data before production use.
+
+If the change only wires page-level state inside `SectionPage` and `SectionWorkspace`, ComponentLab is not required for that small round.

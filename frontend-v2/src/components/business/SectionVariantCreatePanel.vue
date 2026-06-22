@@ -17,6 +17,7 @@ const props = defineProps<{
   sectionTitle?: string
   previewState?: SectionVariantPreviewState
   previewError?: string
+  selectionMode?: 'panel' | 'workspace'
 }>()
 
 const emit = defineEmits<{
@@ -34,6 +35,7 @@ const selectionCandidates = ref<SectionVariantSelectionCandidateModel[]>([])
 
 const titleIsValid = computed(() => metadata.title.trim().length > 0)
 const usesExternalPreview = computed(() => props.previewState !== undefined)
+const usesWorkspaceSelection = computed(() => props.selectionMode === 'workspace')
 const previewIsLoading = computed(() => props.previewState === 'loading')
 const selectedSectionItemIds = computed(() =>
   selectionCandidates.value
@@ -126,7 +128,7 @@ watch(
       return
     }
 
-    if (state === 'ready') {
+    if (state === 'ready' && !usesWorkspaceSelection.value) {
       activeStep.value = 'selection'
     }
 
@@ -149,7 +151,11 @@ watch(
             SectionVariantCreatePanel
           </h2>
           <p class="text-sm text-muted-foreground">
-            {{ t('components.sectionVariantCreate.description') }}
+            {{
+              usesWorkspaceSelection
+                ? t('components.sectionVariantCreate.workspaceDescription')
+                : t('components.sectionVariantCreate.description')
+            }}
           </p>
         </div>
         <div class="rounded-md border bg-background px-3 py-2 text-sm text-muted-foreground">
@@ -185,7 +191,7 @@ watch(
       </template>
 
       <SectionVariantSelectionList
-        v-else
+        v-else-if="!usesWorkspaceSelection"
         :candidates="selectionCandidates"
         @toggle="toggleCandidate"
       />
@@ -196,7 +202,7 @@ watch(
         {{ t('components.sectionVariantCreate.actions.cancel') }}
       </Button>
       <Button
-        v-if="activeStep === 'selection'"
+        v-if="activeStep === 'selection' && !usesWorkspaceSelection"
         type="button"
         variant="outline"
         @click="activeStep = 'metadata'"
