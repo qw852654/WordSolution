@@ -34,6 +34,15 @@ export interface CmsV2SectionVariantDto {
   updatedTime: string
 }
 
+export interface CmsV2SectionVariantItemDto {
+  id: number
+  sectionVariantId: number
+  sectionItemId: number
+  sortOrder: number
+  note?: string | null
+  updatedTime: string
+}
+
 export interface CmsV2TeachingStructureNodeDto {
   teachingTopic: CmsV2TeachingTopicDto
   section?: CmsV2SectionDto | null
@@ -416,6 +425,8 @@ export const cmsV2Api = {
     cmsV2PostJson<CmsV2CreatedEntityResultDto>('/section-variants', request),
   listSectionVariants: (sectionId?: number) =>
     cmsV2FetchJson<CmsV2SectionVariantDto[]>(withQuery('/section-variants', { sectionId })),
+  listSectionVariantItems: (sectionVariantId: number) =>
+    cmsV2FetchJson<CmsV2SectionVariantItemDto[]>(`/section-variants/${sectionVariantId}/items`),
   listSections: (teachingTopicId?: number) =>
     cmsV2FetchJson<CmsV2SectionDto[]>(withQuery('/sections', { teachingTopicId })),
   getSection: (sectionId: number) => cmsV2FetchJson<CmsV2SectionDto>(`/sections/${sectionId}`),

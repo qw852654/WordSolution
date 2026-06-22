@@ -22,6 +22,7 @@ import type {
 const props = defineProps<{
   block: StructuredBlockModel
   nodeIdMap?: Record<string, string>
+  readOnly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -116,6 +117,7 @@ function emitAtomicSectionItemRemove(child: StructuredBlockChildModel) {
         {{ isExpanded ? t('components.structuredBlock.collapse') : t('components.structuredBlock.expand') }}
       </Button>
       <Button
+        v-if="!readOnly"
         type="button"
         size="icon"
         variant="ghost"
@@ -137,7 +139,7 @@ function emitAtomicSectionItemRemove(child: StructuredBlockChildModel) {
         :item-id="child.id"
         :selected="child.selected"
         :disabled="child.disabled"
-        :actions="childContentBlockActions"
+        :actions="readOnly ? [] : childContentBlockActions"
         :data-workspace-node-id="nodeIdMap?.[child.nodeId] ?? child.nodeId"
         @select="emit('selectContentBlock', $event)"
         @open-word="emitAtomicSectionItemWord(child)"
@@ -148,6 +150,7 @@ function emitAtomicSectionItemRemove(child: StructuredBlockChildModel) {
         <ContentBlockDisplay
           v-if="child.kind === 'ContentBlock'"
           :block="child.block"
+          :read-only="readOnly"
           @open-word="emit('openWord', $event)"
           @refresh-preview="emit('refreshPreview', $event)"
           @open-more="emit('openContentBlockMore', $event)"
@@ -156,6 +159,7 @@ function emitAtomicSectionItemRemove(child: StructuredBlockChildModel) {
           v-else
           :block="child.block"
           :node-id-map="nodeIdMap"
+          :read-only="readOnly"
           @select="emit('selectContentBlock', $event)"
           @select-content-block="emit('selectContentBlock', $event)"
           @toggle-collapse="emit('toggleCollapse', $event)"

@@ -11,7 +11,11 @@ import InsertCreateOverlay from '@/components/containers/InsertCreateOverlay.vue
 import SectionStructurePanel from '@/components/containers/SectionStructurePanel.vue'
 import SectionTopToolbar from '@/components/containers/SectionTopToolbar.vue'
 import SectionWorkspace from '@/components/containers/SectionWorkspace.vue'
-import { cmsV2Api, type CmsV2SectionVariantSelectionCandidateDto } from '@/apis/cmsV2Client'
+import {
+  cmsV2Api,
+  type CmsV2SectionVariantItemDto,
+  type CmsV2SectionVariantSelectionCandidateDto,
+} from '@/apis/cmsV2Client'
 import { Button } from '@/components/ui/button'
 import { useAtomicSectionActions } from '@/composables/useAtomicSectionActions'
 import { useContentBlockActions } from '@/composables/useContentBlockActions'
@@ -63,6 +67,9 @@ const sectionVariantCandidates = ref<SectionVariantSelectionCandidateModel[]>([]
 const sectionVariantPreviewState = ref<SectionVariantPreviewState>('idle')
 const sectionVariantPreviewError = ref('')
 const isCreatingSectionVariant = ref(false)
+const sectionVariantItems = ref<CmsV2SectionVariantItemDto[]>([])
+const isLoadingSectionVariantItems = ref(false)
+const sectionVariantViewError = ref('')
 const sectionTreeContextMenu = ref<SectionTreeContextMenuModel | null>(null)
 const teachingTopicTreeContextMenu = ref<TeachingTopicTreeContextMenuModel | null>(null)
 const insertFeedback = ref('')
@@ -216,9 +223,70 @@ const selectedStructureNode = computed(() =>
     ? findSectionTreeNode(sectionTreeNodes.value, selectedStructureNodeId.value)
     : undefined,
 )
+const selectedSectionVariantNode = computed(() =>
+  selectedStructureNode.value?.kind === 'SectionVariant' ? selectedStructureNode.value : undefined,
+)
+const sectionVariantViewMode = computed(() => Boolean(selectedSectionVariantNode.value))
+const sectionVariantItemCount = computed(() =>
+  sectionVariantViewMode.value ? sectionVariantItems.value.length : undefined,
+)
+const sectionVariantFlowItems = computed<SectionWorkspaceFlowItemModel[]>(() => {
+  if (!sectionVariantViewMode.value) {
+    return []
+  }
+
+  const flowItemBySectionItemId = new Map<number, SectionWorkspaceFlowItemModel>()
+
+  for (const item of sectionWorkspaceFlowItems.value) {
+    if (typeof item.sectionItemId === 'number') {
+      flowItemBySectionItemId.set(item.sectionItemId, item)
+    }
+  }
+
+  return [...sectionVariantItems.value]
+    .sort((left, right) => left.sortOrder - right.sortOrder || left.id - right.id)
+    .map((item) => flowItemBySectionItemId.get(item.sectionItemId))
+    .filter((item): item is SectionWorkspaceFlowItemModel => Boolean(item))
+})
+const visibleWorkspaceFlowItems = computed(() =>
+  sectionVariantViewMode.value ? sectionVariantFlowItems.value : sectionWorkspaceFlowItems.value,
+)
+const sectionVariantReadOnlyLabel = computed(() =>
+  selectedSectionVariantNode.value
+    ? t('sectionPage.sectionVariantView.readOnlyLabel', {
+        title: selectedSectionVariantNode.value.title,
+      })
+    : '',
+)
 
 const contextTargetNodeId = computed(() => sectionTreeContextMenu.value?.node.id)
 const teachingTopicContextTargetNodeId = computed(() => teachingTopicTreeContextMenu.value?.node.id)
+
+function clearSectionVariantView() {
+  sectionVariantItems.value = []
+  isLoadingSectionVariantItems.value = false
+  sectionVariantViewError.value = ''
+}
+
+async function loadSectionVariantItemsForNode(node?: SectionTreeNodeModel) {
+  if (node?.kind !== 'SectionVariant' || typeof node.sectionVariantId !== 'number') {
+    clearSectionVariantView()
+    return
+  }
+
+  isLoadingSectionVariantItems.value = true
+  sectionVariantViewError.value = ''
+
+  try {
+    sectionVariantItems.value = await cmsV2Api.listSectionVariantItems(node.sectionVariantId)
+  } catch (error) {
+    sectionVariantItems.value = []
+    sectionVariantViewError.value =
+      error instanceof Error ? error.message : t('sectionPage.sectionVariantView.loadFailed')
+  } finally {
+    isLoadingSectionVariantItems.value = false
+  }
+}
 
 async function loadCurrentSectionPage() {
   const loadId = ++sectionPageLoadSequence
@@ -248,6 +316,12 @@ async function loadCurrentSectionPage() {
     ) {
       selectedStructureNodeId.value = data.defaultSelectedNodeId
     }
+
+    await loadSectionVariantItemsForNode(
+      selectedStructureNodeId.value
+        ? findSectionTreeNode(data.treeNodes, selectedStructureNodeId.value)
+        : undefined,
+    )
   } catch (error) {
     if (loadId !== sectionPageLoadSequence) {
       return
@@ -256,6 +330,7 @@ async function loadCurrentSectionPage() {
     sectionPageData.value = null
     selectedStructureNodeId.value = undefined
     selectedTeachingTopicId.value = undefined
+    clearSectionVariantView()
     sectionPageError.value =
       error instanceof Error ? error.message : t('sectionPage.api.loadError')
   } finally {
@@ -351,6 +426,7 @@ function selectStructureNode(nodeId: string) {
   }
 
   selectedStructureNodeId.value = nodeId
+  clearSectionVariantView()
   closeSectionTreeContextMenu()
   clearActiveInsertPoint()
   cancelWrapSelectionMode()
@@ -372,6 +448,7 @@ function selectWorkspaceNode(nodeId: string, event?: MouseEvent) {
   }
 
   selectedStructureNodeId.value = nodeId
+  clearSectionVariantView()
   closeSectionTreeContextMenu()
   clearActiveInsertPoint()
   clearWrapSelection()
@@ -404,6 +481,22 @@ function toggleWrapNodeSelection(nodeId: string) {
 }
 
 function selectStructureNodeFromTree(nodeId: string) {
+  if (isCreatingSectionVariant.value) {
+    return
+  }
+
+  const node = findSectionTreeNode(sectionTreeNodes.value, nodeId)
+
+  if (node?.kind === 'SectionVariant') {
+    selectedStructureNodeId.value = nodeId
+    closeSectionTreeContextMenu()
+    clearActiveInsertPoint()
+    cancelWrapSelectionMode()
+    cancelSectionVariantSelectionMode()
+    void loadSectionVariantItemsForNode(node)
+    return
+  }
+
   selectStructureNode(nodeId)
   workspaceScrollTargetNodeId.value = nodeId
   workspaceScrollRequestKey.value += 1
@@ -1500,7 +1593,7 @@ watch(sectionId, () => {
       />
       <SectionWorkspace
         :section="sectionShell"
-        :flow-items="sectionWorkspaceFlowItems"
+        :flow-items="visibleWorkspaceFlowItems"
         :selected-node-id="selectedStructureNodeId"
         :workspace-node-map="workspaceNodeMap"
         :scroll-target-node-id="workspaceScrollTargetNodeId"
@@ -1515,6 +1608,13 @@ watch(sectionId, () => {
         :variant-selection-feedback="sectionVariantSelectionFeedback"
         :variant-selection-error="sectionVariantCreateError"
         :variant-selection-submitting="isCreatingSectionVariant"
+        :read-only-mode="sectionVariantViewMode"
+        :read-only-label="sectionVariantReadOnlyLabel"
+        :read-only-description="sectionVariantViewMode ? t('sectionPage.sectionVariantView.readOnlyDescription') : ''"
+        :view-loading="isLoadingSectionVariantItems"
+        :view-error="sectionVariantViewError"
+        :empty-title="sectionVariantViewMode ? t('sectionPage.sectionVariantView.emptyTitle') : ''"
+        :empty-description="sectionVariantViewMode ? t('sectionPage.sectionVariantView.emptyDescription') : ''"
         :collapsed-workspace-node-ids="collapsedWorkspaceNodeIdList"
         @select-node="selectWorkspaceNode"
         @toggle-workspace-node-collapse="toggleWorkspaceNodeCollapse"
@@ -1545,7 +1645,11 @@ watch(sectionId, () => {
 
       <aside class="flex min-h-0 flex-col gap-3">
         <SectionTopToolbar />
-        <SectionInspector class="min-h-0 flex-1" :node="selectedStructureNode" />
+        <SectionInspector
+          class="min-h-0 flex-1"
+          :node="selectedStructureNode"
+          :variant-item-count="sectionVariantItemCount"
+        />
       </aside>
     </section>
 

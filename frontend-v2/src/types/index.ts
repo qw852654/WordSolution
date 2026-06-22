@@ -279,6 +279,7 @@ export interface StructuredBlockModel {
   id: string
   title: string
   blockKind: StructuredBlockKind
+  typeLabel?: string
   contentBlockId?: number
   status: string
   difficulty: string

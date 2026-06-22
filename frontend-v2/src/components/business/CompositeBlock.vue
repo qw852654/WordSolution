@@ -23,6 +23,7 @@ defineOptions({
 const props = defineProps<{
   block: StructuredBlockModel
   nodeIdMap?: Record<string, string>
+  readOnly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -95,7 +96,7 @@ function emitRelationRemove(child: StructuredBlockChildModel) {
 <template>
   <StructuredContainer
     :title="block.title"
-    :meta="t('components.structuredBlock.compositeBlock')"
+    :meta="block.typeLabel || t('components.structuredBlock.compositeBlock')"
     :difficulty-marker-class="difficultyMarkerClass"
     :difficulty-marker-label="difficultyMarkerLabel"
     :selected="block.selected"
@@ -114,6 +115,7 @@ function emitRelationRemove(child: StructuredBlockChildModel) {
         {{ isExpanded ? t('components.structuredBlock.collapse') : t('components.structuredBlock.expand') }}
       </Button>
       <Button
+        v-if="!readOnly"
         type="button"
         size="icon"
         variant="ghost"
@@ -135,7 +137,7 @@ function emitRelationRemove(child: StructuredBlockChildModel) {
         :item-id="child.id"
         :selected="child.selected"
         :disabled="child.disabled"
-        :actions="childContentBlockActions"
+        :actions="readOnly ? [] : childContentBlockActions"
         :data-workspace-node-id="nodeIdMap?.[child.nodeId] ?? child.nodeId"
         @select="emit('selectContentBlock', $event)"
         @open-word="emitRelationWord(child)"
@@ -146,6 +148,7 @@ function emitRelationRemove(child: StructuredBlockChildModel) {
         <ContentBlockDisplay
           v-if="child.kind === 'ContentBlock'"
           :block="child.block"
+          :read-only="readOnly"
           @open-word="emit('openWord', $event)"
           @refresh-preview="emit('refreshPreview', $event)"
           @open-more="emit('openContentBlockMore', $event)"
@@ -154,6 +157,7 @@ function emitRelationRemove(child: StructuredBlockChildModel) {
           v-else
           :block="child.block"
           :node-id-map="nodeIdMap"
+          :read-only="readOnly"
           @select="emit('selectContentBlock', $event)"
           @select-content-block="emit('selectContentBlock', $event)"
           @toggle-collapse="emit('toggleCollapse', $event)"

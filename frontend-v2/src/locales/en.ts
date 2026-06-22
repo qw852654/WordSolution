@@ -270,6 +270,8 @@ const en = {
       status: 'Status',
       itemCount: 'Child items',
       questionCount: 'Questions',
+      variantItemCount: 'Selected SectionItems',
+      variantItemCountValue: '{count} SectionItems',
       disabled: 'Disabled',
       yes: 'Yes',
       no: 'No',
@@ -485,6 +487,15 @@ const en = {
       blockingTitle: 'Creating SectionVariant',
       blockingDescription:
         'SectionPage is temporarily locked while the CMS V2 API completes the create transaction.',
+    },
+    sectionVariantView: {
+      readOnlyLabel: 'Read-only SectionVariant: {title}',
+      readOnlyDescription:
+        'The Workspace is only showing the top-level SectionItems selected by this SectionVariant.',
+      loadingDescription: 'Loading the SectionItems selected by this SectionVariant.',
+      loadFailed: 'Failed to load SectionVariant data.',
+      emptyTitle: 'This SectionVariant has not selected any SectionItem',
+      emptyDescription: 'Click the Section root node to return to the full Section editing flow.',
     },
     structure: {
       title: 'SectionStructurePanel',

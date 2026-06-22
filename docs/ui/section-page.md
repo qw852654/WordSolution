@@ -1084,3 +1084,75 @@ Existing `as` upgrade selection and `SectionVariant` selection must be migrated 
 
 Do not add more mode-specific props such as `upgradeSelected` or `variantSelectionState` to `SectionItemView`.
 Use generic selection state and keep business-specific rules in `SectionPage` or mode-specific page logic.
+
+## SectionVariant read-only view mode
+
+### Entry
+
+The first version of `SectionVariant` viewing is entered only from `SectionTree`:
+
+```text
+SectionTree -> click SectionVariant node
+```
+
+Clicking the `Section` root node exits `VariantViewMode` and returns to the full editable `Section` document flow.
+
+### Tree display rule
+
+In the UI, `SectionVariant` nodes are displayed at the same visual level as the `Section` root node.
+
+This is only a navigation / readability rule for `SectionTree`.
+The backend model remains:
+
+```text
+Section
+  -> SectionVariant[]
+```
+
+Do not create a separate persisted tree-node type for `SectionVariant`.
+
+### Data loading
+
+When a `SectionVariant` node is selected, `SectionPage` reads:
+
+```text
+GET /api/cms-v2/section-variants/{id}/items
+```
+
+Then it filters the already loaded full `Section` Workspace flow by `SectionVariantItem.sectionItemId`.
+
+The display order must follow:
+
+```text
+SectionVariantItem.SortOrder -> SectionVariantItem.Id
+```
+
+If a selected `SectionItem` cannot be resolved from the current full Section flow, it is skipped in the first version instead of inventing placeholder content.
+
+### Workspace behavior
+
+`VariantViewMode` is read-only.
+
+The Workspace must:
+
+- show only the top-level `SectionItem` entries selected by the `SectionVariant`;
+- show a clear read-only status in the Workspace header;
+- hide `InsertPoint`;
+- hide the `upgrade to as` action;
+- hide or disable move, delete, rename, Word edit, and other structure-editing entry points;
+- keep the page in the same Section context;
+- show an empty state when the `SectionVariant` contains no `SectionItem`.
+
+The first version does not support editing, deleting, renaming, copying, or reselecting `SectionVariant` contents from this mode.
+
+### Inspector behavior
+
+When the selected tree node is a `SectionVariant`, `SectionInspector` displays the `SectionVariant` metadata:
+
+- name;
+- type;
+- difficulty;
+- status;
+- selected `SectionItem` count.
+
+Selecting a `SectionVariant` should not automatically open a new page or switch to a future `SectionVariant` editor.

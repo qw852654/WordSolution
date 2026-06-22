@@ -250,6 +250,8 @@ const zhCN = {
       difficulty: '难度',
       itemCount: '子项数量',
       questionCount: '题目数量',
+      variantItemCount: '已选 SectionItem',
+      variantItemCountValue: '{count} 个 SectionItem',
       disabled: '是否禁用',
       yes: '是',
       no: '否',
@@ -469,6 +471,14 @@ const zhCN = {
       createFailed: 'SectionVariant 创建失败，请稍后重试。',
       blockingTitle: '正在创建 SectionVariant',
       blockingDescription: 'CMS V2 API 正在执行创建事务，SectionPage 已暂时锁定。',
+    },
+    sectionVariantView: {
+      readOnlyLabel: '只读查看 SectionVariant：{title}',
+      readOnlyDescription: '当前 Workspace 只显示这个 SectionVariant 选中的顶层 SectionItem。',
+      loadingDescription: '正在读取这个 SectionVariant 选中的 SectionItem。',
+      loadFailed: 'SectionVariant 数据读取失败。',
+      emptyTitle: '这个 SectionVariant 暂未选择任何 SectionItem',
+      emptyDescription: '点击 Section 根节点可回到完整 Section 编辑流。',
     },
     structure: {
       title: 'SectionStructurePanel',

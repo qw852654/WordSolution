@@ -8,6 +8,7 @@ import type { ContentBlockDisplayModel } from '@/types'
 
 const props = defineProps<{
   block: ContentBlockDisplayModel
+  readOnly?: boolean
 }>()
 
 defineEmits<{
@@ -38,7 +39,10 @@ const difficultyMarkerClass = computed(() => getDifficultyMarkerClass(props.bloc
     />
 
     <div class="min-w-0">
-      <div class="absolute right-0 top-0 flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+      <div
+        v-if="!readOnly"
+        class="absolute right-0 top-0 flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+      >
         <Button
           type="button"
           size="icon"

@@ -1489,3 +1489,50 @@ The disable rule belongs to the active mode config, not to `SectionItemView`.
 If a reusable selection toolbar, selection overlay, or `WorkspaceSelectionMode` helper component is extracted, it must be placed in `ComponentLab` with Mock Data before production use.
 
 If the change only wires page-level state inside `SectionPage` and `SectionWorkspace`, ComponentLab is not required for that small round.
+
+## SectionVariant read-only view responsibilities
+
+### SectionTree
+
+`SectionTree` may show `SectionVariant` nodes at the same visual level as the `Section` root node.
+This is a UI navigation rule only; the backend still stores `SectionVariant` under `Section`.
+
+`SectionTree` is responsible for:
+
+- selecting a `SectionVariant` node;
+- emitting that selection to `SectionPage`;
+- keeping `SectionVariant` context-menu actions out of the first version unless explicitly planned.
+
+It must not create a new persisted node type for `SectionVariant`.
+
+### SectionPage
+
+`SectionPage` owns `VariantViewMode`.
+
+It is responsible for:
+
+- reading `GET /api/cms-v2/section-variants/{id}/items`;
+- mapping `SectionVariantItem.sectionItemId` back to the already loaded full Section flow;
+- passing only the selected flow items into `SectionWorkspace`;
+- preserving the full Section data so clicking the `Section` root can restore editing immediately;
+- showing errors in Chinese when Variant items cannot be loaded.
+
+### SectionWorkspace
+
+`SectionWorkspace` must treat `VariantViewMode` as a read-only document-flow view.
+
+In this mode it must:
+
+- hide `InsertPoint`;
+- hide the `upgrade to as` action;
+- provide a read-only status label and description;
+- hide or disable editing actions including Word edit, move, delete, rename, and child insertion;
+- render an empty state when the Variant has no selected `SectionItem`.
+
+`SectionWorkspace` must not call the VariantItems API itself.
+
+### SectionInspector
+
+When the selected node is a `SectionVariant`, `SectionInspector` may show read-only Variant metadata and the loaded selected item count.
+
+It must not expose edit, delete, copy, or reselection actions for `SectionVariant` in the first version.

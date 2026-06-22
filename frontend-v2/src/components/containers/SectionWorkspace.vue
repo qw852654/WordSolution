@@ -50,6 +50,13 @@ const props = withDefaults(
     variantSelectionFeedback?: string
     variantSelectionError?: string
     variantSelectionSubmitting?: boolean
+    readOnlyMode?: boolean
+    readOnlyLabel?: string
+    readOnlyDescription?: string
+    viewLoading?: boolean
+    viewError?: string
+    emptyTitle?: string
+    emptyDescription?: string
     collapsedWorkspaceNodeIds?: string[]
     teachingNoteMode?: boolean
   }>(),
@@ -64,6 +71,13 @@ const props = withDefaults(
     variantSelectionCandidates: () => [],
     variantSelectionError: '',
     variantSelectionSubmitting: false,
+    readOnlyMode: false,
+    readOnlyLabel: '',
+    readOnlyDescription: '',
+    viewLoading: false,
+    viewError: '',
+    emptyTitle: '',
+    emptyDescription: '',
     collapsedWorkspaceNodeIds: () => [],
     teachingNoteMode: false,
   },
@@ -147,9 +161,13 @@ const activeWorkspaceSelectionMode = computed<WorkspaceSelectionMode | undefined
 const workspaceSelectionFeedback = computed(() =>
   props.variantSelectionMode ? props.variantSelectionFeedback : props.wrapSelectionFeedback,
 )
+const workspaceEmptyTitle = computed(() => props.emptyTitle || t('sectionPage.workspace.emptyTitle'))
+const workspaceEmptyDescription = computed(
+  () => props.emptyDescription || t('sectionPage.workspace.emptyDescription'),
+)
 const firstInsertPoint = computed<InsertPointModel>(() => ({
   id: 'insert-first-section-item',
-  label: t('sectionPage.workspace.emptyTitle'),
+  label: workspaceEmptyTitle.value,
 }))
 
 interface AtomicSectionWorkspaceActionPayload {
@@ -310,6 +328,11 @@ function getWorkspaceItemAriaLabel(item: SectionWorkspaceFlowItemModel) {
 }
 
 function handleWorkspaceItemSelect(item: SectionWorkspaceFlowItemModel, event?: MouseEvent) {
+  if (props.readOnlyMode) {
+    void event
+    return
+  }
+
   if (props.variantSelectionMode) {
     const candidate = getVariantCandidateForItem(item)
 
@@ -331,7 +354,9 @@ function handleWorkspaceItemSelect(item: SectionWorkspaceFlowItemModel, event?: 
 }
 
 function handleNestedWorkspaceSelection(itemId: string, event?: MouseEvent) {
-  if (props.wrapSelectionMode || props.variantSelectionMode) {
+  if (props.readOnlyMode || props.wrapSelectionMode || props.variantSelectionMode) {
+    void itemId
+    void event
     return
   }
 
@@ -350,6 +375,10 @@ function isInsertPointActive(insertPointId: string) {
 }
 
 function emitInsertRequest(insertPointId: string, actionType: InsertActionType) {
+  if (props.readOnlyMode) {
+    return
+  }
+
   emit('requestInsert', { insertPointId, actionType })
 }
 
@@ -429,7 +458,7 @@ function emitContentBlockRemove(item: SectionWorkspaceFlowItemModel) {
 }
 
 function getWorkspaceItemActions(item: SectionWorkspaceFlowItemModel) {
-  if (activeWorkspaceSelectionMode.value) {
+  if (props.readOnlyMode || activeWorkspaceSelectionMode.value) {
     return []
   }
 
@@ -562,6 +591,12 @@ watch(
         >
           {{ t('sectionPage.workspace.wrap.selectedCount', { count: wrapSelectedCount }) }}
         </span>
+        <span
+          v-if="readOnlyMode && readOnlyLabel"
+          class="text-muted-foreground"
+        >
+          {{ readOnlyLabel }}
+        </span>
         <template v-if="variantSelectionMode">
           <Button
             type="button"
@@ -595,7 +630,7 @@ watch(
           </Button>
         </template>
         <Button
-          v-else-if="!wrapSelectionMode"
+          v-else-if="!wrapSelectionMode && !readOnlyMode"
           type="button"
           size="sm"
           variant="outline"
@@ -639,6 +674,22 @@ watch(
       </div>
 
       <div
+        v-if="readOnlyMode && (readOnlyDescription || viewError || viewLoading)"
+        class="border-b px-3 py-2"
+        role="status"
+        aria-live="polite"
+      >
+        <p
+          class="rounded-md border bg-muted/20 px-2 py-1 text-xs"
+          :class="viewError ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'text-muted-foreground'"
+        >
+          <span v-if="viewLoading">{{ t('sectionPage.sectionVariantView.loadingDescription') }}</span>
+          <span v-else-if="viewError">{{ viewError }}</span>
+          <span v-else>{{ readOnlyDescription }}</span>
+        </p>
+      </div>
+
+      <div
         v-if="variantSelectionMode && variantSelectionError"
         class="border-b px-3 py-2"
         role="alert"
@@ -666,7 +717,7 @@ watch(
             v-for="(item, index) in flowItems"
             :key="item.id"
           >
-            <div v-if="index > 0 && !activeWorkspaceSelectionMode" class="space-y-1">
+            <div v-if="index > 0 && !activeWorkspaceSelectionMode && !readOnlyMode" class="space-y-1">
               <InsertPoint
                 :point="getInsertPointBefore(item, index)"
                 :selected="isInsertPointActive(getInsertPointBefore(item, index).id)"
@@ -699,11 +750,13 @@ watch(
               <ContentBlockDisplay
                 v-if="item.kind === 'ContentBlock'"
                 :block="item.block"
+                :read-only="readOnlyMode"
               />
               <AtomicSectionBlock
                 v-else-if="item.kind === 'AtomicSection'"
                 :block="item.block"
                 :node-id-map="workspaceNodeMap"
+                :read-only="readOnlyMode"
                 @select="handleNestedWorkspaceSelection"
                 @select-content-block="handleNestedWorkspaceSelection"
                 @toggle-collapse="emit('toggleWorkspaceNodeCollapse', $event)"
@@ -718,6 +771,7 @@ watch(
                 v-else
                 :block="item.block"
                 :node-id-map="workspaceNodeMap"
+                :read-only="readOnlyMode"
                 @select="handleNestedWorkspaceSelection"
                 @select-content-block="handleNestedWorkspaceSelection"
                 @toggle-collapse="emit('toggleWorkspaceNodeCollapse', $event)"
@@ -731,11 +785,11 @@ watch(
 
         <div v-else class="flex min-h-full items-center justify-center p-4">
           <div class="w-full max-w-2xl rounded-md border border-dashed bg-muted/10 p-4">
-            <p class="text-sm font-medium">{{ t('sectionPage.workspace.emptyTitle') }}</p>
+            <p class="text-sm font-medium">{{ workspaceEmptyTitle }}</p>
             <p class="mt-1 text-sm leading-6 text-muted-foreground">
-              {{ t('sectionPage.workspace.emptyDescription') }}
+              {{ workspaceEmptyDescription }}
             </p>
-            <div v-if="!activeWorkspaceSelectionMode" class="mt-3">
+            <div v-if="!activeWorkspaceSelectionMode && !readOnlyMode" class="mt-3">
               <InsertPoint
                 :point="firstInsertPoint"
                 selected

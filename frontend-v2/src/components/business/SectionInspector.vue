@@ -16,6 +16,7 @@ import type { SectionTreeNodeModel } from '@/types'
 
 const props = defineProps<{
   node?: SectionTreeNodeModel
+  variantItemCount?: number
 }>()
 
 const { t } = useI18n()
@@ -82,6 +83,16 @@ const detailRows = computed(() => {
       id: 'questionCount',
       label: t('components.sectionInspector.questionCount'),
       value: t('components.sectionTree.questionCount', { count: node.questionCount }),
+    })
+  }
+
+  if (node.kind === 'SectionVariant' && typeof props.variantItemCount === 'number') {
+    rows.push({
+      id: 'variantItemCount',
+      label: t('components.sectionInspector.variantItemCount'),
+      value: t('components.sectionInspector.variantItemCountValue', {
+        count: props.variantItemCount,
+      }),
     })
   }
 
