@@ -751,6 +751,7 @@ watch(
                 v-if="item.kind === 'ContentBlock'"
                 :block="item.block"
                 :read-only="readOnlyMode"
+                @open-word="emitContentBlockOpenWord(item)"
               />
               <AtomicSectionBlock
                 v-else-if="item.kind === 'AtomicSection'"
@@ -775,6 +776,7 @@ watch(
                 @select="handleNestedWorkspaceSelection"
                 @select-content-block="handleNestedWorkspaceSelection"
                 @toggle-collapse="emit('toggleWorkspaceNodeCollapse', $event)"
+                @open-word="emitContentBlockOpenWord(item)"
                 @open-content-block-relation-word="emit('requestContentBlockRelationOpenWord', $event)"
                 @move-content-block-relation="emit('requestContentBlockRelationMove', $event)"
                 @remove-content-block-relation="emit('requestContentBlockRelationRemove', $event)"

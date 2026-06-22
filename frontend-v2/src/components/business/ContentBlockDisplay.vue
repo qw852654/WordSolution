@@ -20,7 +20,12 @@ defineEmits<{
 
 const { t } = useI18n()
 
-const previewStateLabel = computed(() => t(`components.contentBlockDisplay.previewState.${props.block.htmlPreviewState}`))
+const hasReadyPreview = computed(
+  () => props.block.htmlPreviewState === 'ready' && Boolean(props.block.htmlPreview),
+)
+const previewStateLabel = computed(() =>
+  t(`components.contentBlockDisplay.previewState.${props.block.htmlPreviewState}`),
+)
 const difficultyMarkerClass = computed(() => getDifficultyMarkerClass(props.block.difficulty))
 </script>
 
@@ -40,7 +45,7 @@ const difficultyMarkerClass = computed(() => getDifficultyMarkerClass(props.bloc
 
     <div class="min-w-0">
       <div
-        v-if="!readOnly"
+        v-if="!readOnly && hasReadyPreview"
         class="absolute right-0 top-0 flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
       >
         <Button
@@ -79,13 +84,35 @@ const difficultyMarkerClass = computed(() => getDifficultyMarkerClass(props.bloc
       </div>
 
       <div
-        v-if="block.htmlPreviewState === 'ready' && block.htmlPreview"
+        v-if="hasReadyPreview"
         class="content-block-display-preview text-sm leading-7"
         v-html="block.htmlPreview"
       />
-      <p v-else class="text-sm text-muted-foreground">
-        {{ previewStateLabel }}
-      </p>
+      <div v-else class="grid gap-2 text-sm">
+        <p class="text-muted-foreground">
+          <span class="font-medium text-foreground">{{ block.role }}</span>
+          <span class="mx-2 text-muted-foreground">·</span>
+          <span>{{ previewStateLabel }}</span>
+        </p>
+        <div class="grid gap-1">
+          <p class="font-medium">{{ t('components.contentBlockDisplay.noWordDocument') }}</p>
+          <p class="text-muted-foreground">
+            {{ t('components.contentBlockDisplay.noWordDocumentDescription') }}
+          </p>
+        </div>
+        <div v-if="!readOnly">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            :disabled="block.disabled"
+            @click.stop="$emit('openWord', block.id)"
+          >
+            <FileText class="mr-1 size-4" />
+            {{ t('components.contentBlockDisplay.openWord') }}
+          </Button>
+        </div>
+      </div>
     </div>
   </article>
 </template>

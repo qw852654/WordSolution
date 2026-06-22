@@ -196,6 +196,8 @@ const zhCN = {
       openWord: 'Word 编辑',
       refreshPreview: '刷新预览',
       more: '更多',
+      noWordDocument: '这个 ContentBlock 还没有 Word 文档',
+      noWordDocumentDescription: '点击 Word 编辑会创建文档并打开编辑。',
       previewState: {
         ready: '预览已就绪',
         loading: '预览加载中',

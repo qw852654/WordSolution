@@ -281,6 +281,7 @@ export interface StructuredBlockModel {
   blockKind: StructuredBlockKind
   typeLabel?: string
   contentBlockId?: number
+  selfContent?: ContentBlockDisplayModel
   status: string
   difficulty: string
   summary: string

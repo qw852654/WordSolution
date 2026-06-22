@@ -210,6 +210,8 @@ const en = {
       openWord: 'Word edit',
       refreshPreview: 'Refresh preview',
       more: 'More',
+      noWordDocument: 'This ContentBlock does not have a Word document yet',
+      noWordDocumentDescription: 'Click Word edit to create the document and open it for editing.',
       previewState: {
         ready: 'Preview ready',
         loading: 'Preview loading',

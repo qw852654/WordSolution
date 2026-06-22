@@ -151,7 +151,7 @@ function emitAtomicSectionItemRemove(child: StructuredBlockChildModel) {
           v-if="child.kind === 'ContentBlock'"
           :block="child.block"
           :read-only="readOnly"
-          @open-word="emit('openWord', $event)"
+          @open-word="emitAtomicSectionItemWord(child)"
           @refresh-preview="emit('refreshPreview', $event)"
           @open-more="emit('openContentBlockMore', $event)"
         />
@@ -163,7 +163,7 @@ function emitAtomicSectionItemRemove(child: StructuredBlockChildModel) {
           @select="emit('selectContentBlock', $event)"
           @select-content-block="emit('selectContentBlock', $event)"
           @toggle-collapse="emit('toggleCollapse', $event)"
-          @open-word="emit('openWord', $event)"
+          @open-word="emitAtomicSectionItemWord(child)"
           @refresh-preview="emit('refreshPreview', $event)"
           @open-content-block-more="emit('openContentBlockMore', $event)"
           @open-content-block-relation-word="emit('openContentBlockRelationWord', $event)"

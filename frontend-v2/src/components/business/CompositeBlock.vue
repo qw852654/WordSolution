@@ -52,6 +52,12 @@ const childContentBlockActions: SectionItemViewAction[] = [
   'Remove',
 ]
 
+function emitSelfWord() {
+  if (props.block.contentBlockId) {
+    emit('openWord', props.block.id)
+  }
+}
+
 function createRelationActionPayload(
   child: StructuredBlockChildModel,
 ): ContentBlockRelationActionPayload | undefined {
@@ -130,6 +136,14 @@ function emitRelationRemove(child: StructuredBlockChildModel) {
 
     <template v-if="isExpanded">
     <p class="text-sm leading-6 text-muted-foreground">{{ block.summary }}</p>
+    <ContentBlockDisplay
+      v-if="block.selfContent"
+      :block="block.selfContent"
+      :read-only="readOnly"
+      @open-word="emitSelfWord"
+      @refresh-preview="emit('refreshPreview', $event)"
+      @open-more="emit('openContentBlockMore', $event)"
+    />
     <div v-if="block.children.length">
       <SectionItemView
         v-for="child in block.children"
@@ -149,7 +163,7 @@ function emitRelationRemove(child: StructuredBlockChildModel) {
           v-if="child.kind === 'ContentBlock'"
           :block="child.block"
           :read-only="readOnly"
-          @open-word="emit('openWord', $event)"
+          @open-word="emitRelationWord(child)"
           @refresh-preview="emit('refreshPreview', $event)"
           @open-more="emit('openContentBlockMore', $event)"
         />
@@ -161,7 +175,7 @@ function emitRelationRemove(child: StructuredBlockChildModel) {
           @select="emit('selectContentBlock', $event)"
           @select-content-block="emit('selectContentBlock', $event)"
           @toggle-collapse="emit('toggleCollapse', $event)"
-          @open-word="emit('openWord', $event)"
+          @open-word="emitRelationWord(child)"
           @refresh-preview="emit('refreshPreview', $event)"
           @open-content-block-more="emit('openContentBlockMore', $event)"
           @open-content-block-relation-word="emit('openContentBlockRelationWord', $event)"
