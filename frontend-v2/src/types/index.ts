@@ -40,6 +40,8 @@ export type SectionVariantCreateType =
 
 export type SectionVariantCreateDifficulty = 'Basic' | 'Medium' | 'Advanced' | 'Top'
 
+export type SectionVariantPreviewState = 'idle' | 'loading' | 'ready' | 'error'
+
 export interface SectionVariantCreateMetadata {
   sectionId: number
   title: string
@@ -103,6 +105,7 @@ export interface SectionTreeContextMenuPayload {
 }
 
 export type SectionTreeContextActionType =
+  | 'CreateSectionVariant'
   | 'CreateContentBlock'
   | 'CreateAtomicSection'
   | 'SearchExistingBlock'

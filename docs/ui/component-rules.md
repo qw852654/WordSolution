@@ -1284,3 +1284,25 @@ SectionPage -> SectionTree -> Section 根节点右键菜单 -> 新建 SectionVar
 ```
 
 禁止在 `TeachingStructureTree`、`Workspace` 顶部工具栏或其他临时位置新增第二入口。
+
+### SectionPage 真实预览模式
+
+`SectionVariantCreatePanel` 在 `SectionPage` 中进入真实预览模式时：
+
+- 第一步仍然只收集 `SectionVariant` 元数据。
+- 点击“下一步”后不直接进入选择列表，而是 emit `requestPreview(metadata)`。
+- `SectionPage` 调用 `POST /api/cms-v2/section-variants/selection-preview`。
+- 后端返回候选项后，`SectionPage` 把候选项与当前 Workspace 顶层 `SectionItem` 展示信息合并，再传回 `SectionVariantCreatePanel`。
+- `difficulty`、`defaultSelected`、`selectable`、`unavailableReason` 以 API 返回为准。
+- `title` 和 `displayType` 可由当前已加载的 Workspace 数据推导。
+- preview 失败时停留在元数据步骤，展示错误，不进入第二步。
+- 第二步提交时，本轮只生成待创建 payload 供人工确认。
+- 本轮不调用 `POST /api/cms-v2/section-variants`。
+- 本轮不创建真实 `SectionVariant`，不修改 `Section` 数据。
+
+组件边界保持不变：
+
+- `SectionVariantCreatePanel` 不直接调用 API。
+- `SectionVariantCreatePanel` 不读取 Pinia。
+- `SectionVariantCreatePanel` 不持有 `SectionPage` 页面状态。
+- `SectionTree` 只显示根节点右键入口并 emit 动作，不打开面板、不请求 preview。

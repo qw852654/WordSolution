@@ -133,6 +133,8 @@ const en = {
     sectionVariantCreate: {
       description:
         'Fill SectionVariant metadata first, then review and select SectionItem candidates. This uses Mock Data and does not call API.',
+      previewLoading: 'Loading SectionItem candidates from the selection preview API...',
+      previewError: 'Failed to load SectionItem candidates.',
       stepMetadata: 'Step 1 / Metadata',
       stepSelection: 'Step 2 / Select SectionItem',
       selectionTitle: 'SectionItem candidates',
@@ -300,6 +302,7 @@ const en = {
       target: 'Context target',
       rootRemoveDisabled: 'The Section root cannot be removed.',
       actions: {
+        CreateSectionVariant: 'Create SectionVariant',
         CreateContentBlock: 'Create ContentBlock',
         CreateAtomicSection: 'Create AtomicSection',
         SearchExistingBlock: 'Insert existing block',
@@ -468,6 +471,16 @@ const en = {
       sectionId: 'Section ID',
       teachingTopic: 'TeachingTopic',
       status: 'Status',
+    },
+    sectionVariantCreate: {
+      dialogLabel: 'Create SectionVariant',
+      closeLabel: 'Close SectionVariant create panel',
+      previewFailed: 'Selection preview failed. Please try again.',
+      pendingPayloadFeedback:
+        'Generated pending SectionVariant payload with {count} selected SectionItems.',
+      pendingPayloadTitle: 'Pending SectionVariant payload',
+      pendingPayloadDescription:
+        'This payload is for review only in this round. It has not been submitted to the create API.',
     },
     structure: {
       title: 'SectionStructurePanel',

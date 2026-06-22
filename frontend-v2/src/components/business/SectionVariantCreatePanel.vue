@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import type {
   SectionVariantCreateMetadata,
   SectionVariantCreateSubmitPayload,
+  SectionVariantPreviewState,
   SectionVariantSelectionCandidateModel,
 } from '@/types'
 
@@ -14,10 +15,13 @@ const props = defineProps<{
   initialMetadata: SectionVariantCreateMetadata
   candidates: SectionVariantSelectionCandidateModel[]
   sectionTitle?: string
+  previewState?: SectionVariantPreviewState
+  previewError?: string
 }>()
 
 const emit = defineEmits<{
   cancel: []
+  requestPreview: [metadata: SectionVariantCreateMetadata]
   submit: [payload: SectionVariantCreateSubmitPayload]
 }>()
 
@@ -29,6 +33,8 @@ const metadata = reactive<SectionVariantCreateMetadata>({ ...props.initialMetada
 const selectionCandidates = ref<SectionVariantSelectionCandidateModel[]>([])
 
 const titleIsValid = computed(() => metadata.title.trim().length > 0)
+const usesExternalPreview = computed(() => props.previewState !== undefined)
+const previewIsLoading = computed(() => props.previewState === 'loading')
 const selectedSectionItemIds = computed(() =>
   selectionCandidates.value
     .filter((candidate) => candidate.selectable && candidate.selected)
@@ -47,6 +53,10 @@ function resetState() {
   showValidation.value = false
 }
 
+function resetCandidates() {
+  selectionCandidates.value = props.candidates.map((candidate) => ({ ...candidate }))
+}
+
 function updateMetadata(value: SectionVariantCreateMetadata) {
   Object.assign(metadata, value)
 }
@@ -55,6 +65,17 @@ function goToSelection() {
   showValidation.value = true
 
   if (!titleIsValid.value) {
+    return
+  }
+
+  if (usesExternalPreview.value) {
+    emit('requestPreview', {
+      sectionId: metadata.sectionId,
+      title: metadata.title.trim(),
+      description: metadata.description?.trim() || undefined,
+      type: metadata.type,
+      difficulty: metadata.difficulty,
+    })
     return
   }
 
@@ -87,9 +108,32 @@ function handleSubmit() {
 }
 
 watch(
-  () => [props.initialMetadata, props.candidates] as const,
+  () => props.initialMetadata,
   resetState,
   { immediate: true, deep: true },
+)
+
+watch(
+  () => props.candidates,
+  resetCandidates,
+  { immediate: true, deep: true },
+)
+
+watch(
+  () => props.previewState,
+  (state) => {
+    if (!usesExternalPreview.value) {
+      return
+    }
+
+    if (state === 'ready') {
+      activeStep.value = 'selection'
+    }
+
+    if (state === 'error') {
+      activeStep.value = 'metadata'
+    }
+  },
 )
 </script>
 
@@ -116,12 +160,29 @@ watch(
     </header>
 
     <div class="grid gap-4 p-4">
-      <SectionVariantMetadataForm
-        v-if="activeStep === 'metadata'"
-        :model-value="metadata"
-        :show-validation="showValidation"
-        @update:model-value="updateMetadata"
-      />
+      <template v-if="activeStep === 'metadata'">
+        <SectionVariantMetadataForm
+          :model-value="metadata"
+          :show-validation="showValidation"
+          @update:model-value="updateMetadata"
+        />
+
+        <div
+          v-if="usesExternalPreview && previewState === 'loading'"
+          class="rounded-md border bg-muted/30 px-3 py-2 text-sm text-muted-foreground"
+          role="status"
+        >
+          {{ t('components.sectionVariantCreate.previewLoading') }}
+        </div>
+
+        <div
+          v-if="usesExternalPreview && previewState === 'error'"
+          class="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          role="alert"
+        >
+          {{ previewError || t('components.sectionVariantCreate.previewError') }}
+        </div>
+      </template>
 
       <SectionVariantSelectionList
         v-else
@@ -142,7 +203,12 @@ watch(
       >
         {{ t('components.sectionVariantCreate.actions.previous') }}
       </Button>
-      <Button v-if="activeStep === 'metadata'" type="button" @click="goToSelection">
+      <Button
+        v-if="activeStep === 'metadata'"
+        type="button"
+        :disabled="previewIsLoading"
+        @click="goToSelection"
+      >
         {{ t('components.sectionVariantCreate.actions.next') }}
       </Button>
       <Button v-else type="button" @click="handleSubmit">

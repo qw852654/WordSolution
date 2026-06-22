@@ -4,13 +4,14 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import SectionInspector from '@/components/business/SectionInspector.vue'
 import SectionTreeContextMenu from '@/components/business/SectionTreeContextMenu.vue'
+import SectionVariantCreatePanel from '@/components/business/SectionVariantCreatePanel.vue'
 import TeachingTopicTree from '@/components/business/TeachingTopicTree.vue'
 import TeachingTopicTreeContextMenu from '@/components/business/TeachingTopicTreeContextMenu.vue'
 import InsertCreateOverlay from '@/components/containers/InsertCreateOverlay.vue'
 import SectionStructurePanel from '@/components/containers/SectionStructurePanel.vue'
 import SectionTopToolbar from '@/components/containers/SectionTopToolbar.vue'
 import SectionWorkspace from '@/components/containers/SectionWorkspace.vue'
-import { cmsV2Api } from '@/apis/cmsV2Client'
+import { cmsV2Api, type CmsV2SectionVariantSelectionCandidateDto } from '@/apis/cmsV2Client'
 import { Button } from '@/components/ui/button'
 import { useAtomicSectionActions } from '@/composables/useAtomicSectionActions'
 import { useContentBlockActions } from '@/composables/useContentBlockActions'
@@ -30,6 +31,10 @@ import type {
   ContentBlockRelationActionPayload,
   ContentBlockRelationMovePayload,
   SectionPageShellModel,
+  SectionVariantCreateMetadata,
+  SectionVariantCreateSubmitPayload,
+  SectionVariantPreviewState,
+  SectionVariantSelectionCandidateModel,
   SectionTreeContextMenuActionPayload,
   SectionTreeContextMenuModel,
   SectionTreeContextMenuPayload,
@@ -48,6 +53,11 @@ const sectionPageData = ref<SectionPageDataModel | null>(null)
 const selectedStructureNodeId = ref<string>()
 const activeInsertPointId = ref<string>()
 const activeCreatePanel = ref<InsertCreatePanelModel | null>(null)
+const sectionVariantCreateMetadata = ref<SectionVariantCreateMetadata | null>(null)
+const sectionVariantCandidates = ref<SectionVariantSelectionCandidateModel[]>([])
+const sectionVariantPreviewState = ref<SectionVariantPreviewState>('idle')
+const sectionVariantPreviewError = ref('')
+const sectionVariantPendingPayload = ref<SectionVariantCreateSubmitPayload | null>(null)
 const sectionTreeContextMenu = ref<SectionTreeContextMenuModel | null>(null)
 const teachingTopicTreeContextMenu = ref<TeachingTopicTreeContextMenuModel | null>(null)
 const insertFeedback = ref('')
@@ -162,6 +172,11 @@ const wrapSelectedSectionItemIds = computed(() =>
   wrapSelectedFlowItems.value
     .map((item) => item.sectionItemId)
     .filter((id): id is number => typeof id === 'number'),
+)
+const sectionVariantPendingPayloadText = computed(() =>
+  sectionVariantPendingPayload.value
+    ? JSON.stringify(sectionVariantPendingPayload.value, null, 2)
+    : '',
 )
 
 function findSectionTreeNode(
@@ -939,6 +954,117 @@ function mapInsertDifficulty(difficulty: InsertCreateDifficulty) {
   return map[difficulty]
 }
 
+function getFlowItemBySectionItemId(sectionItemId: number) {
+  return sectionWorkspaceFlowItems.value.find((item) => item.sectionItemId === sectionItemId)
+}
+
+function getSectionVariantCandidateTitle(
+  candidate: CmsV2SectionVariantSelectionCandidateDto,
+  flowItem?: SectionWorkspaceFlowItemModel,
+) {
+  if (!flowItem) {
+    return `${candidate.targetType} #${candidate.targetId}`
+  }
+
+  if (flowItem.kind === 'ContentBlock') {
+    return flowItem.block.title || flowItem.block.role || 'ContentBlock'
+  }
+
+  return flowItem.block.title || flowItem.block.blockKind
+}
+
+function getSectionVariantCandidateDisplayType(
+  candidate: CmsV2SectionVariantSelectionCandidateDto,
+  flowItem?: SectionWorkspaceFlowItemModel,
+) {
+  if (!flowItem) {
+    return candidate.targetType
+  }
+
+  return flowItem.kind
+}
+
+function mapSectionVariantSelectionCandidate(
+  candidate: CmsV2SectionVariantSelectionCandidateDto,
+): SectionVariantSelectionCandidateModel {
+  const flowItem = getFlowItemBySectionItemId(candidate.sectionItemId)
+
+  return {
+    sectionItemId: candidate.sectionItemId,
+    targetType: candidate.targetType,
+    title: getSectionVariantCandidateTitle(candidate, flowItem),
+    displayType: getSectionVariantCandidateDisplayType(candidate, flowItem),
+    resolvedDifficulty: candidate.resolvedDifficulty,
+    defaultSelected: candidate.defaultSelected,
+    selected: candidate.selectable && candidate.defaultSelected,
+    selectable: candidate.selectable,
+    unavailableReason: candidate.unavailableReason ?? undefined,
+  }
+}
+
+function openSectionVariantCreatePanel() {
+  const currentSectionId = getCurrentNumericSectionId()
+
+  if (!currentSectionId) {
+    insertFeedback.value = t('sectionPage.workspace.insertPanel.feedbackMissingSection')
+    return
+  }
+
+  cancelWrapSelectionMode()
+  activeInsertPointId.value = undefined
+  activeCreatePanel.value = null
+  insertFeedback.value = ''
+  insertCreateError.value = ''
+  sectionVariantCandidates.value = []
+  sectionVariantPreviewState.value = 'idle'
+  sectionVariantPreviewError.value = ''
+  sectionVariantPendingPayload.value = null
+  sectionVariantCreateMetadata.value = {
+    sectionId: currentSectionId,
+    title: '',
+    type: 'Lecture',
+    difficulty: 'Basic',
+    description: '',
+  }
+}
+
+function closeSectionVariantCreatePanel() {
+  sectionVariantCreateMetadata.value = null
+  sectionVariantCandidates.value = []
+  sectionVariantPreviewState.value = 'idle'
+  sectionVariantPreviewError.value = ''
+  sectionVariantPendingPayload.value = null
+}
+
+async function requestSectionVariantSelectionPreview(metadata: SectionVariantCreateMetadata) {
+  sectionVariantCreateMetadata.value = { ...metadata }
+  sectionVariantCandidates.value = []
+  sectionVariantPreviewState.value = 'loading'
+  sectionVariantPreviewError.value = ''
+  sectionVariantPendingPayload.value = null
+
+  try {
+    const candidates = await cmsV2Api.previewSectionVariantSelection({
+      sectionId: metadata.sectionId,
+      difficulty: metadata.difficulty,
+    })
+
+    sectionVariantCandidates.value = candidates.map(mapSectionVariantSelectionCandidate)
+    sectionVariantPreviewState.value = 'ready'
+  } catch (error) {
+    sectionVariantPreviewState.value = 'error'
+    sectionVariantPreviewError.value =
+      error instanceof Error ? error.message : t('sectionPage.sectionVariantCreate.previewFailed')
+  }
+}
+
+function submitSectionVariantPendingPayload(payload: SectionVariantCreateSubmitPayload) {
+  sectionVariantPendingPayload.value = payload
+  insertFeedback.value = t('sectionPage.sectionVariantCreate.pendingPayloadFeedback', {
+    count: payload.selectedSectionItemIds.length,
+  })
+}
+
 function openSectionTreeContextMenu(payload: SectionTreeContextMenuPayload) {
   sectionTreeContextMenu.value = {
     node: payload.node,
@@ -958,6 +1084,13 @@ function handleSectionTreeContextMenuAction(payload: SectionTreeContextMenuActio
   closeSectionTreeContextMenu()
 
   if (!contextNode) {
+    return
+  }
+
+  if (payload.actionType === 'CreateSectionVariant') {
+    if (contextNode.kind === 'Section') {
+      openSectionVariantCreatePanel()
+    }
     return
   }
 
@@ -1267,6 +1400,52 @@ watch(sectionId, () => {
       @cancel="cancelInsertCreateOverlay"
       @submit="submitInsertCreateOverlay"
     />
+
+    <Teleport to="body">
+      <div
+        v-if="sectionVariantCreateMetadata"
+        class="fixed inset-0 z-[60] flex min-h-screen items-center justify-center p-4"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="t('sectionPage.sectionVariantCreate.dialogLabel')"
+      >
+        <button
+          type="button"
+          class="absolute inset-0 bg-background/70 backdrop-blur-sm"
+          :aria-label="t('sectionPage.sectionVariantCreate.closeLabel')"
+          @click="closeSectionVariantCreatePanel"
+        />
+
+        <div class="relative z-10 grid w-full max-w-3xl gap-3">
+          <SectionVariantCreatePanel
+            :initial-metadata="sectionVariantCreateMetadata"
+            :candidates="sectionVariantCandidates"
+            :section-title="sectionShell.title"
+            :preview-state="sectionVariantPreviewState"
+            :preview-error="sectionVariantPreviewError"
+            @cancel="closeSectionVariantCreatePanel"
+            @request-preview="requestSectionVariantSelectionPreview"
+            @submit="submitSectionVariantPendingPayload"
+          />
+
+          <section
+            v-if="sectionVariantPendingPayload"
+            class="rounded-lg border bg-card p-3 text-card-foreground"
+            aria-live="polite"
+          >
+            <div class="mb-2">
+              <p class="text-sm font-medium">
+                {{ t('sectionPage.sectionVariantCreate.pendingPayloadTitle') }}
+              </p>
+              <p class="text-xs text-muted-foreground">
+                {{ t('sectionPage.sectionVariantCreate.pendingPayloadDescription') }}
+              </p>
+            </div>
+            <pre class="max-h-56 overflow-auto rounded-md border bg-muted/30 p-3 text-xs">{{ sectionVariantPendingPayloadText }}</pre>
+          </section>
+        </div>
+      </div>
+    </Teleport>
 
     <SectionTreeContextMenu
       :model="sectionTreeContextMenu"

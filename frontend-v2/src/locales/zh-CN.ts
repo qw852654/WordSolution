@@ -120,6 +120,8 @@ const zhCN = {
     sectionVariantCreate: {
       description:
         '先填写 SectionVariant 元数据，再审核并勾选 SectionItem 候选项。当前只使用 Mock Data，不调用 API。',
+      previewLoading: '正在通过 selection preview API 读取 SectionItem 候选项...',
+      previewError: 'SectionItem 候选项读取失败。',
       stepMetadata: '步骤 1 / 元数据',
       stepSelection: '步骤 2 / 勾选 SectionItem',
       selectionTitle: 'SectionItem 候选项',
@@ -288,6 +290,7 @@ const zhCN = {
       target: '右键目标',
       rootRemoveDisabled: 'Section 根节点不能移除',
       actions: {
+        CreateSectionVariant: '新建 SectionVariant',
         CreateContentBlock: '新建 ContentBlock',
         CreateAtomicSection: '新建 AtomicSection',
         SearchExistingBlock: '插入已有块',
@@ -453,6 +456,15 @@ const zhCN = {
       sectionId: 'Section ID',
       teachingTopic: 'TeachingTopic',
       status: '状态',
+    },
+    sectionVariantCreate: {
+      dialogLabel: '新建 SectionVariant',
+      closeLabel: '关闭 SectionVariant 创建面板',
+      previewFailed: 'selection preview 失败，请稍后重试。',
+      pendingPayloadFeedback: '已生成待创建 SectionVariant payload，已选择 {count} 个 SectionItem。',
+      pendingPayloadTitle: '待创建 SectionVariant payload',
+      pendingPayloadDescription:
+        '本轮只用于人工确认 payload，不会提交到真实创建 API。',
     },
     structure: {
       title: 'SectionStructurePanel',

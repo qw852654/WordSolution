@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Layers, Plus, Search, Trash2 } from 'lucide-vue-next'
+import { GitBranch, Layers, Plus, Search, Trash2 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import type {
@@ -28,7 +28,7 @@ const menuStyle = computed(() => {
   }
 
   const menuWidth = 220
-  const menuHeight = 180
+  const menuHeight = 220
   const viewportWidth = typeof window === 'undefined' ? props.model.position.x + menuWidth : window.innerWidth
   const viewportHeight =
     typeof window === 'undefined' ? props.model.position.y + menuHeight : window.innerHeight
@@ -54,7 +54,13 @@ const actions = computed<
   const disabled = Boolean(node?.disabled)
   const removeDisabled = disabled || node?.kind === 'Section'
 
-  return [
+  const baseActions: {
+    type: SectionTreeContextActionType
+    icon: typeof Plus
+    destructive?: boolean
+    disabled?: boolean
+    disabledReason?: string
+  }[] = [
     { type: 'CreateContentBlock', icon: Plus, disabled },
     { type: 'CreateAtomicSection', icon: Layers, disabled },
     { type: 'SearchExistingBlock', icon: Search, disabled },
@@ -69,6 +75,10 @@ const actions = computed<
           : undefined,
     },
   ]
+
+  return node?.kind === 'Section'
+    ? [{ type: 'CreateSectionVariant', icon: GitBranch, disabled }, ...baseActions]
+    : baseActions
 })
 
 function handleDocumentPointerDown(event: PointerEvent) {

@@ -237,6 +237,23 @@ export interface CmsV2CreateSectionForTeachingTopicRequest {
   status?: string
 }
 
+export interface CmsV2PreviewSectionVariantSelectionRequest {
+  sectionId: number
+  difficulty: 'Basic' | 'Medium' | 'Advanced' | 'Top'
+}
+
+export interface CmsV2SectionVariantSelectionCandidateDto {
+  sectionItemId: number
+  parentItemId?: number | null
+  sourceSortOrder: number
+  targetType: 'ContentBlock' | 'AtomicSection'
+  targetId: number
+  resolvedDifficulty: 'Unset' | 'Basic' | 'Medium' | 'Advanced' | 'Top'
+  defaultSelected: boolean
+  selectable: boolean
+  unavailableReason?: string | null
+}
+
 export interface CmsV2MoveSectionItemRequest {
   direction: 'Up' | 'Down'
 }
@@ -381,6 +398,11 @@ export const cmsV2Api = {
     topicId: number,
     request: CmsV2CreateSectionForTeachingTopicRequest,
   ) => cmsV2PostJson<CmsV2SectionDto>(`/teaching-topics/${topicId}/section`, request),
+  previewSectionVariantSelection: (request: CmsV2PreviewSectionVariantSelectionRequest) =>
+    cmsV2PostJson<CmsV2SectionVariantSelectionCandidateDto[]>(
+      '/section-variants/selection-preview',
+      request,
+    ),
   listSections: (teachingTopicId?: number) =>
     cmsV2FetchJson<CmsV2SectionDto[]>(withQuery('/sections', { teachingTopicId })),
   getSection: (sectionId: number) => cmsV2FetchJson<CmsV2SectionDto>(`/sections/${sectionId}`),
