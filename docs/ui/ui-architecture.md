@@ -257,3 +257,40 @@ CMS V2 鏄珮棰戝伐浣滃彴锛屼笉鍋氳惀閿?椤靛拰灞曠ず绔欍
 - 业务数据视图必须以后端确认后的返回结果或重新读取结果为准。
 - 不采用 optimistic update。
 - 不采用前端本地积累修改后手动保存的结构编辑模式。
+
+## 5.2 SectionVariant 创建模式
+
+`SectionVariant` 创建属于 `SectionPage` 内的临时工作模式，不是独立业务页面，也不是 TeachingStructureTree 的默认职责。
+
+当前定稿：
+
+- 唯一入口是 `SectionTree` 的 `Section` 根节点右键菜单。
+- 入口文本为“新建 SectionVariant”或等价中文动作。
+- 创建流程由 `SectionPage` 持有状态。
+- 创建第一步填写元数据。
+- 创建第二步进入 `VariantSelectionMode`，选择顶层 `SectionItem`。
+- 成功后刷新当前 `Section` 数据和 Variant 展示，但不自动打开新 Variant。
+
+页面职责：
+
+```text
+SectionTree
+  触发 createSectionVariant 事件。
+
+SectionPage
+  持有创建流程状态。
+  调用 selection-preview。
+  调用 create SectionVariant。
+  刷新 server-confirmed 数据。
+
+SectionWorkspace
+  在 VariantSelectionMode 中展示候选和勾选态。
+```
+
+不允许：
+
+- 从 Toolbar 创建。
+- 从 Workspace 普通插入点创建。
+- 从 Inspector 创建。
+- 从 TeachingStructureTree 创建。
+- 在前端循环调用 AddItem API 拼装 Variant。

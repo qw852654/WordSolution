@@ -815,3 +815,72 @@ CompositeBlock
 - 空 AtomicSection / 空 CompositeBlock 有插入第一个子块入口。
 - CompositeBlock 自己的 docx/html 正文显示在子块列表之前。
 - CompositeBlock 子块列表仍然正常显示。
+
+## 当前待办：SectionVariant 创建第一版
+
+本节记录已确认的 SectionVariant 开发计划。它不是当前已完成功能。
+
+### 第一轮：组件与 ComponentLab
+
+目标：
+
+- `CreateSectionVariantPanel`
+- `SectionVariantSelectionCandidate`
+- `VariantSelectionMode` 的 mock-only 验收
+
+范围：
+
+- 使用 Mock Data。
+- 不接 API。
+- 不接 SectionPage。
+- 验证两步流程、字段、默认勾选展示、不可选状态、空选择。
+
+验收：
+
+- 打开 `/lab`。
+- 检查元数据表单：Title、Type、Difficulty、Description。
+- 检查 `Difficulty` 不提供 `Unset`。
+- 检查候选列表能显示默认勾选、不可选原因和取消 / 增加勾选。
+
+### 第二轮：SectionPage 入口与预览
+
+目标：
+
+- 在 `SectionTree` 的 `Section` 根节点右键菜单加入“新建 SectionVariant”。
+- 接入 `selection-preview`。
+- 进入 `VariantSelectionMode`。
+
+范围：
+
+- 只允许根节点右键入口。
+- 预览失败时保留元数据。
+- 预览成功后显示候选，不创建数据。
+
+不做：
+
+- 不从 Toolbar、Workspace、Inspector、TeachingStructureTree 创建。
+- 不提交创建。
+
+### 第三轮：原子创建
+
+目标：
+
+- 调用 `POST /api/cms-v2/section-variants`。
+- 提交 `selectedSectionItemIds`。
+- 创建成功后刷新 `SectionTree` / Variant 列表。
+
+规则：
+
+- 允许空选择。
+- 创建成功后不自动打开新 Variant。
+- 创建失败保留当前表单和勾选。
+- 不做 optimistic update。
+
+### 后端前置
+
+在前端真实接入前，后端需补齐：
+
+- `POST /api/cms-v2/section-variants/selection-preview`
+- `POST /api/cms-v2/section-variants` 支持 `selectedSectionItemIds`
+- 同 Section 下 Variant 标题唯一校验
+- 后端事务创建 `SectionVariant` + `SectionVariantItem[]`

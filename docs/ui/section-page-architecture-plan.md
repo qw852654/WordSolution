@@ -441,9 +441,15 @@ type InsertContextVm = {
   beforeItemId?: number | null
   afterItemId?: number | null
   insertPosition: "before" | "after" | "append" | "asChild"
-  allowedTargetTypes: ("ContentBlock" | "AtomicSection" | "CompositeBlock")[]
+  allowedTargetTypes: ("ContentBlock" | "AtomicSection")[]
+  allowedContentBlockTypes?: ContentBlockType[]
 }
 ```
+
+说明：
+
+- `CompositeBlock` 不作为 `allowedTargetTypes` 的第三种值。
+- 如果插入的是组类型内容，应使用 `targetType = "ContentBlock"`，再通过 `allowedContentBlockTypes` 或创建表单中的 `ContentBlockType` 表达例题组、练习组、变式题组等。
 
 ## 8. Mock Data 需求清单
 
@@ -844,3 +850,84 @@ POST /api/cms-v2/content-block-edit-sessions/{sessionId}/cancel
 ```text
 docs/superpowers/plans/2026-06-17-content-block-word-edit-session-v2.md
 ```
+
+## 当前定稿：SectionVariant 创建架构
+
+本节覆盖 SectionPage 中 `SectionVariant` 创建能力的架构边界。当前只作为后续实现依据，不表示已经开发完成。
+
+### 1. 页面状态
+
+`SectionPage` 负责持有创建流程状态：
+
+```text
+idle
+createVariantMetadata
+variantSelectionMode
+submittingVariant
+```
+
+状态归属：
+
+- `SectionTree` 只 emit “新建 SectionVariant”。
+- `CreateSectionVariantPanel` 只 emit 元数据。
+- `SectionWorkspace` 在 `variantSelectionMode` 下展示候选和勾选状态。
+- `SectionPage` 调用 API、持有候选列表、持有用户勾选结果、处理提交。
+
+### 2. 后端交互
+
+创建流程需要两个后端动作：
+
+```text
+POST /api/cms-v2/section-variants/selection-preview
+POST /api/cms-v2/section-variants
+```
+
+`selection-preview` 用于从后端获取候选顶层 `SectionItem` 和默认勾选。
+`section-variants` 用于一次性创建 `SectionVariant` 和 `SectionVariantItem`。
+
+前端不允许：
+
+- 循环调用 AddSectionVariantItem。
+- 根据本地 Workspace 数据自行决定默认选中。
+- 提交 `ContentBlockId`、`AtomicSectionId` 或前端 `flowItemId`。
+- 提交 `Status` / `SortOrder`。
+
+### 3. View Model
+
+建议前端使用页面级 view model：
+
+```ts
+type SectionVariantMetadataDraft = {
+  title: string
+  type: SectionVariantType
+  difficulty: Difficulty
+  description?: string
+}
+
+type SectionVariantSelectionCandidateModel = {
+  sectionItemId: number
+  targetType: 'ContentBlock' | 'AtomicSection'
+  targetId: number
+  title: string
+  displayType: string
+  resolvedDifficulty: Difficulty
+  sourceSortOrder: number
+  defaultSelected: boolean
+  selected: boolean
+  selectable: boolean
+  unavailableReason?: string
+}
+```
+
+其中 `selected` 是前端 UI 状态；其他业务判定来自后端预览响应。
+
+### 4. 未来扩展口
+
+第一版只选择顶层 `SectionItem`。后续 `AtomicSection` 内部部分选择应在当前 `SectionVariantItem` 之下扩展：
+
+```text
+SectionVariantItem.SelectionMode
+SectionVariantAtomicItemSelection
+```
+
+这意味着第一版的架构应避免把候选模型写死为 `ContentBlock` 列表，也不要把选择状态只绑定到 `ContentBlockId`。

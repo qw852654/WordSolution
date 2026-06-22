@@ -202,3 +202,36 @@ V2 鍓嶇绗竴闃舵涓嶅仛锛?
 - 后端失败时，前端保持原业务数据不变。
 - 后端成功后，前端以返回数据或重新读取的数据为准。
 - “保存结构”不是 SectionPage 的主流程；结构变化应由具体动作即时提交。
+
+## 8. SectionVariant 任务工作流
+
+涉及 `SectionVariant` 的开发任务开始前，必须先确认以下文档：
+
+```text
+docs/ui/section-page.md
+docs/ui/section-page-development-plan.md
+docs/ui/section-page-architecture-plan.md
+docs/cms-v2/backend/后端数据模型开发文档.md
+docs/cms-v2/backend/领域模型结构说明.md
+```
+
+当前定稿规则：
+
+- `SectionVariant` 创建入口只在 `SectionTree` 的 `Section` 根节点右键菜单中。
+- 创建流程分两步：元数据 -> 内容选择。
+- 默认选择由后端 `selection-preview` 返回。
+- 前端提交 `selectedSectionItemIds`。
+- 前端不循环调用 AddItem API。
+- 创建成功后刷新树和列表，但不自动打开新 Variant。
+- 失败时保留草稿和选择，不做 optimistic update。
+
+如果任务只是校正文档：
+
+- 不修改前端代码。
+- 不修改后端代码。
+- 不新增 API。
+- 不改数据库迁移。
+
+如果任务进入组件开发：
+
+- 新增 `CreateSectionVariantPanel`、`VariantSelectionMode` 或候选项组件时，必须先放入 `ComponentLab` 使用 Mock Data 验收。

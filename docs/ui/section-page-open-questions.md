@@ -133,26 +133,21 @@ SectionItemView
 
 - 是否采用 callback 方案作为主接口？
 
-## 7. difficulty 当前是否已有后端字段？
+## 7. difficulty 当前是否已有后端字段？（已关闭）
 
-当前结论：
+当前定稿：
 
 - `Section`
 - `SectionVariant`
+- `AtomicSection`
 - `ContentBlock`
 
-都已有 `Difficulty`
+都已有或应使用统一 `Difficulty`。
 
-缺口：
+已确认：
 
-- `AtomicSection` 当前领域模型没有 `Difficulty`
-
-需确认：
-
-- SectionPage 第一版里的 AtomicSection difficulty 是：
-  - 先不做
-  - 前端 mock 预留
-  - 还是要求先补后端模型
+- 当前 V2 `AtomicSection` 已有 `Difficulty` 字段。
+- 后续文档不应再把 `AtomicSection.Difficulty` 写成缺口。
 
 ## 8. Word 编辑入口第一版只显示按钮，还是要接现有编辑链路？
 
@@ -340,3 +335,74 @@ SectionItemView
 ```text
 docs/superpowers/plans/2026-06-17-content-block-word-edit-session-v2.md
 ```
+
+## 当前关闭问题：SectionVariant
+
+以下问题已经通过 2026-06-22 的 SectionVariant 文档定稿关闭。
+
+### 1. Section 与 SectionVariant 的关系
+
+结论：
+
+- `Section` 本身就是上帝小节 / 完整知识池 / 完整教学结构。
+- `SectionVariant` 是 `Section` 的子级教学用途方案。
+- 不存在“Section 下面再有一个上帝版本”的模型。
+
+### 2. SectionVariant 选择什么对象
+
+结论：
+
+- 第一版只选择顶层 `SectionItem`。
+- `SectionVariantItem` 保存 `SectionItemId`。
+- 前端提交 `selectedSectionItemIds`。
+- 不提交 `ContentBlockId`、`AtomicSectionId`、`AtomicSectionItemId` 或 `flowItemId`。
+
+### 3. CompositeBlock 是否是 TargetType
+
+结论：
+
+- 不是。
+- `CompositeBlock` 只是组类型 `ContentBlock` 在前端的展示组件。
+- 后端 `SectionItem.TargetType` 第一版仍只有 `ContentBlock` 与 `AtomicSection`。
+
+### 4. AtomicSection 是否有难度字段
+
+结论：
+
+- 当前 V2 模型中 `AtomicSection` 已有 `Difficulty` 字段。
+- 后续文档不再把它列为缺口。
+
+### 5. SectionVariant 创建入口
+
+结论：
+
+第一版唯一入口：
+
+```text
+SectionPage -> SectionTree -> Section 根节点右键菜单 -> 新建 SectionVariant
+```
+
+不从 Toolbar、Workspace、Inspector 或 TeachingStructureTree 创建。
+
+### 6. 创建后是否立即打开
+
+结论：
+
+- 创建后不立即打开。
+- 创建后刷新 `SectionTree` / Variant 列表。
+- 显示创建成功提示。
+
+### 7. 是否允许创建空 Variant
+
+结论：
+
+- 允许。
+- 用户可以在第二步不勾选任何 `SectionItem`。
+
+### 8. 后续 AtomicSection 部分选择
+
+结论：
+
+- 第一版不做。
+- 后续必须以 `SectionVariantItem` 为锚点扩展 `SectionVariantAtomicItemSelection`。
+- 不直接用 `SectionVariantId + AtomicSectionId` 建模。

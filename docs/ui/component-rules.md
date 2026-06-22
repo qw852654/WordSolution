@@ -1128,3 +1128,79 @@ StructuredBlockModel
 - `children` 表示 CompositeBlock 的组合关系展开内容。
 
 `AtomicSectionBlock` 不等同于 ContentBlock，因此不需要 `selfContent`；它只展示自身结构信息和内部 AtomicSectionItem。
+
+## 当前补充：SectionVariant 创建相关组件边界
+
+本节记录 SectionPage 后续开发 `SectionVariant` 创建流程时的组件职责。当前只是文档约定，不表示组件已经实现。
+
+### SectionTree 右键入口
+
+唯一入口：
+
+```text
+SectionTree -> Section 根节点右键菜单 -> 新建 SectionVariant
+```
+
+组件边界：
+
+- `SectionTree` 只负责展示右键菜单项并 emit `createSectionVariant`。
+- `SectionTree` 不持有创建表单状态。
+- `SectionTree` 不调用 API。
+- `TeachingStructureTree` 不提供 `SectionVariant` 创建入口。
+
+### CreateSectionVariantPanel
+
+职责：
+
+- 展示 `SectionVariant` 元数据表单。
+- 字段包含 `Title`、`Type`、`Difficulty`、`Description`。
+- `Difficulty` 只允许 `Basic / Medium / Advanced / Top`。
+- 点击“下一步 / 进入选择”时 emit 元数据。
+
+边界：
+
+- 不调用 API。
+- 不推断默认选择。
+- 不持有 Workspace 选择结果。
+- 不提交 `Status` 或 `SortOrder`。
+
+### VariantSelectionMode
+
+职责：
+
+- 在 `SectionPage` / `SectionWorkspace` 内展示候选顶层 `SectionItem`。
+- 根据后端 selection preview 结果显示默认勾选、不可选项和错误原因。
+- 支持用户增减勾选。
+- 允许空选择。
+
+边界：
+
+- 只选择顶层 `SectionItem`。
+- 不选择 `AtomicSectionItem`。
+- 不选择 `CompositeBlock` 子 relation。
+- 不直接创建 `SectionVariant`。
+
+### SectionVariantSelectionCandidate
+
+建议作为可复用的行 / 块级展示组件。
+
+展示字段：
+
+- SectionItem 标题或推导名称。
+- TargetType：`ContentBlock` / `AtomicSection`。
+- 类型：知识点、例题组、练习等。
+- 难度。
+- 是否默认勾选。
+- 不可选原因。
+
+边界：
+
+- 不调用 API。
+- 不理解后端默认选择算法。
+- 不自行读取 ContentBlock / AtomicSection 详情。
+
+### ComponentLab 要求
+
+如果后续新增 `CreateSectionVariantPanel`、`VariantSelectionMode` 或 `SectionVariantSelectionCandidate`，必须先放入 `ComponentLab` 使用 Mock Data 验收。
+
+验收完成后再接入真实 `SectionPage`。

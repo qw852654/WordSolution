@@ -190,3 +190,28 @@ aria-level
 
 动态状态必须与真实展开、选中状态同步。
 
+## 6. SectionVariant 在树中的边界
+
+`SectionVariant` 可以在树中作为 `Section` 下的只读展开数据展示，但第一版创建入口只允许出现在 `SectionPage` 的 `SectionTree` 根节点右键菜单中。
+
+不同树的职责：
+
+```text
+TeachingStructureTree
+  展示教学结构总览。
+  可以看到绑定 Section 和展开后的 SectionVariant。
+  第一版不创建 SectionVariant。
+
+SectionTree
+  展示当前 Section 内部结构。
+  Section 根节点右键菜单提供“新建 SectionVariant”。
+  进入创建流程后由 SectionPage 持有状态。
+```
+
+注意：
+
+- `SectionVariant` 不是新的持久树节点类型。
+- `SectionVariant` 不参与 TeachingStructureTree 的 Display Root。
+- `SectionVariant` 不参与 TeachingStructureTree 的新增、删除、重命名主题操作。
+- 第一版不要把 `SectionVariant` 创建入口放到 TeachingStructureTree。
+

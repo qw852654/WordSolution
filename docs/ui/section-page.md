@@ -704,3 +704,161 @@ children: StructuredBlockChildModel[]
 ```
 
 其中 `selfContent` 表示 CompositeBlock 自身正文，`children` 表示它包含的子块。
+
+## 当前定稿：SectionVariant 创建流程
+
+本节记录已确认的 SectionPage 第一版 `SectionVariant` 创建规则。它是后续开发依据，不表示当前已经实现。
+
+### 1. 概念关系
+
+```text
+TeachingTopic
+  Section
+    SectionVariant
+```
+
+`Section` 是完整知识池和完整教学结构，即“上帝小节”。
+`SectionVariant` 是从 `Section` 派生出的教学用途方案，例如基础讲解版、提高版、一轮复习版、冲刺版。
+
+`SectionVariant` 不复制 `Section` 结构。它通过 `SectionVariantItem` 引用 `SectionItem`：
+
+```text
+SectionVariantItem -> SectionItemId
+```
+
+前端创建时提交的是 `selectedSectionItemIds`，不是 `contentBlockIds`、`atomicSectionIds` 或前端 `flowItems`。
+
+### 2. 唯一创建入口
+
+第一版唯一业务入口：
+
+```text
+SectionPage -> SectionTree -> Section 根节点右键菜单 -> 新建 SectionVariant
+```
+
+不得放在：
+
+- 顶部 Toolbar。
+- Workspace。
+- Inspector。
+- TeachingStructureTree。
+- `AtomicSection` / `ContentBlock` / `CompositeBlock` 节点右键菜单。
+
+### 3. 两步创建流程
+
+第一步：填写元数据。
+
+字段：
+
+- `Title`：必填。
+- `Type`：必填，使用 `SectionVariantType`。
+- `Difficulty`：必填，只允许 `Basic / Medium / Advanced / Top`，UI 不提供 `Unset`。
+- `Description`：可选。
+
+第一版前端不提交：
+
+```text
+Status
+SortOrder
+```
+
+后端默认：
+
+```text
+Status = Draft
+SortOrder = 当前 Section 下最大值 + 1
+```
+
+第二步：进入 `VariantSelectionMode`。
+
+- 点击“下一步 / 进入选择”时调用后端选择预览。
+- 预览成功后，当前 SectionPage / Workspace 进入选择模式。
+- 预览失败时停留在元数据步骤，保留用户输入，并显示错误。
+- 不做实时预览、debounce、自动刷新或前端本地推断。
+
+### 4. 默认勾选规则
+
+后端根据目标顶层 `SectionItem` 的难度计算默认勾选。
+
+顶层定义：
+
+```text
+SectionItem.ParentItemId == null
+```
+
+目标难度来源：
+
+- 顶层 `ContentBlock`：`ContentBlock.Difficulty`。
+- 顶层组类型 `CompositeBlock`：本质仍是 `ContentBlock`，使用 `ContentBlock.Difficulty`。
+- 顶层 `AtomicSection`：`AtomicSection.Difficulty`。
+
+难度包含：
+
+```text
+Basic    -> Basic
+Medium   -> Basic + Medium
+Advanced -> Basic + Medium + Advanced
+Top      -> Basic + Medium + Advanced + Top
+Unset    -> 永不默认选中
+```
+
+### 5. 第一版选择范围
+
+第一版只选择顶层 `SectionItem`。
+
+不选择：
+
+- `AtomicSectionItem`。
+- `CompositeBlock` 子 relation。
+- `ContentBlockVersion`。
+- `SectionItem` 的前端子 view。
+
+允许创建空 `SectionVariant`。如果用户不勾选任何项，后端仍可创建空 Variant。
+
+### 6. 提交与成功后行为
+
+提交时前端发送：
+
+```text
+sectionId
+title
+description?
+type
+difficulty
+selectedSectionItemIds[]
+```
+
+后端必须一次事务创建 `SectionVariant` 和 `SectionVariantItem`。
+
+成功后：
+
+- 重新读取 `Section` / `SectionTree` / Variant 列表。
+- 新建 Variant 在树中可见。
+- 不自动打开新 Variant。
+- 不自动选中新 Variant。
+- 显示中文成功提示。
+
+失败后：
+
+- 保留用户填写的元数据和勾选状态。
+- 停留在当前创建流程。
+- 显示整体错误。
+- 不做 optimistic update。
+
+### 7. 未来 AtomicSection 部分选择
+
+第一版整个 `AtomicSection` 作为一个顶层项选择。
+
+未来如果要选择同一个 `AtomicSection` 内部的部分知识点、例题或练习，必须在 `SectionVariantItem` 之下扩展部分选择模型，而不是直接绑定 `AtomicSectionId`：
+
+```text
+SectionVariantItem
+  SelectionMode: Whole | Partial
+
+SectionVariantAtomicItemSelection
+  SectionVariantItemId
+  AtomicSectionItemId
+  SortOrder
+  Note
+  UpdatedTime
+```
