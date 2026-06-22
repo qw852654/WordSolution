@@ -702,10 +702,10 @@ watch(
       </div>
 
       <div
-        class="grid min-h-0 flex-1 gap-3 p-3"
+        class="grid min-h-0 flex-1 gap-2 p-2"
         :class="teachingNoteMode ? 'lg:grid-cols-[minmax(0,1fr)_260px]' : 'grid-cols-[minmax(0,1fr)]'"
       >
-      <WeakScrollArea class="rounded-md border bg-background p-3" :aria-label="t('sectionPage.workspace.mainColumnLabel')">
+      <WeakScrollArea class="bg-background p-1" :aria-label="t('sectionPage.workspace.mainColumnLabel')">
         <div v-if="flowItems.length" class="space-y-0">
           <p
             v-if="workspaceSelectionFeedback"
