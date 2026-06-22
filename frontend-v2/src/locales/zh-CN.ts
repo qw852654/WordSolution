@@ -212,8 +212,8 @@ const zhCN = {
       expand: '展开',
       more: '更多',
       emptyTitle: '暂无子内容',
-      atomicEmptyDescription: '这个 AtomicSection 还没有放入 ContentBlock。',
-      compositeEmptyDescription: '这个 CompositeBlock 还没有放入 ContentBlock。',
+      atomicEmptyDescription: '暂无子 ContentBlock',
+      compositeEmptyDescription: '暂无子 ContentBlock',
     },
     insertPoint: {
       insert: '插入',

@@ -226,8 +226,8 @@ const en = {
       expand: 'Expand',
       more: 'More',
       emptyTitle: 'No child content',
-      atomicEmptyDescription: 'This AtomicSection does not contain ContentBlock items yet.',
-      compositeEmptyDescription: 'This CompositeBlock does not contain ContentBlock items yet.',
+      atomicEmptyDescription: 'No child ContentBlock',
+      compositeEmptyDescription: 'No child ContentBlock',
     },
     insertPoint: {
       insert: 'Insert',

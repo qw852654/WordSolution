@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Layers3, MoreHorizontal } from 'lucide-vue-next'
+import { MoreHorizontal } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import ContentBlockDisplay from '@/components/business/ContentBlockDisplay.vue'
 import { getDifficultyMarkerClass } from '@/components/business/difficultyTone'
 import SectionItemView from '@/components/business/SectionItemView.vue'
-import EmptyState from '@/components/presentation/EmptyState.vue'
 import StructuredContainer from '@/components/presentation/StructuredContainer.vue'
 import { Button } from '@/components/ui/button'
 import type {
@@ -184,15 +183,9 @@ function emitRelationRemove(child: StructuredBlockChildModel) {
         />
       </SectionItemView>
     </div>
-    <EmptyState
-      v-else
-      :title="t('components.structuredBlock.emptyTitle')"
-      :description="t('components.structuredBlock.compositeEmptyDescription')"
-    >
-      <template #icon>
-        <Layers3 class="size-5" aria-hidden="true" />
-      </template>
-    </EmptyState>
+    <p v-else class="text-xs leading-4 text-destructive">
+      {{ t('components.structuredBlock.compositeEmptyDescription') }}
+    </p>
     </template>
   </StructuredContainer>
 </template>
