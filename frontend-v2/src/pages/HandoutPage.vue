@@ -57,6 +57,8 @@ const { t } = useI18n()
 
 const workspace = ref<CmsV2HandoutVersionWorkspaceDto | null>(null)
 const selectedNodeId = ref<string>('')
+const handoutWorkspaceScrollTargetNodeId = ref('')
+const handoutWorkspaceScrollRequestKey = ref(0)
 const handoutOverviewOpen = ref(false)
 const handoutOverviewNodes = ref<HandoutOverviewNodeModel[]>([])
 const handoutOverviewLoading = ref(false)
@@ -105,6 +107,7 @@ const workspaceItems = computed<HandoutWorkspaceItemModel[]>(() => {
     return mockHandoutWorkspaceItems.map((item) => ({
       ...item,
       selected: item.nodeId === selectedNodeId.value || item.id === selectedNodeId.value,
+      children: item.children?.map(markSelectedWorkspaceChild),
     }))
   }
 
@@ -407,6 +410,7 @@ function toWorkspaceChild(node: CmsV2HandoutWorkspaceNodeDto): HandoutWorkspaceC
     typeLabel: node.nodeKind,
     sourceLabel: t('handoutPage.derivedReadOnly') as string,
     readOnly: true,
+    selected: node.nodeId === selectedNodeId.value,
     children: node.children.map(toWorkspaceChild),
   }
 }
@@ -458,6 +462,14 @@ function markSelectedTreeNodes(nodes: HandoutTreeNodeModel[]): HandoutTreeNodeMo
     disabled: node.disabled,
     children: node.children ? markSelectedTreeNodes(node.children) : undefined,
   }))
+}
+
+function markSelectedWorkspaceChild(child: HandoutWorkspaceChildModel): HandoutWorkspaceChildModel {
+  return {
+    ...child,
+    selected: child.id === selectedNodeId.value,
+    children: child.children?.map(markSelectedWorkspaceChild),
+  }
 }
 
 function findTreeNode(
@@ -514,11 +526,49 @@ function inspectorFromWorkspaceItem(item: HandoutWorkspaceItemModel): HandoutIns
 
 function handleSelectNode(nodeId: string) {
   selectedNodeId.value = nodeId
+  requestHandoutWorkspaceScroll(nodeId)
 }
 
 function handleSelectWorkspaceItem(itemId: string) {
-  const item = workspaceItems.value.find((entry) => entry.id === itemId || entry.nodeId === itemId)
-  selectedNodeId.value = item?.nodeId ?? itemId
+  selectedNodeId.value = resolveWorkspaceNodeId(itemId) ?? itemId
+}
+
+function requestHandoutWorkspaceScroll(nodeId: string) {
+  handoutWorkspaceScrollTargetNodeId.value = nodeId
+  handoutWorkspaceScrollRequestKey.value += 1
+}
+
+function resolveWorkspaceNodeId(nodeId: string): string | undefined {
+  for (const item of workspaceItems.value) {
+    if (item.id === nodeId || item.nodeId === nodeId) {
+      return item.nodeId
+    }
+
+    const child = findWorkspaceChild(item.children ?? [], nodeId)
+    if (child) {
+      return child.id
+    }
+  }
+
+  return undefined
+}
+
+function findWorkspaceChild(
+  children: HandoutWorkspaceChildModel[],
+  nodeId: string,
+): HandoutWorkspaceChildModel | undefined {
+  for (const child of children) {
+    if (child.id === nodeId) {
+      return child
+    }
+
+    const nested = findWorkspaceChild(child.children ?? [], nodeId)
+    if (nested) {
+      return nested
+    }
+  }
+
+  return undefined
 }
 
 function showDeferredFeedback(actionKey: string, id?: number | string) {
@@ -953,6 +1003,9 @@ function findWorkspaceItemByAnyId(itemId: string) {
         class="m-3 min-h-0 flex-1"
         :items="workspaceItems"
         :read-only="pageReadOnly"
+        :selected-node-id="selectedNodeId"
+        :scroll-target-node-id="handoutWorkspaceScrollTargetNodeId"
+        :scroll-request-key="handoutWorkspaceScrollRequestKey"
         @select-item="handleSelectWorkspaceItem"
         @add-initial-content="openSectionVariantSelectionDialog(null)"
         @move-up="handleMoveItem($event, 'Up')"

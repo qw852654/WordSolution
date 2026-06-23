@@ -88,6 +88,31 @@ public sealed class CmsV2HandoutManagementUseCaseTests
     }
 
     [Fact]
+    public async Task CreateHandoutVersionAsync_creates_default_word_output_form_when_active_template_exists()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var handouts = new HandoutUseCases(unitOfWork);
+        var handout = await handouts.CreateHandoutAsync(new CreateHandoutCommand("Output form handout"));
+        var template = new OutputTemplate("Shared template", "E:\\template.docx");
+        await unitOfWork.OutputTemplates.AddAsync(template);
+        await unitOfWork.SaveChangesAsync();
+
+        var version = await handouts.CreateHandoutVersionAsync(
+            new CreateHandoutVersionCommand(handout.Id, "Default output version"));
+
+        var outputForms = await unitOfWork.OutputForms.ListByHandoutVersionAsync(version.Id);
+        var outputForm = Assert.Single(outputForms);
+        Assert.Equal(template.Id, outputForm.OutputTemplateId);
+        Assert.Equal("课堂 Word", outputForm.Title);
+        Assert.Equal(OutputAudience.Student, outputForm.Audience);
+        Assert.Equal(OutputFormat.Word, outputForm.OutputFormat);
+        Assert.Equal(VisibilityMode.Classroom, outputForm.VisibilityMode);
+        Assert.Equal(OutputFormStatus.Active, outputForm.Status);
+        Assert.Equal(1, outputForm.SortOrder);
+    }
+
+    [Fact]
     public async Task UpdateHandoutVersionAsync_rejects_duplicate_title_and_archived_version_blocks_item_writes()
     {
         await using var context = await CreateMigratedContextAsync();

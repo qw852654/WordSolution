@@ -8,6 +8,7 @@ import type { HandoutWorkspaceChildModel, HandoutWorkspaceItemModel } from '@/ty
 defineProps<{
   item: HandoutWorkspaceItemModel
   readOnly?: boolean
+  selectedNodeId?: string
 }>()
 
 defineEmits<{
@@ -30,6 +31,7 @@ function childMeta(child: HandoutWorkspaceChildModel) {
   <article
     class="rounded-md border bg-background transition-colors"
     :class="item.selected ? 'border-primary/40 bg-primary/5' : 'border-border'"
+    :data-handout-node-id="item.nodeId"
     @click="$emit('select', item.id)"
   >
     <header class="flex items-start justify-between gap-3 border-b px-3 py-2">
@@ -97,7 +99,10 @@ function childMeta(child: HandoutWorkspaceChildModel) {
         <div
           v-for="child in item.children"
           :key="child.id"
-          class="rounded-md border bg-muted/20 px-3 py-2"
+          class="rounded-md border px-3 py-2 transition-colors"
+          :class="child.selected || child.id === selectedNodeId ? 'border-primary/40 bg-primary/5' : 'border-border bg-muted/20'"
+          :data-handout-node-id="child.id"
+          @click.stop="$emit('select', child.id)"
         >
           <div class="flex items-center justify-between gap-3">
             <p class="min-w-0 truncate text-sm font-medium">{{ child.title }}</p>
@@ -107,7 +112,14 @@ function childMeta(child: HandoutWorkspaceChildModel) {
             <div
               v-for="grandChild in child.children"
               :key="grandChild.id"
-              class="flex items-center justify-between gap-3 text-sm"
+              class="flex items-center justify-between gap-3 rounded-sm px-2 py-1 text-sm transition-colors"
+              :class="
+                grandChild.selected || grandChild.id === selectedNodeId
+                  ? 'bg-primary/10 text-foreground'
+                  : 'text-foreground'
+              "
+              :data-handout-node-id="grandChild.id"
+              @click.stop="$emit('select', grandChild.id)"
             >
               <span class="min-w-0 truncate">{{ grandChild.title }}</span>
               <span class="shrink-0 text-xs text-muted-foreground">{{ childMeta(grandChild) }}</span>

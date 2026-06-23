@@ -101,6 +101,8 @@ public sealed class HandoutUseCases
 
             await _unitOfWork.HandoutVersions.AddAsync(version, transactionCancellationToken);
             await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+            await CreateDefaultOutputFormForVersionAsync(version.Id, transactionCancellationToken);
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
             result = new CreatedEntityResult(version.Id);
         }, cancellationToken);
 
@@ -476,6 +478,33 @@ public sealed class HandoutUseCases
 
             await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
         }, cancellationToken);
+    }
+
+    private async Task CreateDefaultOutputFormForVersionAsync(
+        int handoutVersionId,
+        CancellationToken cancellationToken)
+    {
+        var template = (await _unitOfWork.OutputTemplates.ListAsync(cancellationToken))
+            .Where(candidate => candidate.Status == OutputTemplateStatus.Active)
+            .OrderBy(candidate => candidate.Id)
+            .FirstOrDefault();
+
+        if (template is null)
+        {
+            return;
+        }
+
+        var outputForm = new OutputForm(
+            handoutVersionId,
+            template.Id,
+            "课堂 Word",
+            OutputAudience.Student,
+            OutputFormat.Word,
+            VisibilityMode.Classroom,
+            OutputFormStatus.Active,
+            sortOrder: 1);
+
+        await _unitOfWork.OutputForms.AddAsync(outputForm, cancellationToken);
     }
 
     private async Task RequireWritableHandoutVersionAsync(int handoutVersionId, CancellationToken cancellationToken)

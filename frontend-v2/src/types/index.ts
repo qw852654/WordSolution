@@ -500,6 +500,7 @@ export interface HandoutWorkspaceChildModel {
   typeLabel: string
   sourceLabel?: string
   readOnly?: boolean
+  selected?: boolean
   children?: HandoutWorkspaceChildModel[]
 }
 
