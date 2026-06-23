@@ -49,4 +49,25 @@ public sealed class HandoutVersion
     public int SortOrder { get; private set; }
 
     public DateTimeOffset UpdatedTime { get; private set; }
+
+    public void UpdateDetails(
+        string title,
+        string? description,
+        HandoutVersionType type,
+        HandoutVersionStatus status,
+        int sortOrder,
+        DateTimeOffset? updatedTime = null)
+    {
+        DomainGuard.NotWhiteSpace(title, nameof(Title));
+        DomainGuard.ValidEnum(type, nameof(Type));
+        DomainGuard.ValidEnum(status, nameof(Status));
+        DomainGuard.NonNegative(sortOrder, nameof(SortOrder));
+
+        Title = title.Trim();
+        Description = description?.Trim();
+        Type = type;
+        Status = status;
+        SortOrder = sortOrder;
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+    }
 }

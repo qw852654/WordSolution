@@ -16,6 +16,7 @@ import type {
 const props = defineProps<{
   nodes: HandoutTreeNodeModel[]
   selectedNodeId?: string
+  contextTargetNodeId?: string
   readOnly?: boolean
 }>()
 
@@ -86,6 +87,7 @@ function handleContextMenu(payload: BasicTreeContextMenuPayload) {
       v-if="basicNodes.length"
       :nodes="basicNodes"
       :selected-node-id="selectedNodeId"
+      :context-target-node-id="contextTargetNodeId"
       :expand-label="t('components.basicTree.expand')"
       :collapse-label="t('components.basicTree.collapse')"
       @select="emit('selectNode', $event)"

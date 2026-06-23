@@ -1889,6 +1889,15 @@ Boundaries:
 - it does not show internal `HandoutVersionItem` structure;
 - it must not duplicate a second visual tree system if the SectionPage overview can be reused or extracted.
 
+Current H5 implementation:
+
+- `HandoutPage` owns loading all `Handout -> HandoutVersion` data through CMS V2 APIs;
+- the flyout opens from the left screen edge after about 2 seconds;
+- it uses `Teleport`, background blur, `Escape` close, and `BasicTree` behavior;
+- the current `HandoutVersion` is highlighted;
+- clicking another `HandoutVersion` navigates to `/handouts/:handoutVersionId`;
+- opening `/handouts` management is exposed as a lightweight navigation action.
+
 ### Handout stable editor protection
 
 The current `/handouts/:handoutVersionId` editor is considered stable enough to preserve.
@@ -1903,3 +1912,91 @@ Future creation-chain work may minimally add:
 - replacement for temporary `window.prompt` add/edit flows.
 
 It must not rewrite the current three-column layout, `OutputForm`, Word generation, `GeneratedFile` history, download, manifest, or delete behavior unless a later task explicitly targets those areas.
+
+### Current Update: `/handouts` Management Page
+
+H4 adds the first real `/handouts` management page.
+
+`HandoutManagementPage` owns API calls and page state.
+
+Responsibilities:
+
+- list non-archived `Handout` entries;
+- select one `Handout`;
+- create, edit, and archive `Handout`;
+- load and display the selected `Handout`'s `HandoutVersion` list;
+- create, edit, and archive `HandoutVersion`;
+- navigate to `/handouts/:handoutVersionId` after creating or opening a version.
+
+`HandoutListPanel` is a business display component.
+
+Responsibilities:
+
+- render the current `Handout` list;
+- show selected state;
+- emit refresh, create, and select intents.
+
+Boundaries:
+
+- it must not call CMS V2 APIs;
+- it must not create `HandoutVersion`;
+- it hides archived entries only through data passed by the page.
+
+`HandoutDetailPanel` is a business display component.
+
+Responsibilities:
+
+- display selected `Handout` metadata;
+- display its `HandoutVersion` entries;
+- emit edit, archive, create-version, edit-version, archive-version, and open-version intents.
+
+Boundaries:
+
+- it must not call CMS V2 APIs;
+- it must not mutate `HandoutVersionItem`;
+- it must not become a separate `/handouts/:handoutId` detail route.
+
+### Current Update: Handout Creation Chain H6-H8
+
+The current Handout creation-chain implementation replaces the temporary add prompts with approved picker components.
+
+`SectionVariantSelectionDialog`:
+
+- renders the `TeachingTopic -> Section -> SectionVariant` batch tree;
+- treats `TeachingTopic` and `Section` as grouping nodes only;
+- writes only `SectionVariant` leaves into `HandoutVersionItem`;
+- keeps existing `SectionVariant` entries checked and locked;
+- delegates selection math to `frontend-v2/src/utils/sectionVariantTreeSelection.ts`;
+- emits selection intent only and does not call CMS V2 APIs.
+
+The pure utility module owns:
+
+- collecting selectable `SectionVariant` ids;
+- deriving checked / mixed / locked state;
+- toggling one `SectionVariant`;
+- toggling a group;
+- filtering while preserving ancestor paths.
+
+`HandoutTargetPicker`:
+
+- is the shared first-version single-select picker for direct `AtomicSection` and `ContentBlock` insertion;
+- receives candidates from page-level code;
+- supports simple search over title and metadata;
+- emits one selected id;
+- does not create or edit source objects and does not call CMS V2 APIs.
+
+`HandoutStructureContextMenu`:
+
+- is a page-level business menu for `HandoutStructurePanel`;
+- root `HandoutVersion` nodes may add `SectionVariant`, `AtomicSection`, or `ContentBlock` to the end;
+- top-level `HandoutVersionItem` nodes may add `SectionVariant`, `AtomicSection`, or `ContentBlock` after that item;
+- derived internal nodes show no write actions;
+- it emits actions to `HandoutPage`, which owns all CMS V2 API calls.
+
+`HandoutOccurrenceEditDialog`:
+
+- replaces `window.prompt` for `TitleOverride / Note`;
+- edits only the current `HandoutVersionItem` occurrence;
+- does not mutate source `SectionVariant`, `AtomicSection`, or `ContentBlock`.
+
+Archived `Handout` or `HandoutVersion` entries must be rendered read-only in `HandoutPage`. Read-only mode disables structure writes, workspace writes, Word generation, and GeneratedFile deletion while preserving read-only viewing, manifest viewing, and download.

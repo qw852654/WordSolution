@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import ComponentLabPage from '@/pages/ComponentLabPage.vue'
+import HandoutManagementPage from '@/pages/HandoutManagementPage.vue'
 import HandoutPage from '@/pages/HandoutPage.vue'
 import HomePage from '@/pages/HomePage.vue'
 import PlaceholderPage from '@/pages/PlaceholderPage.vue'
@@ -37,6 +38,14 @@ const router = createRouter({
       path: '/sections/:sectionId',
       name: 'section-page',
       component: SectionPage,
+      meta: {
+        layout: 'standalone',
+      },
+    },
+    {
+      path: '/handouts',
+      name: 'handout-management',
+      component: HandoutManagementPage,
       meta: {
         layout: 'standalone',
       },

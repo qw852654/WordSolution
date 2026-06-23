@@ -8,6 +8,7 @@ import type { GeneratedFileRowModel, OutputFormCardModel } from '@/types'
 defineProps<{
   outputForms: OutputFormCardModel[]
   generatedFiles: GeneratedFileRowModel[]
+  readOnly?: boolean
 }>()
 
 defineEmits<{
@@ -37,6 +38,7 @@ const { t } = useI18n()
         v-for="outputForm in outputForms"
         :key="outputForm.id"
         :output-form="outputForm"
+        :read-only="readOnly"
         @generate-word="$emit('generateWord', $event)"
       />
       <EmptyState
@@ -54,6 +56,7 @@ const { t } = useI18n()
         v-for="file in generatedFiles"
         :key="file.id"
         :file="file"
+        :read-only="readOnly"
         @download="$emit('downloadGeneratedFile', $event)"
         @view-manifest="$emit('viewManifest', $event)"
         @delete="$emit('deleteGeneratedFile', $event)"

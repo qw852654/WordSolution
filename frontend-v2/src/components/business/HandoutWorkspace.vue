@@ -16,6 +16,7 @@ defineEmits<{
   moveDown: [id: string]
   editOccurrence: [id: string]
   remove: [id: string]
+  addInitialContent: []
 }>()
 
 const { t } = useI18n()
@@ -56,6 +57,8 @@ const { t } = useI18n()
         <EmptyState
           :title="t('components.handoutWorkspace.emptyTitle')"
           :description="t('components.handoutWorkspace.emptyDescription')"
+          :action-label="readOnly ? undefined : t('components.handoutWorkspace.addInitialContent')"
+          @action="$emit('addInitialContent')"
         />
       </div>
     </WeakScrollArea>

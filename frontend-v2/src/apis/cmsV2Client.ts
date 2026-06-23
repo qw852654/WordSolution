@@ -34,6 +34,17 @@ export interface CmsV2SectionVariantDto {
   updatedTime: string
 }
 
+export interface CmsV2SectionVariantSelectionTreeSectionDto {
+  section: CmsV2SectionDto
+  sectionVariants: CmsV2SectionVariantDto[]
+}
+
+export interface CmsV2SectionVariantSelectionTreeTopicDto {
+  teachingTopic: CmsV2TeachingTopicDto
+  sections: CmsV2SectionVariantSelectionTreeSectionDto[]
+  children: CmsV2SectionVariantSelectionTreeTopicDto[]
+}
+
 export interface CmsV2SectionVariantItemDto {
   id: number
   sectionVariantId: number
@@ -197,6 +208,18 @@ export interface CmsV2HandoutDto {
   updatedTime: string
 }
 
+export interface CmsV2CreateHandoutRequest {
+  title: string
+  description?: string | null
+  status?: string
+}
+
+export interface CmsV2UpdateHandoutRequest {
+  title: string
+  description?: string | null
+  status: string
+}
+
 export interface CmsV2HandoutVersionDto {
   id: number
   handoutId: number
@@ -206,6 +229,22 @@ export interface CmsV2HandoutVersionDto {
   status: string
   sortOrder: number
   updatedTime: string
+}
+
+export interface CmsV2CreateHandoutVersionRequest {
+  title: string
+  description?: string | null
+  type?: string
+  status?: string
+  sortOrder?: number
+}
+
+export interface CmsV2UpdateHandoutVersionRequest {
+  title: string
+  description?: string | null
+  type: string
+  status: string
+  sortOrder?: number
 }
 
 export interface CmsV2HandoutWorkspaceNodeDto {
@@ -264,6 +303,16 @@ export interface CmsV2AddHandoutVersionItemRequest {
   titleOverride?: string | null
   note?: string | null
   afterHandoutVersionItemId?: number | null
+}
+
+export interface CmsV2BatchAddSectionVariantsToHandoutVersionRequest {
+  sectionVariantIds: number[]
+  insertAfterHandoutVersionItemId?: number | null
+}
+
+export interface CmsV2BatchAddSectionVariantsToHandoutVersionResultDto {
+  createdItemIds: number[]
+  skippedExistingVariantIds: number[]
 }
 
 export interface CmsV2MoveHandoutVersionItemRequest {
@@ -571,6 +620,8 @@ export const cmsV2Api = {
     cmsV2PostJson<CmsV2CreatedEntityResultDto>('/section-variants', request),
   deleteSectionVariant: (sectionVariantId: number) =>
     cmsV2Delete(`/section-variants/${sectionVariantId}`),
+  getSectionVariantTree: () =>
+    cmsV2FetchJson<CmsV2SectionVariantSelectionTreeTopicDto[]>('/section-variants/tree'),
   listSectionVariants: (sectionId?: number) =>
     cmsV2FetchJson<CmsV2SectionVariantDto[]>(withQuery('/section-variants', { sectionId })),
   listSectionVariantItems: (sectionVariantId: number) =>
@@ -599,6 +650,7 @@ export const cmsV2Api = {
     cmsV2Delete(`/sections/${sectionId}/items/${sectionItemId}`),
   getAtomicSection: (atomicSectionId: number) =>
     cmsV2FetchJson<CmsV2AtomicSectionDto>(`/atomic-sections/${atomicSectionId}`),
+  listAtomicSections: () => cmsV2FetchJson<CmsV2AtomicSectionDto[]>('/atomic-sections'),
   createAtomicSection: (request: CmsV2CreateAtomicSectionRequest) =>
     cmsV2PostJson<CmsV2AtomicSectionDto>('/atomic-sections', request),
   renameAtomicSection: (atomicSectionId: number, title: string) =>
@@ -624,6 +676,7 @@ export const cmsV2Api = {
     cmsV2Delete(`/atomic-sections/${atomicSectionId}/items/${atomicSectionItemId}`),
   getContentBlock: (contentBlockId: number) =>
     cmsV2FetchJson<CmsV2ContentBlockDto>(`/content-blocks/${contentBlockId}`),
+  listContentBlocks: () => cmsV2FetchJson<CmsV2ContentBlockDto[]>('/content-blocks'),
   createContentBlock: (request: CmsV2CreateContentBlockRequest) =>
     cmsV2PostJson<CmsV2CreatedEntityResultDto>('/content-blocks', request),
   createContentBlockWithBlankDocument: (request: CmsV2CreateContentBlockWithBlankDocumentRequest) =>
@@ -687,6 +740,19 @@ export const cmsV2Api = {
     ),
   removeContentBlockRelation: (parentBlockId: number, relationId: number) =>
     cmsV2Delete(`/content-blocks/${parentBlockId}/relations/children/${relationId}`),
+  listHandouts: () => cmsV2FetchJson<CmsV2HandoutDto[]>('/handouts'),
+  createHandout: (request: CmsV2CreateHandoutRequest) =>
+    cmsV2PostJson<CmsV2CreatedEntityResultDto>('/handouts', request),
+  updateHandout: (handoutId: number, request: CmsV2UpdateHandoutRequest) =>
+    cmsV2PatchNoContent(`/handouts/${handoutId}`, request),
+  listHandoutVersions: (handoutId: number) =>
+    cmsV2FetchJson<CmsV2HandoutVersionDto[]>(`/handouts/${handoutId}/versions`),
+  createHandoutVersion: (handoutId: number, request: CmsV2CreateHandoutVersionRequest) =>
+    cmsV2PostJson<CmsV2CreatedEntityResultDto>(`/handouts/${handoutId}/versions`, request),
+  updateHandoutVersion: (
+    handoutVersionId: number,
+    request: CmsV2UpdateHandoutVersionRequest,
+  ) => cmsV2PatchNoContent(`/handout-versions/${handoutVersionId}`, request),
   getHandoutVersionWorkspace: (handoutVersionId: number) =>
     cmsV2FetchJson<CmsV2HandoutVersionWorkspaceDto>(
       `/handout-versions/${handoutVersionId}/workspace`,
@@ -697,6 +763,14 @@ export const cmsV2Api = {
   ) =>
     cmsV2PostJson<CmsV2CreatedEntityResultDto>(
       `/handout-versions/${handoutVersionId}/items`,
+      request,
+    ),
+  batchAddSectionVariantsToHandoutVersion: (
+    handoutVersionId: number,
+    request: CmsV2BatchAddSectionVariantsToHandoutVersionRequest,
+  ) =>
+    cmsV2PostJson<CmsV2BatchAddSectionVariantsToHandoutVersionResultDto>(
+      `/handout-versions/${handoutVersionId}/items/batch-add-section-variants`,
       request,
     ),
   updateHandoutVersionItem: (

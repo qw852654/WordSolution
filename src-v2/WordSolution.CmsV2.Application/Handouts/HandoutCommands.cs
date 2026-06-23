@@ -2,8 +2,27 @@ using WordSolution.CmsV2.Domain.Enums;
 
 namespace WordSolution.CmsV2.Application.Handouts;
 
+public sealed record CreateHandoutCommand(
+    string Title,
+    string? Description = null,
+    HandoutStatus Status = HandoutStatus.Draft);
+
+public sealed record UpdateHandoutCommand(
+    int HandoutId,
+    string Title,
+    string? Description = null,
+    HandoutStatus Status = HandoutStatus.Draft);
+
 public sealed record CreateHandoutVersionCommand(
     int HandoutId,
+    string Title,
+    string? Description = null,
+    HandoutVersionType Type = HandoutVersionType.Normal,
+    HandoutVersionStatus Status = HandoutVersionStatus.Draft,
+    int SortOrder = 0);
+
+public sealed record UpdateHandoutVersionCommand(
+    int HandoutVersionId,
     string Title,
     string? Description = null,
     HandoutVersionType Type = HandoutVersionType.Normal,
@@ -39,3 +58,8 @@ public sealed record UpdateHandoutVersionItemCommand(
 public sealed record RemoveHandoutVersionItemCommand(
     int HandoutVersionId,
     int HandoutVersionItemId);
+
+public sealed record BatchAddSectionVariantsCommand(
+    int HandoutVersionId,
+    IReadOnlyList<int> SectionVariantIds,
+    int? InsertAfterHandoutVersionItemId = null);

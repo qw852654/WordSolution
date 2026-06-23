@@ -34,4 +34,19 @@ public sealed class Handout
     public HandoutStatus Status { get; private set; }
 
     public DateTimeOffset UpdatedTime { get; private set; }
+
+    public void UpdateDetails(
+        string title,
+        string? description,
+        HandoutStatus status,
+        DateTimeOffset? updatedTime = null)
+    {
+        DomainGuard.NotWhiteSpace(title, nameof(Title));
+        DomainGuard.ValidEnum(status, nameof(Status));
+
+        Title = title.Trim();
+        Description = description?.Trim();
+        Status = status;
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+    }
 }

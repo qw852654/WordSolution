@@ -6,6 +6,7 @@ import type { GeneratedFileRowModel } from '@/types'
 
 defineProps<{
   file: GeneratedFileRowModel
+  readOnly?: boolean
 }>()
 
 defineEmits<{
@@ -59,6 +60,7 @@ const { t } = useI18n()
           variant="ghost"
           class="size-8"
           :aria-label="t('components.generatedFileRow.delete')"
+          :disabled="readOnly"
           @click="$emit('delete', file.id)"
         >
           <Trash2 class="size-4" />

@@ -721,6 +721,11 @@ public static class CmsV2ApiEndpointExtensions
         group.MapGet("/section-variants/{id:int}", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
             await OkOrNotFoundAsync(unitOfWork.SectionVariants.GetByIdAsync(id, cancellationToken)));
 
+        group.MapGet("/section-variants/tree", async (
+            HandoutUseCases useCases,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await useCases.GetSectionVariantSelectionTreeAsync(cancellationToken)));
+
         group.MapPost("/section-variants/selection-preview", async (
             PreviewSectionVariantSelectionRequest request,
             SectionVariantUseCases useCases,
@@ -790,14 +795,27 @@ public static class CmsV2ApiEndpointExtensions
 
         group.MapPost("/handouts", async (
             CreateHandoutRequest request,
-            ICmsV2UnitOfWork unitOfWork,
+            HandoutUseCases useCases,
             CancellationToken cancellationToken) =>
         {
-            var handout = new Handout(request.Title, request.Description, request.Status);
-            await unitOfWork.Handouts.AddAsync(handout, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
+            var result = await useCases.CreateHandoutAsync(
+                new CreateHandoutCommand(request.Title, request.Description, request.Status),
+                cancellationToken);
 
-            return Results.Ok(handout);
+            return Results.Ok(result);
+        });
+
+        group.MapPatch("/handouts/{id:int}", async (
+            int id,
+            UpdateHandoutRequest request,
+            HandoutUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            await useCases.UpdateHandoutAsync(
+                new UpdateHandoutCommand(id, request.Title, request.Description, request.Status),
+                cancellationToken);
+
+            return Results.Ok(new { handoutId = id });
         });
 
         group.MapGet("/handouts/{id:int}/versions", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
@@ -823,6 +841,25 @@ public static class CmsV2ApiEndpointExtensions
                 cancellationToken);
 
             return Results.Ok(result);
+        });
+
+        group.MapPatch("/handout-versions/{id:int}", async (
+            int id,
+            UpdateHandoutVersionRequest request,
+            HandoutUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            await useCases.UpdateHandoutVersionAsync(
+                new UpdateHandoutVersionCommand(
+                    id,
+                    request.Title,
+                    request.Description,
+                    request.Type,
+                    request.Status,
+                    request.SortOrder),
+                cancellationToken);
+
+            return Results.Ok(new { handoutVersionId = id });
         });
 
         group.MapGet("/handout-versions/{id:int}/items", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
@@ -855,6 +892,22 @@ public static class CmsV2ApiEndpointExtensions
                     request.TitleOverride,
                     request.Note,
                     request.AfterHandoutVersionItemId),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
+        group.MapPost("/handout-versions/{id:int}/items/batch-add-section-variants", async (
+            int id,
+            BatchAddSectionVariantsToHandoutVersionRequest request,
+            HandoutUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.BatchAddSectionVariantsAsync(
+                new BatchAddSectionVariantsCommand(
+                    id,
+                    request.SectionVariantIds ?? [],
+                    request.InsertAfterHandoutVersionItemId),
                 cancellationToken);
 
             return Results.Ok(result);

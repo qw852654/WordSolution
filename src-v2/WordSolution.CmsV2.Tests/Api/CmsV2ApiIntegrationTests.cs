@@ -1071,6 +1071,137 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.Empty(workspace.GetProperty("generatedFiles").EnumerateArray());
     }
 
+    [Fact]
+    public async Task Handout_management_endpoints_update_archive_and_enforce_write_guards()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var handout = await PostJsonAsync(client, "/api/cms-v2/handouts", new { title = "讲义管理", status = "Draft" });
+        var handoutId = handout.GetProperty("id").GetInt32();
+        await PatchJsonAsync(
+            client,
+            $"/api/cms-v2/handouts/{handoutId}",
+            new { title = "讲义管理改名", description = "更新说明", status = "Active" });
+        var updatedHandout = await client.GetFromJsonAsync<JsonElement>($"/api/cms-v2/handouts/{handoutId}");
+
+        Assert.Equal("讲义管理改名", updatedHandout.GetProperty("title").GetString());
+        Assert.Equal("更新说明", updatedHandout.GetProperty("description").GetString());
+        Assert.Equal("Active", updatedHandout.GetProperty("status").GetString());
+
+        var version = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/handouts/{handoutId}/versions",
+            new { title = "基础版", type = "Normal", status = "Active", sortOrder = 999 });
+        var versionId = version.GetProperty("id").GetInt32();
+        var loadedVersion = await client.GetFromJsonAsync<JsonElement>($"/api/cms-v2/handout-versions/{versionId}");
+        Assert.Equal(10, loadedVersion.GetProperty("sortOrder").GetInt32());
+        Assert.Equal("Draft", loadedVersion.GetProperty("status").GetString());
+
+        await PatchJsonAsync(
+            client,
+            $"/api/cms-v2/handout-versions/{versionId}",
+            new { title = "基础版归档", type = "Normal", status = "Archived", sortOrder = 10 });
+
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "讲义管理主题" });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "讲义管理小节" });
+        var block = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks",
+            new { sectionId = section.GetProperty("id").GetInt32(), title = "讲义管理内容", blockType = "KnowledgePoint" });
+        var archivedWrite = await client.PostAsJsonAsync(
+            $"/api/cms-v2/handout-versions/{versionId}/items",
+            new { targetType = "ContentBlock", targetId = block.GetProperty("id").GetInt32() });
+
+        Assert.Equal(HttpStatusCode.BadRequest, archivedWrite.StatusCode);
+    }
+
+    [Fact]
+    public async Task Section_variant_tree_and_batch_add_endpoints_support_handout_selection_flow()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var firstTopic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "Topic A", sortOrder = 10 });
+        var secondTopic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "Topic B", sortOrder = 20 });
+        var firstSection = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = firstTopic.GetProperty("id").GetInt32(), title = "Section A" });
+        var secondSection = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = secondTopic.GetProperty("id").GetInt32(), title = "Section B" });
+        var firstVariant = await PostJsonAsync(
+            client,
+            "/api/cms-v2/section-variants",
+            new
+            {
+                sectionId = firstSection.GetProperty("id").GetInt32(),
+                title = "Variant A",
+                type = "Lecture",
+                difficulty = "Basic",
+                selectedSectionItemIds = Array.Empty<int>()
+            });
+        var secondVariant = await PostJsonAsync(
+            client,
+            "/api/cms-v2/section-variants",
+            new
+            {
+                sectionId = secondSection.GetProperty("id").GetInt32(),
+                title = "Variant B",
+                type = "Lecture",
+                difficulty = "Basic",
+                selectedSectionItemIds = Array.Empty<int>()
+            });
+        var handout = await PostJsonAsync(client, "/api/cms-v2/handouts", new { title = "Batch Variant Handout" });
+        var version = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/handouts/{handout.GetProperty("id").GetInt32()}/versions",
+            new { title = "Batch Version" });
+        var handoutVersionId = version.GetProperty("id").GetInt32();
+        var existing = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/handout-versions/{handoutVersionId}/items",
+            new
+            {
+                targetType = "SectionVariant",
+                targetId = secondVariant.GetProperty("id").GetInt32()
+            });
+
+        var tree = await client.GetFromJsonAsync<JsonElement[]>("/api/cms-v2/section-variants/tree") ?? [];
+        var batchResult = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/handout-versions/{handoutVersionId}/items/batch-add-section-variants",
+            new
+            {
+                sectionVariantIds = new[]
+                {
+                    secondVariant.GetProperty("id").GetInt32(),
+                    firstVariant.GetProperty("id").GetInt32()
+                },
+                insertAfterHandoutVersionItemId = existing.GetProperty("id").GetInt32()
+            });
+        var items = await client.GetFromJsonAsync<JsonElement[]>(
+                $"/api/cms-v2/handout-versions/{handoutVersionId}/items")
+            ?? [];
+        var orderedItems = items.OrderBy(item => item.GetProperty("sortOrder").GetInt32()).ToArray();
+        var firstTopicSection = tree[0].GetProperty("sections").EnumerateArray().First();
+
+        Assert.Equal(2, tree.Length);
+        Assert.Equal(firstTopic.GetProperty("id").GetInt32(), tree[0].GetProperty("teachingTopic").GetProperty("id").GetInt32());
+        Assert.Equal(
+            firstVariant.GetProperty("id").GetInt32(),
+            firstTopicSection.GetProperty("sectionVariants").EnumerateArray().First().GetProperty("id").GetInt32());
+        Assert.Single(batchResult.GetProperty("createdItemIds").EnumerateArray());
+        Assert.Equal([secondVariant.GetProperty("id").GetInt32()], batchResult.GetProperty("skippedExistingVariantIds").EnumerateArray().Select(item => item.GetInt32()));
+        Assert.Equal(
+            [secondVariant.GetProperty("id").GetInt32(), firstVariant.GetProperty("id").GetInt32()],
+            orderedItems.Select(item => item.GetProperty("targetId").GetInt32()));
+        Assert.Equal([10, 20], orderedItems.Select(item => item.GetProperty("sortOrder").GetInt32()));
+    }
+
     private static async Task<ImportedContentBlock> CreateImportedContentBlockAsync(
         HttpClient client,
         string bankRootDirectory,

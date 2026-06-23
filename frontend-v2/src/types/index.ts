@@ -450,6 +450,47 @@ export interface HandoutTreeContextMenuPayload {
   y: number
 }
 
+export type HandoutTreeContextActionType =
+  | 'AddSectionVariantsToEnd'
+  | 'AddAtomicSectionToEnd'
+  | 'AddContentBlockToEnd'
+  | 'AddSectionVariantsAfter'
+  | 'AddAtomicSectionAfter'
+  | 'AddContentBlockAfter'
+
+export interface HandoutTreeContextMenuModel {
+  node: HandoutTreeNodeModel
+  position: {
+    x: number
+    y: number
+  }
+}
+
+export interface HandoutTreeContextMenuActionPayload {
+  nodeId: string
+  actionType: HandoutTreeContextActionType
+}
+
+export interface HandoutTargetPickerCandidateModel {
+  id: number
+  title: string
+  metaItems?: string[]
+  disabled?: boolean
+}
+
+export type HandoutOverviewNodeKind = 'Handout' | 'HandoutVersion'
+
+export interface HandoutOverviewNodeModel {
+  id: string
+  title: string
+  kind: HandoutOverviewNodeKind
+  handoutId?: number
+  handoutVersionId?: number
+  status?: string
+  expanded?: boolean
+  children?: HandoutOverviewNodeModel[]
+}
+
 export type HandoutWorkspaceItemKind = 'SectionVariant' | 'AtomicSection' | 'ContentBlock'
 
 export interface HandoutWorkspaceChildModel {

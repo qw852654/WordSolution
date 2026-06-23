@@ -14,6 +14,51 @@ public sealed class HandoutUseCases
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
+    public async Task<CreatedEntityResult> CreateHandoutAsync(
+        CreateHandoutCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        CreatedEntityResult? result = null;
+
+        await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+        {
+            await EnsureUniqueHandoutTitleAsync(
+                command.Title,
+                existingHandoutId: null,
+                transactionCancellationToken);
+
+            var handout = new Handout(command.Title, command.Description, command.Status);
+            await _unitOfWork.Handouts.AddAsync(handout, transactionCancellationToken);
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+            result = new CreatedEntityResult(handout.Id);
+        }, cancellationToken);
+
+        return result!;
+    }
+
+    public async Task UpdateHandoutAsync(
+        UpdateHandoutCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+        {
+            var handout = await _unitOfWork.Handouts.GetByIdAsync(command.HandoutId, transactionCancellationToken);
+            if (handout is null)
+            {
+                throw new CmsV2ApplicationException($"Handout {command.HandoutId} was not found.");
+            }
+
+            await EnsureUniqueHandoutTitleAsync(
+                command.Title,
+                handout.Id,
+                transactionCancellationToken);
+
+            handout.UpdateDetails(command.Title, command.Description, command.Status);
+            _unitOfWork.Handouts.Update(handout);
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+        }, cancellationToken);
+    }
+
     public async Task<CreatedEntityResult> CreateHandoutVersionAsync(
         CreateHandoutVersionCommand command,
         CancellationToken cancellationToken = default)
@@ -22,18 +67,37 @@ public sealed class HandoutUseCases
 
         await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
         {
-            if (await _unitOfWork.Handouts.GetByIdAsync(command.HandoutId, transactionCancellationToken) is null)
+            var handout = await _unitOfWork.Handouts.GetByIdAsync(command.HandoutId, transactionCancellationToken);
+            if (handout is null)
             {
                 throw new CmsV2ApplicationException($"Handout {command.HandoutId} was not found.");
             }
+
+            if (handout.Status == HandoutStatus.Archived)
+            {
+                throw new CmsV2ApplicationException("Archived Handout cannot create HandoutVersion.");
+            }
+
+            await EnsureUniqueHandoutVersionTitleAsync(
+                command.HandoutId,
+                command.Title,
+                existingHandoutVersionId: null,
+                transactionCancellationToken);
+
+            var versions = await _unitOfWork.HandoutVersions.ListByHandoutAsync(
+                command.HandoutId,
+                transactionCancellationToken);
+            var nextSortOrder = versions.Count == 0
+                ? 10
+                : versions.Max(version => version.SortOrder) + 10;
 
             var version = new HandoutVersion(
                 command.HandoutId,
                 command.Title,
                 command.Description,
                 command.Type,
-                command.Status,
-                command.SortOrder);
+                HandoutVersionStatus.Draft,
+                nextSortOrder);
 
             await _unitOfWork.HandoutVersions.AddAsync(version, transactionCancellationToken);
             await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
@@ -41,6 +105,37 @@ public sealed class HandoutUseCases
         }, cancellationToken);
 
         return result!;
+    }
+
+    public async Task UpdateHandoutVersionAsync(
+        UpdateHandoutVersionCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+        {
+            var version = await _unitOfWork.HandoutVersions.GetByIdAsync(
+                command.HandoutVersionId,
+                transactionCancellationToken);
+            if (version is null)
+            {
+                throw new CmsV2ApplicationException($"HandoutVersion {command.HandoutVersionId} was not found.");
+            }
+
+            await EnsureUniqueHandoutVersionTitleAsync(
+                version.HandoutId,
+                command.Title,
+                version.Id,
+                transactionCancellationToken);
+
+            version.UpdateDetails(
+                command.Title,
+                command.Description,
+                command.Type,
+                command.Status,
+                command.SortOrder);
+            _unitOfWork.HandoutVersions.Update(version);
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+        }, cancellationToken);
     }
 
     public async Task<CreatedEntityResult> AddHandoutVersionItemAsync(
@@ -51,7 +146,7 @@ public sealed class HandoutUseCases
 
         await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
         {
-            await RequireHandoutVersionAsync(command.HandoutVersionId, transactionCancellationToken);
+            await RequireWritableHandoutVersionAsync(command.HandoutVersionId, transactionCancellationToken);
             await RequireAllowedTargetAsync(command.TargetType, command.TargetId, transactionCancellationToken);
 
             var siblings = (await _unitOfWork.HandoutVersionItems.ListByHandoutVersionAsync(
@@ -143,12 +238,162 @@ public sealed class HandoutUseCases
                 .ToArray());
     }
 
+    public async Task<IReadOnlyList<SectionVariantSelectionTreeTopicDto>> GetSectionVariantSelectionTreeAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var topics = await _unitOfWork.TeachingTopics.ListAsync(cancellationToken);
+        var sections = await _unitOfWork.Sections.ListAsync(cancellationToken);
+        var variants = await _unitOfWork.SectionVariants.ListAsync(cancellationToken);
+
+        var topicChildrenByParentId = topics
+            .GroupBy(topic => topic.ParentId ?? 0)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .OrderBy(topic => topic.SortOrder)
+                    .ThenBy(topic => topic.Id)
+                    .ToArray()
+                    as IReadOnlyList<TeachingTopic>);
+        var sectionsByTopicId = sections
+            .GroupBy(section => section.TeachingTopicId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .OrderBy(section => section.SortOrder)
+                    .ThenBy(section => section.Id)
+                    .ToArray()
+                    as IReadOnlyList<Section>);
+        var variantsBySectionId = variants
+            .GroupBy(variant => variant.SectionId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .OrderBy(variant => variant.SortOrder)
+                    .ThenBy(variant => variant.Id)
+                    .ToArray()
+                    as IReadOnlyList<SectionVariant>);
+
+        return BuildSectionVariantSelectionTree(
+            parentTopicId: null,
+            topicChildrenByParentId,
+            sectionsByTopicId,
+            variantsBySectionId);
+    }
+
+    public async Task<BatchAddSectionVariantsResult> BatchAddSectionVariantsAsync(
+        BatchAddSectionVariantsCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        if (command.SectionVariantIds.Count == 0)
+        {
+            return new BatchAddSectionVariantsResult([], []);
+        }
+
+        var duplicateId = command.SectionVariantIds
+            .GroupBy(id => id)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .FirstOrDefault();
+        if (duplicateId > 0)
+        {
+            throw new CmsV2ApplicationException($"Duplicate SectionVariant id in request: {duplicateId}");
+        }
+
+        return await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+        {
+            await RequireWritableHandoutVersionAsync(command.HandoutVersionId, transactionCancellationToken);
+
+            var allVariants = await _unitOfWork.SectionVariants.ListAsync(transactionCancellationToken);
+            var selectedVariantById = allVariants
+                .Where(variant => command.SectionVariantIds.Contains(variant.Id))
+                .ToDictionary(variant => variant.Id);
+            foreach (var variantId in command.SectionVariantIds)
+            {
+                if (!selectedVariantById.TryGetValue(variantId, out var variant))
+                {
+                    throw new CmsV2ApplicationException($"SectionVariant {variantId} was not found.");
+                }
+
+                if (variant.Status == SectionVariantStatus.Archived)
+                {
+                    throw new CmsV2ApplicationException($"SectionVariant {variantId} is archived.");
+                }
+            }
+
+            var siblings = (await _unitOfWork.HandoutVersionItems.ListByHandoutVersionAsync(
+                    command.HandoutVersionId,
+                    transactionCancellationToken))
+                .OrderBy(item => item.SortOrder)
+                .ThenBy(item => item.Id)
+                .ToList();
+            var existingVariantIds = siblings
+                .Where(item => item.TargetType == HandoutVersionItemTargetType.SectionVariant)
+                .Select(item => item.TargetId)
+                .ToHashSet();
+            var skippedVariantIds = command.SectionVariantIds
+                .Where(existingVariantIds.Contains)
+                .ToArray();
+            var variantsToAdd = selectedVariantById.Values
+                .Where(variant => !existingVariantIds.Contains(variant.Id))
+                .ToArray();
+
+            if (variantsToAdd.Length == 0)
+            {
+                return new BatchAddSectionVariantsResult([], skippedVariantIds);
+            }
+
+            var insertIndex = siblings.Count;
+            if (command.InsertAfterHandoutVersionItemId.HasValue)
+            {
+                insertIndex = siblings.FindIndex(item => item.Id == command.InsertAfterHandoutVersionItemId.Value);
+                if (insertIndex < 0)
+                {
+                    throw new CmsV2ApplicationException(
+                        $"HandoutVersionItem {command.InsertAfterHandoutVersionItemId.Value} was not found in HandoutVersion {command.HandoutVersionId}.");
+                }
+
+                insertIndex++;
+            }
+
+            var orderedVariantsToAdd = await OrderSectionVariantsBySelectionTreeAsync(
+                variantsToAdd,
+                transactionCancellationToken);
+            var createdItems = new List<HandoutVersionItem>(orderedVariantsToAdd.Count);
+            foreach (var variant in orderedVariantsToAdd)
+            {
+                var item = new HandoutVersionItem(
+                    command.HandoutVersionId,
+                    HandoutVersionItemTargetType.SectionVariant,
+                    variant.Id,
+                    sortOrder: 0);
+                await _unitOfWork.HandoutVersionItems.AddAsync(item, transactionCancellationToken);
+                createdItems.Add(item);
+            }
+
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+
+            siblings.InsertRange(insertIndex, createdItems);
+            NormalizeSortOrder(siblings);
+            foreach (var sibling in siblings)
+            {
+                _unitOfWork.HandoutVersionItems.Update(sibling);
+            }
+
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+
+            return new BatchAddSectionVariantsResult(
+                createdItems.Select(item => item.Id).ToArray(),
+                skippedVariantIds);
+        }, cancellationToken);
+    }
+
     public async Task MoveHandoutVersionItemAsync(
         MoveHandoutVersionItemCommand command,
         CancellationToken cancellationToken = default)
     {
         await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
         {
+            await RequireWritableHandoutVersionAsync(command.HandoutVersionId, transactionCancellationToken);
             var item = await GetHandoutVersionItemForCommandAsync(
                 command.HandoutVersionId,
                 command.HandoutVersionItemId,
@@ -188,6 +433,7 @@ public sealed class HandoutUseCases
     {
         await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
         {
+            await RequireWritableHandoutVersionAsync(command.HandoutVersionId, transactionCancellationToken);
             var item = await GetHandoutVersionItemForCommandAsync(
                 command.HandoutVersionId,
                 command.HandoutVersionItemId,
@@ -206,6 +452,7 @@ public sealed class HandoutUseCases
     {
         await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
         {
+            await RequireWritableHandoutVersionAsync(command.HandoutVersionId, transactionCancellationToken);
             var item = await GetHandoutVersionItemForCommandAsync(
                 command.HandoutVersionId,
                 command.HandoutVersionItemId,
@@ -231,11 +478,17 @@ public sealed class HandoutUseCases
         }, cancellationToken);
     }
 
-    private async Task RequireHandoutVersionAsync(int handoutVersionId, CancellationToken cancellationToken)
+    private async Task RequireWritableHandoutVersionAsync(int handoutVersionId, CancellationToken cancellationToken)
     {
-        if (await _unitOfWork.HandoutVersions.GetByIdAsync(handoutVersionId, cancellationToken) is null)
+        var version = await _unitOfWork.HandoutVersions.GetByIdAsync(handoutVersionId, cancellationToken);
+        if (version is null)
         {
             throw new CmsV2ApplicationException($"HandoutVersion {handoutVersionId} was not found.");
+        }
+
+        if (version.Status == HandoutVersionStatus.Archived)
+        {
+            throw new CmsV2ApplicationException("Archived HandoutVersion cannot be modified.");
         }
     }
 
@@ -292,6 +545,127 @@ public sealed class HandoutUseCases
         {
             items[index].ChangeSortOrder((index + 1) * 10);
         }
+    }
+
+    private async Task EnsureUniqueHandoutTitleAsync(
+        string title,
+        int? existingHandoutId,
+        CancellationToken cancellationToken)
+    {
+        var normalizedTitle = NormalizeTitle(title);
+        var handouts = await _unitOfWork.Handouts.ListAsync(cancellationToken);
+        if (handouts.Any(handout =>
+                handout.Status != HandoutStatus.Archived
+                && handout.Id != existingHandoutId
+                && string.Equals(NormalizeTitle(handout.Title), normalizedTitle, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new CmsV2ApplicationException($"Handout title already exists: {normalizedTitle}");
+        }
+    }
+
+    private async Task EnsureUniqueHandoutVersionTitleAsync(
+        int handoutId,
+        string title,
+        int? existingHandoutVersionId,
+        CancellationToken cancellationToken)
+    {
+        var normalizedTitle = NormalizeTitle(title);
+        var versions = await _unitOfWork.HandoutVersions.ListByHandoutAsync(handoutId, cancellationToken);
+        if (versions.Any(version =>
+                version.Status != HandoutVersionStatus.Archived
+                && version.Id != existingHandoutVersionId
+                && string.Equals(NormalizeTitle(version.Title), normalizedTitle, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new CmsV2ApplicationException($"HandoutVersion title already exists in Handout {handoutId}: {normalizedTitle}");
+        }
+    }
+
+    private static string NormalizeTitle(string title)
+    {
+        return string.IsNullOrWhiteSpace(title) ? string.Empty : title.Trim();
+    }
+
+    private static IReadOnlyList<SectionVariantSelectionTreeTopicDto> BuildSectionVariantSelectionTree(
+        int? parentTopicId,
+        IReadOnlyDictionary<int, IReadOnlyList<TeachingTopic>> topicChildrenByParentId,
+        IReadOnlyDictionary<int, IReadOnlyList<Section>> sectionsByTopicId,
+        IReadOnlyDictionary<int, IReadOnlyList<SectionVariant>> variantsBySectionId)
+    {
+        var key = parentTopicId ?? 0;
+        if (!topicChildrenByParentId.TryGetValue(key, out var topics))
+        {
+            return [];
+        }
+
+        return topics
+            .Select(topic =>
+            {
+                var sections = sectionsByTopicId.TryGetValue(topic.Id, out var topicSections)
+                    ? topicSections
+                    : [];
+                var sectionNodes = sections
+                    .Select(section => new SectionVariantSelectionTreeSectionDto(
+                        section,
+                        variantsBySectionId.TryGetValue(section.Id, out var sectionVariants)
+                            ? sectionVariants
+                            : []))
+                    .ToArray();
+
+                return new SectionVariantSelectionTreeTopicDto(
+                    topic,
+                    sectionNodes,
+                    BuildSectionVariantSelectionTree(
+                        topic.Id,
+                        topicChildrenByParentId,
+                        sectionsByTopicId,
+                        variantsBySectionId));
+            })
+            .ToArray();
+    }
+
+    private async Task<IReadOnlyList<SectionVariant>> OrderSectionVariantsBySelectionTreeAsync(
+        IReadOnlyCollection<SectionVariant> variants,
+        CancellationToken cancellationToken)
+    {
+        var variantIds = variants.Select(variant => variant.Id).ToHashSet();
+        var variantById = variants.ToDictionary(variant => variant.Id);
+        var sections = await _unitOfWork.Sections.ListAsync(cancellationToken);
+        var topics = await _unitOfWork.TeachingTopics.ListAsync(cancellationToken);
+        var sectionById = sections.ToDictionary(section => section.Id);
+        var topicById = topics.ToDictionary(topic => topic.Id);
+
+        return variants
+            .OrderBy(variant => BuildTopicSortKey(sectionById.GetValueOrDefault(variant.SectionId), topicById))
+            .ThenBy(variant => sectionById.GetValueOrDefault(variant.SectionId)?.SortOrder ?? int.MaxValue)
+            .ThenBy(variant => variant.SortOrder)
+            .ThenBy(variant => variant.Id)
+            .Where(variant => variantIds.Contains(variant.Id) && variantById.ContainsKey(variant.Id))
+            .ToArray();
+    }
+
+    private static string BuildTopicSortKey(
+        Section? section,
+        IReadOnlyDictionary<int, TeachingTopic> topicById)
+    {
+        if (section is null || !topicById.TryGetValue(section.TeachingTopicId, out var topic))
+        {
+            return string.Empty;
+        }
+
+        var path = new Stack<string>();
+        var current = topic;
+        while (true)
+        {
+            path.Push($"{current.SortOrder:D8}:{current.Id:D8}");
+            if (!current.ParentId.HasValue || !topicById.TryGetValue(current.ParentId.Value, out var parent))
+            {
+                break;
+            }
+
+            current = parent;
+        }
+
+        return string.Join("/", path);
     }
 
     private async Task<HandoutWorkspaceItemDto> BuildWorkspaceItemAsync(

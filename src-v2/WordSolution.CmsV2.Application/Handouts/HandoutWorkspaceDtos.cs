@@ -28,3 +28,16 @@ public sealed record HandoutWorkspaceNodeDto(
     int SourceId,
     string Title,
     IReadOnlyList<HandoutWorkspaceNodeDto> Children);
+
+public sealed record SectionVariantSelectionTreeTopicDto(
+    TeachingTopic TeachingTopic,
+    IReadOnlyList<SectionVariantSelectionTreeSectionDto> Sections,
+    IReadOnlyList<SectionVariantSelectionTreeTopicDto> Children);
+
+public sealed record SectionVariantSelectionTreeSectionDto(
+    Section Section,
+    IReadOnlyList<SectionVariant> SectionVariants);
+
+public sealed record BatchAddSectionVariantsResult(
+    IReadOnlyList<int> CreatedItemIds,
+    IReadOnlyList<int> SkippedExistingVariantIds);

@@ -7,6 +7,7 @@ import type { OutputFormCardModel } from '@/types'
 
 defineProps<{
   outputForm: OutputFormCardModel
+  readOnly?: boolean
 }>()
 
 defineEmits<{
@@ -46,7 +47,13 @@ const { t } = useI18n()
       </div>
     </dl>
 
-    <Button type="button" size="sm" class="mt-3 w-full" @click="$emit('generateWord', outputForm.id)">
+    <Button
+      type="button"
+      size="sm"
+      class="mt-3 w-full"
+      :disabled="readOnly"
+      @click="$emit('generateWord', outputForm.id)"
+    >
       <Play class="size-4" />
       {{ t('components.outputFormCard.generateWord') }}
     </Button>

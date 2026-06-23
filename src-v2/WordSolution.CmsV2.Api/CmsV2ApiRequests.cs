@@ -156,7 +156,19 @@ public sealed record CreateHandoutRequest(
     string? Description = null,
     HandoutStatus Status = HandoutStatus.Draft);
 
+public sealed record UpdateHandoutRequest(
+    string Title,
+    string? Description = null,
+    HandoutStatus Status = HandoutStatus.Draft);
+
 public sealed record CreateHandoutVersionRequest(
+    string Title,
+    string? Description = null,
+    HandoutVersionType Type = HandoutVersionType.Normal,
+    HandoutVersionStatus Status = HandoutVersionStatus.Draft,
+    int SortOrder = 0);
+
+public sealed record UpdateHandoutVersionRequest(
     string Title,
     string? Description = null,
     HandoutVersionType Type = HandoutVersionType.Normal,
@@ -170,6 +182,10 @@ public sealed record AddHandoutVersionItemRequest(
     string? TitleOverride = null,
     string? Note = null,
     int? AfterHandoutVersionItemId = null);
+
+public sealed record BatchAddSectionVariantsToHandoutVersionRequest(
+    IReadOnlyList<int>? SectionVariantIds = null,
+    int? InsertAfterHandoutVersionItemId = null);
 
 public sealed record MoveHandoutVersionItemRequest(string Direction);
 

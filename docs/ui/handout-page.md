@@ -950,3 +950,13 @@ type BatchAddSectionVariantsResult = {
 - `GeneratedFile` 下载 / manifest / 删除。
 
 允许的最小改动只包括：空状态按钮、批量选择 Dialog、右键后插入、hover 总览、归档只读 guard、替换 `window.prompt` 临时入口和新增 API 对接。
+## Current H6-H8 implementation: Handout creation chain
+
+- Empty `HandoutVersion` workspaces expose an initial-content entry in `HandoutWorkspace`.
+- Initial content opens `SectionVariantSelectionDialog` and batch-adds selected `SectionVariant` entries through `POST /api/cms-v2/handout-versions/{id}/items/batch-add-section-variants`.
+- `HandoutStructurePanel` root context menu supports adding `SectionVariant`, `AtomicSection`, and `ContentBlock` to the end.
+- Top-level `HandoutVersionItem` context menu supports adding `SectionVariant`, `AtomicSection`, and `ContentBlock` after that item.
+- `SectionVariantSelectionDialog` uses `frontend-v2/src/utils/sectionVariantTreeSelection.ts` for selection state, group toggling, filtering, and locked existing entries.
+- `HandoutTargetPicker` provides first-version single-select picking for direct `AtomicSection` and `ContentBlock` insertion.
+- `HandoutOccurrenceEditDialog` replaces the temporary prompt-based `TitleOverride / Note` edit flow.
+- Archived `Handout` or `HandoutVersion` entries are read-only for writes and generation.
