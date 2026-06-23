@@ -402,6 +402,7 @@ const en = {
     generatedFileRow: {
       download: 'Download generated Word',
       viewManifest: 'View manifest',
+      delete: 'Delete GeneratedFile',
     },
     handoutOutput: {
       title: 'Output',
@@ -570,6 +571,7 @@ const en = {
       updatedItem: 'Updated TitleOverride / Note.',
       removedItem: 'Removed HandoutVersionItem reference.',
       generatedWord: 'Generated Word file. GeneratedFile ID: {id}',
+      deletedGeneratedFile: 'Deleted GeneratedFile.',
     },
     prompt: {
       targetType: 'Enter target type: SectionVariant / AtomicSection / ContentBlock',
@@ -580,6 +582,8 @@ const en = {
       note: 'Note for this occurrence. Leave empty to clear.',
       removeConfirm:
         'Remove this HandoutVersionItem reference? Source content will not be deleted. Item: {title}',
+      deleteGeneratedFileConfirm:
+        'Delete this GeneratedFile? This removes the record and local generated file. This cannot be undone.',
     },
   },
   sectionPage: {

@@ -103,11 +103,10 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
 
         builder.MoveToDocumentEnd();
         builder.InsertBreak(BreakType.ParagraphBreak);
+        builder.ParagraphFormat.ClearFormatting();
+        builder.Font.ClearFormatting();
         builder.ParagraphFormat.StyleIdentifier = GetHeadingStyleIdentifier(headingLevel);
-        builder.Font.Name = "Microsoft YaHei";
-        builder.Font.Bold = true;
         builder.Writeln(title.Trim());
-        builder.Font.Bold = false;
         builder.ParagraphFormat.ClearFormatting();
         builder.Font.ClearFormatting();
     }

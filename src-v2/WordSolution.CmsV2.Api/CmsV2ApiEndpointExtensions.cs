@@ -1052,6 +1052,25 @@ public static class CmsV2ApiEndpointExtensions
 
             return Results.File(bytes, DocxContentType, Path.GetFileName(generatedFile.FilePath));
         });
+
+        group.MapDelete("/generated-files/{id:int}", async (
+            int id,
+            ICmsV2UnitOfWork unitOfWork,
+            IContentBlockFileStore fileStore,
+            CancellationToken cancellationToken) =>
+        {
+            var generatedFile = await unitOfWork.GeneratedFiles.GetByIdAsync(id, cancellationToken);
+            if (generatedFile is null)
+            {
+                return NotFoundProblem($"GeneratedFile {id} was not found.");
+            }
+
+            unitOfWork.GeneratedFiles.Remove(generatedFile);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            await fileStore.DeleteIfExistsAsync(generatedFile.FilePath, cancellationToken);
+
+            return Results.NoContent();
+        });
     }
 
     private static void MapTeachingNotes(RouteGroupBuilder group)

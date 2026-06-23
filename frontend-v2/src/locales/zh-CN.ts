@@ -389,6 +389,7 @@ const zhCN = {
     generatedFileRow: {
       download: '下载生成的 Word',
       viewManifest: '查看 manifest',
+      delete: '删除 GeneratedFile',
     },
     handoutOutput: {
       title: '输出',
@@ -554,6 +555,7 @@ const zhCN = {
       updatedItem: '已更新 TitleOverride / Note。',
       removedItem: '已移除 HandoutVersionItem 引用。',
       generatedWord: '已生成 Word 文件。GeneratedFile ID：{id}',
+      deletedGeneratedFile: '已删除 GeneratedFile。',
     },
     prompt: {
       targetType: '输入目标类型：SectionVariant / AtomicSection / ContentBlock',
@@ -564,6 +566,8 @@ const zhCN = {
       note: '当前出现的 Note。留空表示清除。',
       removeConfirm:
         '确认移除这个 HandoutVersionItem 引用？不会删除源内容。Item：{title}',
+      deleteGeneratedFileConfirm:
+        '删除这个 GeneratedFile？这会删除生成记录和本地生成文件，不能撤销。',
     },
   },
   sectionPage: {

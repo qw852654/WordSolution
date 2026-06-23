@@ -728,4 +728,6 @@ export const cmsV2Api = {
     cmsV2FetchText(`/generated-files/${generatedFileId}/manifest`),
   getGeneratedFileDownloadUrl: (generatedFileId: number) =>
     createCmsV2Url(`/generated-files/${generatedFileId}/download`),
+  deleteGeneratedFile: (generatedFileId: number) =>
+    cmsV2Delete(`/generated-files/${generatedFileId}`),
 }

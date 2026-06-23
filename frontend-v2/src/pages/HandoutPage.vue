@@ -518,6 +518,18 @@ async function handleViewManifest(generatedFileId: number) {
   })
 }
 
+async function handleDeleteGeneratedFile(generatedFileId: number) {
+  if (!window.confirm(t('handoutPage.prompt.deleteGeneratedFileConfirm') as string)) {
+    return
+  }
+
+  await withOperation(async () => {
+    await cmsV2Api.deleteGeneratedFile(generatedFileId)
+    await loadHandoutWorkspace(selectedNodeId.value)
+    feedback.value = t('handoutPage.feedback.deletedGeneratedFile') as string
+  })
+}
+
 function findWorkspaceItemByAnyId(itemId: string) {
   return workspaceItems.value.find((entry) => entry.id === itemId || entry.nodeId === itemId)
 }
@@ -619,6 +631,7 @@ function findWorkspaceItemByAnyId(itemId: string) {
         @generate-word="handleGenerateWord"
         @download-generated-file="handleDownloadGeneratedFile"
         @view-manifest="handleViewManifest"
+        @delete-generated-file="handleDeleteGeneratedFile"
       />
     </aside>
   </main>

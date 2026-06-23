@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Download, FileArchive, ScrollText } from 'lucide-vue-next'
+import { Download, FileArchive, ScrollText, Trash2 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import type { GeneratedFileRowModel } from '@/types'
@@ -11,6 +11,7 @@ defineProps<{
 defineEmits<{
   download: [id: number]
   viewManifest: [id: number]
+  delete: [id: number]
 }>()
 
 const { t } = useI18n()
@@ -51,6 +52,16 @@ const { t } = useI18n()
           @click="$emit('download', file.id)"
         >
           <Download class="size-4" />
+        </Button>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          class="size-8"
+          :aria-label="t('components.generatedFileRow.delete')"
+          @click="$emit('delete', file.id)"
+        >
+          <Trash2 class="size-4" />
         </Button>
       </div>
     </div>

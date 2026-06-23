@@ -1686,7 +1686,7 @@ Responsibilities:
 
 - display `OutputTemplate`, `OutputForm`, and `GeneratedFile` information;
 - trigger Word generation only through page-level or container-level events;
-- provide download / open / manifest entry points;
+- provide download / open / manifest / delete intent entry points;
 - show generation errors in Chinese.
 
 They must not:
@@ -1694,7 +1694,7 @@ They must not:
 - call V1 APIs;
 - implement PDF or WordAndPdf behavior in the first version;
 - silently create `GeneratedFile` records for failed generation;
-- delete or rename `GeneratedFile` in the first version.
+- rename `GeneratedFile` in the first version.
 
 ### Reuse Rules
 
@@ -1735,7 +1735,7 @@ Rules:
 - `HandoutWorkspace` displays expanded handout structure but is not a full Word-like preview.
 - Derived internal nodes under `SectionVariant`, `AtomicSection`, and group-type `ContentBlock` are read-only in the first version.
 - `HandoutInspector` may display read-only fields and the occurrence-only meaning of `TitleOverride` / `Note`, but must not save fields in the ComponentLab round.
-- `OutputFormCard` and `GeneratedFileRow` emit generate/download/manifest intents only; real API wiring belongs to page-level code in later rounds.
+- `OutputFormCard` and `GeneratedFileRow` emit generate/download/manifest/delete intents only; real API wiring belongs to page-level code.
 - `ComponentLabPage` should show only the current HandoutPage component validation scenario for this round.
 
 ## Current Update: HandoutPage Real Workspace Wiring
@@ -1754,7 +1754,8 @@ Rules:
   - removing a `HandoutVersionItem` reference;
   - generating Word from `OutputForm`;
   - reading GeneratedFile manifest;
-  - downloading GeneratedFile.
+  - downloading GeneratedFile;
+  - deleting GeneratedFile records and generated files.
 - `TitleOverride / Note` edits affect only the current `HandoutVersionItem` occurrence and must not modify the source `SectionVariant`, `AtomicSection`, or `ContentBlock`.
 - Removing a `HandoutVersionItem` removes only the handout reference and must not delete source content.
 - The temporary add-to-end prompt that accepts `targetType + targetId` exists only as a bridge before the formal Picker components are implemented. It must be replaced by:

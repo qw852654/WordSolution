@@ -72,7 +72,6 @@ Handout 第一版必须形成真实可用闭环：
 - 生成失败记录表。
 - 失败历史。
 - 失败重试队列。
-- GeneratedFile 删除。
 - GeneratedFile 重命名。
 - GeneratedFile 对比。
 - HandoutVersionItem 内容版本锁定。
@@ -523,6 +522,7 @@ Inspector 只显示当前选中节点上下文，不做跨页面全局信息面�
 - 下载生成 DOCX。
 - 打开生成 DOCX。
 - 查看 `VersionManifestJson`。
+- 删除 `GeneratedFile` 记录和本地生成文件。
 
 失败不写 `GeneratedFile`，第一版也不做失败记录表、失败历史或重试队列。
 
@@ -663,6 +663,7 @@ POST /api/cms-v2/output-forms/{id}/generate-word
 GET  /api/cms-v2/output-forms/{id}/generated-files
 GET  /api/cms-v2/generated-files/{id}/manifest
 GET  /api/cms-v2/generated-files/{id}/download
+DELETE /api/cms-v2/generated-files/{id}
 ```
 
 如当前 API 路径风格与本文不同，开发前必须列为冲突或 API 设计差异，不得无声改变。
@@ -761,7 +762,6 @@ OutputForm：课堂 Word
 - `demo-handout` 仅用于 Mock Data 结构验收，不代表真实数据源。
 - `HandoutVersionItem` 已接入上移、下移、编辑 `TitleOverride / Note`、移除引用。
 - `OutputForm` 已接入 `POST /api/cms-v2/output-forms/{id}/generate-word`。
-- `GeneratedFile` 已接入 manifest 查看和 Word 下载。
+- `GeneratedFile` 已接入 manifest 查看、Word 下载和删除。
 - “添加到末尾”当前使用按 `targetType + targetId` 输入的临时入口，只用于验证后端写入链路；后续必须替换为正式 `SectionVariantPicker`、`AtomicSectionPicker`、`ContentBlockPicker`。
 - 仍未完成：`HandoutIndexPage`、创建 `Handout`、创建 `HandoutVersion`、正式 Picker、`OutputTemplate` 创建/选择 UI、`OutputForm` 创建 UI、讲义页面右键菜单、完整 manifest 展示组件。
-

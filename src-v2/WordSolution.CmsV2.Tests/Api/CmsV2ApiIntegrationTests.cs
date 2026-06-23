@@ -677,18 +677,29 @@ public sealed class CmsV2ApiIntegrationTests
             $"/api/cms-v2/output-forms/{outputForm.GetProperty("id").GetInt32()}/generate-word",
             new { generatedTime = "2026-06-09T00:00:00Z" });
         var generatedFileId = generated.GetProperty("generatedFileId").GetInt32();
+        var generatedFilePath = generated.GetProperty("filePath").GetString();
         var generatedFiles = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/output-forms/{outputForm.GetProperty("id").GetInt32()}/generated-files")
             ?? [];
         var manifest = await client.GetFromJsonAsync<JsonElement>($"/api/cms-v2/generated-files/{generatedFileId}/manifest");
         var download = await client.GetAsync($"/api/cms-v2/generated-files/{generatedFileId}/download");
 
-        Assert.True(File.Exists(generated.GetProperty("filePath").GetString()));
+        Assert.True(File.Exists(generatedFilePath));
         Assert.Single(generatedFiles);
         Assert.Equal(generatedFileId, generatedFiles[0].GetProperty("id").GetInt32());
         Assert.Equal(1, manifest.GetProperty("schemaVersion").GetInt32());
         Assert.Equal(importedBlock.ImportedVersionId, manifest.GetProperty("sources")[0].GetProperty("contentBlockVersionId").GetInt32());
         Assert.Equal(HttpStatusCode.OK, download.StatusCode);
         Assert.NotEmpty(await download.Content.ReadAsByteArrayAsync());
+
+        var delete = await client.DeleteAsync($"/api/cms-v2/generated-files/{generatedFileId}");
+        var generatedFilesAfterDelete = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/output-forms/{outputForm.GetProperty("id").GetInt32()}/generated-files")
+            ?? [];
+        var manifestAfterDelete = await client.GetAsync($"/api/cms-v2/generated-files/{generatedFileId}/manifest");
+
+        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+        Assert.Empty(generatedFilesAfterDelete);
+        Assert.Equal(HttpStatusCode.NotFound, manifestAfterDelete.StatusCode);
+        Assert.False(File.Exists(generatedFilePath));
     }
 
     [Fact]

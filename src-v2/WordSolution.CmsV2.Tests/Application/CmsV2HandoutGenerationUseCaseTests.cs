@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Security;
 using System.Text;
 using System.Text.Json;
+using System.Xml.Linq;
 using Microsoft.EntityFrameworkCore;
 using WordSolution.CmsV2.Application.Common;
 using WordSolution.CmsV2.Application.Handouts;
@@ -345,6 +346,9 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
         Assert.True(sectionIndex > topicIndex);
         Assert.True(atomicIndex > sectionIndex);
         Assert.True(contentIndex > atomicIndex);
+        AssertHeadingUsesTemplateStyleWithoutDirectRunFormatting(result.FilePath, "Render TeachingTopic", "Heading1");
+        AssertHeadingUsesTemplateStyleWithoutDirectRunFormatting(result.FilePath, "Render Section", "Heading2");
+        AssertHeadingUsesTemplateStyleWithoutDirectRunFormatting(result.FilePath, "Render AtomicSection", "Heading3");
     }
 
     [Theory]
@@ -582,6 +586,24 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
     {
         var document = new AsposeDocument(docxPath);
         return document.ToString(AsposeSaveFormat.Text);
+    }
+
+    private static void AssertHeadingUsesTemplateStyleWithoutDirectRunFormatting(
+        string docxPath,
+        string headingText,
+        string expectedStyleId)
+    {
+        XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+        using var archive = ZipFile.OpenRead(docxPath);
+        var entry = archive.GetEntry("word/document.xml") ?? throw new InvalidOperationException("DOCX document.xml was not found.");
+        using var stream = entry.Open();
+        var documentXml = XDocument.Load(stream);
+        var paragraph = documentXml
+            .Descendants(w + "p")
+            .Single(paragraph => string.Concat(paragraph.Descendants(w + "t").Select(text => text.Value)) == headingText);
+
+        Assert.Equal(expectedStyleId, paragraph.Descendants(w + "pStyle").Single().Attribute(w + "val")?.Value);
+        Assert.Empty(paragraph.Descendants(w + "rPr"));
     }
 
     private static async Task CreateMinimalDocxAsync(string docxPath, string text)

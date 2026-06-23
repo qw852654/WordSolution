@@ -14,6 +14,7 @@ defineEmits<{
   generateWord: [id: number]
   downloadGeneratedFile: [id: number]
   viewManifest: [id: number]
+  deleteGeneratedFile: [id: number]
 }>()
 
 const { t } = useI18n()
@@ -55,6 +56,7 @@ const { t } = useI18n()
         :file="file"
         @download="$emit('downloadGeneratedFile', $event)"
         @view-manifest="$emit('viewManifest', $event)"
+        @delete="$emit('deleteGeneratedFile', $event)"
       />
       <EmptyState
         v-if="!generatedFiles.length"
