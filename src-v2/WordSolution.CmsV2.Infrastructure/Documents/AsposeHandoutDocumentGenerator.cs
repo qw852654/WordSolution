@@ -86,12 +86,30 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
 
                 var sourceDocument = new Document(element.DocxPath!);
                 RemoveHeadersAndFooters(sourceDocument);
-                outputDocument.AppendDocument(sourceDocument, ImportFormatMode.KeepSourceFormatting);
+                AppendBodyContent(outputDocument, sourceDocument);
             }
 
             RebaseTopLevelNumberedParagraphs(outputDocument);
             outputDocument.Save(outputDocxPath, SaveFormat.Docx);
         }, cancellationToken);
+    }
+
+    private static void AppendBodyContent(Document outputDocument, Document sourceDocument)
+    {
+        var importer = new NodeImporter(
+            sourceDocument,
+            outputDocument,
+            ImportFormatMode.KeepSourceFormatting);
+        var targetBody = outputDocument.LastSection.Body;
+
+        foreach (Section sourceSection in sourceDocument.Sections)
+        {
+            foreach (Node sourceNode in sourceSection.Body.GetChildNodes(NodeType.Any, isDeep: false))
+            {
+                var importedNode = importer.ImportNode(sourceNode, isImportChildren: true);
+                targetBody.AppendChild(importedNode);
+            }
+        }
     }
 
     private static void WriteHeading(DocumentBuilder builder, string title, int headingLevel)

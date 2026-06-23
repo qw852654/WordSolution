@@ -231,6 +231,7 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
         Assert.Equal(
             [atomicBlock.ContentBlock.Id, parentBlock.ContentBlock.Id, childBlock.ContentBlock.Id],
             sources.Select(source => source.GetProperty("contentBlockId").GetInt32()).ToArray());
+        AssertNoInsertedSectionBreaks(result.FilePath);
     }
 
     [Fact]
@@ -604,6 +605,18 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
 
         Assert.Equal(expectedStyleId, paragraph.Descendants(w + "pStyle").Single().Attribute(w + "val")?.Value);
         Assert.Empty(paragraph.Descendants(w + "rPr"));
+    }
+
+    private static void AssertNoInsertedSectionBreaks(string docxPath)
+    {
+        XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+        using var archive = ZipFile.OpenRead(docxPath);
+        var entry = archive.GetEntry("word/document.xml") ?? throw new InvalidOperationException("DOCX document.xml was not found.");
+        using var stream = entry.Open();
+        var documentXml = XDocument.Load(stream);
+
+        Assert.Empty(documentXml.Descendants(w + "pPr").Elements(w + "sectPr"));
+        Assert.Single(documentXml.Descendants(w + "body").Elements(w + "sectPr"));
     }
 
     private static async Task CreateMinimalDocxAsync(string docxPath, string text)
