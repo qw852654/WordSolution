@@ -931,3 +931,91 @@ SectionVariantAtomicItemSelection
 ```
 
 这意味着第一版的架构应避免把候选模型写死为 `ContentBlock` 列表，也不要把选择状态只绑定到 `ContentBlockId`。
+## 当前补充架构：AtomicSection Panel View Model
+
+`SectionPage` 后续需要把 `AtomicSection` 从简单子列表升级为 panel 化结构。前端架构按以下 View Model 组织，不在组件中自行推断后端数据关系。
+
+### Workspace 模型
+
+```ts
+type AtomicSectionPanelViewModel = {
+  id: number
+  atomicSectionId: number
+  title: string
+  teachingRole: 'Knowledge' | 'Example' | 'Variant' | 'Practice' | 'Homework'
+  difficulty: 'Unset' | 'Basic' | 'Medium' | 'Advanced' | 'Top'
+  sortOrder: number
+  items: SectionWorkspaceItemViewModel[]
+}
+
+type AtomicSectionUnassignedAreaViewModel = {
+  atomicSectionId: number
+  items: SectionWorkspaceItemViewModel[]
+}
+
+type AtomicSectionBlockViewModel = {
+  id: number
+  title: string
+  difficulty: 'Unset' | 'Basic' | 'Medium' | 'Advanced' | 'Top'
+  panels: AtomicSectionPanelViewModel[]
+  unassignedArea: AtomicSectionUnassignedAreaViewModel
+}
+```
+
+### Tree 模型
+
+`SectionTree` 需要新增结构节点种类：
+
+```text
+AtomicSectionPanel
+AtomicSectionUnassigned
+```
+
+这些节点只属于前端展示模型，不代表新增 `SectionItem.TargetType`。
+
+### InsertPoint 模型
+
+后续插入点至少需要表达：
+
+```ts
+type AtomicSectionInsertContext = {
+  scope:
+    | 'SectionTopLevel'
+    | 'AtomicSectionPanelList'
+    | 'AtomicSectionPanelItems'
+    | 'AtomicSectionUnassignedItems'
+    | 'CompositeBlockItems'
+  atomicSectionId?: number
+  panelId?: number | null
+  afterPanelId?: number | null
+  afterAtomicSectionItemId?: number | null
+}
+```
+
+### Inspector 模型
+
+Inspector 需要区分：
+
+- `AtomicSection`
+- `AtomicSectionPanel`
+- `AtomicSectionUnassignedArea`
+- `AtomicSectionItem`
+- `ContentBlock`
+- `CompositeBlock`
+
+`ContentBlock` 不显示所在 AS / panel 的全局归属字段；归属只在当前引用上下文中展示。
+
+### API 边界
+
+组件不调用 API。`SectionPage` 的 action 层负责把 UI 事件转换为 CMS V2 API 调用。
+
+目标 API：
+
+```text
+GET    /api/cms-v2/atomic-sections/{atomicSectionId}/panels
+POST   /api/cms-v2/atomic-sections/{atomicSectionId}/panels
+PATCH  /api/cms-v2/atomic-sections/{atomicSectionId}/panels/{panelId}
+POST   /api/cms-v2/atomic-sections/{atomicSectionId}/panels/{panelId}/move
+DELETE /api/cms-v2/atomic-sections/{atomicSectionId}/panels/{panelId}
+PATCH  /api/cms-v2/atomic-sections/{atomicSectionId}/items/{itemId}/classification
+```

@@ -1218,3 +1218,127 @@ It does not recursively delete child ContentBlock entities.
 After success, `SectionPage` must reload current `Section` data and clear the current selected content node. If the page is in `SectionVariant` read-only view, it must also refresh the currently loaded Variant items so removed references do not remain visible.
 
 If the backend rejects deletion, for example because the ContentBlock has an active Word edit session, `SectionPage` must keep the current page state and show the backend error message. It must not render a fake success state.
+## 当前补充：AtomicSection Panel 工作流
+
+本节记录 `SectionPage` 中 `AtomicSection` 板块化题目演化工作流的目标 UI。当前补充为开发口径，不代表所有功能已经实现。
+
+### 1. AtomicSection 在 Workspace 中的结构
+
+`AtomicSectionBlock` 不再只显示一个简单子块列表。目标结构为：
+
+```text
+AtomicSectionBlock
+  AtomicSectionPanelBlock[]
+  AtomicSectionUnassignedArea
+```
+
+其中：
+
+- `AtomicSectionPanelBlock` 表示知识点、例题、变式题、练习题、课后练习等教学板块。
+- `AtomicSectionUnassignedArea` 表示尚未归入任何 panel 的内容。
+- 空 panel 也必须显示，便于用户知道结构已经存在但内容还没补齐。
+
+### 2. Panel 展示规则
+
+`AtomicSectionPanelBlock` 顶部显示：
+
+- 难度短标记。
+- panel 标题。
+- 教学职责：知识点 / 例题 / 变式题 / 练习题 / 课后练习。
+- 难度。
+- 操作入口。
+
+panel 内显示 `AtomicSectionItem` 对应的内容块展示。每个 item 仍然由 `SectionItemView` 外层容器承载。
+
+### 3. 未归组区域
+
+`AtomicSectionUnassignedArea` 用于展示 `AtomicSectionPanelId = null` 的 item。
+
+规则：
+
+- 未归组区域始终在 panel 区之后。
+- 未归组为空时显示弱提示，不占用大面积空间。
+- 未归组区域允许插入新内容。
+
+### 4. InsertPoint 上下文
+
+`SectionPage` 中的插入点必须区分上下文：
+
+```text
+section top level
+atomic section panel list
+atomic section panel item list
+atomic section unassigned item list
+composite block child list
+```
+
+目标上下文：
+
+- panel 前 / panel 间 / panel 后：用于新增 panel。
+- panel 内首位 / 中间 / 末尾：用于新增或插入 `AtomicSectionItem`。
+- 未归组首位 / 中间 / 末尾：用于新增未归组 `AtomicSectionItem`。
+
+第一版暂不做 `BlockSearchPicker`，但插入点模型要保留 `panelId`、`afterAtomicSectionItemId` 等上下文。
+
+### 5. SectionTree 展示规则
+
+`SectionTree` 需要显示：
+
+```text
+AtomicSection
+  AtomicSectionPanel
+    ContentBlock
+  AtomicSectionUnassigned
+    ContentBlock
+```
+
+规则：
+
+- panel 是结构节点。
+- 未归组区域是结构节点。
+- 点击 panel 节点时，Workspace 滚动到 panel 顶部。
+- 点击未归组节点时，Workspace 滚动到未归组区域。
+- 空 panel 也在树中可见。
+
+### 6. Inspector 展示规则
+
+右侧 `SectionInspector` 需要支持：
+
+- `AtomicSectionPanel`：标题、教学职责、难度、子项数量、排序位置。
+- `AtomicSectionUnassignedArea`：未归组 item 数量。
+- `AtomicSectionItem`：教学职责、来源内容块难度、所在 panel。
+
+`ContentBlock` Inspector 不显示“所属 AS / 所属 panel”这类全局归属字段，因为 `ContentBlock` 是可复用资产。
+
+### 7. 操作边界
+
+组件只 emit 事件，不直接调用 API。
+
+页面级 action 负责：
+
+- 新增 panel。
+- 重命名 panel。
+- 修改 panel 教学职责和难度。
+- 移动 panel。
+- 删除 panel。
+- 修改 item 教学职责和难度。
+- 创建 panel 内 item。
+- 创建未归组 item。
+
+### 8. Handout 预览和生成边界
+
+`Handout` 展开 `AtomicSection` 时：
+
+1. 先按 panel 的 `SortOrder` 输出 panel 内 item。
+2. panel 内按 item 的 `SortOrder` 输出。
+3. 最后输出未归组 item。
+
+第一版不输出 panel 标题。
+
+### 9. 当前明确不做
+
+- 不自动创建知识点、例题组、练习题组。
+- 不在 `AtomicSection` 创建时生成默认 `ContentBlock`。
+- 不在前端伪造 panel 数据。
+- 不做 panel 标题进入 Word 输出。
+- 不做按学生层级自动选题。

@@ -884,3 +884,89 @@ CompositeBlock
 - `POST /api/cms-v2/section-variants` 支持 `selectedSectionItemIds`
 - 同 Section 下 Variant 标题唯一校验
 - 后端事务创建 `SectionVariant` + `SectionVariantItem[]`
+## 当前补充开发计划：AtomicSection Panel 工作流
+
+本计划用于补齐 `SectionPage` 中 `AtomicSection` 板块化题目演化能力。当前数据库均为模拟数据，可以废弃重建，因此不做旧数据迁移。
+
+### AS-UI-1：ComponentLab 组件验收
+
+只做 Mock UI，不接 API。
+
+组件：
+
+- `AtomicSectionPanelBlock`
+- `AtomicSectionUnassignedArea`
+- 更新后的 `AtomicSectionBlock`
+
+验收：
+
+- panel 标题、教学职责、难度显示清楚。
+- 空 panel 可见。
+- 未归组区域轻量显示。
+- panel 内 `SectionItemView` 连续排列。
+- panel / unassigned 的 InsertPoint 上下文明确。
+
+### AS-UI-2：SectionPage 只读接入
+
+目标：
+
+- 根据真实 `AtomicSection` 数据展示 panel、panel item、未归组 item。
+- `SectionTree` 显示 panel 和未归组节点。
+- 点击树节点定位 Workspace 对应区域。
+- Inspector 显示 panel / unassigned / item 分类信息。
+
+限制：
+
+- 不做写入。
+- 不创建 panel。
+- 不移动 item。
+
+### AS-UI-3：Panel 管理接入
+
+目标：
+
+- 新增 panel。
+- 重命名 panel。
+- 修改 panel 教学职责和难度。
+- 上移 / 下移 panel。
+- 删除 panel。
+
+规则：
+
+- 删除 panel 只删除引用，不删除 `ContentBlock`。
+- 所有写入由页面级 action 调用 API。
+- 组件只 emit 事件。
+
+### AS-UI-4：Panel 内内容接入
+
+目标：
+
+- 在 panel 内创建 `ContentBlock`。
+- 在未归组区域创建 `ContentBlock`。
+- 修改 item 的教学职责和难度。
+- 触发后端自动归组后刷新页面。
+
+第一版暂不做：
+
+- `BlockSearchPicker`
+- 拖拽排序
+- 多选批量分类
+- 自动推荐题目
+
+### AS-UI-5：Handout 回归
+
+目标：
+
+- 验证 `Handout` 展开 `AtomicSection` 的顺序。
+- 第一版不输出 panel 标题。
+- 确认无 panel 的旧 AS 或新建空 AS 能正常显示。
+
+### AS-UI-6：上线前修补
+
+目标：
+
+- 修补信息密度。
+- 修补空状态。
+- 修补插入点上下文。
+- 修补错误提示。
+- 同步文档完成状态。

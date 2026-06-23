@@ -406,3 +406,58 @@ SectionPage -> SectionTree -> Section 根节点右键菜单 -> 新建 SectionVar
 - 第一版不做。
 - 后续必须以 `SectionVariantItem` 为锚点扩展 `SectionVariantAtomicItemSelection`。
 - 不直接用 `SectionVariantId + AtomicSectionId` 建模。
+## 当前已关闭问题：AtomicSection Panel 模型
+
+以下问题已经确认，不再作为开放问题处理。
+
+### 1. AtomicSection 创建时是否初始化默认内容
+
+结论：
+
+- 不初始化默认内容。
+- 创建 `AtomicSection` 时只创建 `AtomicSection` 本体。
+- 不自动创建知识点、例题组、练习题组。
+- 空 `AtomicSection` 由前端显示插入入口。
+
+说明：
+
+当前数据库均为模拟数据，可以废弃重建，因此不需要考虑旧数据迁移或为历史 AS 自动补默认内容。
+
+### 2. 是否需要 AtomicSectionPanel
+
+结论：
+
+- 需要新增 `AtomicSectionPanel`。
+- 它是后端持久化模型，不只是前端分组。
+- 它用于表达 `AtomicSection` 内部的知识点、例题、变式题、练习题、课后练习等教学板块。
+
+### 3. CompositeBlock 是否是独立领域模型
+
+结论：
+
+- 不是。
+- `CompositeBlock` 仍然是 `ContentBlock.BlockType` 为组类型时的前端展示组件。
+- 后端不新增 `CompositeBlock` target type。
+
+### 4. ContentBlock 是否记录所属 AS / Panel
+
+结论：
+
+- 不记录。
+- `ContentBlock` 是可复用资产。
+- 所属 AS、Panel、Section、Handout 都由引用关系表达。
+
+### 5. 未归组区域是否存在
+
+结论：
+
+- 存在。
+- `AtomicSectionItem.AtomicSectionPanelId = null` 表示未归组区域。
+- 未归组区域在 Workspace 和 SectionTree 中都需要可见。
+
+### 6. Panel 标题是否进入 Handout 输出
+
+结论：
+
+- 第一版不进入。
+- Handout 展开 AS 时按 panel 顺序输出 item，但不输出 panel 标题。

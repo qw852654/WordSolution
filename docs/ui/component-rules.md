@@ -2000,3 +2000,99 @@ The pure utility module owns:
 - does not mutate source `SectionVariant`, `AtomicSection`, or `ContentBlock`.
 
 Archived `Handout` or `HandoutVersion` entries must be rendered read-only in `HandoutPage`. Read-only mode disables structure writes, workspace writes, Word generation, and GeneratedFile deletion while preserving read-only viewing, manifest viewing, and download.
+## 当前补充：AtomicSection Panel 组件约定
+
+本节记录 `AtomicSection` 板块化工作流新增或调整的 UI 组件职责。所有组件必须先进入 `ComponentLab` 使用 Mock Data 验收，再接入真实 `SectionPage`。
+
+### AtomicSectionBlock
+
+职责：
+
+- 作为一个 `AtomicSection` 在 Workspace 中的外层展示组件。
+- 装配 `AtomicSectionPanelBlock[]` 和 `AtomicSectionUnassignedArea`。
+- 展示 `AtomicSection` 标题、难度、状态和外层操作入口。
+
+禁止：
+
+- 不直接调用 API。
+- 不直接修改 panel 或 item 数据。
+- 不在内部硬编码创建默认知识点 / 例题组 / 练习题组。
+
+### AtomicSectionPanelBlock
+
+职责：
+
+- 展示单个 `AtomicSectionPanel`。
+- 显示 panel 标题、教学职责、难度和操作入口。
+- 承载该 panel 下的 `SectionItemView` 文档流。
+- 暴露 panel 内首位、中间、末尾的插入点。
+
+事件：
+
+```text
+selectPanel
+renamePanel
+changePanelRole
+changePanelDifficulty
+movePanelUp
+movePanelDown
+deletePanel
+requestInsertIntoPanel
+```
+
+禁止：
+
+- 不调用 API。
+- 不把 panel 当成 `ContentBlock`。
+- 不输出 panel 标题到 Word 的假预览中。
+
+### AtomicSectionUnassignedArea
+
+职责：
+
+- 展示 `AtomicSectionPanelId = null` 的未归组 item。
+- 保留首位、中间、末尾插入点。
+- 空状态使用弱提示，不占大面积空间。
+
+事件：
+
+```text
+selectUnassignedArea
+requestInsertIntoUnassigned
+```
+
+### SectionItemView
+
+`SectionItemView` 仍然是文档流中 item 的外层容器。它可以承载：
+
+- `ContentBlockDisplay`
+- `AtomicSectionBlock`
+- `CompositeBlock`
+
+在 `AtomicSectionPanelBlock` 内部使用时，仍然由 `SectionItemView` 包裹具体内容，用于保持选择、高亮、操作热区和拖动/排序扩展口一致。
+
+### ContentBlockDisplay
+
+用于显示 `ContentBlock` 正文预览。它不负责判断自己属于哪个 `AtomicSectionPanel`，也不显示全局归属字段。
+
+### ComponentLab 验收要求
+
+接入真实页面前，必须在 `ComponentLab` 验收：
+
+- 空 `AtomicSectionBlock`。
+- 多个 panel 的 `AtomicSectionBlock`。
+- 空 panel。
+- panel 内多个 content block。
+- 未归组区域为空。
+- 未归组区域有多个 content block。
+- panel 插入点。
+- panel 操作入口。
+- 长标题、禁用、选中、高亮状态。
+
+### 样式要求
+
+- 不写一次性颜色值。
+- 难度标记使用统一难度 token。
+- panel 边界使用弱边框，不使用大阴影或装饰背景。
+- 空提示必须轻量，不做大卡片。
+- 相同树节点继续复用基础树节点组件，不另写一套 panel tree item。
