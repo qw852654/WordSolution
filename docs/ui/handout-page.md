@@ -752,4 +752,16 @@ OutputForm：课堂 Word
 - 下载生成文件。
 - 查看 manifest。
 - 检查模板页眉页脚、页面设置、结构标题、例题编号全文连续、图片和公式未丢失。
+## 当前实现状态：HandoutPage 真实读取与基础闭环
+
+本节记录当前 `frontend-v2` 与 CMS V2 后端已经接入的 HandoutPage 能力。
+
+- `/handouts/:handoutVersionId` 已从占位页切换为独立 `HandoutPage`。
+- 数字 `handoutVersionId` 读取 `GET /api/cms-v2/handout-versions/{id}/workspace`。
+- `demo-handout` 仅用于 Mock Data 结构验收，不代表真实数据源。
+- `HandoutVersionItem` 已接入上移、下移、编辑 `TitleOverride / Note`、移除引用。
+- `OutputForm` 已接入 `POST /api/cms-v2/output-forms/{id}/generate-word`。
+- `GeneratedFile` 已接入 manifest 查看和 Word 下载。
+- “添加到末尾”当前使用按 `targetType + targetId` 输入的临时入口，只用于验证后端写入链路；后续必须替换为正式 `SectionVariantPicker`、`AtomicSectionPicker`、`ContentBlockPicker`。
+- 仍未完成：`HandoutIndexPage`、创建 `Handout`、创建 `HandoutVersion`、正式 Picker、`OutputTemplate` 创建/选择 UI、`OutputForm` 创建 UI、讲义页面右键菜单、完整 manifest 展示组件。
 

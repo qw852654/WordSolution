@@ -64,6 +64,35 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
     }
 
     [Fact]
+    public async Task GenerateHandoutWord_appends_untitled_content_block_without_extra_title()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        var setup = await CreateOutputFormAsync(unitOfWork, bankRootDirectory);
+        var block = await CreateContentBlockWithVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            string.Empty,
+            "Untitled content block body",
+            versionNumber: 1,
+            isCurrent: true);
+        await unitOfWork.HandoutVersionItems.AddAsync(new HandoutVersionItem(
+            setup.HandoutVersion.Id,
+            HandoutVersionItemTargetType.ContentBlock,
+            block.ContentBlock.Id,
+            sortOrder: 1));
+        await unitOfWork.SaveChangesAsync();
+
+        var result = await CreateUseCases(unitOfWork).GenerateHandoutWordAsync(
+            new GenerateHandoutWordCommand(bankRootDirectory, setup.OutputForm.Id));
+        var outputText = ReadDocxText(result.FilePath);
+
+        Assert.True(File.Exists(result.FilePath));
+        Assert.Contains("Untitled content block body", outputText);
+    }
+
+    [Fact]
     public async Task GenerateHandoutWord_expands_section_variant_and_uses_locked_section_item_version()
     {
         await using var context = await CreateMigratedContextAsync();
@@ -201,6 +230,121 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
         Assert.Equal(
             [atomicBlock.ContentBlock.Id, parentBlock.ContentBlock.Id, childBlock.ContentBlock.Id],
             sources.Select(source => source.GetProperty("contentBlockId").GetInt32()).ToArray());
+    }
+
+    [Fact]
+    public async Task GenerateHandoutWord_expands_direct_atomic_section_items()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        var setup = await CreateOutputFormAsync(unitOfWork, bankRootDirectory);
+        var block = await CreateContentBlockWithVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Atomic child",
+            "Direct AtomicSection content",
+            versionNumber: 1,
+            isCurrent: true);
+        var topic = new TeachingTopic("Direct Atomic Topic");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+        var section = new Section(topic.Id, "Direct Atomic Section");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+        var atomicSection = new AtomicSection(section.Id, "Direct AtomicSection");
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            block.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 1));
+        await unitOfWork.HandoutVersionItems.AddAsync(new HandoutVersionItem(
+            setup.HandoutVersion.Id,
+            HandoutVersionItemTargetType.AtomicSection,
+            atomicSection.Id,
+            sortOrder: 1));
+        await unitOfWork.SaveChangesAsync();
+
+        var result = await CreateUseCases(unitOfWork).GenerateHandoutWordAsync(
+            new GenerateHandoutWordCommand(bankRootDirectory, setup.OutputForm.Id));
+        var outputText = ReadDocxText(result.FilePath);
+        using var manifest = JsonDocument.Parse(result.VersionManifestJson);
+        var source = manifest.RootElement.GetProperty("sources")[0];
+
+        Assert.Contains("Direct AtomicSection", outputText);
+        Assert.Contains("Direct AtomicSection content", outputText);
+        Assert.Equal(block.ContentBlock.Id, source.GetProperty("contentBlockId").GetInt32());
+        Assert.Equal(block.Version.Id, source.GetProperty("contentBlockVersionId").GetInt32());
+    }
+
+    [Fact]
+    public async Task GenerateHandoutWord_outputs_teaching_topic_section_and_atomic_section_structure_titles()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        var setup = await CreateOutputFormAsync(unitOfWork, bankRootDirectory);
+        var block = await CreateContentBlockWithVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Render child block",
+            "Render plan content",
+            versionNumber: 1,
+            isCurrent: true);
+        var topic = new TeachingTopic("Render TeachingTopic");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+        var section = new Section(topic.Id, "Render Section");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+        var atomicSection = new AtomicSection(section.Id, "Render AtomicSection");
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            block.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 1));
+        var sectionItem = new SectionItem(
+            section.Id,
+            SectionItemTargetType.AtomicSection,
+            atomicSection.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 1);
+        await unitOfWork.SectionItems.AddAsync(sectionItem);
+        await unitOfWork.SaveChangesAsync();
+        var variant = new SectionVariant(section.Id, "Render SectionVariant");
+        await unitOfWork.SectionVariants.AddAsync(variant);
+        await unitOfWork.SaveChangesAsync();
+        await unitOfWork.SectionVariantItems.AddAsync(new SectionVariantItem(
+            variant.Id,
+            sectionItem.Id,
+            sortOrder: 1));
+        await unitOfWork.HandoutVersionItems.AddAsync(new HandoutVersionItem(
+            setup.HandoutVersion.Id,
+            HandoutVersionItemTargetType.SectionVariant,
+            variant.Id,
+            sortOrder: 1));
+        await unitOfWork.SaveChangesAsync();
+
+        var result = await CreateUseCases(unitOfWork).GenerateHandoutWordAsync(
+            new GenerateHandoutWordCommand(bankRootDirectory, setup.OutputForm.Id));
+        var outputText = ReadDocxText(result.FilePath);
+
+        var topicIndex = outputText.IndexOf("Render TeachingTopic", StringComparison.Ordinal);
+        var sectionIndex = outputText.IndexOf("Render Section", StringComparison.Ordinal);
+        var atomicIndex = outputText.IndexOf("Render AtomicSection", StringComparison.Ordinal);
+        var contentIndex = outputText.IndexOf("Render plan content", StringComparison.Ordinal);
+
+        Assert.True(topicIndex >= 0);
+        Assert.True(sectionIndex > topicIndex);
+        Assert.True(atomicIndex > sectionIndex);
+        Assert.True(contentIndex > atomicIndex);
     }
 
     [Theory]

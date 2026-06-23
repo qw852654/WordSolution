@@ -189,6 +189,104 @@ export interface CmsV2DeleteContentBlockCascadeResultDto {
   deletedAssetCount: number
 }
 
+export interface CmsV2HandoutDto {
+  id: number
+  title: string
+  description?: string | null
+  status: string
+  updatedTime: string
+}
+
+export interface CmsV2HandoutVersionDto {
+  id: number
+  handoutId: number
+  title: string
+  description?: string | null
+  type: string
+  status: string
+  sortOrder: number
+  updatedTime: string
+}
+
+export interface CmsV2HandoutWorkspaceNodeDto {
+  nodeId: string
+  nodeKind: string
+  sourceId: number
+  title: string
+  children: CmsV2HandoutWorkspaceNodeDto[]
+}
+
+export interface CmsV2HandoutWorkspaceItemDto {
+  nodeId: string
+  handoutVersionItemId: number
+  targetType: 'SectionVariant' | 'AtomicSection' | 'ContentBlock'
+  targetId: number
+  title: string
+  titleOverride?: string | null
+  note?: string | null
+  sortOrder: number
+  children: CmsV2HandoutWorkspaceNodeDto[]
+}
+
+export interface CmsV2OutputFormDto {
+  id: number
+  handoutVersionId: number
+  outputTemplateId: number
+  title: string
+  audience: string
+  outputFormat: string
+  visibilityMode: string
+  status: string
+  sortOrder: number
+  updatedTime: string
+}
+
+export interface CmsV2GeneratedFileDto {
+  id: number
+  outputFormId: number
+  filePath: string
+  versionManifestJson: string
+  generatedTime: string
+}
+
+export interface CmsV2HandoutVersionWorkspaceDto {
+  handout: CmsV2HandoutDto
+  version: CmsV2HandoutVersionDto
+  items: CmsV2HandoutWorkspaceItemDto[]
+  outputForms: CmsV2OutputFormDto[]
+  generatedFiles: CmsV2GeneratedFileDto[]
+}
+
+export interface CmsV2AddHandoutVersionItemRequest {
+  targetType: 'SectionVariant' | 'AtomicSection' | 'ContentBlock'
+  targetId: number
+  sortOrder?: number
+  titleOverride?: string | null
+  note?: string | null
+  afterHandoutVersionItemId?: number | null
+}
+
+export interface CmsV2MoveHandoutVersionItemRequest {
+  direction: 'Up' | 'Down'
+}
+
+export interface CmsV2UpdateHandoutVersionItemRequest {
+  titleOverride?: string | null
+  note?: string | null
+}
+
+export interface CmsV2GenerateHandoutWordRequest {
+  generatedTime?: string | null
+}
+
+export interface CmsV2GeneratedHandoutFileResultDto {
+  generatedFileId: number
+  outputFormId: number
+  handoutVersionId: number
+  filePath: string
+  versionManifestJson: string
+}
+
 export interface CmsV2CreateContentBlockWithBlankDocumentRequest {
   sectionId: number
   title: string
@@ -383,6 +481,34 @@ export async function cmsV2PostJson<T>(path: string, value: unknown): Promise<T>
   })
 }
 
+export async function cmsV2PostNoContent(path: string, value: unknown): Promise<void> {
+  const response = await cmsV2Fetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(value),
+  })
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response))
+  }
+}
+
+export async function cmsV2PatchNoContent(path: string, value: unknown): Promise<void> {
+  const response = await cmsV2Fetch(path, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(value),
+  })
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response))
+  }
+}
+
 export async function cmsV2Delete(path: string): Promise<void> {
   const response = await cmsV2Fetch(path, {
     method: 'DELETE',
@@ -561,4 +687,45 @@ export const cmsV2Api = {
     ),
   removeContentBlockRelation: (parentBlockId: number, relationId: number) =>
     cmsV2Delete(`/content-blocks/${parentBlockId}/relations/children/${relationId}`),
+  getHandoutVersionWorkspace: (handoutVersionId: number) =>
+    cmsV2FetchJson<CmsV2HandoutVersionWorkspaceDto>(
+      `/handout-versions/${handoutVersionId}/workspace`,
+    ),
+  addHandoutVersionItem: (
+    handoutVersionId: number,
+    request: CmsV2AddHandoutVersionItemRequest,
+  ) =>
+    cmsV2PostJson<CmsV2CreatedEntityResultDto>(
+      `/handout-versions/${handoutVersionId}/items`,
+      request,
+    ),
+  updateHandoutVersionItem: (
+    handoutVersionId: number,
+    handoutVersionItemId: number,
+    request: CmsV2UpdateHandoutVersionItemRequest,
+  ) =>
+    cmsV2PatchNoContent(
+      `/handout-versions/${handoutVersionId}/items/${handoutVersionItemId}`,
+      request,
+    ),
+  moveHandoutVersionItem: (
+    handoutVersionId: number,
+    handoutVersionItemId: number,
+    request: CmsV2MoveHandoutVersionItemRequest,
+  ) =>
+    cmsV2PostNoContent(
+      `/handout-versions/${handoutVersionId}/items/${handoutVersionItemId}/move`,
+      request,
+    ),
+  removeHandoutVersionItem: (handoutVersionId: number, handoutVersionItemId: number) =>
+    cmsV2Delete(`/handout-versions/${handoutVersionId}/items/${handoutVersionItemId}`),
+  generateHandoutWord: (outputFormId: number, request: CmsV2GenerateHandoutWordRequest) =>
+    cmsV2PostJson<CmsV2GeneratedHandoutFileResultDto>(
+      `/output-forms/${outputFormId}/generate-word`,
+      request,
+    ),
+  getGeneratedFileManifest: (generatedFileId: number) =>
+    cmsV2FetchText(`/generated-files/${generatedFileId}/manifest`),
+  getGeneratedFileDownloadUrl: (generatedFileId: number) =>
+    createCmsV2Url(`/generated-files/${generatedFileId}/download`),
 }

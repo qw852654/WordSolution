@@ -719,6 +719,42 @@ public sealed class CmsV2ApiIntegrationTests
     }
 
     [Fact]
+    public async Task Output_template_validate_endpoint_reports_docx_path_status_without_creating_template()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var templatePath = Path.Combine(factory.BankRootDirectory, "templates", "valid-template.docx");
+        var missingTemplatePath = Path.Combine(factory.BankRootDirectory, "templates", "missing-template.docx");
+        var nonDocxPath = Path.Combine(factory.BankRootDirectory, "templates", "template.txt");
+        await CreateMinimalDocxAsync(templatePath, "Template");
+        Directory.CreateDirectory(Path.GetDirectoryName(nonDocxPath)!);
+        await File.WriteAllTextAsync(nonDocxPath, "not a docx");
+
+        var valid = await PostJsonAsync(
+            client,
+            "/api/cms-v2/output-templates/validate",
+            new { templateDocxPath = templatePath });
+        var missing = await PostJsonAsync(
+            client,
+            "/api/cms-v2/output-templates/validate",
+            new { templateDocxPath = missingTemplatePath });
+        var nonDocx = await PostJsonAsync(
+            client,
+            "/api/cms-v2/output-templates/validate",
+            new { templateDocxPath = nonDocxPath });
+        var templates = await client.GetFromJsonAsync<JsonElement[]>("/api/cms-v2/output-templates")
+            ?? [];
+
+        Assert.True(valid.GetProperty("valid").GetBoolean());
+        Assert.Contains("ready", valid.GetProperty("message").GetString(), StringComparison.OrdinalIgnoreCase);
+        Assert.False(missing.GetProperty("valid").GetBoolean());
+        Assert.Contains("not found", missing.GetProperty("message").GetString(), StringComparison.OrdinalIgnoreCase);
+        Assert.False(nonDocx.GetProperty("valid").GetBoolean());
+        Assert.Contains(".docx", nonDocx.GetProperty("message").GetString(), StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(templates);
+    }
+
+    [Fact]
     public async Task SectionVariant_selection_preview_endpoint_returns_default_candidates()
     {
         await using var factory = new CmsV2ApiFactory();
@@ -916,6 +952,114 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.Empty(variantItems.EnumerateArray());
     }
 
+    [Fact]
+    public async Task Handout_version_item_endpoints_add_after_move_patch_and_delete_items()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "Handout Item Topic", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "Handout Item Section", type = "NormalCourse", difficulty = "Medium", status = "Draft" });
+        var sectionId = section.GetProperty("id").GetInt32();
+        var firstBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks",
+            new { sectionId, title = "First", blockType = "KnowledgePoint", difficulty = "Basic", status = "Draft" });
+        var insertedBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks",
+            new { sectionId, title = "Inserted", blockType = "Question", difficulty = "Medium", status = "Draft" });
+        var lastBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks",
+            new { sectionId, title = "Last", blockType = "ExerciseGroup", difficulty = "Advanced", status = "Draft" });
+        var handout = await PostJsonAsync(client, "/api/cms-v2/handouts", new { title = "Handout Item Flow", status = "Draft" });
+        var handoutVersion = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/handouts/{handout.GetProperty("id").GetInt32()}/versions",
+            new { title = "Editable Version", type = "Normal", status = "Draft" });
+        var handoutVersionId = handoutVersion.GetProperty("id").GetInt32();
+
+        var first = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/handout-versions/{handoutVersionId}/items",
+            new { targetType = "ContentBlock", targetId = firstBlock.GetProperty("id").GetInt32() });
+        var last = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/handout-versions/{handoutVersionId}/items",
+            new { targetType = "ContentBlock", targetId = lastBlock.GetProperty("id").GetInt32() });
+        var inserted = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/handout-versions/{handoutVersionId}/items",
+            new
+            {
+                targetType = "ContentBlock",
+                targetId = insertedBlock.GetProperty("id").GetInt32(),
+                afterHandoutVersionItemId = first.GetProperty("id").GetInt32()
+            });
+
+        await PatchJsonAsync(
+            client,
+            $"/api/cms-v2/handout-versions/{handoutVersionId}/items/{inserted.GetProperty("id").GetInt32()}",
+            new { titleOverride = "Inserted override", note = "Inserted note" });
+        await PostJsonAsync(
+            client,
+            $"/api/cms-v2/handout-versions/{handoutVersionId}/items/{last.GetProperty("id").GetInt32()}/move",
+            new { direction = "Up" });
+        var deleteResponse = await client.DeleteAsync(
+            $"/api/cms-v2/handout-versions/{handoutVersionId}/items/{inserted.GetProperty("id").GetInt32()}");
+        var items = await client.GetFromJsonAsync<JsonElement[]>(
+                $"/api/cms-v2/handout-versions/{handoutVersionId}/items")
+            ?? [];
+
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+        Assert.Equal([first.GetProperty("id").GetInt32(), last.GetProperty("id").GetInt32()], items.Select(item => item.GetProperty("id").GetInt32()));
+        Assert.Equal([10, 20], items.Select(item => item.GetProperty("sortOrder").GetInt32()));
+        Assert.DoesNotContain(items, item => item.GetProperty("id").GetInt32() == inserted.GetProperty("id").GetInt32());
+    }
+
+    [Fact]
+    public async Task Handout_version_workspace_endpoint_returns_aggregate()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "Workspace Topic", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "Workspace Section", type = "NormalCourse", difficulty = "Medium", status = "Draft" });
+        var block = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks",
+            new { sectionId = section.GetProperty("id").GetInt32(), title = "Workspace Block", blockType = "KnowledgePoint", difficulty = "Basic", status = "Draft" });
+        var handout = await PostJsonAsync(client, "/api/cms-v2/handouts", new { title = "Workspace Handout", status = "Draft" });
+        var handoutVersion = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/handouts/{handout.GetProperty("id").GetInt32()}/versions",
+            new { title = "Workspace Version", type = "Normal", status = "Draft" });
+        var handoutVersionId = handoutVersion.GetProperty("id").GetInt32();
+        var item = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/handout-versions/{handoutVersionId}/items",
+            new { targetType = "ContentBlock", targetId = block.GetProperty("id").GetInt32() });
+
+        var version = await client.GetFromJsonAsync<JsonElement>($"/api/cms-v2/handout-versions/{handoutVersionId}");
+        var workspace = await client.GetFromJsonAsync<JsonElement>($"/api/cms-v2/handout-versions/{handoutVersionId}/workspace");
+        var items = workspace.GetProperty("items").EnumerateArray().ToArray();
+
+        Assert.Equal(handoutVersionId, version.GetProperty("id").GetInt32());
+        Assert.Equal(handout.GetProperty("id").GetInt32(), workspace.GetProperty("handout").GetProperty("id").GetInt32());
+        Assert.Equal(handoutVersionId, workspace.GetProperty("version").GetProperty("id").GetInt32());
+        Assert.Single(items);
+        Assert.Equal(item.GetProperty("id").GetInt32(), items[0].GetProperty("handoutVersionItemId").GetInt32());
+        Assert.Equal("ContentBlock", items[0].GetProperty("targetType").GetString());
+        Assert.Equal("Workspace Block", items[0].GetProperty("title").GetString());
+        Assert.Empty(workspace.GetProperty("outputForms").EnumerateArray());
+        Assert.Empty(workspace.GetProperty("generatedFiles").EnumerateArray());
+    }
+
     private static async Task<ImportedContentBlock> CreateImportedContentBlockAsync(
         HttpClient client,
         string bankRootDirectory,
@@ -945,6 +1089,12 @@ public sealed class CmsV2ApiIntegrationTests
     private static async Task<JsonElement> PostJsonAsync(HttpClient client, string uri, object value)
     {
         var response = await client.PostAsJsonAsync(uri, value);
+        return await ReadSuccessJsonAsync(response);
+    }
+
+    private static async Task<JsonElement> PatchJsonAsync(HttpClient client, string uri, object value)
+    {
+        var response = await client.PatchAsJsonAsync(uri, value);
         return await ReadSuccessJsonAsync(response);
     }
 

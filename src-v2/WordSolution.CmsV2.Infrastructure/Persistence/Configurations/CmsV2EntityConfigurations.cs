@@ -384,7 +384,7 @@ internal sealed class HandoutVersionItemConfiguration : IEntityTypeConfiguration
     {
         builder.ToTable(
             "HandoutVersionItems",
-            table => table.HasCheckConstraint("CK_HandoutVersionItems_TargetType", "\"TargetType\" IN (1, 2)"));
+            table => table.HasCheckConstraint("CK_HandoutVersionItems_TargetType", "\"TargetType\" IN (1, 2, 4)"));
         CmsV2EntityConfiguration.ConfigurePrimaryKey(builder);
 
         builder.Property(entity => entity.HandoutVersionId).IsRequired();

@@ -120,6 +120,20 @@ public sealed class CmsV2PersistenceSchemaTests
         Assert.DoesNotContain(handoutVersionItemForeignKeys, foreignKey => foreignKey.From == "TargetId");
     }
 
+    [Fact]
+    public async Task Handout_version_item_target_type_constraint_allows_atomic_section_but_rejects_section()
+    {
+        var databasePath = Path.Combine(CreateTempDirectory(), "cms-v2.db");
+
+        await using var context = CmsV2DbContextFactory.CreateForDatabase(databasePath);
+        await context.Database.MigrateAsync();
+
+        var createTableSql = await ReadCreateTableSqlAsync(context, "HandoutVersionItems");
+
+        Assert.Contains("\"TargetType\" IN (1, 2, 4)", createTableSql, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"TargetType\" IN (1, 2)", createTableSql, StringComparison.Ordinal);
+    }
+
     private static string CreateTempDirectory()
     {
         var path = Path.Combine(Path.GetTempPath(), "cms-v2-tests", Guid.NewGuid().ToString("N"));
@@ -242,6 +256,28 @@ public sealed class CmsV2PersistenceSchemaTests
         }
 
         return foreignKeys;
+    }
+
+    private static async Task<string> ReadCreateTableSqlAsync(CmsV2DbContext context, string tableName)
+    {
+        var connection = context.Database.GetDbConnection();
+
+        if (connection.State != ConnectionState.Open)
+        {
+            await connection.OpenAsync();
+        }
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = $tableName;";
+
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = "$tableName";
+        parameter.Value = tableName;
+        command.Parameters.Add(parameter);
+
+        var result = await command.ExecuteScalarAsync();
+
+        return Assert.IsType<string>(result);
     }
 
     private sealed record SqliteIndex(string Name, bool IsUnique, IReadOnlyList<string> Columns);

@@ -166,7 +166,14 @@ public sealed record CreateHandoutVersionRequest(
 public sealed record AddHandoutVersionItemRequest(
     HandoutVersionItemTargetType TargetType,
     int TargetId,
-    int SortOrder,
+    int SortOrder = 0,
+    string? TitleOverride = null,
+    string? Note = null,
+    int? AfterHandoutVersionItemId = null);
+
+public sealed record MoveHandoutVersionItemRequest(string Direction);
+
+public sealed record UpdateHandoutVersionItemRequest(
     string? TitleOverride = null,
     string? Note = null);
 
@@ -175,6 +182,10 @@ public sealed record CreateOutputTemplateRequest(
     string TemplateDocxPath,
     string? Description = null,
     OutputTemplateStatus Status = OutputTemplateStatus.Active);
+
+public sealed record ValidateOutputTemplateRequest(string TemplateDocxPath);
+
+public sealed record ValidateOutputTemplateResponse(bool Valid, string Message);
 
 public sealed record CreateOutputFormRequest(
     int HandoutVersionId,

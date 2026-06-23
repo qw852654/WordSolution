@@ -19,6 +19,19 @@ public class Aspose授权初始化器
     public void 初始化授权()
     {
         var 授权 = new License();
-        授权.SetLicense(_授权文件路径);
+        try
+        {
+            授权.SetLicense(_授权文件路径);
+        }
+        catch (Exception ex) when (
+            ex is InvalidOperationException ||
+            ex is FileNotFoundException ||
+            ex is DirectoryNotFoundException ||
+            ex is IOException ||
+            ex is UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine(
+                $"Aspose.Words license was not applied. Evaluation mode will be used. Reason: {ex.Message}");
+        }
     }
 }

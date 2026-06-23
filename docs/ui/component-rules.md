@@ -1712,3 +1712,53 @@ Handout components should reuse existing V2 UI primitives and interaction patter
 - Vue I18n text rules.
 
 Do not copy a second visual system for Handout. If a new reusable component is needed, document its responsibility here before implementation and verify it in `ComponentLabPage` with Mock Data first.
+
+## Current Update: HandoutPage ComponentLab First Pass
+
+The first HandoutPage frontend round only validates reusable UI components with Mock Data.
+
+Validated components:
+
+- `HandoutStructurePanel`
+- `HandoutWorkspace`
+- `HandoutVersionItemView`
+- `HandoutInspector`
+- `HandoutOutputPanel`
+- `OutputFormCard`
+- `GeneratedFileRow`
+
+Rules:
+
+- These components must not call CMS V2 APIs directly.
+- These components must not depend on Pinia state.
+- `HandoutStructurePanel` may reuse `BasicTree` behavior and must keep top-level `HandoutVersionItem` identity based on occurrence id, not source `targetId`.
+- `HandoutWorkspace` displays expanded handout structure but is not a full Word-like preview.
+- Derived internal nodes under `SectionVariant`, `AtomicSection`, and group-type `ContentBlock` are read-only in the first version.
+- `HandoutInspector` may display read-only fields and the occurrence-only meaning of `TitleOverride` / `Note`, but must not save fields in the ComponentLab round.
+- `OutputFormCard` and `GeneratedFileRow` emit generate/download/manifest intents only; real API wiring belongs to page-level code in later rounds.
+- `ComponentLabPage` should show only the current HandoutPage component validation scenario for this round.
+
+## Current Update: HandoutPage Real Workspace Wiring
+
+Current `HandoutPage` implementation uses the same components that were validated in `ComponentLab`, but page-level code now owns real CMS V2 API calls.
+
+Rules:
+
+- `/handouts/:handoutVersionId` is a standalone page route, not an AppShell placeholder route.
+- Numeric `handoutVersionId` must load `GET /api/cms-v2/handout-versions/{id}/workspace`.
+- `demo-handout` may remain as a Mock Data route for structure verification only.
+- `HandoutStructurePanel`, `HandoutWorkspace`, `HandoutInspector`, `HandoutOutputPanel`, `OutputFormCard`, and `GeneratedFileRow` must stay presentational/business-display components. They emit user intents and do not call APIs directly.
+- `HandoutPage` owns API calls for:
+  - moving `HandoutVersionItem`;
+  - updating `TitleOverride / Note`;
+  - removing a `HandoutVersionItem` reference;
+  - generating Word from `OutputForm`;
+  - reading GeneratedFile manifest;
+  - downloading GeneratedFile.
+- `TitleOverride / Note` edits affect only the current `HandoutVersionItem` occurrence and must not modify the source `SectionVariant`, `AtomicSection`, or `ContentBlock`.
+- Removing a `HandoutVersionItem` removes only the handout reference and must not delete source content.
+- The temporary add-to-end prompt that accepts `targetType + targetId` exists only as a bridge before the formal Picker components are implemented. It must be replaced by:
+  - `SectionVariantPicker`;
+  - `AtomicSectionPicker`;
+  - `ContentBlockPicker`.
+- The page must refresh the workspace aggregate after successful write operations instead of performing optimistic updates.

@@ -1101,7 +1101,7 @@ public sealed class CmsV2ApplicationUseCaseTests
     }
 
     [Fact]
-    public async Task Handout_use_cases_create_versions_and_reject_section_or_atomic_section_targets()
+    public async Task Handout_use_cases_create_versions_and_reject_section_targets()
     {
         await using var context = await CreateMigratedContextAsync();
         var unitOfWork = new EfCmsV2UnitOfWork(context);
@@ -1125,14 +1125,6 @@ public sealed class CmsV2ApplicationUseCaseTests
                     HandoutVersionItemTargetType.Section,
                     TargetId: 1,
                     SortOrder: 1)));
-        await Assert.ThrowsAsync<CmsV2ApplicationException>(
-            () => handouts.AddHandoutVersionItemAsync(
-                new AddHandoutVersionItemCommand(
-                    handoutVersion.Id,
-                    HandoutVersionItemTargetType.AtomicSection,
-                    TargetId: 1,
-                    SortOrder: 1)));
-
         var item = await handouts.AddHandoutVersionItemAsync(
             new AddHandoutVersionItemCommand(
                 handoutVersion.Id,

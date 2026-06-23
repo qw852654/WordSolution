@@ -803,6 +803,9 @@ public static class CmsV2ApiEndpointExtensions
         group.MapGet("/handouts/{id:int}/versions", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
             Results.Ok(await unitOfWork.HandoutVersions.ListByHandoutAsync(id, cancellationToken)));
 
+        group.MapGet("/handout-versions/{id:int}", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
+            await OkOrNotFoundAsync(unitOfWork.HandoutVersions.GetByIdAsync(id, cancellationToken)));
+
         group.MapPost("/handouts/{id:int}/versions", async (
             int id,
             CreateHandoutVersionRequest request,
@@ -825,6 +828,18 @@ public static class CmsV2ApiEndpointExtensions
         group.MapGet("/handout-versions/{id:int}/items", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
             Results.Ok(await unitOfWork.HandoutVersionItems.ListByHandoutVersionAsync(id, cancellationToken)));
 
+        group.MapGet("/handout-versions/{id:int}/workspace", async (
+            int id,
+            HandoutUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            var workspace = await useCases.GetHandoutVersionWorkspaceAsync(
+                new GetHandoutVersionWorkspaceCommand(id),
+                cancellationToken);
+
+            return Results.Ok(workspace);
+        });
+
         group.MapPost("/handout-versions/{id:int}/items", async (
             int id,
             AddHandoutVersionItemRequest request,
@@ -838,10 +853,61 @@ public static class CmsV2ApiEndpointExtensions
                     request.TargetId,
                     request.SortOrder,
                     request.TitleOverride,
-                    request.Note),
+                    request.Note,
+                    request.AfterHandoutVersionItemId),
                 cancellationToken);
 
             return Results.Ok(result);
+        });
+
+        group.MapPatch("/handout-versions/{id:int}/items/{itemId:int}", async (
+            int id,
+            int itemId,
+            UpdateHandoutVersionItemRequest request,
+            HandoutUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            await useCases.UpdateHandoutVersionItemAsync(
+                new UpdateHandoutVersionItemCommand(
+                    id,
+                    itemId,
+                    request.TitleOverride,
+                    request.Note),
+                cancellationToken);
+
+            return Results.Ok(new { handoutVersionId = id, handoutVersionItemId = itemId });
+        });
+
+        group.MapPost("/handout-versions/{id:int}/items/{itemId:int}/move", async (
+            int id,
+            int itemId,
+            MoveHandoutVersionItemRequest request,
+            HandoutUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            if (!Enum.TryParse<HandoutVersionItemMoveDirection>(request.Direction, ignoreCase: true, out var direction))
+            {
+                return Results.BadRequest(new { message = "Direction must be Up or Down." });
+            }
+
+            await useCases.MoveHandoutVersionItemAsync(
+                new MoveHandoutVersionItemCommand(id, itemId, direction),
+                cancellationToken);
+
+            return Results.Ok(new { handoutVersionId = id, handoutVersionItemId = itemId, direction = direction.ToString() });
+        });
+
+        group.MapDelete("/handout-versions/{id:int}/items/{itemId:int}", async (
+            int id,
+            int itemId,
+            HandoutUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            await useCases.RemoveHandoutVersionItemAsync(
+                new RemoveHandoutVersionItemCommand(id, itemId),
+                cancellationToken);
+
+            return Results.NoContent();
         });
     }
 
@@ -863,6 +929,27 @@ public static class CmsV2ApiEndpointExtensions
             await unitOfWork.SaveChangesAsync(cancellationToken);
 
             return Results.Ok(template);
+        });
+
+        group.MapPost("/output-templates/validate", (ValidateOutputTemplateRequest request) =>
+        {
+            var templateDocxPath = request.TemplateDocxPath.Trim();
+            if (string.IsNullOrWhiteSpace(templateDocxPath))
+            {
+                return Results.Ok(new ValidateOutputTemplateResponse(false, "OutputTemplate DOCX path is required."));
+            }
+
+            if (!string.Equals(Path.GetExtension(templateDocxPath), ".docx", StringComparison.OrdinalIgnoreCase))
+            {
+                return Results.Ok(new ValidateOutputTemplateResponse(false, "OutputTemplate path must point to a .docx file."));
+            }
+
+            if (!File.Exists(templateDocxPath))
+            {
+                return Results.Ok(new ValidateOutputTemplateResponse(false, $"OutputTemplate file was not found: {templateDocxPath}"));
+            }
+
+            return Results.Ok(new ValidateOutputTemplateResponse(true, "OutputTemplate DOCX is ready."));
         });
 
         group.MapGet("/output-forms", async (

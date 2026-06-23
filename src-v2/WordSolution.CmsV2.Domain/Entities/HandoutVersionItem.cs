@@ -24,9 +24,12 @@ public sealed class HandoutVersionItem
         DomainGuard.Positive(targetId, nameof(TargetId));
         DomainGuard.NonNegative(sortOrder, nameof(SortOrder));
 
-        if (targetType is not (HandoutVersionItemTargetType.SectionVariant or HandoutVersionItemTargetType.ContentBlock))
+        if (targetType is not (
+            HandoutVersionItemTargetType.SectionVariant
+            or HandoutVersionItemTargetType.ContentBlock
+            or HandoutVersionItemTargetType.AtomicSection))
         {
-            throw new DomainException("HandoutVersionItem.TargetType only allows SectionVariant or ContentBlock.");
+            throw new DomainException("HandoutVersionItem.TargetType only allows SectionVariant, ContentBlock or AtomicSection.");
         }
 
         HandoutVersionId = handoutVersionId;
@@ -53,4 +56,19 @@ public sealed class HandoutVersionItem
     public string? Note { get; private set; }
 
     public DateTimeOffset UpdatedTime { get; private set; }
+
+    public void ChangeSortOrder(int sortOrder, DateTimeOffset? updatedTime = null)
+    {
+        DomainGuard.NonNegative(sortOrder, nameof(SortOrder));
+
+        SortOrder = sortOrder;
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+    }
+
+    public void UpdateDetails(string? titleOverride, string? note, DateTimeOffset? updatedTime = null)
+    {
+        TitleOverride = titleOverride?.Trim();
+        Note = note?.Trim();
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+    }
 }

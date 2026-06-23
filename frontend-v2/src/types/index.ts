@@ -419,3 +419,94 @@ export interface InsertCreateSubmitPayload {
   difficulty: InsertCreateDifficulty
   note?: string
 }
+
+export type HandoutTreeNodeKind =
+  | 'HandoutVersion'
+  | 'HandoutVersionItem'
+  | 'SectionVariant'
+  | 'AtomicSection'
+  | 'ContentBlock'
+  | 'Derived'
+
+export interface HandoutTreeNodeModel {
+  id: string
+  title: string
+  kind: HandoutTreeNodeKind
+  metaItems?: string[]
+  handoutVersionId?: number
+  handoutVersionItemId?: number
+  targetType?: 'SectionVariant' | 'AtomicSection' | 'ContentBlock'
+  targetId?: number
+  status?: string
+  readOnly?: boolean
+  expanded?: boolean
+  disabled?: boolean
+  children?: HandoutTreeNodeModel[]
+}
+
+export interface HandoutTreeContextMenuPayload {
+  node: HandoutTreeNodeModel
+  x: number
+  y: number
+}
+
+export type HandoutWorkspaceItemKind = 'SectionVariant' | 'AtomicSection' | 'ContentBlock'
+
+export interface HandoutWorkspaceChildModel {
+  id: string
+  title: string
+  kind: 'AtomicSection' | 'ContentBlock'
+  typeLabel: string
+  sourceLabel?: string
+  readOnly?: boolean
+  children?: HandoutWorkspaceChildModel[]
+}
+
+export interface HandoutWorkspaceItemModel {
+  id: string
+  nodeId: string
+  handoutVersionItemId: number
+  kind: HandoutWorkspaceItemKind
+  title: string
+  titleOverride?: string | null
+  note?: string | null
+  targetType: 'SectionVariant' | 'AtomicSection' | 'ContentBlock'
+  targetId: number
+  sourceLabel: string
+  status: string
+  sortOrder: number
+  selected?: boolean
+  children?: HandoutWorkspaceChildModel[]
+}
+
+export interface HandoutInspectorFieldModel {
+  label: string
+  value: string
+}
+
+export interface HandoutInspectorModel {
+  nodeId: string
+  title: string
+  kind: HandoutTreeNodeKind | HandoutWorkspaceItemKind
+  description?: string
+  fields: HandoutInspectorFieldModel[]
+  editableOccurrence?: boolean
+}
+
+export interface OutputFormCardModel {
+  id: number
+  title: string
+  audience: string
+  outputFormat: string
+  visibilityMode: string
+  templateTitle: string
+  status: string
+}
+
+export interface GeneratedFileRowModel {
+  id: number
+  fileName: string
+  generatedTime: string
+  outputFormTitle: string
+  manifestSummary: string
+}

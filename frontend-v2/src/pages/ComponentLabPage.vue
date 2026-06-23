@@ -3,30 +3,45 @@ import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ArrowLeft } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
-import SectionVariantCreatePanel from '@/components/business/SectionVariantCreatePanel.vue'
+import HandoutInspector from '@/components/business/HandoutInspector.vue'
+import HandoutOutputPanel from '@/components/business/HandoutOutputPanel.vue'
+import HandoutStructurePanel from '@/components/business/HandoutStructurePanel.vue'
+import HandoutWorkspace from '@/components/business/HandoutWorkspace.vue'
 import PageHeader from '@/components/presentation/PageHeader.vue'
 import { Button } from '@/components/ui/button'
 import {
-  mockSectionVariantCreateMetadata,
-  mockSectionVariantSelectionCandidates,
+  mockGeneratedFiles,
+  mockHandoutInspector,
+  mockHandoutTreeNodes,
+  mockHandoutWorkspaceItems,
+  mockOutputForms,
 } from '@/mocks'
-import type { SectionVariantCreateSubmitPayload } from '@/types'
+import type { HandoutInspectorModel } from '@/types'
 
 const { t } = useI18n()
 
-const submittedPayload = ref<SectionVariantCreateSubmitPayload | null>(null)
-const panelKey = ref(0)
-const payloadText = computed(() =>
-  submittedPayload.value ? JSON.stringify(submittedPayload.value, null, 2) : '',
-)
+const selectedNodeId = ref('handout-item:102')
+const feedback = ref('')
 
-function handleSubmit(payload: SectionVariantCreateSubmitPayload) {
-  submittedPayload.value = payload
-}
+const selectedInspector = computed<HandoutInspectorModel>(() => {
+  if (selectedNodeId.value === 'handout-item:102') {
+    return mockHandoutInspector
+  }
 
-function handleCancel() {
-  submittedPayload.value = null
-  panelKey.value += 1
+  return {
+    nodeId: selectedNodeId.value,
+    title: selectedNodeId.value,
+    kind: 'Derived',
+    description: t('lab.sections.handoutPage.mockInspectorFallback'),
+    fields: [
+      { label: 'NodeId', value: selectedNodeId.value },
+      { label: 'Mode', value: 'Mock Data' },
+    ],
+  }
+})
+
+function setFeedback(message: string) {
+  feedback.value = message
 }
 </script>
 
@@ -34,8 +49,8 @@ function handleCancel() {
   <main class="min-h-screen bg-background px-4 py-6 text-foreground sm:px-6 lg:px-8">
     <PageHeader
       :eyebrow="t('lab.eyebrow')"
-      :title="t('lab.title')"
-      :description="t('lab.description')"
+      :title="t('lab.sections.handoutPage.title')"
+      :description="t('lab.sections.handoutPage.description')"
     >
       <template #actions>
         <Button variant="outline" as-child>
@@ -47,48 +62,40 @@ function handleCancel() {
       </template>
     </PageHeader>
 
-    <section class="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
-      <div class="space-y-4">
-        <div class="rounded-lg border bg-background p-4">
-          <h2 class="text-base font-semibold">SectionVariantCreatePanel</h2>
-          <p class="mt-1 text-sm text-muted-foreground">
-            {{ t('lab.sections.sectionVariantCreate.description') }}
-          </p>
-        </div>
+    <section class="mt-6 grid min-h-[42rem] gap-4 xl:grid-cols-[18rem_minmax(0,1fr)_24rem]">
+      <HandoutStructurePanel
+        class="min-h-0"
+        :nodes="mockHandoutTreeNodes"
+        :selected-node-id="selectedNodeId"
+        @select-node="selectedNodeId = $event"
+        @add-to-end="setFeedback(t('lab.sections.handoutPage.feedback.addToEnd'))"
+        @node-context-menu="setFeedback(t('lab.sections.handoutPage.feedback.contextMenu', { node: $event.node.title }))"
+      />
 
-        <SectionVariantCreatePanel
-          :key="panelKey"
-          :initial-metadata="mockSectionVariantCreateMetadata"
-          :candidates="mockSectionVariantSelectionCandidates"
-          :section-title="t('lab.sections.sectionVariantCreate.mockSectionTitle')"
-          @submit="handleSubmit"
-          @cancel="handleCancel"
+      <HandoutWorkspace
+        :items="mockHandoutWorkspaceItems"
+        @select-item="selectedNodeId = mockHandoutWorkspaceItems.find((item) => item.id === $event)?.nodeId ?? selectedNodeId"
+        @move-up="setFeedback(t('lab.sections.handoutPage.feedback.moveUp', { id: $event }))"
+        @move-down="setFeedback(t('lab.sections.handoutPage.feedback.moveDown', { id: $event }))"
+        @edit-occurrence="setFeedback(t('lab.sections.handoutPage.feedback.editOccurrence', { id: $event }))"
+        @remove="setFeedback(t('lab.sections.handoutPage.feedback.remove', { id: $event }))"
+      />
+
+      <div class="min-h-0 space-y-4">
+        <HandoutInspector :model="selectedInspector" />
+        <HandoutOutputPanel
+          :output-forms="mockOutputForms"
+          :generated-files="mockGeneratedFiles"
+          @generate-word="setFeedback(t('lab.sections.handoutPage.feedback.generateWord', { id: $event }))"
+          @download-generated-file="setFeedback(t('lab.sections.handoutPage.feedback.download', { id: $event }))"
+          @view-manifest="setFeedback(t('lab.sections.handoutPage.feedback.manifest', { id: $event }))"
         />
       </div>
-
-      <aside class="rounded-lg border bg-background p-4" aria-live="polite">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <h2 class="text-sm font-semibold">
-              {{ t('lab.sections.sectionVariantCreate.payloadTitle') }}
-            </h2>
-            <p class="mt-1 text-sm text-muted-foreground">
-              {{ t('lab.sections.sectionVariantCreate.payloadDescription') }}
-            </p>
-          </div>
-          <Button type="button" variant="outline" size="sm" @click="handleCancel">
-            {{ t('lab.sections.sectionVariantCreate.reset') }}
-          </Button>
-        </div>
-
-        <pre
-          v-if="submittedPayload"
-          class="mt-4 max-h-[28rem] overflow-auto rounded-md border bg-muted/30 p-3 text-xs text-foreground"
-        >{{ payloadText }}</pre>
-        <p v-else class="mt-4 text-sm text-muted-foreground">
-          {{ t('lab.sections.sectionVariantCreate.emptyPayload') }}
-        </p>
-      </aside>
     </section>
+
+    <aside class="mt-4 rounded-lg border bg-muted/20 px-4 py-3 text-sm text-muted-foreground" aria-live="polite">
+      <span class="font-medium text-foreground">{{ t('lab.sections.handoutPage.feedbackTitle') }}</span>
+      <span class="ml-2">{{ feedback || t('lab.sections.handoutPage.emptyFeedback') }}</span>
+    </aside>
   </main>
 </template>

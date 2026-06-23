@@ -77,18 +77,31 @@ public sealed class DomainModelRuleTests
         Assert.DoesNotContain("AtomicSectionTargetId", members);
     }
 
-    [Theory]
-    [InlineData(HandoutVersionItemTargetType.Section)]
-    [InlineData(HandoutVersionItemTargetType.AtomicSection)]
-    public void Handout_version_item_rejects_section_and_atomic_section_targets(HandoutVersionItemTargetType targetType)
+    [Fact]
+    public void Handout_version_item_rejects_section_target()
     {
         var exception = Assert.Throws<DomainException>(() => new HandoutVersionItem(
             handoutVersionId: 1,
-            targetType: targetType,
+            targetType: HandoutVersionItemTargetType.Section,
             targetId: 2,
             sortOrder: 1));
 
         Assert.Contains("HandoutVersionItem.TargetType", exception.Message);
+    }
+
+    [Theory]
+    [InlineData(HandoutVersionItemTargetType.SectionVariant)]
+    [InlineData(HandoutVersionItemTargetType.ContentBlock)]
+    [InlineData(HandoutVersionItemTargetType.AtomicSection)]
+    public void Handout_version_item_allows_section_variant_content_block_and_atomic_section_targets(HandoutVersionItemTargetType targetType)
+    {
+        var item = new HandoutVersionItem(
+            handoutVersionId: 1,
+            targetType: targetType,
+            targetId: 2,
+            sortOrder: 1);
+
+        Assert.Equal(targetType, item.TargetType);
     }
 
     [Fact]

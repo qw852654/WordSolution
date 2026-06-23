@@ -4,10 +4,15 @@ import type {
   BasicTreeNode,
   ContentBlockCardModel,
   ContentBlockDisplayModel,
+  GeneratedFileRowModel,
+  HandoutInspectorModel,
+  HandoutTreeNodeModel,
+  HandoutWorkspaceItemModel,
   InsertCreateContentBlockType,
   InsertCreateDifficulty,
   InsertCreatePanelModel,
   InsertPointModel,
+  OutputFormCardModel,
   SectionItemViewShellModel,
   SectionNodeModel,
   SectionPageShellModel,
@@ -736,3 +741,191 @@ export const mockInsertCreatePanels = {
     disabled: true,
   },
 } satisfies Record<string, InsertCreatePanelModel>
+
+export const mockHandoutTreeNodes: HandoutTreeNodeModel[] = [
+  {
+    id: 'handout-version:1',
+    title: '圆周运动讲义 / 基础班版本',
+    kind: 'HandoutVersion',
+    handoutVersionId: 1,
+    status: 'Draft',
+    metaItems: ['3 项', 'Word'],
+    expanded: true,
+    children: [
+      {
+        id: 'handout-item:101',
+        title: '圆周运动基础讲解版',
+        kind: 'HandoutVersionItem',
+        handoutVersionItemId: 101,
+        targetType: 'SectionVariant',
+        targetId: 11,
+        status: 'Active',
+        metaItems: ['SectionVariant', '引用展开'],
+        expanded: true,
+        children: [
+          {
+            id: 'handout-item:101/section-variant:11/atomic:21',
+            title: '圆锥摆 AtomicSection',
+            kind: 'AtomicSection',
+            targetId: 21,
+            readOnly: true,
+            metaItems: ['派生只读'],
+            children: [
+              {
+                id: 'handout-item:101/section-variant:11/atomic:21/block:31',
+                title: '受力分析 ContentBlock',
+                kind: 'ContentBlock',
+                targetId: 31,
+                readOnly: true,
+                metaItems: ['ContentBlock'],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'handout-item:102',
+        title: '圆锥摆 AtomicSection',
+        kind: 'HandoutVersionItem',
+        handoutVersionItemId: 102,
+        targetType: 'AtomicSection',
+        targetId: 21,
+        status: 'Active',
+        metaItems: ['AtomicSection', '直接引用'],
+      },
+      {
+        id: 'handout-item:103',
+        title: '课堂补充题',
+        kind: 'HandoutVersionItem',
+        handoutVersionItemId: 103,
+        targetType: 'ContentBlock',
+        targetId: 41,
+        status: 'Active',
+        metaItems: ['ContentBlock', '补充'],
+      },
+    ],
+  },
+]
+
+export const mockHandoutWorkspaceItems: HandoutWorkspaceItemModel[] = [
+  {
+    id: 'workspace-item:101',
+    nodeId: 'handout-item:101',
+    handoutVersionItemId: 101,
+    kind: 'SectionVariant',
+    title: '圆周运动基础讲解版',
+    targetType: 'SectionVariant',
+    targetId: 11,
+    sourceLabel: 'SectionVariant · 引用展开视图',
+    status: 'Active',
+    sortOrder: 10,
+    selected: true,
+    children: [
+      {
+        id: 'derived:101:knowledge',
+        title: '匀速圆周运动受力关系',
+        kind: 'ContentBlock',
+        typeLabel: '知识点',
+        sourceLabel: '来自 SectionVariant',
+        readOnly: true,
+      },
+      {
+        id: 'derived:101:atomic',
+        title: '圆锥摆 AtomicSection',
+        kind: 'AtomicSection',
+        typeLabel: 'AtomicSection',
+        sourceLabel: '来自 SectionVariant',
+        readOnly: true,
+        children: [
+          {
+            id: 'derived:101:atomic:example',
+            title: '圆锥摆例题',
+            kind: 'ContentBlock',
+            typeLabel: '例题',
+            sourceLabel: 'AtomicSectionItem',
+            readOnly: true,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'workspace-item:102',
+    nodeId: 'handout-item:102',
+    handoutVersionItemId: 102,
+    kind: 'AtomicSection',
+    title: '圆锥摆 AtomicSection',
+    titleOverride: '课堂重点：圆锥摆模型',
+    note: '只影响当前讲义出现，不反向修改源 AtomicSection。',
+    targetType: 'AtomicSection',
+    targetId: 21,
+    sourceLabel: 'AtomicSection · 直接引用',
+    status: 'Active',
+    sortOrder: 20,
+    children: [
+      {
+        id: 'derived:102:knowledge',
+        title: '圆锥摆受力分析',
+        kind: 'ContentBlock',
+        typeLabel: '知识点',
+        sourceLabel: 'AtomicSectionItem',
+        readOnly: true,
+      },
+    ],
+  },
+  {
+    id: 'workspace-item:103',
+    nodeId: 'handout-item:103',
+    handoutVersionItemId: 103,
+    kind: 'ContentBlock',
+    title: '课堂补充题',
+    targetType: 'ContentBlock',
+    targetId: 41,
+    sourceLabel: 'ContentBlock · 当前版本',
+    status: 'Active',
+    sortOrder: 30,
+  },
+]
+
+export const mockHandoutInspector: HandoutInspectorModel = {
+  nodeId: 'handout-item:102',
+  title: '课堂重点：圆锥摆模型',
+  kind: 'AtomicSection',
+  description: '这是当前讲义中的一次 HandoutVersionItem 出现。',
+  editableOccurrence: true,
+  fields: [
+    { label: '目标类型', value: 'AtomicSection' },
+    { label: '目标 ID', value: '21' },
+    { label: 'TitleOverride', value: '课堂重点：圆锥摆模型' },
+    { label: 'Note', value: '只影响当前讲义出现' },
+  ],
+}
+
+export const mockOutputForms: OutputFormCardModel[] = [
+  {
+    id: 1,
+    title: '课堂讲义 Word',
+    audience: 'Student',
+    outputFormat: 'Word',
+    visibilityMode: 'StudentNoAnswer',
+    templateTitle: '高中物理讲义模板',
+    status: 'Ready',
+  },
+]
+
+export const mockGeneratedFiles: GeneratedFileRowModel[] = [
+  {
+    id: 201,
+    fileName: '圆周运动讲义-基础班-2026-06-22.docx',
+    generatedTime: '2026-06-22 21:10',
+    outputFormTitle: '课堂讲义 Word',
+    manifestSummary: '3 个 ContentBlock · 1 个 SectionVariant · 1 个 AtomicSection',
+  },
+  {
+    id: 202,
+    fileName: '圆周运动讲义-基础班-2026-06-21.docx',
+    generatedTime: '2026-06-21 18:35',
+    outputFormTitle: '课堂讲义 Word',
+    manifestSummary: '2 个 ContentBlock · 1 个 SectionVariant',
+  },
+]
