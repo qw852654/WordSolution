@@ -1,4 +1,9 @@
-import { cmsV2Api, type CmsV2MoveAtomicSectionItemRequest } from '@/apis/cmsV2Client'
+import {
+  cmsV2Api,
+  type CmsV2AtomicSectionTeachingRole,
+  type CmsV2MoveAtomicSectionItemRequest,
+  type CmsV2MoveAtomicSectionPanelRequest,
+} from '@/apis/cmsV2Client'
 
 export interface AtomicSectionActionsOptions {
   refreshSection: () => Promise<void>
@@ -11,6 +16,8 @@ export interface CreateContentBlockInsideAtomicSectionInput {
   blockType: string
   difficulty: string
   sortOrder: number
+  atomicSectionPanelId?: number | null
+  teachingRole?: CmsV2AtomicSectionTeachingRole
 }
 
 export function useAtomicSectionActions(options: AtomicSectionActionsOptions) {
@@ -40,6 +47,8 @@ export function useAtomicSectionActions(options: AtomicSectionActionsOptions) {
       sortOrder: input.sortOrder,
       titleOverride: null,
       note: null,
+      atomicSectionPanelId: input.atomicSectionPanelId,
+      teachingRole: input.teachingRole,
     })
 
     await options.refreshSection()
@@ -72,12 +81,82 @@ export function useAtomicSectionActions(options: AtomicSectionActionsOptions) {
     await options.refreshSection()
   }
 
+  async function createAtomicSectionPanel(
+    atomicSectionId: number,
+    title: string,
+    teachingRole: CmsV2AtomicSectionTeachingRole,
+    difficulty: string,
+  ) {
+    const created = await cmsV2Api.createAtomicSectionPanel(atomicSectionId, {
+      title,
+      teachingRole,
+      difficulty,
+    })
+    await options.refreshSection()
+    return created
+  }
+
+  async function renameAtomicSectionPanel(
+    atomicSectionId: number,
+    atomicSectionPanelId: number,
+    title: string,
+    teachingRole: CmsV2AtomicSectionTeachingRole,
+    difficulty: string,
+  ) {
+    const updated = await cmsV2Api.updateAtomicSectionPanel(atomicSectionId, atomicSectionPanelId, {
+      title,
+      teachingRole,
+      difficulty,
+    })
+    await options.refreshSection()
+    return updated
+  }
+
+  async function moveAtomicSectionPanel(
+    atomicSectionId: number,
+    atomicSectionPanelId: number,
+    direction: CmsV2MoveAtomicSectionPanelRequest['direction'],
+  ) {
+    await cmsV2Api.moveAtomicSectionPanel(atomicSectionId, atomicSectionPanelId, { direction })
+    await options.refreshSection()
+  }
+
+  async function removeAtomicSectionPanel(
+    atomicSectionId: number,
+    atomicSectionPanelId: number,
+  ) {
+    await cmsV2Api.deleteAtomicSectionPanel(atomicSectionId, atomicSectionPanelId)
+    await options.refreshSection()
+  }
+
+  async function changeAtomicSectionItemClassification(
+    atomicSectionId: number,
+    atomicSectionItemId: number,
+    teachingRole: CmsV2AtomicSectionTeachingRole,
+    difficulty: string,
+  ) {
+    await cmsV2Api.changeAtomicSectionItemClassification(
+      atomicSectionId,
+      atomicSectionItemId,
+      {
+        teachingRole,
+        difficulty,
+      },
+    )
+    await options.refreshSection()
+  }
+
   return {
     renameAtomicSection,
     createContentBlockInsideAtomicSection,
+    createAtomicSectionPanel,
     moveAtomicSectionItem,
     moveAtomicSectionItemUp,
     moveAtomicSectionItemDown,
     removeAtomicSectionItem,
+    renameAtomicSectionPanel,
+    moveAtomicSectionPanel,
+    removeAtomicSectionPanel,
+    changeAtomicSectionItemClassification,
   }
 }

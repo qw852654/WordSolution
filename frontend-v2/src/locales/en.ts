@@ -1,6 +1,13 @@
 const en = {
   common: {
     appName: 'CMS V2',
+    difficulty: {
+      Unset: 'Unset',
+      Basic: 'Basic',
+      Medium: 'Medium',
+      Advanced: 'Advanced',
+      Top: 'Top',
+    },
   },
   shell: {
     subtitle: 'Local teaching content management workspace',
@@ -229,6 +236,18 @@ const en = {
       atomicEmptyDescription: 'No child ContentBlock',
       compositeEmptyDescription: 'No child ContentBlock',
     },
+    atomicSectionPanel: {
+      create: 'Create panel',
+      rename: 'Rename',
+      moveUp: 'Move up',
+      moveDown: 'Move down',
+      remove: 'Delete',
+      empty: 'This panel has no ContentBlock',
+    },
+    atomicSectionUnassigned: {
+      title: 'Unassigned',
+      empty: 'No unassigned ContentBlock',
+    },
     insertPoint: {
       insert: 'Insert',
       createContentBlock: 'Create ContentBlock',
@@ -295,6 +314,16 @@ const en = {
       deleteContentBlockCascadeBusy: 'Deleting ContentBlock',
       deleteContentBlockCascadeDescription:
         'Deletes the ContentBlock itself, versions, and every reference. This is not reference removal.',
+      atomicSectionItemClassification: 'AS classification',
+      teachingRole: 'Teaching role',
+    },
+    atomicSectionTeachingRole: {
+      Unclassified: 'Unclassified',
+      Knowledge: 'Knowledge',
+      Example: 'Example',
+      Variant: 'Variant',
+      Practice: 'Practice',
+      Homework: 'Homework',
     },
     basicTree: {
       expand: 'Expand node',
@@ -315,6 +344,8 @@ const en = {
         Section: 'Section',
         SectionVariant: 'SectionVariant',
         AtomicSection: 'AtomicSection',
+        AtomicSectionPanel: 'AtomicSectionPanel',
+        AtomicSectionUnassigned: 'Unassigned',
         CompositeBlock: 'CompositeBlock',
         ContentBlock: 'ContentBlock',
       },
@@ -437,6 +468,26 @@ const en = {
     backHome: 'Back to Home',
     scenarioCount: 'Scenario count:',
     sections: {
+      atomicSectionPanel: {
+        title: 'AtomicSection panel components',
+        description:
+          'Validate AtomicSectionPanelBlock, AtomicSectionUnassignedArea, and their continuous document flow inside AtomicSectionBlock.',
+        feedbackTitle: 'ComponentLab feedback',
+        emptyFeedback: 'Click a panel, insert point, or item action to show Mock Data events here.',
+        events: {
+          selectAtomicSection: 'Selected AtomicSection: {value}',
+          createPanel: 'Create panel: {value}',
+          selectPanel: 'Selected panel: {value}',
+          renamePanel: 'Rename panel: {value}',
+          movePanel: 'Move panel: {value} {direction}',
+          removePanel: 'Delete panel: {value}',
+          selectContentBlock: 'Selected ContentBlock: {value}',
+          insertPoint: 'Insert point: {value}',
+          wordEdit: 'Word edit: {value}',
+          moveItem: 'Move item: {value} {direction}',
+          removeItem: 'Remove item: {value}',
+        },
+      },
       sectionVariantCreate: {
         description:
           'Validate the two-step SectionVariant create UI: fill metadata, then select SectionItem candidates. The result is only a Mock payload.',
@@ -857,6 +908,14 @@ const en = {
           'Remove this AtomicSection reference from the current Section? The AtomicSection and its child ContentBlocks will not be deleted. AtomicSection: {title}',
         operationFailed: 'AtomicSection operation failed. Please try again.',
         untitledContentBlock: 'Untitled ContentBlock',
+      },
+      atomicSectionPanelActions: {
+        createPrompt: 'Enter the new AtomicSection panel name',
+        defaultPanelTitle: 'Knowledge',
+        renamePrompt: 'Rename AtomicSection panel',
+        removeConfirm:
+          'Delete this AtomicSection panel: {title}? This removes references inside the panel but does not delete source ContentBlocks.',
+        operationFailed: 'AtomicSection panel operation failed. Please try again.',
       },
       atomicSectionItemActions: {
         removeConfirm:

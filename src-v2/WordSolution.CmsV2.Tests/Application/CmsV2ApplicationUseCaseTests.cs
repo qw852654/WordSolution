@@ -384,7 +384,7 @@ public sealed class CmsV2ApplicationUseCaseTests
     }
 
     [Fact]
-    public async Task CreateAtomicSection_initializes_default_child_blocks_without_docx_versions()
+    public async Task CreateAtomicSection_creates_empty_atomic_section_without_default_child_blocks()
     {
         await using var context = await CreateMigratedContextAsync();
         var unitOfWork = new EfCmsV2UnitOfWork(context);
@@ -408,18 +408,8 @@ public sealed class CmsV2ApplicationUseCaseTests
         Assert.Equal("AS Alpha", atomicSection.Title);
         Assert.Equal("AS note", atomicSection.Description);
         Assert.Equal(Difficulty.Advanced, atomicSection.Difficulty);
-        Assert.Equal([10, 20, 30], items.Select(item => item.SortOrder));
-        Assert.Equal(
-            [ContentBlockType.KnowledgePoint, ContentBlockType.ExampleGroup, ContentBlockType.ExerciseGroup],
-            contentBlocks.OrderBy(block => block.Id).Select(block => block.BlockType));
-        Assert.All(contentBlocks, block =>
-        {
-            Assert.Equal(sectionId, block.SectionId);
-            Assert.Equal("AS Alpha", block.Title);
-            Assert.Equal(Difficulty.Advanced, block.Difficulty);
-            Assert.Null(block.CurrentVersionId);
-        });
-        Assert.Equal(contentBlocks.OrderBy(block => block.Id).Select(block => block.Id), items.Select(item => item.ContentBlockId));
+        Assert.Empty(items);
+        Assert.Empty(contentBlocks);
         Assert.Empty(versions);
     }
 
@@ -561,6 +551,8 @@ public sealed class CmsV2ApplicationUseCaseTests
         Assert.Null(await unitOfWork.SectionItems.GetByIdAsync(thirdItem.Id));
         Assert.Equal([secondBlock.Id, thirdBlock.Id], atomicItems.Select(item => item.ContentBlockId));
         Assert.Equal([ReferenceMode.LockedVersion, ReferenceMode.FollowLatest], atomicItems.Select(item => item.ReferenceMode));
+        Assert.Equal([AtomicSectionTeachingRole.Unclassified, AtomicSectionTeachingRole.Unclassified], atomicItems.Select(item => item.TeachingRole));
+        Assert.All(atomicItems, item => Assert.Null(item.AtomicSectionPanelId));
         Assert.Equal(secondVersion.Id, atomicItems[0].LockedContentBlockVersionId);
         Assert.Equal("锁定 B", atomicItems[0].TitleOverride);
         Assert.Equal("保留备注", atomicItems[0].Note);
@@ -613,6 +605,8 @@ public sealed class CmsV2ApplicationUseCaseTests
         Assert.Equal([10, 20, 30], sectionItems.Select(item => item.SortOrder));
         Assert.Equal([firstItem.Id, thirdItem.Id], result.WrappedSectionItemIds);
         Assert.Equal([firstBlock.Id, thirdBlock.Id], atomicItems.Select(item => item.ContentBlockId));
+        Assert.Equal([AtomicSectionTeachingRole.Knowledge, AtomicSectionTeachingRole.Unclassified], atomicItems.Select(item => item.TeachingRole));
+        Assert.All(atomicItems, item => Assert.Null(item.AtomicSectionPanelId));
         Assert.Null(await unitOfWork.SectionItems.GetByIdAsync(firstItem.Id));
         Assert.Null(await unitOfWork.SectionItems.GetByIdAsync(thirdItem.Id));
         Assert.NotNull(await unitOfWork.SectionItems.GetByIdAsync(secondItem.Id));

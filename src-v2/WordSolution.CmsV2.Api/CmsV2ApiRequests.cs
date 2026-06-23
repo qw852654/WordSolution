@@ -128,11 +128,30 @@ public sealed record AddAtomicSectionItemRequest(
     int? LockedContentBlockVersionId,
     int SortOrder,
     string? TitleOverride = null,
-    string? Note = null);
+    string? Note = null,
+    int? AtomicSectionPanelId = null,
+    AtomicSectionTeachingRole TeachingRole = AtomicSectionTeachingRole.Unclassified);
 
 public sealed record MoveAtomicSectionItemRequest(string Direction);
 
 public sealed record RenameAtomicSectionRequest(string Title);
+
+public sealed record CreateAtomicSectionPanelRequest(
+    string Title,
+    AtomicSectionTeachingRole TeachingRole,
+    Difficulty Difficulty = Difficulty.Unset,
+    int? AfterAtomicSectionPanelId = null);
+
+public sealed record UpdateAtomicSectionPanelRequest(
+    string Title,
+    AtomicSectionTeachingRole TeachingRole,
+    Difficulty Difficulty = Difficulty.Unset);
+
+public sealed record MoveAtomicSectionPanelRequest(string Direction);
+
+public sealed record ChangeAtomicSectionItemClassificationRequest(
+    AtomicSectionTeachingRole TeachingRole,
+    Difficulty Difficulty);
 
 public sealed record CreateSectionVariantRequest(
     int SectionId,

@@ -88,6 +88,8 @@ export type SectionTreeNodeKind =
   | 'Section'
   | 'SectionVariant'
   | 'AtomicSection'
+  | 'AtomicSectionPanel'
+  | 'AtomicSectionUnassigned'
   | 'CompositeBlock'
   | 'ContentBlock'
 
@@ -99,7 +101,12 @@ export interface SectionTreeNodeModel {
   sectionId?: number
   teachingTopicTitle?: string
   sectionVariantId?: number
+  atomicSectionId?: number
+  atomicSectionPanelId?: number
+  atomicSectionItemId?: number
+  teachingRole?: AtomicSectionTeachingRole
   difficulty?: string
+  difficultyValue?: string
   status?: string
   targetStatus?: string
   hasWordDocument?: boolean
@@ -253,6 +260,14 @@ export interface ContentBlockDisplayModel {
 
 export type StructuredBlockKind = 'AtomicSection' | 'CompositeBlock'
 
+export type AtomicSectionTeachingRole =
+  | 'Unclassified'
+  | 'Knowledge'
+  | 'Example'
+  | 'Variant'
+  | 'Practice'
+  | 'Homework'
+
 export type StructuredBlockChildModel =
   | {
       kind: 'ContentBlock'
@@ -261,6 +276,8 @@ export type StructuredBlockChildModel =
       sortOrder?: number
       atomicSectionId?: number
       atomicSectionItemId?: number
+      atomicSectionPanelId?: number | null
+      teachingRole?: AtomicSectionTeachingRole
       parentBlockId?: number
       relationId?: number
       contentBlockId?: number
@@ -275,6 +292,8 @@ export type StructuredBlockChildModel =
       sortOrder?: number
       atomicSectionId?: number
       atomicSectionItemId?: number
+      atomicSectionPanelId?: number | null
+      teachingRole?: AtomicSectionTeachingRole
       parentBlockId?: number
       relationId?: number
       contentBlockId?: number
@@ -282,6 +301,41 @@ export type StructuredBlockChildModel =
       disabled?: boolean
       block: StructuredBlockModel
     }
+
+export interface AtomicSectionPanelModel {
+  id: string
+  panelId: number
+  atomicSectionId: number
+  title: string
+  teachingRole: AtomicSectionTeachingRole
+  difficulty: string
+  difficultyValue?: string
+  sortOrder: number
+  children: StructuredBlockChildModel[]
+  expanded?: boolean
+  selected?: boolean
+  disabled?: boolean
+}
+
+export interface AtomicSectionPanelActionPayload {
+  nodeId: string
+  atomicSectionId: number
+  atomicSectionPanelId: number
+  title: string
+  teachingRole: AtomicSectionTeachingRole
+  difficulty: string
+  difficultyValue?: string
+}
+
+export interface AtomicSectionPanelCreatePayload {
+  nodeId: string
+  atomicSectionId: number
+  title: string
+}
+
+export interface AtomicSectionPanelMovePayload extends AtomicSectionPanelActionPayload {
+  direction: 'Up' | 'Down'
+}
 
 export interface StructuredBlockModel {
   id: string
@@ -295,6 +349,8 @@ export interface StructuredBlockModel {
   difficulty: string
   summary: string
   children: StructuredBlockChildModel[]
+  panels?: AtomicSectionPanelModel[]
+  unassignedChildren?: StructuredBlockChildModel[]
   expanded?: boolean
   selected?: boolean
   disabled?: boolean
@@ -341,6 +397,8 @@ export interface AtomicSectionItemActionPayload {
   atomicSectionId: number
   atomicSectionItemId: number
   contentBlockId: number
+  atomicSectionPanelId?: number | null
+  teachingRole?: AtomicSectionTeachingRole
   title: string
 }
 
@@ -367,6 +425,8 @@ export interface InsertPointPlacementModel {
   afterItemId?: number
   beforeSortOrder?: number
   afterSortOrder?: number
+  atomicSectionPanelId?: number | null
+  teachingRole?: AtomicSectionTeachingRole
 }
 
 export interface InsertRequestModel {
@@ -397,6 +457,8 @@ export interface InsertCreatePanelModel {
   insertMode?: 'SectionItem' | 'AtomicSectionChild' | 'CompositeBlockChild' | 'WrapAsAtomicSection'
   atomicSectionId?: number
   atomicSectionTitle?: string
+  atomicSectionPanelId?: number | null
+  atomicSectionTeachingRole?: AtomicSectionTeachingRole
   compositeBlockId?: number
   compositeBlockTitle?: string
   wrapSectionItemIds?: number[]
@@ -411,6 +473,8 @@ export interface InsertCreateSubmitPayload {
   insertMode?: 'SectionItem' | 'AtomicSectionChild' | 'CompositeBlockChild' | 'WrapAsAtomicSection'
   atomicSectionId?: number
   atomicSectionTitle?: string
+  atomicSectionPanelId?: number | null
+  atomicSectionTeachingRole?: AtomicSectionTeachingRole
   compositeBlockId?: number
   compositeBlockTitle?: string
   wrapSectionItemIds?: number[]

@@ -11,20 +11,40 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import type { SectionPageShellModel, SectionTreeNodeModel } from '@/types'
+import type {
+  AtomicSectionTeachingRole,
+  SectionPageShellModel,
+  SectionTreeNodeModel,
+} from '@/types'
 
 const props = defineProps<{
   node?: SectionTreeNodeModel
   section?: SectionPageShellModel
   variantItemCount?: number
   deletingContentBlockCascade?: boolean
+  updatingAtomicSectionItemClassification?: boolean
 }>()
 
 const emit = defineEmits<{
   deleteContentBlockCascade: []
+  changeAtomicSectionItemClassification: [payload: {
+    atomicSectionId: number
+    atomicSectionItemId: number
+    teachingRole: AtomicSectionTeachingRole
+    difficulty: string
+  }]
 }>()
 
 const { t } = useI18n()
+const atomicSectionTeachingRoleOptions: AtomicSectionTeachingRole[] = [
+  'Unclassified',
+  'Knowledge',
+  'Example',
+  'Variant',
+  'Practice',
+  'Homework',
+]
+const difficultyOptions = ['Unset', 'Basic', 'Medium', 'Advanced', 'Top']
 
 const displayTitle = computed(() => {
   if (!props.node) {
@@ -49,6 +69,34 @@ const kindLabel = computed(() => {
 const showContentBlockCascadeDelete = computed(() =>
   props.node?.kind === 'ContentBlock' || props.node?.kind === 'CompositeBlock',
 )
+const showAtomicSectionItemClassification = computed(() =>
+  (props.node?.kind === 'ContentBlock' || props.node?.kind === 'CompositeBlock') &&
+  typeof props.node.atomicSectionId === 'number' &&
+  typeof props.node.atomicSectionItemId === 'number',
+)
+
+function changeAtomicSectionItemClassification(
+  next: Partial<{
+    teachingRole: AtomicSectionTeachingRole
+    difficulty: string
+  }>,
+) {
+  const node = props.node
+  if (
+    !node ||
+    typeof node.atomicSectionId !== 'number' ||
+    typeof node.atomicSectionItemId !== 'number'
+  ) {
+    return
+  }
+
+  emit('changeAtomicSectionItemClassification', {
+    atomicSectionId: node.atomicSectionId,
+    atomicSectionItemId: node.atomicSectionItemId,
+    teachingRole: next.teachingRole ?? node.teachingRole ?? 'Unclassified',
+    difficulty: next.difficulty ?? node.difficultyValue ?? 'Unset',
+  })
+}
 
 const detailRows = computed(() => {
   const node = props.node
@@ -101,6 +149,23 @@ const detailRows = computed(() => {
       row('name', t('components.sectionInspector.name'), node.title),
       row('difficulty', t('components.sectionInspector.difficulty'), node.difficulty),
       row('status', t('components.sectionInspector.status'), node.targetStatus ?? node.status),
+      row('childCount', t('components.sectionInspector.childCount'), node.itemCount ?? 0),
+    ]
+  }
+
+  if (node.kind === 'AtomicSectionPanel') {
+    return [
+      row('name', t('components.sectionInspector.name'), node.title),
+      row('type', t('components.sectionInspector.type'), node.typeLabel),
+      row('difficulty', t('components.sectionInspector.difficulty'), node.difficulty),
+      row('childCount', t('components.sectionInspector.childCount'), node.itemCount ?? 0),
+    ]
+  }
+
+  if (node.kind === 'AtomicSectionUnassigned') {
+    return [
+      row('name', t('components.sectionInspector.name'), node.title),
+      row('type', t('components.sectionInspector.type'), node.typeLabel),
       row('childCount', t('components.sectionInspector.childCount'), node.itemCount ?? 0),
     ]
   }
@@ -167,6 +232,56 @@ const detailRows = computed(() => {
         </div>
       </dl>
     </WeakScrollArea>
+
+    <div v-if="showAtomicSectionItemClassification" class="border-t px-4 py-3">
+      <div class="grid gap-2">
+        <p class="text-xs font-medium">
+          {{ t('components.sectionInspector.atomicSectionItemClassification') }}
+        </p>
+        <label class="grid gap-1 text-xs text-muted-foreground">
+          <span>{{ t('components.sectionInspector.teachingRole') }}</span>
+          <select
+            class="h-9 rounded-md border bg-background px-2 text-sm text-foreground"
+            :value="node.teachingRole ?? 'Unclassified'"
+            :disabled="updatingAtomicSectionItemClassification"
+            @change="
+              changeAtomicSectionItemClassification({
+                teachingRole: ($event.target as HTMLSelectElement).value as AtomicSectionTeachingRole,
+              })
+            "
+          >
+            <option
+              v-for="role in atomicSectionTeachingRoleOptions"
+              :key="role"
+              :value="role"
+            >
+              {{ t(`components.atomicSectionTeachingRole.${role}`) }}
+            </option>
+          </select>
+        </label>
+        <label class="grid gap-1 text-xs text-muted-foreground">
+          <span>{{ t('components.sectionInspector.difficulty') }}</span>
+          <select
+            class="h-9 rounded-md border bg-background px-2 text-sm text-foreground"
+            :value="node.difficultyValue ?? 'Unset'"
+            :disabled="updatingAtomicSectionItemClassification"
+            @change="
+              changeAtomicSectionItemClassification({
+                difficulty: ($event.target as HTMLSelectElement).value,
+              })
+            "
+          >
+            <option
+              v-for="difficulty in difficultyOptions"
+              :key="difficulty"
+              :value="difficulty"
+            >
+              {{ t(`common.difficulty.${difficulty}`) }}
+            </option>
+          </select>
+        </label>
+      </div>
+    </div>
 
     <div v-if="showContentBlockCascadeDelete" class="border-t px-4 py-3">
       <div class="grid gap-2">

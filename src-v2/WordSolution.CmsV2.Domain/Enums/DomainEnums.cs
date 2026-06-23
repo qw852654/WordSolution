@@ -82,6 +82,16 @@ public enum AtomicSectionStatus
     Archived = 3
 }
 
+public enum AtomicSectionTeachingRole
+{
+    Unclassified = 0,
+    Knowledge = 1,
+    Example = 2,
+    Variant = 3,
+    Practice = 4,
+    Homework = 5
+}
+
 public enum ContentBlockType
 {
     KnowledgePoint = 1,

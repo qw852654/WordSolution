@@ -30,6 +30,10 @@ import type {
   InsertCreatePanelModel,
   InsertCreateSubmitPayload,
   InsertRequestModel,
+  AtomicSectionTeachingRole,
+  AtomicSectionPanelActionPayload,
+  AtomicSectionPanelCreatePayload,
+  AtomicSectionPanelMovePayload,
   AtomicSectionItemActionPayload,
   AtomicSectionItemMovePayload,
   ContentBlockRelationActionPayload,
@@ -90,6 +94,7 @@ const isLoadingSectionPage = ref(false)
 const sectionPageError = ref('')
 const isSubmittingInsertCreate = ref(false)
 const isDeletingContentBlockCascade = ref(false)
+const isUpdatingAtomicSectionItemClassification = ref(false)
 
 function resolveSectionItemRemoveError(error: unknown, fallback: string) {
   const message = error instanceof Error ? error.message : ''
@@ -570,6 +575,8 @@ function requestInsert(request: InsertRequestModel) {
         insertMode: 'AtomicSectionChild',
         atomicSectionId,
         atomicSectionTitle,
+        atomicSectionPanelId: request.placement?.atomicSectionPanelId,
+        atomicSectionTeachingRole: request.placement?.teachingRole,
       }
       return
     }
@@ -742,6 +749,139 @@ async function requestAtomicRemove(payload: AtomicSectionWorkspaceActionPayload)
       error,
       t('sectionPage.workspace.atomicSectionActions.operationFailed'),
     )
+  }
+}
+
+function requestAtomicSectionPanelSelect(payload: AtomicSectionPanelActionPayload) {
+  selectedStructureNodeId.value = payload.nodeId
+  workspaceScrollTargetNodeId.value = payload.nodeId
+  workspaceScrollRequestKey.value += 1
+}
+
+function getAtomicSectionPanelDifficultyForApi(payload: AtomicSectionPanelActionPayload) {
+  return payload.difficultyValue ?? mapInsertDifficulty(payload.difficulty as InsertCreateDifficulty)
+}
+
+async function requestAtomicSectionPanelCreate(payload: AtomicSectionPanelCreatePayload) {
+  const title = window.prompt(
+    t('sectionPage.workspace.atomicSectionPanelActions.createPrompt'),
+    t('sectionPage.workspace.atomicSectionPanelActions.defaultPanelTitle'),
+  )
+
+  if (title === null || title.trim() === '') {
+    return
+  }
+
+  try {
+    const created = await atomicSectionActions.createAtomicSectionPanel(
+      payload.atomicSectionId,
+      title.trim(),
+      'Knowledge',
+      'Basic',
+    )
+    selectedStructureNodeId.value = `atomic-section-panel-${created.id}`
+    workspaceScrollTargetNodeId.value = selectedStructureNodeId.value
+    workspaceScrollRequestKey.value += 1
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error
+        ? error.message
+        : t('sectionPage.workspace.atomicSectionPanelActions.operationFailed')
+  }
+}
+
+async function requestAtomicSectionPanelRename(payload: AtomicSectionPanelActionPayload) {
+  const nextTitle = window.prompt(
+    t('sectionPage.workspace.atomicSectionPanelActions.renamePrompt'),
+    payload.title,
+  )
+
+  if (nextTitle === null || nextTitle.trim() === '' || nextTitle.trim() === payload.title) {
+    return
+  }
+
+  try {
+    await atomicSectionActions.renameAtomicSectionPanel(
+      payload.atomicSectionId,
+      payload.atomicSectionPanelId,
+      nextTitle.trim(),
+      payload.teachingRole,
+      getAtomicSectionPanelDifficultyForApi(payload),
+    )
+    selectedStructureNodeId.value = payload.nodeId
+    workspaceScrollTargetNodeId.value = payload.nodeId
+    workspaceScrollRequestKey.value += 1
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error
+        ? error.message
+        : t('sectionPage.workspace.atomicSectionPanelActions.operationFailed')
+  }
+}
+
+async function requestAtomicSectionPanelMove(payload: AtomicSectionPanelMovePayload) {
+  try {
+    await atomicSectionActions.moveAtomicSectionPanel(
+      payload.atomicSectionId,
+      payload.atomicSectionPanelId,
+      payload.direction,
+    )
+    selectedStructureNodeId.value = payload.nodeId
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error
+        ? error.message
+        : t('sectionPage.workspace.atomicSectionPanelActions.operationFailed')
+  }
+}
+
+async function requestAtomicSectionPanelRemove(payload: AtomicSectionPanelActionPayload) {
+  const confirmed = window.confirm(
+    t('sectionPage.workspace.atomicSectionPanelActions.removeConfirm', {
+      title: payload.title,
+    }),
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    await atomicSectionActions.removeAtomicSectionPanel(
+      payload.atomicSectionId,
+      payload.atomicSectionPanelId,
+    )
+    selectedStructureNodeId.value = getSectionRootNodeId()
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error
+        ? error.message
+        : t('sectionPage.workspace.atomicSectionPanelActions.operationFailed')
+  }
+}
+
+async function requestAtomicSectionItemClassificationChange(payload: {
+  atomicSectionId: number
+  atomicSectionItemId: number
+  teachingRole: AtomicSectionTeachingRole
+  difficulty: string
+}) {
+  isUpdatingAtomicSectionItemClassification.value = true
+  try {
+    await atomicSectionActions.changeAtomicSectionItemClassification(
+      payload.atomicSectionId,
+      payload.atomicSectionItemId,
+      payload.teachingRole,
+      payload.difficulty,
+    )
+    selectedStructureNodeId.value = `atomic-section-item-${payload.atomicSectionItemId}`
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error
+        ? error.message
+        : t('sectionPage.workspace.atomicSectionPanelActions.operationFailed')
+  } finally {
+    isUpdatingAtomicSectionItemClassification.value = false
   }
 }
 
@@ -1058,6 +1198,8 @@ async function submitAtomicSectionChildContentBlock(payload: InsertCreateSubmitP
     blockType: mapInsertContentBlockType(payload.contentBlockType),
     difficulty: mapInsertDifficulty(payload.difficulty),
     sortOrder: insertPlan.sortOrder,
+    atomicSectionPanelId: payload.atomicSectionPanelId,
+    teachingRole: payload.atomicSectionTeachingRole,
   })
 
   if (insertPlan.moveUpAfterCreate) {
@@ -2288,6 +2430,11 @@ watch(sectionId, () => {
         @request-atomic-section-item-open-word="requestAtomicSectionItemOpenWord"
         @request-atomic-section-item-move="requestAtomicSectionItemMove"
         @request-atomic-section-item-remove="requestAtomicSectionItemRemove"
+        @request-atomic-section-panel-create="requestAtomicSectionPanelCreate"
+        @request-atomic-section-panel-select="requestAtomicSectionPanelSelect"
+        @request-atomic-section-panel-rename="requestAtomicSectionPanelRename"
+        @request-atomic-section-panel-move="requestAtomicSectionPanelMove"
+        @request-atomic-section-panel-remove="requestAtomicSectionPanelRemove"
         @request-content-block-open-word="requestContentBlockOpenWord"
         @request-content-block-move="requestContentBlockMove"
         @request-content-block-remove="requestContentBlockRemove"
@@ -2304,7 +2451,9 @@ watch(sectionId, () => {
           :section="sectionShell"
           :variant-item-count="sectionVariantItemCount"
           :deleting-content-block-cascade="isDeletingContentBlockCascade"
+          :updating-atomic-section-item-classification="isUpdatingAtomicSectionItemClassification"
           @delete-content-block-cascade="requestDeleteContentBlockCascade"
+          @change-atomic-section-item-classification="requestAtomicSectionItemClassificationChange"
         />
       </aside>
     </section>

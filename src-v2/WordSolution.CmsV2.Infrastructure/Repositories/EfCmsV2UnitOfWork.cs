@@ -15,6 +15,7 @@ public sealed class EfCmsV2UnitOfWork : ICmsV2UnitOfWork
         Sections = new EfSectionRepository(context);
         SectionItems = new EfSectionItemRepository(context);
         AtomicSections = new EfAtomicSectionRepository(context);
+        AtomicSectionPanels = new EfAtomicSectionPanelRepository(context);
         AtomicSectionItems = new EfAtomicSectionItemRepository(context);
         SectionVariants = new EfSectionVariantRepository(context);
         SectionVariantItems = new EfSectionVariantItemRepository(context);
@@ -37,6 +38,8 @@ public sealed class EfCmsV2UnitOfWork : ICmsV2UnitOfWork
     public ISectionItemRepository SectionItems { get; }
 
     public IAtomicSectionRepository AtomicSections { get; }
+
+    public IAtomicSectionPanelRepository AtomicSectionPanels { get; }
 
     public IAtomicSectionItemRepository AtomicSectionItems { get; }
 

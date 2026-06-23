@@ -13,6 +13,9 @@ import { Card } from '@/components/ui/card'
 import type {
   AtomicSectionItemActionPayload,
   AtomicSectionItemMovePayload,
+  AtomicSectionPanelActionPayload,
+  AtomicSectionPanelCreatePayload,
+  AtomicSectionPanelMovePayload,
   ContentBlockRelationActionPayload,
   ContentBlockRelationMovePayload,
   ContentBlockDisplayModel,
@@ -101,6 +104,11 @@ const emit = defineEmits<{
   requestAtomicSectionItemOpenWord: [request: AtomicSectionItemActionPayload]
   requestAtomicSectionItemMove: [request: AtomicSectionItemMovePayload]
   requestAtomicSectionItemRemove: [request: AtomicSectionItemActionPayload]
+  requestAtomicSectionPanelCreate: [request: AtomicSectionPanelCreatePayload]
+  requestAtomicSectionPanelSelect: [request: AtomicSectionPanelActionPayload]
+  requestAtomicSectionPanelRename: [request: AtomicSectionPanelActionPayload]
+  requestAtomicSectionPanelMove: [request: AtomicSectionPanelMovePayload]
+  requestAtomicSectionPanelRemove: [request: AtomicSectionPanelActionPayload]
   requestContentBlockOpenWord: [request: ContentBlockWorkspaceActionPayload]
   requestContentBlockMove: [request: ContentBlockWorkspaceMovePayload]
   requestContentBlockRemove: [request: ContentBlockWorkspaceActionPayload]
@@ -246,6 +254,12 @@ function withStructuredSelection(block: StructuredBlockModel): StructuredBlockMo
     expanded: isStructuredBlockExpanded(block.id, block.expanded),
     selected: isWorkspaceItemSelected(block.id, block.selected),
     children: block.children.map((child) => withStructuredChildSelection(child)),
+    panels: block.panels?.map((panel) => ({
+      ...panel,
+      selected: isWorkspaceItemSelected(panel.id, panel.selected),
+      children: panel.children.map((child) => withStructuredChildSelection(child)),
+    })),
+    unassignedChildren: block.unassignedChildren?.map((child) => withStructuredChildSelection(child)),
   }
 }
 
@@ -796,6 +810,11 @@ watch(
                 @select-content-block="handleNestedWorkspaceSelection"
                 @toggle-collapse="emit('toggleWorkspaceNodeCollapse', $event)"
                 @request-insert="emitInsertRequest"
+                @create-atomic-section-panel="emit('requestAtomicSectionPanelCreate', $event)"
+                @select-atomic-section-panel="emit('requestAtomicSectionPanelSelect', $event)"
+                @rename-atomic-section-panel="emit('requestAtomicSectionPanelRename', $event)"
+                @move-atomic-section-panel="emit('requestAtomicSectionPanelMove', $event)"
+                @remove-atomic-section-panel="emit('requestAtomicSectionPanelRemove', $event)"
                 @open-content-block-relation-word="emit('requestContentBlockRelationOpenWord', $event)"
                 @move-content-block-relation="emit('requestContentBlockRelationMove', $event)"
                 @remove-content-block-relation="emit('requestContentBlockRelationRemove', $event)"

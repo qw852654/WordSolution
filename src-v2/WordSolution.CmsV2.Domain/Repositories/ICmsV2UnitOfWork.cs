@@ -10,6 +10,8 @@ public interface ICmsV2UnitOfWork
 
     IAtomicSectionRepository AtomicSections { get; }
 
+    IAtomicSectionPanelRepository AtomicSectionPanels { get; }
+
     IAtomicSectionItemRepository AtomicSectionItems { get; }
 
     ISectionVariantRepository SectionVariants { get; }

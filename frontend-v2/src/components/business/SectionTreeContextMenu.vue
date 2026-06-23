@@ -63,6 +63,10 @@ const actions = computed<
     ]
   }
 
+  if (node?.kind === 'AtomicSectionPanel' || node?.kind === 'AtomicSectionUnassigned') {
+    return []
+  }
+
   const disabled = Boolean(node?.disabled)
   const removeDisabled = disabled || node?.kind === 'Section'
 
@@ -138,7 +142,7 @@ onBeforeUnmount(() => {
 <template>
   <Teleport to="body">
     <div
-      v-if="open && model"
+      v-if="open && model && actions.length"
       ref="menuRef"
       class="fixed z-50 w-[13.75rem] rounded-md border bg-popover p-1 text-popover-foreground"
       :style="menuStyle"

@@ -12,6 +12,7 @@ public sealed class CmsV2PersistenceSchemaTests
         "Sections",
         "SectionItems",
         "AtomicSections",
+        "AtomicSectionPanels",
         "AtomicSectionItems",
         "SectionVariants",
         "SectionVariantItems",
@@ -83,6 +84,17 @@ public sealed class CmsV2PersistenceSchemaTests
         Assert.DoesNotContain("Difficulty", contentBlockVersionColumns);
         Assert.DoesNotContain("BlockType", contentBlockVersionColumns);
         Assert.DoesNotContain("QuestionType", contentBlockVersionColumns);
+
+        var atomicSectionPanelColumns = await ReadTableColumnsAsync(context, "AtomicSectionPanels");
+        Assert.Contains("AtomicSectionId", atomicSectionPanelColumns);
+        Assert.Contains("Title", atomicSectionPanelColumns);
+        Assert.Contains("TeachingRole", atomicSectionPanelColumns);
+        Assert.Contains("Difficulty", atomicSectionPanelColumns);
+        Assert.Contains("SortOrder", atomicSectionPanelColumns);
+
+        var atomicSectionItemColumns = await ReadTableColumnsAsync(context, "AtomicSectionItems");
+        Assert.Contains("AtomicSectionPanelId", atomicSectionItemColumns);
+        Assert.Contains("TeachingRole", atomicSectionItemColumns);
     }
 
     [Fact]
@@ -102,6 +114,34 @@ public sealed class CmsV2PersistenceSchemaTests
         Assert.Contains(
             sectionIndexes,
             index => index.IsUnique && index.Columns.SequenceEqual(["TeachingTopicId"]));
+
+        var atomicSectionPanelIndexes = await ReadIndexesAsync(context, "AtomicSectionPanels");
+        Assert.Contains(
+            atomicSectionPanelIndexes,
+            index => index.Columns.SequenceEqual(["AtomicSectionId", "SortOrder"]));
+        Assert.Contains(
+            atomicSectionPanelIndexes,
+            index => index.IsUnique
+                && index.Columns.SequenceEqual(["AtomicSectionId", "TeachingRole", "Difficulty"]));
+
+        var atomicSectionItemIndexes = await ReadIndexesAsync(context, "AtomicSectionItems");
+        Assert.Contains(
+            atomicSectionItemIndexes,
+            index => index.Columns.SequenceEqual(["AtomicSectionId", "AtomicSectionPanelId", "SortOrder"]));
+
+        var atomicSectionPanelForeignKeys = await ReadForeignKeysAsync(context, "AtomicSectionPanels");
+        Assert.Contains(
+            atomicSectionPanelForeignKeys,
+            foreignKey => foreignKey.Table == "AtomicSections"
+                && foreignKey.From == "AtomicSectionId"
+                && foreignKey.OnDelete == "RESTRICT");
+
+        var atomicSectionItemForeignKeys = await ReadForeignKeysAsync(context, "AtomicSectionItems");
+        Assert.Contains(
+            atomicSectionItemForeignKeys,
+            foreignKey => foreignKey.Table == "AtomicSectionPanels"
+                && foreignKey.From == "AtomicSectionPanelId"
+                && foreignKey.OnDelete == "RESTRICT");
 
         var sectionItemForeignKeys = await ReadForeignKeysAsync(context, "SectionItems");
         Assert.Contains(

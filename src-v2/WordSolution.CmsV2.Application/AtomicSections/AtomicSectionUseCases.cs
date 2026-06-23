@@ -7,13 +7,6 @@ namespace WordSolution.CmsV2.Application.AtomicSections;
 
 public sealed class AtomicSectionUseCases
 {
-    private static readonly ContentBlockType[] DefaultChildBlockTypes =
-    [
-        ContentBlockType.KnowledgePoint,
-        ContentBlockType.ExampleGroup,
-        ContentBlockType.ExerciseGroup
-    ];
-
     private readonly ICmsV2UnitOfWork _unitOfWork;
 
     public AtomicSectionUseCases(ICmsV2UnitOfWork unitOfWork)
@@ -43,28 +36,6 @@ public sealed class AtomicSectionUseCases
                 command.Status);
             await _unitOfWork.AtomicSections.AddAsync(atomicSection, transactionCancellationToken);
             await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
-
-            for (var index = 0; index < DefaultChildBlockTypes.Length; index++)
-            {
-                var contentBlock = new ContentBlock(
-                    command.SectionId,
-                    atomicSection.Title,
-                    DefaultChildBlockTypes[index],
-                    difficulty: atomicSection.Difficulty,
-                    status: ContentBlockStatus.Draft);
-                await _unitOfWork.ContentBlocks.AddAsync(contentBlock, transactionCancellationToken);
-                await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
-
-                var item = new AtomicSectionItem(
-                    atomicSection.Id,
-                    contentBlock.Id,
-                    ReferenceMode.FollowLatest,
-                    lockedContentBlockVersionId: null,
-                    sortOrder: (index + 1) * 10);
-                await _unitOfWork.AtomicSectionItems.AddAsync(item, transactionCancellationToken);
-            }
-
-            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
             result = atomicSection;
         }, cancellationToken);
 
@@ -79,20 +50,33 @@ public sealed class AtomicSectionUseCases
 
         await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
         {
-            if (await _unitOfWork.AtomicSections.GetByIdAsync(command.AtomicSectionId, transactionCancellationToken) is null)
-            {
-                throw new CmsV2ApplicationException($"AtomicSection {command.AtomicSectionId} was not found.");
-            }
-
-            if (await _unitOfWork.ContentBlocks.GetByIdAsync(command.ContentBlockId, transactionCancellationToken) is null)
-            {
-                throw new CmsV2ApplicationException($"ContentBlock {command.ContentBlockId} was not found.");
-            }
+            _ = await GetAtomicSectionForCommandAsync(command.AtomicSectionId, transactionCancellationToken);
+            var contentBlock = await GetContentBlockForCommandAsync(command.ContentBlockId, transactionCancellationToken);
 
             await EnsureLockedVersionBelongsToContentBlockAsync(
                 command.LockedContentBlockVersionId,
                 command.ContentBlockId,
                 transactionCancellationToken);
+
+            var teachingRole = command.TeachingRole;
+            if (command.AtomicSectionPanelId.HasValue)
+            {
+                var panel = await GetAtomicSectionPanelForCommandAsync(
+                    command.AtomicSectionId,
+                    command.AtomicSectionPanelId.Value,
+                    transactionCancellationToken);
+                if (teachingRole == AtomicSectionTeachingRole.Unclassified)
+                {
+                    teachingRole = panel.TeachingRole;
+                }
+            }
+
+            var panelId = command.AtomicSectionPanelId
+                ?? await ResolvePanelIdAsync(
+                    command.AtomicSectionId,
+                    teachingRole,
+                    contentBlock.Difficulty,
+                    transactionCancellationToken);
 
             var item = new AtomicSectionItem(
                 command.AtomicSectionId,
@@ -101,7 +85,9 @@ public sealed class AtomicSectionUseCases
                 command.LockedContentBlockVersionId,
                 command.SortOrder,
                 command.TitleOverride,
-                command.Note);
+                command.Note,
+                atomicSectionPanelId: panelId,
+                teachingRole: teachingRole);
 
             await _unitOfWork.AtomicSectionItems.AddAsync(item, transactionCancellationToken);
             await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
@@ -109,6 +95,176 @@ public sealed class AtomicSectionUseCases
         }, cancellationToken);
 
         return result!;
+    }
+
+    public async Task<AtomicSectionPanelDto> CreateAtomicSectionPanelAsync(
+        CreateAtomicSectionPanelCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        AtomicSectionPanelDto? result = null;
+
+        await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+        {
+            _ = await GetAtomicSectionForCommandAsync(command.AtomicSectionId, transactionCancellationToken);
+            if (command.AfterAtomicSectionPanelId.HasValue)
+            {
+                _ = await GetAtomicSectionPanelForCommandAsync(
+                    command.AtomicSectionId,
+                    command.AfterAtomicSectionPanelId.Value,
+                    transactionCancellationToken);
+            }
+
+            var panels = await ListPanelsAsync(command.AtomicSectionId, transactionCancellationToken);
+            var sortOrder = command.AfterAtomicSectionPanelId.HasValue
+                ? panels.Single(panel => panel.Id == command.AfterAtomicSectionPanelId.Value).SortOrder + 10
+                : (panels.Count == 0 ? 10 : panels.Max(panel => panel.SortOrder) + 10);
+            var panel = new AtomicSectionPanel(
+                command.AtomicSectionId,
+                command.Title,
+                command.TeachingRole,
+                command.Difficulty,
+                sortOrder);
+
+            await _unitOfWork.AtomicSectionPanels.AddAsync(panel, transactionCancellationToken);
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+            await ReassignMatchingUnassignedItemsToPanelAsync(panel, transactionCancellationToken);
+            await NormalizePanelSortOrdersAsync(command.AtomicSectionId, transactionCancellationToken);
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+            result = ToPanelDto(panel);
+        }, cancellationToken);
+
+        return result!;
+    }
+
+    public async Task<AtomicSectionPanelDto> UpdateAtomicSectionPanelAsync(
+        UpdateAtomicSectionPanelCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        AtomicSectionPanelDto? result = null;
+
+        await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+        {
+            var panel = await GetAtomicSectionPanelForCommandAsync(
+                command.AtomicSectionId,
+                command.AtomicSectionPanelId,
+                transactionCancellationToken);
+
+            panel.Rename(command.Title);
+            panel.ChangeClassification(command.TeachingRole, command.Difficulty);
+            _unitOfWork.AtomicSectionPanels.Update(panel);
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+
+            await ReassignItemsForPanelAsync(panel, transactionCancellationToken);
+            await ReassignMatchingUnassignedItemsToPanelAsync(panel, transactionCancellationToken);
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+            result = ToPanelDto(panel);
+        }, cancellationToken);
+
+        return result!;
+    }
+
+    public async Task MoveAtomicSectionPanelAsync(
+        MoveAtomicSectionPanelCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+        {
+            var panel = await GetAtomicSectionPanelForCommandAsync(
+                command.AtomicSectionId,
+                command.AtomicSectionPanelId,
+                transactionCancellationToken);
+            var panels = await ListPanelsAsync(command.AtomicSectionId, transactionCancellationToken);
+            var currentIndex = panels.FindIndex(candidate => candidate.Id == panel.Id);
+            var targetIndex = command.Direction == AtomicSectionPanelMoveDirection.Up
+                ? currentIndex - 1
+                : currentIndex + 1;
+
+            if (currentIndex < 0 || targetIndex < 0 || targetIndex >= panels.Count)
+            {
+                return;
+            }
+
+            panels.RemoveAt(currentIndex);
+            panels.Insert(targetIndex, panel);
+
+            for (var index = 0; index < panels.Count; index++)
+            {
+                panels[index].ChangeSortOrder((index + 1) * 10);
+                _unitOfWork.AtomicSectionPanels.Update(panels[index]);
+            }
+
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+        }, cancellationToken);
+    }
+
+    public async Task<DeleteAtomicSectionPanelResult> DeleteAtomicSectionPanelAsync(
+        DeleteAtomicSectionPanelCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        DeleteAtomicSectionPanelResult? result = null;
+
+        await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+        {
+            var panel = await GetAtomicSectionPanelForCommandAsync(
+                command.AtomicSectionId,
+                command.AtomicSectionPanelId,
+                transactionCancellationToken);
+            var items = await _unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(
+                command.AtomicSectionId,
+                transactionCancellationToken);
+            var panelItems = items
+                .Where(item => item.AtomicSectionPanelId == panel.Id)
+                .ToList();
+
+            foreach (var item in panelItems)
+            {
+                _unitOfWork.AtomicSectionItems.Remove(item);
+            }
+
+            _unitOfWork.AtomicSectionPanels.Remove(panel);
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+            result = new DeleteAtomicSectionPanelResult(command.AtomicSectionId, panel.Id, panelItems.Count);
+        }, cancellationToken);
+
+        return result!;
+    }
+
+    public async Task ChangeAtomicSectionItemClassificationAsync(
+        ChangeAtomicSectionItemClassificationCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+        {
+            var item = await GetAtomicSectionItemForCommandAsync(
+                command.AtomicSectionId,
+                command.AtomicSectionItemId,
+                transactionCancellationToken);
+            var contentBlock = await GetContentBlockForCommandAsync(item.ContentBlockId, transactionCancellationToken);
+            var sourcePanelId = item.AtomicSectionPanelId;
+            var targetPanelId = await ResolvePanelIdAsync(
+                command.AtomicSectionId,
+                command.TeachingRole,
+                command.Difficulty,
+                transactionCancellationToken);
+            var sortOrder = sourcePanelId == targetPanelId
+                ? item.SortOrder
+                : await NextItemSortOrderAsync(command.AtomicSectionId, targetPanelId, transactionCancellationToken);
+
+            contentBlock.ChangeDifficulty(command.Difficulty);
+            item.ChangeClassification(targetPanelId, command.TeachingRole, sortOrder);
+
+            _unitOfWork.ContentBlocks.Update(contentBlock);
+            _unitOfWork.AtomicSectionItems.Update(item);
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+
+            await NormalizeItemSortOrdersAsync(command.AtomicSectionId, sourcePanelId, transactionCancellationToken);
+            if (sourcePanelId != targetPanelId)
+            {
+                await NormalizeItemSortOrdersAsync(command.AtomicSectionId, targetPanelId, transactionCancellationToken);
+            }
+
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+        }, cancellationToken);
     }
 
     public async Task<AtomicSection> RenameAtomicSectionAsync(
@@ -149,6 +305,7 @@ public sealed class AtomicSectionUseCases
             var siblings = (await _unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(
                     command.AtomicSectionId,
                     transactionCancellationToken))
+                .Where(candidate => candidate.AtomicSectionPanelId == item.AtomicSectionPanelId)
                 .OrderBy(candidate => candidate.SortOrder)
                 .ThenBy(candidate => candidate.Id)
                 .ToList();
@@ -221,5 +378,196 @@ public sealed class AtomicSectionUseCases
         }
 
         return item;
+    }
+
+    private async Task<AtomicSection> GetAtomicSectionForCommandAsync(
+        int atomicSectionId,
+        CancellationToken cancellationToken)
+    {
+        var atomicSection = await _unitOfWork.AtomicSections.GetByIdAsync(atomicSectionId, cancellationToken);
+        if (atomicSection is null)
+        {
+            throw new CmsV2ApplicationException($"AtomicSection {atomicSectionId} was not found.");
+        }
+
+        return atomicSection;
+    }
+
+    private async Task<ContentBlock> GetContentBlockForCommandAsync(
+        int contentBlockId,
+        CancellationToken cancellationToken)
+    {
+        var contentBlock = await _unitOfWork.ContentBlocks.GetByIdAsync(contentBlockId, cancellationToken);
+        if (contentBlock is null)
+        {
+            throw new CmsV2ApplicationException($"ContentBlock {contentBlockId} was not found.");
+        }
+
+        return contentBlock;
+    }
+
+    private async Task<AtomicSectionPanel> GetAtomicSectionPanelForCommandAsync(
+        int atomicSectionId,
+        int atomicSectionPanelId,
+        CancellationToken cancellationToken)
+    {
+        var panel = await _unitOfWork.AtomicSectionPanels.GetByIdAsync(atomicSectionPanelId, cancellationToken);
+        if (panel is null || panel.AtomicSectionId != atomicSectionId)
+        {
+            throw new CmsV2ApplicationException(
+                $"AtomicSectionPanel {atomicSectionPanelId} was not found in AtomicSection {atomicSectionId}.");
+        }
+
+        return panel;
+    }
+
+    private async Task<int?> ResolvePanelIdAsync(
+        int atomicSectionId,
+        AtomicSectionTeachingRole teachingRole,
+        Difficulty difficulty,
+        CancellationToken cancellationToken)
+    {
+        if (teachingRole == AtomicSectionTeachingRole.Unclassified)
+        {
+            return null;
+        }
+
+        var panels = await ListPanelsAsync(atomicSectionId, cancellationToken);
+        var exact = panels.FirstOrDefault(panel =>
+            panel.TeachingRole == teachingRole && panel.Difficulty == difficulty);
+        if (exact is not null)
+        {
+            return exact.Id;
+        }
+
+        var fallback = panels.FirstOrDefault(panel =>
+            panel.TeachingRole == teachingRole && panel.Difficulty == Difficulty.Unset);
+        return fallback?.Id;
+    }
+
+    private async Task ReassignMatchingUnassignedItemsToPanelAsync(
+        AtomicSectionPanel panel,
+        CancellationToken cancellationToken)
+    {
+        var items = await _unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(panel.AtomicSectionId, cancellationToken);
+        var unassigned = items
+            .Where(item => item.AtomicSectionPanelId is null && item.TeachingRole == panel.TeachingRole)
+            .OrderBy(item => item.SortOrder)
+            .ThenBy(item => item.Id)
+            .ToList();
+
+        foreach (var item in unassigned)
+        {
+            var contentBlock = await GetContentBlockForCommandAsync(item.ContentBlockId, cancellationToken);
+            if (!PanelMatchesContentBlock(panel, contentBlock))
+            {
+                continue;
+            }
+
+            item.ChangeClassification(panel.Id, item.TeachingRole, await NextItemSortOrderAsync(panel.AtomicSectionId, panel.Id, cancellationToken));
+            _unitOfWork.AtomicSectionItems.Update(item);
+        }
+
+        await NormalizeItemSortOrdersAsync(panel.AtomicSectionId, panel.Id, cancellationToken);
+    }
+
+    private async Task ReassignItemsForPanelAsync(
+        AtomicSectionPanel panel,
+        CancellationToken cancellationToken)
+    {
+        var items = await _unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(panel.AtomicSectionId, cancellationToken);
+        var panelItems = items
+            .Where(item => item.AtomicSectionPanelId == panel.Id)
+            .ToList();
+
+        foreach (var item in panelItems)
+        {
+            var contentBlock = await GetContentBlockForCommandAsync(item.ContentBlockId, cancellationToken);
+            if (item.TeachingRole == panel.TeachingRole && PanelMatchesContentBlock(panel, contentBlock))
+            {
+                continue;
+            }
+
+            var targetPanelId = await ResolvePanelIdAsync(
+                panel.AtomicSectionId,
+                item.TeachingRole,
+                contentBlock.Difficulty,
+                cancellationToken);
+            var sortOrder = await NextItemSortOrderAsync(panel.AtomicSectionId, targetPanelId, cancellationToken);
+            item.ChangeClassification(targetPanelId, item.TeachingRole, sortOrder);
+            _unitOfWork.AtomicSectionItems.Update(item);
+        }
+
+        await NormalizeItemSortOrdersAsync(panel.AtomicSectionId, panel.Id, cancellationToken);
+        await NormalizeItemSortOrdersAsync(panel.AtomicSectionId, null, cancellationToken);
+    }
+
+    private static bool PanelMatchesContentBlock(AtomicSectionPanel panel, ContentBlock contentBlock)
+    {
+        return panel.Difficulty == Difficulty.Unset || panel.Difficulty == contentBlock.Difficulty;
+    }
+
+    private async Task<int> NextItemSortOrderAsync(
+        int atomicSectionId,
+        int? panelId,
+        CancellationToken cancellationToken)
+    {
+        var items = await _unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(atomicSectionId, cancellationToken);
+        var maxSortOrder = items
+            .Where(item => item.AtomicSectionPanelId == panelId)
+            .Select(item => item.SortOrder)
+            .DefaultIfEmpty(0)
+            .Max();
+
+        return maxSortOrder + 10;
+    }
+
+    private async Task NormalizeItemSortOrdersAsync(
+        int atomicSectionId,
+        int? panelId,
+        CancellationToken cancellationToken)
+    {
+        var items = (await _unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(atomicSectionId, cancellationToken))
+            .Where(item => item.AtomicSectionPanelId == panelId)
+            .OrderBy(item => item.SortOrder)
+            .ThenBy(item => item.Id)
+            .ToList();
+
+        for (var index = 0; index < items.Count; index++)
+        {
+            items[index].ChangeSortOrder((index + 1) * 10);
+            _unitOfWork.AtomicSectionItems.Update(items[index]);
+        }
+    }
+
+    private async Task NormalizePanelSortOrdersAsync(int atomicSectionId, CancellationToken cancellationToken)
+    {
+        var panels = await ListPanelsAsync(atomicSectionId, cancellationToken);
+        for (var index = 0; index < panels.Count; index++)
+        {
+            panels[index].ChangeSortOrder((index + 1) * 10);
+            _unitOfWork.AtomicSectionPanels.Update(panels[index]);
+        }
+    }
+
+    private async Task<List<AtomicSectionPanel>> ListPanelsAsync(
+        int atomicSectionId,
+        CancellationToken cancellationToken)
+    {
+        return (await _unitOfWork.AtomicSectionPanels.ListByAtomicSectionAsync(atomicSectionId, cancellationToken))
+            .OrderBy(panel => panel.SortOrder)
+            .ThenBy(panel => panel.Id)
+            .ToList();
+    }
+
+    private static AtomicSectionPanelDto ToPanelDto(AtomicSectionPanel panel)
+    {
+        return new AtomicSectionPanelDto(
+            panel.Id,
+            panel.AtomicSectionId,
+            panel.Title,
+            panel.TeachingRole,
+            panel.Difficulty,
+            panel.SortOrder);
     }
 }

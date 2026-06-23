@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using WordSolution.CmsV2.Domain.Entities;
+using WordSolution.CmsV2.Domain.Enums;
 
 namespace WordSolution.CmsV2.Infrastructure.Persistence.Configurations;
 
@@ -149,6 +150,39 @@ internal sealed class AtomicSectionConfiguration : IEntityTypeConfiguration<Atom
     }
 }
 
+internal sealed class AtomicSectionPanelConfiguration : IEntityTypeConfiguration<AtomicSectionPanel>
+{
+    public void Configure(EntityTypeBuilder<AtomicSectionPanel> builder)
+    {
+        builder.ToTable(
+            "AtomicSectionPanels",
+            table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_AtomicSectionPanels_TeachingRole",
+                    "\"TeachingRole\" <> 0");
+            });
+        CmsV2EntityConfiguration.ConfigurePrimaryKey(builder);
+
+        builder.Property(entity => entity.AtomicSectionId).IsRequired();
+        builder.Property(entity => entity.Title).HasMaxLength(CmsV2EntityConfiguration.TitleMaxLength).IsRequired();
+        builder.Property(entity => entity.TeachingRole).HasConversion<int>().IsRequired();
+        builder.Property(entity => entity.Difficulty).HasConversion<int>().IsRequired();
+        builder.Property(entity => entity.SortOrder).IsRequired();
+        CmsV2EntityConfiguration.ConfigureUpdatedTime(builder);
+
+        builder.HasIndex(entity => new { entity.AtomicSectionId, entity.SortOrder });
+        builder.HasIndex(entity => new { entity.AtomicSectionId, entity.TeachingRole, entity.Difficulty })
+            .IsUnique()
+            .HasDatabaseName("UX_AtomicSectionPanels_AtomicSectionId_TeachingRole_Difficulty");
+
+        builder.HasOne<AtomicSection>()
+            .WithMany()
+            .HasForeignKey(entity => entity.AtomicSectionId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
 internal sealed class AtomicSectionItemConfiguration : IEntityTypeConfiguration<AtomicSectionItem>
 {
     public void Configure(EntityTypeBuilder<AtomicSectionItem> builder)
@@ -165,6 +199,11 @@ internal sealed class AtomicSectionItemConfiguration : IEntityTypeConfiguration<
 
         builder.Property(entity => entity.AtomicSectionId).IsRequired();
         builder.Property(entity => entity.ContentBlockId).IsRequired();
+        builder.Property(entity => entity.AtomicSectionPanelId);
+        builder.Property(entity => entity.TeachingRole)
+            .HasConversion<int>()
+            .HasDefaultValue(AtomicSectionTeachingRole.Unclassified)
+            .IsRequired();
         builder.Property(entity => entity.ReferenceMode).HasConversion<int>().IsRequired();
         builder.Property(entity => entity.LockedContentBlockVersionId);
         builder.Property(entity => entity.TitleOverride).HasMaxLength(CmsV2EntityConfiguration.TitleMaxLength);
@@ -173,12 +212,18 @@ internal sealed class AtomicSectionItemConfiguration : IEntityTypeConfiguration<
         CmsV2EntityConfiguration.ConfigureUpdatedTime(builder);
 
         builder.HasIndex(entity => new { entity.AtomicSectionId, entity.SortOrder });
+        builder.HasIndex(entity => new { entity.AtomicSectionId, entity.AtomicSectionPanelId, entity.SortOrder });
         builder.HasIndex(entity => entity.ContentBlockId);
+        builder.HasIndex(entity => entity.AtomicSectionPanelId);
         builder.HasIndex(entity => entity.LockedContentBlockVersionId);
 
         builder.HasOne<AtomicSection>()
             .WithMany()
             .HasForeignKey(entity => entity.AtomicSectionId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<AtomicSectionPanel>()
+            .WithMany()
+            .HasForeignKey(entity => entity.AtomicSectionPanelId)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<ContentBlock>()
             .WithMany()

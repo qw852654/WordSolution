@@ -2,6 +2,7 @@ import { cmsV2Api } from '@/apis/cmsV2Client'
 import type {
   CmsV2AtomicSectionDto,
   CmsV2AtomicSectionItemDto,
+  CmsV2AtomicSectionPanelDto,
   CmsV2ContentBlockDto,
   CmsV2ContentBlockRelationDto,
   CmsV2ContentBlockVersionDto,
@@ -21,6 +22,7 @@ import type {
   SectionReferenceMode,
   SectionTreeNodeModel,
   SectionWorkspaceFlowItemModel,
+  AtomicSectionPanelModel,
   StructuredBlockChildModel,
   TeachingTopicTreeNodeModel,
 } from '@/types'
@@ -44,9 +46,20 @@ interface StructuredBlockChildContext {
   sortOrder?: number
   atomicSectionId?: number
   atomicSectionItemId?: number
+  atomicSectionPanelId?: number | null
+  teachingRole?: CmsV2AtomicSectionItemDto['teachingRole']
   parentBlockId?: number
   relationId?: number
   contentBlockId?: number
+}
+
+interface SectionDataBuildContext {
+  blockCache: Map<number, Promise<ResolvedContentBlock>>
+  atomicSectionCache: Map<number, Promise<CmsV2AtomicSectionDto>>
+  atomicSectionItemsCache: Map<number, Promise<CmsV2AtomicSectionItemDto[]>>
+  atomicSectionPanelsCache: Map<number, Promise<CmsV2AtomicSectionPanelDto[]>>
+  relationCache: Map<number, Promise<CmsV2ContentBlockRelationDto[]>>
+  workspaceNodeMap: Record<string, string>
 }
 
 const compositeContentBlockTypes = new Set(['ExampleGroup', 'ExerciseGroup', 'VariantGroup'])
@@ -72,6 +85,7 @@ export async function loadSectionPageData(routeSectionId?: string): Promise<Sect
   const blockCache = new Map<number, Promise<ResolvedContentBlock>>()
   const atomicSectionCache = new Map<number, Promise<CmsV2AtomicSectionDto>>()
   const atomicSectionItemsCache = new Map<number, Promise<CmsV2AtomicSectionItemDto[]>>()
+  const atomicSectionPanelsCache = new Map<number, Promise<CmsV2AtomicSectionPanelDto[]>>()
   const relationCache = new Map<number, Promise<CmsV2ContentBlockRelationDto[]>>()
   const workspaceNodeMap: Record<string, string> = {}
 
@@ -79,6 +93,7 @@ export async function loadSectionPageData(routeSectionId?: string): Promise<Sect
     blockCache,
     atomicSectionCache,
     atomicSectionItemsCache,
+    atomicSectionPanelsCache,
     relationCache,
     workspaceNodeMap,
   }
@@ -210,6 +225,22 @@ async function resolveAtomicSectionItems(
   return await request
 }
 
+async function resolveAtomicSectionPanels(
+  atomicSectionId: number,
+  context: {
+    atomicSectionPanelsCache: Map<number, Promise<CmsV2AtomicSectionPanelDto[]>>
+  },
+) {
+  const cached = context.atomicSectionPanelsCache.get(atomicSectionId)
+  if (cached) {
+    return await cached
+  }
+
+  const request = cmsV2Api.listAtomicSectionPanels(atomicSectionId).then(sortByOrder)
+  context.atomicSectionPanelsCache.set(atomicSectionId, request)
+  return await request
+}
+
 async function resolveContentBlockRelations(
   contentBlockId: number,
   context: {
@@ -246,13 +277,7 @@ function resolveContentBlockPreviewState(
 
 async function buildSectionItemNode(
   item: CmsV2SectionItemDto,
-  context: {
-    blockCache: Map<number, Promise<ResolvedContentBlock>>
-    atomicSectionCache: Map<number, Promise<CmsV2AtomicSectionDto>>
-    atomicSectionItemsCache: Map<number, Promise<CmsV2AtomicSectionItemDto[]>>
-    relationCache: Map<number, Promise<CmsV2ContentBlockRelationDto[]>>
-    workspaceNodeMap: Record<string, string>
-  },
+  context: SectionDataBuildContext,
 ): Promise<SectionTreeNodeModel> {
   const nodeId = createSectionItemNodeId(item.id)
   context.workspaceNodeMap[nodeId] = nodeId
@@ -260,22 +285,38 @@ async function buildSectionItemNode(
   if (item.targetType === 'AtomicSection') {
     const atomicSection = await resolveAtomicSection(item.targetId, context)
     const atomicItems = await resolveAtomicSectionItems(item.targetId, context)
+    const atomicPanels = await resolveAtomicSectionPanels(item.targetId, context)
     const childNodes = await Promise.all(
       atomicItems.map((atomicItem) => buildAtomicSectionItemNode(atomicItem, context)),
     )
+    const panelNodes = atomicPanels.map((panel) =>
+      buildAtomicSectionPanelNode(
+        panel,
+        childNodes.filter((child) => child.atomicSectionPanelId === panel.id),
+      ),
+    )
+    const unassignedNodes = childNodes.filter((child) => !child.atomicSectionPanelId)
+    const children = [
+      ...panelNodes,
+      ...(unassignedNodes.length
+        ? [buildAtomicSectionUnassignedNode(item.targetId, unassignedNodes)]
+        : []),
+    ]
 
     return {
       id: nodeId,
       title: item.titleOverride || atomicSection.title,
       kind: 'AtomicSection',
+      atomicSectionId: item.targetId,
       typeLabel: mapAtomicSectionType(atomicSection.type),
       difficulty: mapDifficulty(atomicSection.difficulty),
+      difficultyValue: atomicSection.difficulty,
       status: mapStatus(item.status),
       targetStatus: mapStatus(atomicSection.status),
       itemCount: childNodes.length,
       expanded: true,
       disabled: item.status === 'Archived' || atomicSection.status === 'Archived',
-      children: childNodes,
+      children,
     }
   }
 
@@ -295,6 +336,7 @@ async function buildSectionItemNode(
     kind: isComposite ? 'CompositeBlock' : 'ContentBlock',
     typeLabel: mapContentBlockType(resolvedBlock.block.blockType),
     difficulty: mapDifficulty(resolvedBlock.block.difficulty),
+    difficultyValue: resolvedBlock.block.difficulty,
     status: item.referenceMode,
     targetStatus: mapStatus(resolvedBlock.block.status),
     hasWordDocument: hasContentBlockWordDocument(resolvedBlock),
@@ -335,8 +377,13 @@ async function buildAtomicSectionItemNode(
     id: nodeId,
     title: item.titleOverride || resolvedBlock.block.title,
     kind: isComposite ? 'CompositeBlock' : 'ContentBlock',
+    atomicSectionId: item.atomicSectionId,
+    atomicSectionPanelId: item.atomicSectionPanelId ?? undefined,
+    atomicSectionItemId: item.id,
+    teachingRole: item.teachingRole,
     typeLabel: mapContentBlockType(resolvedBlock.block.blockType),
     difficulty: mapDifficulty(resolvedBlock.block.difficulty),
+    difficultyValue: resolvedBlock.block.difficulty,
     status: item.referenceMode,
     targetStatus: mapStatus(resolvedBlock.block.status),
     hasWordDocument: hasContentBlockWordDocument(resolvedBlock),
@@ -350,6 +397,45 @@ async function buildAtomicSectionItemNode(
     expanded: isComposite,
     disabled: resolvedBlock.block.status === 'Archived',
     children: relationNodes.length ? relationNodes : undefined,
+  }
+}
+
+function buildAtomicSectionPanelNode(
+  panel: CmsV2AtomicSectionPanelDto,
+  children: SectionTreeNodeModel[],
+): SectionTreeNodeModel {
+  return {
+    id: createAtomicSectionPanelNodeId(panel.id),
+    title: panel.title,
+    kind: 'AtomicSectionPanel',
+    typeLabel: panel.teachingRole,
+    atomicSectionId: panel.atomicSectionId,
+    atomicSectionPanelId: panel.id,
+    teachingRole: panel.teachingRole,
+    difficulty: mapDifficulty(panel.difficulty),
+    difficultyValue: panel.difficulty,
+    status: 'Panel',
+    itemCount: children.length,
+    expanded: true,
+    children,
+  }
+}
+
+function buildAtomicSectionUnassignedNode(
+  atomicSectionId: number,
+  children: SectionTreeNodeModel[],
+): SectionTreeNodeModel {
+  return {
+    id: createAtomicSectionUnassignedNodeId(atomicSectionId),
+    title: '未归组',
+    kind: 'AtomicSectionUnassigned',
+    typeLabel: 'Unassigned',
+    atomicSectionId,
+    teachingRole: 'Unclassified',
+    status: 'Unassigned',
+    itemCount: children.length,
+    expanded: true,
+    children,
   }
 }
 
@@ -397,24 +483,21 @@ async function buildContentBlockRelationNode(
 
 async function buildSectionFlowItem(
   item: CmsV2SectionItemDto,
-  context: {
-    blockCache: Map<number, Promise<ResolvedContentBlock>>
-    atomicSectionCache: Map<number, Promise<CmsV2AtomicSectionDto>>
-    atomicSectionItemsCache: Map<number, Promise<CmsV2AtomicSectionItemDto[]>>
-    relationCache: Map<number, Promise<CmsV2ContentBlockRelationDto[]>>
-    workspaceNodeMap: Record<string, string>
-  },
+  context: SectionDataBuildContext,
 ): Promise<SectionWorkspaceFlowItemModel> {
   const nodeId = createSectionItemNodeId(item.id)
 
   if (item.targetType === 'AtomicSection') {
     const atomicSection = await resolveAtomicSection(item.targetId, context)
     const atomicItems = await resolveAtomicSectionItems(item.targetId, context)
+    const atomicPanels = await resolveAtomicSectionPanels(item.targetId, context)
     const children = await Promise.all(
       atomicItems.map((atomicItem) =>
         buildStructuredBlockChildFromAtomicSectionItem(atomicItem, context),
       ),
     )
+    const panels = buildAtomicSectionPanelModels(atomicPanels, children)
+    const unassignedChildren = children.filter((child) => !child.atomicSectionPanelId)
 
     return {
       kind: 'AtomicSection',
@@ -433,6 +516,8 @@ async function buildSectionFlowItem(
         difficulty: mapDifficulty(atomicSection.difficulty),
         summary: atomicSection.description || '',
         children,
+        panels,
+        unassignedChildren,
         disabled: item.status === 'Archived' || atomicSection.status === 'Archived',
       },
     }
@@ -493,6 +578,24 @@ async function buildSectionFlowItem(
   }
 }
 
+function buildAtomicSectionPanelModels(
+  panels: CmsV2AtomicSectionPanelDto[],
+  children: StructuredBlockChildModel[],
+): AtomicSectionPanelModel[] {
+  return panels.map((panel) => ({
+    id: createAtomicSectionPanelNodeId(panel.id),
+    panelId: panel.id,
+    atomicSectionId: panel.atomicSectionId,
+    title: panel.title,
+    teachingRole: panel.teachingRole,
+    difficulty: mapDifficulty(panel.difficulty),
+    difficultyValue: panel.difficulty,
+    sortOrder: panel.sortOrder,
+    children: children.filter((child) => child.atomicSectionPanelId === panel.id),
+    expanded: true,
+  }))
+}
+
 async function buildStructuredBlockChildFromAtomicSectionItem(
   item: CmsV2AtomicSectionItemDto,
   context: {
@@ -514,6 +617,8 @@ async function buildStructuredBlockChildFromAtomicSectionItem(
     {
       atomicSectionId: item.atomicSectionId,
       atomicSectionItemId: item.id,
+      atomicSectionPanelId: item.atomicSectionPanelId,
+      teachingRole: item.teachingRole,
       contentBlockId: item.contentBlockId,
       sortOrder: item.sortOrder,
     },
@@ -570,6 +675,8 @@ async function buildStructuredBlockChild(
       sortOrder: childContext.sortOrder,
       atomicSectionId: childContext.atomicSectionId,
       atomicSectionItemId: childContext.atomicSectionItemId,
+      atomicSectionPanelId: childContext.atomicSectionPanelId,
+      teachingRole: childContext.teachingRole,
       parentBlockId: childContext.parentBlockId,
       relationId: childContext.relationId,
       contentBlockId: childContext.contentBlockId ?? resolvedBlock.block.id,
@@ -596,6 +703,8 @@ async function buildStructuredBlockChild(
     sortOrder: childContext.sortOrder,
     atomicSectionId: childContext.atomicSectionId,
     atomicSectionItemId: childContext.atomicSectionItemId,
+    atomicSectionPanelId: childContext.atomicSectionPanelId,
+    teachingRole: childContext.teachingRole,
     parentBlockId: childContext.parentBlockId,
     relationId: childContext.relationId,
     contentBlockId: childContext.contentBlockId ?? resolvedBlock.block.id,
@@ -703,6 +812,14 @@ function createSectionItemNodeId(itemId: number) {
 
 function createAtomicSectionItemNodeId(itemId: number) {
   return `atomic-section-item-${itemId}`
+}
+
+function createAtomicSectionPanelNodeId(panelId: number) {
+  return `atomic-section-panel-${panelId}`
+}
+
+function createAtomicSectionUnassignedNodeId(atomicSectionId: number) {
+  return `atomic-section-unassigned-${atomicSectionId}`
 }
 
 function createContentRelationNodeId(relationId: number) {

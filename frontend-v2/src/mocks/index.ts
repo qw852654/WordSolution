@@ -689,6 +689,135 @@ export const mockStructuredBlocks: StructuredBlockModel[] = [
   },
 ]
 
+export const mockAtomicSectionPanelBlock: StructuredBlockModel = {
+  id: 'atomic-panel-demo',
+  title: 'AtomicSection panel workflow',
+  blockKind: 'AtomicSection',
+  atomicSectionId: 901,
+  status: 'Draft',
+  difficulty: 'Medium',
+  summary: '用于验收 AtomicSection panel、未归组区域和 panel 内 SectionItemView 连续文档流。',
+  children: [
+    {
+      ...createStructuredContentBlockChild({
+        ...mockContentBlockDisplays[0],
+        id: 'panel-demo-knowledge-content',
+        title: '机械能守恒条件',
+      }),
+      atomicSectionId: 901,
+      atomicSectionItemId: 9101,
+      atomicSectionPanelId: 501,
+      teachingRole: 'Knowledge',
+      contentBlockId: 3001,
+      sortOrder: 10,
+    },
+    {
+      ...createStructuredContentBlockChild({
+        ...mockContentBlockDisplays[1],
+        id: 'panel-demo-example-content',
+        title: '圆轨道临界问题',
+      }),
+      atomicSectionId: 901,
+      atomicSectionItemId: 9102,
+      atomicSectionPanelId: 502,
+      teachingRole: 'Example',
+      contentBlockId: 3002,
+      sortOrder: 10,
+    },
+    {
+      ...createStructuredContentBlockChild({
+        ...mockContentBlockDisplays[2],
+        id: 'panel-demo-unassigned-content',
+        title: '临时补充说明',
+      }),
+      atomicSectionId: 901,
+      atomicSectionItemId: 9103,
+      atomicSectionPanelId: null,
+      teachingRole: 'Unclassified',
+      contentBlockId: 3003,
+      sortOrder: 90,
+    },
+  ],
+  panels: [
+    {
+      id: 'atomic-section-panel-501',
+      panelId: 501,
+      atomicSectionId: 901,
+      title: '知识点',
+      teachingRole: 'Knowledge',
+      difficulty: 'Basic',
+      difficultyValue: 'Basic',
+      sortOrder: 10,
+      children: [
+        {
+          ...createStructuredContentBlockChild({
+            ...mockContentBlockDisplays[0],
+            id: 'panel-demo-knowledge-content',
+            title: '机械能守恒条件',
+          }),
+          atomicSectionId: 901,
+          atomicSectionItemId: 9101,
+          atomicSectionPanelId: 501,
+          teachingRole: 'Knowledge',
+          contentBlockId: 3001,
+          sortOrder: 10,
+        },
+      ],
+    },
+    {
+      id: 'atomic-section-panel-502',
+      panelId: 502,
+      atomicSectionId: 901,
+      title: '例题组',
+      teachingRole: 'Example',
+      difficulty: 'Medium',
+      difficultyValue: 'Medium',
+      sortOrder: 20,
+      children: [
+        {
+          ...createStructuredContentBlockChild({
+            ...mockContentBlockDisplays[1],
+            id: 'panel-demo-example-content',
+            title: '圆轨道临界问题',
+          }),
+          atomicSectionId: 901,
+          atomicSectionItemId: 9102,
+          atomicSectionPanelId: 502,
+          teachingRole: 'Example',
+          contentBlockId: 3002,
+          sortOrder: 10,
+        },
+      ],
+    },
+    {
+      id: 'atomic-section-panel-503',
+      panelId: 503,
+      atomicSectionId: 901,
+      title: '练习组',
+      teachingRole: 'Practice',
+      difficulty: 'Medium',
+      difficultyValue: 'Medium',
+      sortOrder: 30,
+      children: [],
+    },
+  ],
+  unassignedChildren: [
+    {
+      ...createStructuredContentBlockChild({
+        ...mockContentBlockDisplays[2],
+        id: 'panel-demo-unassigned-content',
+        title: '临时补充说明',
+      }),
+      atomicSectionId: 901,
+      atomicSectionItemId: 9103,
+      atomicSectionPanelId: null,
+      teachingRole: 'Unclassified',
+      contentBlockId: 3003,
+      sortOrder: 90,
+    },
+  ],
+}
+
 export const mockInsertPoints: InsertPointModel[] = [
   {
     id: 'insert-before-law',

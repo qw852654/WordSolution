@@ -185,9 +185,10 @@ public sealed class SectionUseCases
                 .Order()
                 .ToArray();
 
+            var selectedContentBlocks = new Dictionary<int, ContentBlock>();
             foreach (var item in selectedItems)
             {
-                await RequireContentBlockAsync(item.TargetId, transactionCancellationToken);
+                selectedContentBlocks[item.Id] = await RequireContentBlockAsync(item.TargetId, transactionCancellationToken);
                 await EnsureLockedVersionBelongsToContentBlockAsync(
                     item.LockedContentBlockVersionId,
                     item.TargetId,
@@ -213,6 +214,9 @@ public sealed class SectionUseCases
             for (var index = 0; index < selectedItems.Count; index++)
             {
                 var selectedItem = selectedItems[index];
+                var teachingRole = selectedContentBlocks[selectedItem.Id].BlockType == ContentBlockType.KnowledgePoint
+                    ? AtomicSectionTeachingRole.Knowledge
+                    : AtomicSectionTeachingRole.Unclassified;
                 var atomicSectionItem = new AtomicSectionItem(
                     atomicSection.Id,
                     selectedItem.TargetId,
@@ -220,7 +224,8 @@ public sealed class SectionUseCases
                     selectedItem.LockedContentBlockVersionId,
                     (index + 1) * 10,
                     selectedItem.TitleOverride,
-                    selectedItem.Note);
+                    selectedItem.Note,
+                    teachingRole: teachingRole);
 
                 await _unitOfWork.AtomicSectionItems.AddAsync(atomicSectionItem, transactionCancellationToken);
                 atomicSectionItems.Add(atomicSectionItem);
@@ -322,12 +327,15 @@ public sealed class SectionUseCases
             .ToArray();
     }
 
-    private async Task RequireContentBlockAsync(int contentBlockId, CancellationToken cancellationToken)
+    private async Task<ContentBlock> RequireContentBlockAsync(int contentBlockId, CancellationToken cancellationToken)
     {
-        if (await _unitOfWork.ContentBlocks.GetByIdAsync(contentBlockId, cancellationToken) is null)
+        var contentBlock = await _unitOfWork.ContentBlocks.GetByIdAsync(contentBlockId, cancellationToken);
+        if (contentBlock is null)
         {
             throw new CmsV2ApplicationException($"ContentBlock {contentBlockId} was not found.");
         }
+
+        return contentBlock;
     }
 
     private async Task EnsureLockedVersionBelongsToContentBlockAsync(

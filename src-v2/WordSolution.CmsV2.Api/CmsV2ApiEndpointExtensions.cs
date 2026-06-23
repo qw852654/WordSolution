@@ -39,6 +39,7 @@ public static class CmsV2ApiEndpointExtensions
             teachingUse = EnumNames<TeachingUse>(),
             atomicSectionType = EnumNames<AtomicSectionType>(),
             atomicSectionStatus = EnumNames<AtomicSectionStatus>(),
+            atomicSectionTeachingRole = EnumNames<AtomicSectionTeachingRole>(),
             contentBlockType = EnumNames<ContentBlockType>(),
             questionType = EnumNames<QuestionType>(),
             contentBlockStatus = EnumNames<ContentBlockStatus>(),
@@ -658,6 +659,78 @@ public static class CmsV2ApiEndpointExtensions
         group.MapGet("/atomic-sections/{id:int}/items", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
             Results.Ok(await unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(id, cancellationToken)));
 
+        group.MapGet("/atomic-sections/{id:int}/panels", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
+            Results.Ok(await unitOfWork.AtomicSectionPanels.ListByAtomicSectionAsync(id, cancellationToken)));
+
+        group.MapPost("/atomic-sections/{id:int}/panels", async (
+            int id,
+            CreateAtomicSectionPanelRequest request,
+            AtomicSectionUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.CreateAtomicSectionPanelAsync(
+                new CreateAtomicSectionPanelCommand(
+                    id,
+                    request.Title,
+                    request.TeachingRole,
+                    request.Difficulty,
+                    request.AfterAtomicSectionPanelId),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
+        group.MapPut("/atomic-sections/{id:int}/panels/{panelId:int}", async (
+            int id,
+            int panelId,
+            UpdateAtomicSectionPanelRequest request,
+            AtomicSectionUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.UpdateAtomicSectionPanelAsync(
+                new UpdateAtomicSectionPanelCommand(
+                    id,
+                    panelId,
+                    request.Title,
+                    request.TeachingRole,
+                    request.Difficulty),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
+        group.MapPost("/atomic-sections/{id:int}/panels/{panelId:int}/move", async (
+            int id,
+            int panelId,
+            MoveAtomicSectionPanelRequest request,
+            AtomicSectionUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            if (!Enum.TryParse<AtomicSectionPanelMoveDirection>(request.Direction, ignoreCase: true, out var direction))
+            {
+                return Results.BadRequest(new { message = "Direction must be Up or Down." });
+            }
+
+            await useCases.MoveAtomicSectionPanelAsync(
+                new MoveAtomicSectionPanelCommand(id, panelId, direction),
+                cancellationToken);
+
+            return Results.Ok(new { atomicSectionId = id, atomicSectionPanelId = panelId, direction = direction.ToString() });
+        });
+
+        group.MapDelete("/atomic-sections/{id:int}/panels/{panelId:int}", async (
+            int id,
+            int panelId,
+            AtomicSectionUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.DeleteAtomicSectionPanelAsync(
+                new DeleteAtomicSectionPanelCommand(id, panelId),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
         group.MapPost("/atomic-sections/{id:int}/items", async (
             int id,
             AddAtomicSectionItemRequest request,
@@ -672,10 +745,30 @@ public static class CmsV2ApiEndpointExtensions
                     request.LockedContentBlockVersionId,
                     request.SortOrder,
                     request.TitleOverride,
-                    request.Note),
+                    request.Note,
+                    request.AtomicSectionPanelId,
+                    request.TeachingRole),
                 cancellationToken);
 
             return Results.Ok(result);
+        });
+
+        group.MapPost("/atomic-sections/{id:int}/items/{itemId:int}/classification", async (
+            int id,
+            int itemId,
+            ChangeAtomicSectionItemClassificationRequest request,
+            AtomicSectionUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            await useCases.ChangeAtomicSectionItemClassificationAsync(
+                new ChangeAtomicSectionItemClassificationCommand(
+                    id,
+                    itemId,
+                    request.TeachingRole,
+                    request.Difficulty),
+                cancellationToken);
+
+            return Results.NoContent();
         });
 
         group.MapPost("/atomic-sections/{id:int}/items/{itemId:int}/move", async (

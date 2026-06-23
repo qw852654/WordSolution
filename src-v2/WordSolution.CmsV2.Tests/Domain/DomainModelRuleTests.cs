@@ -78,6 +78,72 @@ public sealed class DomainModelRuleTests
     }
 
     [Fact]
+    public void Atomic_section_panel_requires_valid_title_role_and_sort_order()
+    {
+        var updatedTime = new DateTimeOffset(2026, 6, 23, 8, 0, 0, TimeSpan.Zero);
+
+        var panel = new AtomicSectionPanel(
+            atomicSectionId: 1,
+            title: " Knowledge ",
+            teachingRole: AtomicSectionTeachingRole.Knowledge,
+            difficulty: Difficulty.Basic,
+            sortOrder: 2,
+            updatedTime: updatedTime);
+
+        Assert.Equal(1, panel.AtomicSectionId);
+        Assert.Equal("Knowledge", panel.Title);
+        Assert.Equal(AtomicSectionTeachingRole.Knowledge, panel.TeachingRole);
+        Assert.Equal(Difficulty.Basic, panel.Difficulty);
+        Assert.Equal(2, panel.SortOrder);
+        Assert.Equal(updatedTime, panel.UpdatedTime);
+
+        Assert.Throws<DomainException>(() => new AtomicSectionPanel(
+            atomicSectionId: 1,
+            title: " ",
+            teachingRole: AtomicSectionTeachingRole.Knowledge,
+            difficulty: Difficulty.Basic,
+            sortOrder: 1));
+        Assert.Throws<DomainException>(() => new AtomicSectionPanel(
+            atomicSectionId: 1,
+            title: "Knowledge",
+            teachingRole: AtomicSectionTeachingRole.Unclassified,
+            difficulty: Difficulty.Basic,
+            sortOrder: 1));
+        Assert.Throws<DomainException>(() => new AtomicSectionPanel(
+            atomicSectionId: 1,
+            title: "Knowledge",
+            teachingRole: AtomicSectionTeachingRole.Knowledge,
+            difficulty: Difficulty.Basic,
+            sortOrder: -1));
+    }
+
+    [Fact]
+    public void Atomic_section_item_defaults_to_unassigned_and_can_change_panel_classification()
+    {
+        var updatedTime = new DateTimeOffset(2026, 6, 23, 8, 0, 0, TimeSpan.Zero);
+        var item = new AtomicSectionItem(
+            atomicSectionId: 1,
+            contentBlockId: 2,
+            referenceMode: ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 1);
+
+        Assert.Null(item.AtomicSectionPanelId);
+        Assert.Equal(AtomicSectionTeachingRole.Unclassified, item.TeachingRole);
+
+        item.ChangeClassification(
+            atomicSectionPanelId: 3,
+            teachingRole: AtomicSectionTeachingRole.Example,
+            sortOrder: 5,
+            updatedTime: updatedTime);
+
+        Assert.Equal(3, item.AtomicSectionPanelId);
+        Assert.Equal(AtomicSectionTeachingRole.Example, item.TeachingRole);
+        Assert.Equal(5, item.SortOrder);
+        Assert.Equal(updatedTime, item.UpdatedTime);
+    }
+
+    [Fact]
     public void Handout_version_item_rejects_section_target()
     {
         var exception = Assert.Throws<DomainException>(() => new HandoutVersionItem(

@@ -97,6 +97,8 @@ function handleSubmit() {
     insertMode: props.model.insertMode,
     atomicSectionId: props.model.atomicSectionId,
     atomicSectionTitle: props.model.atomicSectionTitle,
+    atomicSectionPanelId: props.model.atomicSectionPanelId,
+    atomicSectionTeachingRole: props.model.atomicSectionTeachingRole,
     compositeBlockId: props.model.compositeBlockId,
     compositeBlockTitle: props.model.compositeBlockTitle,
     wrapSectionItemIds: props.model.wrapSectionItemIds,

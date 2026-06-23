@@ -96,6 +96,8 @@ export interface CmsV2AtomicSectionItemDto {
   id: number
   atomicSectionId: number
   contentBlockId: number
+  atomicSectionPanelId?: number | null
+  teachingRole?: CmsV2AtomicSectionTeachingRole
   referenceMode: 'FollowLatest' | 'LockedVersion'
   lockedContentBlockVersionId?: number | null
   titleOverride?: string | null
@@ -205,6 +207,24 @@ export interface CmsV2HandoutDto {
   title: string
   description?: string | null
   status: string
+  updatedTime: string
+}
+
+export type CmsV2AtomicSectionTeachingRole =
+  | 'Unclassified'
+  | 'Knowledge'
+  | 'Example'
+  | 'Variant'
+  | 'Practice'
+  | 'Homework'
+
+export interface CmsV2AtomicSectionPanelDto {
+  id: number
+  atomicSectionId: number
+  title: string
+  teachingRole: CmsV2AtomicSectionTeachingRole
+  difficulty: string
+  sortOrder: number
   updatedTime: string
 }
 
@@ -466,6 +486,36 @@ export interface CmsV2AddAtomicSectionItemRequest {
   sortOrder: number
   titleOverride?: string | null
   note?: string | null
+  atomicSectionPanelId?: number | null
+  teachingRole?: CmsV2AtomicSectionTeachingRole
+}
+
+export interface CmsV2CreateAtomicSectionPanelRequest {
+  title: string
+  teachingRole: CmsV2AtomicSectionTeachingRole
+  difficulty: string
+  afterAtomicSectionPanelId?: number | null
+}
+
+export interface CmsV2UpdateAtomicSectionPanelRequest {
+  title: string
+  teachingRole: CmsV2AtomicSectionTeachingRole
+  difficulty: string
+}
+
+export interface CmsV2MoveAtomicSectionPanelRequest {
+  direction: 'Up' | 'Down'
+}
+
+export interface CmsV2DeleteAtomicSectionPanelResultDto {
+  atomicSectionId: number
+  atomicSectionPanelId: number
+  removedAtomicSectionItemCount: number
+}
+
+export interface CmsV2ChangeAtomicSectionItemClassificationRequest {
+  teachingRole: CmsV2AtomicSectionTeachingRole
+  difficulty: string
 }
 
 export interface CmsV2AddContentBlockRelationRequest {
@@ -556,6 +606,16 @@ export async function cmsV2PatchNoContent(path: string, value: unknown): Promise
   if (!response.ok) {
     throw new Error(await readErrorMessage(response))
   }
+}
+
+export async function cmsV2PutJson<T>(path: string, value: unknown): Promise<T> {
+  return await cmsV2FetchJson<T>(path, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(value),
+  })
 }
 
 export async function cmsV2Delete(path: string): Promise<void> {
@@ -653,6 +713,36 @@ export const cmsV2Api = {
   listAtomicSections: () => cmsV2FetchJson<CmsV2AtomicSectionDto[]>('/atomic-sections'),
   createAtomicSection: (request: CmsV2CreateAtomicSectionRequest) =>
     cmsV2PostJson<CmsV2AtomicSectionDto>('/atomic-sections', request),
+  listAtomicSectionPanels: (atomicSectionId: number) =>
+    cmsV2FetchJson<CmsV2AtomicSectionPanelDto[]>(`/atomic-sections/${atomicSectionId}/panels`),
+  createAtomicSectionPanel: (
+    atomicSectionId: number,
+    request: CmsV2CreateAtomicSectionPanelRequest,
+  ) =>
+    cmsV2PostJson<CmsV2AtomicSectionPanelDto>(
+      `/atomic-sections/${atomicSectionId}/panels`,
+      request,
+    ),
+  updateAtomicSectionPanel: (
+    atomicSectionId: number,
+    atomicSectionPanelId: number,
+    request: CmsV2UpdateAtomicSectionPanelRequest,
+  ) =>
+    cmsV2PutJson<CmsV2AtomicSectionPanelDto>(
+      `/atomic-sections/${atomicSectionId}/panels/${atomicSectionPanelId}`,
+      request,
+    ),
+  moveAtomicSectionPanel: (
+    atomicSectionId: number,
+    atomicSectionPanelId: number,
+    request: CmsV2MoveAtomicSectionPanelRequest,
+  ) =>
+    cmsV2PostNoContent(
+      `/atomic-sections/${atomicSectionId}/panels/${atomicSectionPanelId}/move`,
+      request,
+    ),
+  deleteAtomicSectionPanel: (atomicSectionId: number, atomicSectionPanelId: number) =>
+    cmsV2Delete(`/atomic-sections/${atomicSectionId}/panels/${atomicSectionPanelId}`),
   renameAtomicSection: (atomicSectionId: number, title: string) =>
     cmsV2PostJson<CmsV2AtomicSectionDto>(`/atomic-sections/${atomicSectionId}/title`, {
       title,
@@ -674,6 +764,15 @@ export const cmsV2Api = {
     ),
   removeAtomicSectionItem: (atomicSectionId: number, atomicSectionItemId: number) =>
     cmsV2Delete(`/atomic-sections/${atomicSectionId}/items/${atomicSectionItemId}`),
+  changeAtomicSectionItemClassification: (
+    atomicSectionId: number,
+    atomicSectionItemId: number,
+    request: CmsV2ChangeAtomicSectionItemClassificationRequest,
+  ) =>
+    cmsV2PostNoContent(
+      `/atomic-sections/${atomicSectionId}/items/${atomicSectionItemId}/classification`,
+      request,
+    ),
   getContentBlock: (contentBlockId: number) =>
     cmsV2FetchJson<CmsV2ContentBlockDto>(`/content-blocks/${contentBlockId}`),
   listContentBlocks: () => cmsV2FetchJson<CmsV2ContentBlockDto[]>('/content-blocks'),

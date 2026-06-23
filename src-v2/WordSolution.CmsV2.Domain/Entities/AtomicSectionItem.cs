@@ -17,15 +17,21 @@ public sealed class AtomicSectionItem
         int sortOrder,
         string? titleOverride = null,
         string? note = null,
-        DateTimeOffset? updatedTime = null)
+        DateTimeOffset? updatedTime = null,
+        int? atomicSectionPanelId = null,
+        AtomicSectionTeachingRole teachingRole = AtomicSectionTeachingRole.Unclassified)
     {
         DomainGuard.Positive(atomicSectionId, nameof(AtomicSectionId));
         DomainGuard.Positive(contentBlockId, nameof(ContentBlockId));
         DomainGuard.LockedVersionRequiresId(referenceMode, lockedContentBlockVersionId);
         DomainGuard.NonNegative(sortOrder, nameof(SortOrder));
+        DomainGuard.PositiveOrNull(atomicSectionPanelId, nameof(AtomicSectionPanelId));
+        DomainGuard.ValidEnum(teachingRole, nameof(TeachingRole));
 
         AtomicSectionId = atomicSectionId;
         ContentBlockId = contentBlockId;
+        AtomicSectionPanelId = atomicSectionPanelId;
+        TeachingRole = teachingRole;
         ReferenceMode = referenceMode;
         LockedContentBlockVersionId = lockedContentBlockVersionId;
         TitleOverride = titleOverride?.Trim();
@@ -39,6 +45,10 @@ public sealed class AtomicSectionItem
     public int AtomicSectionId { get; private set; }
 
     public int ContentBlockId { get; private set; }
+
+    public int? AtomicSectionPanelId { get; private set; }
+
+    public AtomicSectionTeachingRole TeachingRole { get; private set; }
 
     public ReferenceMode ReferenceMode { get; private set; }
 
@@ -55,6 +65,22 @@ public sealed class AtomicSectionItem
     public void ChangeSortOrder(int sortOrder, DateTimeOffset? updatedTime = null)
     {
         DomainGuard.NonNegative(sortOrder, nameof(SortOrder));
+        SortOrder = sortOrder;
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+    }
+
+    public void ChangeClassification(
+        int? atomicSectionPanelId,
+        AtomicSectionTeachingRole teachingRole,
+        int sortOrder,
+        DateTimeOffset? updatedTime = null)
+    {
+        DomainGuard.PositiveOrNull(atomicSectionPanelId, nameof(AtomicSectionPanelId));
+        DomainGuard.ValidEnum(teachingRole, nameof(TeachingRole));
+        DomainGuard.NonNegative(sortOrder, nameof(SortOrder));
+
+        AtomicSectionPanelId = atomicSectionPanelId;
+        TeachingRole = teachingRole;
         SortOrder = sortOrder;
         UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
     }

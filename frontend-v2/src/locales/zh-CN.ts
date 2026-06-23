@@ -1,6 +1,13 @@
 const zhCN = {
   common: {
     appName: 'CMS V2',
+    difficulty: {
+      Unset: '未设置',
+      Basic: '基础',
+      Medium: '中档',
+      Advanced: '提高',
+      Top: '压轴',
+    },
   },
   shell: {
     subtitle: '本地教学内容管理工作台',
@@ -215,6 +222,18 @@ const zhCN = {
       atomicEmptyDescription: '暂无子 ContentBlock',
       compositeEmptyDescription: '暂无子 ContentBlock',
     },
+    atomicSectionPanel: {
+      create: '新建 panel',
+      rename: '重命名',
+      moveUp: '上移',
+      moveDown: '下移',
+      remove: '删除',
+      empty: '该 panel 暂无 ContentBlock',
+    },
+    atomicSectionUnassigned: {
+      title: '未归组',
+      empty: '暂无未归组 ContentBlock',
+    },
     insertPoint: {
       insert: '插入',
       createContentBlock: '新建 ContentBlock',
@@ -284,6 +303,16 @@ const zhCN = {
       deleteContentBlockCascadeBusy: '正在删除 ContentBlock',
       deleteContentBlockCascadeDescription:
         '删除 ContentBlock 本体、版本和所有引用位置，不是移除当前引用。',
+      atomicSectionItemClassification: 'AS 内分类',
+      teachingRole: '教学角色',
+    },
+    atomicSectionTeachingRole: {
+      Unclassified: '未归类',
+      Knowledge: '知识点',
+      Example: '例题',
+      Variant: '变式',
+      Practice: '练习',
+      Homework: '课后练习',
     },
     basicTree: {
       expand: '展开节点',
@@ -303,6 +332,8 @@ const zhCN = {
         Section: 'Section',
         SectionVariant: 'SectionVariant',
         AtomicSection: 'AtomicSection',
+        AtomicSectionPanel: 'AtomicSectionPanel',
+        AtomicSectionUnassigned: '未归组',
         CompositeBlock: 'CompositeBlock',
         ContentBlock: 'ContentBlock',
       },
@@ -423,6 +454,26 @@ const zhCN = {
     backHome: '返回首页',
     scenarioCount: '场景数：',
     sections: {
+      atomicSectionPanel: {
+        title: 'AtomicSection panel components',
+        description:
+          '本轮验收 AtomicSectionPanelBlock、AtomicSectionUnassignedArea，以及它们在 AtomicSectionBlock 内的连续文档流。',
+        feedbackTitle: 'ComponentLab 反馈',
+        emptyFeedback: '点击 panel、插入点或 item 操作后，这里显示 Mock Data 事件。',
+        events: {
+          selectAtomicSection: '选择 AtomicSection：{value}',
+          createPanel: '新建 panel：{value}',
+          selectPanel: '选择 panel：{value}',
+          renamePanel: '重命名 panel：{value}',
+          movePanel: '移动 panel：{value} {direction}',
+          removePanel: '删除 panel：{value}',
+          selectContentBlock: '选择 ContentBlock：{value}',
+          insertPoint: '插入点：{value}',
+          wordEdit: 'Word 编辑：{value}',
+          moveItem: '移动 item：{value} {direction}',
+          removeItem: '移除 item：{value}',
+        },
+      },
       sectionVariantCreate: {
         description:
           '验收 SectionVariant 两步创建 UI：先填元数据，再勾选 SectionItem。这里只输出 Mock payload。',
@@ -833,6 +884,14 @@ const zhCN = {
           '确认从当前 Section 移除这个 AtomicSection 引用？不会删除 AtomicSection 本体和内部 ContentBlock。AtomicSection：{title}',
         operationFailed: 'AtomicSection 操作失败，请稍后重试。',
         untitledContentBlock: '未命名 ContentBlock',
+      },
+      atomicSectionPanelActions: {
+        createPrompt: '输入新的 AtomicSection panel 名称',
+        defaultPanelTitle: '知识点',
+        renamePrompt: '重命名 AtomicSection panel',
+        removeConfirm:
+          '确认删除这个 AtomicSection panel：{title}？会移除 panel 内的引用，但不会删除源 ContentBlock。',
+        operationFailed: 'AtomicSection panel 操作失败，请稍后重试。',
       },
       atomicSectionItemActions: {
         removeConfirm:

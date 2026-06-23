@@ -83,4 +83,12 @@ public sealed class ContentBlock
         CurrentVersionId = null;
         UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
     }
+
+    public void ChangeDifficulty(Difficulty difficulty, DateTimeOffset? updatedTime = null)
+    {
+        DomainGuard.ValidEnum(difficulty, nameof(Difficulty));
+
+        Difficulty = difficulty;
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+    }
 }

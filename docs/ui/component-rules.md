@@ -2096,3 +2096,20 @@ requestInsertIntoUnassigned
 - panel 边界使用弱边框，不使用大阴影或装饰背景。
 - 空提示必须轻量，不做大卡片。
 - 相同树节点继续复用基础树节点组件，不另写一套 panel tree item。
+
+### Current implementation note: AtomicSection panel components
+
+The implemented frontend component names are:
+
+- `AtomicSectionPanelBlock`
+- `AtomicSectionUnassignedArea`
+- extended `AtomicSectionBlock`
+
+Rules:
+
+- these components only render panel / unassigned document flow and emit user intents;
+- CMS V2 API calls stay in `SectionPage` and `useAtomicSectionActions`;
+- panel insertion context must include `atomicSectionPanelId` and `teachingRole`;
+- unassigned insertion context must use `atomicSectionPanelId = null` and `teachingRole = Unclassified`;
+- `SectionInspector` may expose `AtomicSectionItem` teaching role and difficulty controls when the selected `ContentBlock` / `CompositeBlock` is an occurrence inside an `AtomicSection`; the inspector emits the intent, while `SectionPage` and `useAtomicSectionActions` call the real classification API;
+- `ComponentLab` should show only the current AtomicSection panel verification scenario for this round.

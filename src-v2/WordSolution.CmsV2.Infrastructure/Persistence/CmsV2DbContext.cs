@@ -13,6 +13,8 @@ public sealed class CmsV2DbContext(DbContextOptions<CmsV2DbContext> options) : D
 
     public DbSet<AtomicSection> AtomicSections => Set<AtomicSection>();
 
+    public DbSet<AtomicSectionPanel> AtomicSectionPanels => Set<AtomicSectionPanel>();
+
     public DbSet<AtomicSectionItem> AtomicSectionItems => Set<AtomicSectionItem>();
 
     public DbSet<SectionVariant> SectionVariants => Set<SectionVariant>();

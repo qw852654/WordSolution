@@ -68,6 +68,22 @@ public sealed class EfAtomicSectionRepository(CmsV2DbContext context)
 {
 }
 
+public sealed class EfAtomicSectionPanelRepository(CmsV2DbContext context)
+    : EfRepository<AtomicSectionPanel>(context), IAtomicSectionPanelRepository
+{
+    public Task<IReadOnlyList<AtomicSectionPanel>> ListByAtomicSectionAsync(
+        int atomicSectionId,
+        CancellationToken cancellationToken = default)
+    {
+        return ToReadOnlyListAsync(
+            Set.AsNoTracking()
+                .Where(panel => panel.AtomicSectionId == atomicSectionId)
+                .OrderBy(panel => panel.SortOrder)
+                .ThenBy(panel => panel.Id),
+            cancellationToken);
+    }
+}
+
 public sealed class EfAtomicSectionItemRepository(CmsV2DbContext context)
     : EfRepository<AtomicSectionItem>(context), IAtomicSectionItemRepository
 {

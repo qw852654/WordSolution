@@ -27,6 +27,13 @@ public interface IAtomicSectionRepository : IRepository<AtomicSection>
 {
 }
 
+public interface IAtomicSectionPanelRepository : IRepository<AtomicSectionPanel>
+{
+    Task<IReadOnlyList<AtomicSectionPanel>> ListByAtomicSectionAsync(
+        int atomicSectionId,
+        CancellationToken cancellationToken = default);
+}
+
 public interface IAtomicSectionItemRepository : IRepository<AtomicSectionItem>
 {
     Task<IReadOnlyList<AtomicSectionItem>> ListByAtomicSectionAsync(

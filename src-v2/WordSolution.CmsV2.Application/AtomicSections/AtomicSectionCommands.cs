@@ -17,7 +17,57 @@ public sealed record AddAtomicSectionItemCommand(
     int? LockedContentBlockVersionId,
     int SortOrder,
     string? TitleOverride = null,
-    string? Note = null);
+    string? Note = null,
+    int? AtomicSectionPanelId = null,
+    AtomicSectionTeachingRole TeachingRole = AtomicSectionTeachingRole.Unclassified);
+
+public sealed record AtomicSectionPanelDto(
+    int Id,
+    int AtomicSectionId,
+    string Title,
+    AtomicSectionTeachingRole TeachingRole,
+    Difficulty Difficulty,
+    int SortOrder);
+
+public sealed record CreateAtomicSectionPanelCommand(
+    int AtomicSectionId,
+    string Title,
+    AtomicSectionTeachingRole TeachingRole,
+    Difficulty Difficulty = Difficulty.Unset,
+    int? AfterAtomicSectionPanelId = null);
+
+public sealed record UpdateAtomicSectionPanelCommand(
+    int AtomicSectionId,
+    int AtomicSectionPanelId,
+    string Title,
+    AtomicSectionTeachingRole TeachingRole,
+    Difficulty Difficulty = Difficulty.Unset);
+
+public enum AtomicSectionPanelMoveDirection
+{
+    Up,
+    Down
+}
+
+public sealed record MoveAtomicSectionPanelCommand(
+    int AtomicSectionId,
+    int AtomicSectionPanelId,
+    AtomicSectionPanelMoveDirection Direction);
+
+public sealed record DeleteAtomicSectionPanelCommand(
+    int AtomicSectionId,
+    int AtomicSectionPanelId);
+
+public sealed record DeleteAtomicSectionPanelResult(
+    int AtomicSectionId,
+    int AtomicSectionPanelId,
+    int RemovedAtomicSectionItemCount);
+
+public sealed record ChangeAtomicSectionItemClassificationCommand(
+    int AtomicSectionId,
+    int AtomicSectionItemId,
+    AtomicSectionTeachingRole TeachingRole,
+    Difficulty Difficulty);
 
 public enum AtomicSectionItemMoveDirection
 {

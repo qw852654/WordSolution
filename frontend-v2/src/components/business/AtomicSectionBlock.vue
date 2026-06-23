@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import { MoreHorizontal } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
+import AtomicSectionPanelBlock from '@/components/business/AtomicSectionPanelBlock.vue'
+import AtomicSectionUnassignedArea from '@/components/business/AtomicSectionUnassignedArea.vue'
 import CompositeBlock from '@/components/business/CompositeBlock.vue'
 import ContentBlockDisplay from '@/components/business/ContentBlockDisplay.vue'
 import { getDifficultyMarkerClass } from '@/components/business/difficultyTone'
@@ -12,6 +14,9 @@ import { Button } from '@/components/ui/button'
 import type {
   AtomicSectionItemActionPayload,
   AtomicSectionItemMovePayload,
+  AtomicSectionPanelActionPayload,
+  AtomicSectionPanelCreatePayload,
+  AtomicSectionPanelMovePayload,
   ContentBlockRelationActionPayload,
   ContentBlockRelationMovePayload,
   InsertPointModel,
@@ -35,6 +40,11 @@ const emit = defineEmits<{
   openWord: [id: string]
   refreshPreview: [id: string]
   openContentBlockMore: [id: string]
+  createAtomicSectionPanel: [payload: AtomicSectionPanelCreatePayload]
+  selectAtomicSectionPanel: [payload: AtomicSectionPanelActionPayload]
+  renameAtomicSectionPanel: [payload: AtomicSectionPanelActionPayload]
+  moveAtomicSectionPanel: [payload: AtomicSectionPanelMovePayload]
+  removeAtomicSectionPanel: [payload: AtomicSectionPanelActionPayload]
   openAtomicSectionItemWord: [payload: AtomicSectionItemActionPayload]
   moveAtomicSectionItem: [payload: AtomicSectionItemMovePayload]
   removeAtomicSectionItem: [payload: AtomicSectionItemActionPayload]
@@ -46,6 +56,9 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const isExpanded = computed(() => props.block.expanded !== false)
+const hasPanelLayout = computed(
+  () => Boolean(props.block.panels?.length) || Boolean(props.block.unassignedChildren),
+)
 const difficultyMarkerClass = computed(() => getDifficultyMarkerClass(props.block.difficulty))
 const difficultyMarkerLabel = computed(
   () => `${t('components.contentBlockDisplay.difficulty')}: ${props.block.difficulty}`,
@@ -56,6 +69,25 @@ const childContentBlockActions: SectionItemViewAction[] = [
   'MoveDown',
   'Remove',
 ]
+
+function createPanelCreatePayload(): AtomicSectionPanelCreatePayload | undefined {
+  if (!props.block.atomicSectionId) {
+    return undefined
+  }
+
+  return {
+    nodeId: props.block.id,
+    atomicSectionId: props.block.atomicSectionId,
+    title: props.block.title,
+  }
+}
+
+function emitCreatePanel() {
+  const payload = createPanelCreatePayload()
+  if (payload) {
+    emit('createAtomicSectionPanel', payload)
+  }
+}
 
 function createAtomicSectionItemActionPayload(
   child: StructuredBlockChildModel,
@@ -147,6 +179,16 @@ function createAtomicSectionInsertPoint(
       <Button
         v-if="!readOnly"
         type="button"
+        size="sm"
+        variant="ghost"
+        :disabled="block.disabled || !block.atomicSectionId"
+        @click.stop="emitCreatePanel"
+      >
+        {{ t('components.atomicSectionPanel.create') }}
+      </Button>
+      <Button
+        v-if="!readOnly"
+        type="button"
         size="icon"
         variant="ghost"
         class="size-8"
@@ -160,7 +202,45 @@ function createAtomicSectionInsertPoint(
 
     <template v-if="isExpanded">
       <p class="text-sm leading-6 text-muted-foreground">{{ block.summary }}</p>
-      <div v-if="block.children.length" class="space-y-0">
+      <div v-if="hasPanelLayout" class="space-y-1">
+        <AtomicSectionPanelBlock
+          v-for="panel in block.panels"
+          :key="panel.id"
+          :panel="panel"
+          :node-id-map="nodeIdMap"
+          :read-only="readOnly"
+          @select-panel="emit('selectAtomicSectionPanel', $event)"
+          @rename-panel="emit('renameAtomicSectionPanel', $event)"
+          @move-panel="emit('moveAtomicSectionPanel', $event)"
+          @remove-panel="emit('removeAtomicSectionPanel', $event)"
+          @select-content-block="emit('selectContentBlock', $event)"
+          @toggle-collapse="emit('toggleCollapse', $event)"
+          @open-atomic-section-item-word="emit('openAtomicSectionItemWord', $event)"
+          @move-atomic-section-item="emit('moveAtomicSectionItem', $event)"
+          @remove-atomic-section-item="emit('removeAtomicSectionItem', $event)"
+          @open-content-block-relation-word="emit('openContentBlockRelationWord', $event)"
+          @move-content-block-relation="emit('moveContentBlockRelation', $event)"
+          @remove-content-block-relation="emit('removeContentBlockRelation', $event)"
+          @request-insert="emit('requestInsert', $event)"
+        />
+        <AtomicSectionUnassignedArea
+          v-if="block.atomicSectionId"
+          :atomic-section-id="block.atomicSectionId"
+          :children="block.unassignedChildren ?? []"
+          :node-id-map="nodeIdMap"
+          :read-only="readOnly"
+          @select-content-block="emit('selectContentBlock', $event)"
+          @toggle-collapse="emit('toggleCollapse', $event)"
+          @open-atomic-section-item-word="emit('openAtomicSectionItemWord', $event)"
+          @move-atomic-section-item="emit('moveAtomicSectionItem', $event)"
+          @remove-atomic-section-item="emit('removeAtomicSectionItem', $event)"
+          @open-content-block-relation-word="emit('openContentBlockRelationWord', $event)"
+          @move-content-block-relation="emit('moveContentBlockRelation', $event)"
+          @remove-content-block-relation="emit('removeContentBlockRelation', $event)"
+          @request-insert="emit('requestInsert', $event)"
+        />
+      </div>
+      <div v-else-if="block.children.length" class="space-y-0">
         <template v-for="(child, index) in block.children" :key="child.id">
           <InsertPoint
             v-if="!readOnly"

@@ -283,6 +283,101 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
     }
 
     [Fact]
+    public async Task GenerateHandoutWord_expands_atomic_section_panels_before_unassigned_items_without_panel_titles()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        var setup = await CreateOutputFormAsync(unitOfWork, bankRootDirectory);
+        var unassigned = await CreateContentBlockWithVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Unassigned",
+            "Unassigned content",
+            versionNumber: 1,
+            isCurrent: true);
+        var example = await CreateContentBlockWithVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Example",
+            "Example panel content",
+            versionNumber: 1,
+            isCurrent: true);
+        var practice = await CreateContentBlockWithVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Practice",
+            "Practice panel content",
+            versionNumber: 1,
+            isCurrent: true);
+        var topic = new TeachingTopic("Panel Topic");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+        var section = new Section(topic.Id, "Panel Section");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+        var atomicSection = new AtomicSection(section.Id, "Panel AtomicSection");
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+        var examplePanel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "Example Panel Title",
+            AtomicSectionTeachingRole.Example,
+            Difficulty.Basic,
+            sortOrder: 10);
+        var practicePanel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "Practice Panel Title",
+            AtomicSectionTeachingRole.Practice,
+            Difficulty.Basic,
+            sortOrder: 20);
+        await unitOfWork.AtomicSectionPanels.AddAsync(examplePanel);
+        await unitOfWork.AtomicSectionPanels.AddAsync(practicePanel);
+        await unitOfWork.SaveChangesAsync();
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            unassigned.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 1));
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            example.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10,
+            atomicSectionPanelId: examplePanel.Id,
+            teachingRole: AtomicSectionTeachingRole.Example));
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            practice.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10,
+            atomicSectionPanelId: practicePanel.Id,
+            teachingRole: AtomicSectionTeachingRole.Practice));
+        await unitOfWork.HandoutVersionItems.AddAsync(new HandoutVersionItem(
+            setup.HandoutVersion.Id,
+            HandoutVersionItemTargetType.AtomicSection,
+            atomicSection.Id,
+            sortOrder: 1));
+        await unitOfWork.SaveChangesAsync();
+
+        var result = await CreateUseCases(unitOfWork).GenerateHandoutWordAsync(
+            new GenerateHandoutWordCommand(bankRootDirectory, setup.OutputForm.Id));
+        var outputText = ReadDocxText(result.FilePath);
+        var exampleIndex = outputText.IndexOf("Example panel content", StringComparison.Ordinal);
+        var practiceIndex = outputText.IndexOf("Practice panel content", StringComparison.Ordinal);
+        var unassignedIndex = outputText.IndexOf("Unassigned content", StringComparison.Ordinal);
+
+        Assert.True(exampleIndex >= 0);
+        Assert.True(practiceIndex > exampleIndex);
+        Assert.True(unassignedIndex > practiceIndex);
+        Assert.DoesNotContain("Example Panel Title", outputText);
+        Assert.DoesNotContain("Practice Panel Title", outputText);
+    }
+
+    [Fact]
     public async Task GenerateHandoutWord_outputs_teaching_topic_section_and_atomic_section_structure_titles()
     {
         await using var context = await CreateMigratedContextAsync();

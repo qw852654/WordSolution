@@ -36,6 +36,7 @@ public sealed class CmsV2RepositoryTests
         Assert.Empty(await unitOfWork.Sections.ListAsync());
         Assert.Empty(await unitOfWork.SectionItems.ListAsync());
         Assert.Empty(await unitOfWork.AtomicSections.ListAsync());
+        Assert.Empty(await unitOfWork.AtomicSectionPanels.ListAsync());
         Assert.Empty(await unitOfWork.AtomicSectionItems.ListAsync());
         Assert.Empty(await unitOfWork.SectionVariants.ListAsync());
         Assert.Empty(await unitOfWork.SectionVariantItems.ListAsync());
@@ -83,6 +84,22 @@ public sealed class CmsV2RepositoryTests
         await unitOfWork.ContentBlocks.AddAsync(blockParent);
         await unitOfWork.SaveChangesAsync();
 
+        var panelB = new AtomicSectionPanel(
+            atomicSection.Id,
+            "渚嬮鏉垮潡",
+            AtomicSectionTeachingRole.Example,
+            Difficulty.Medium,
+            sortOrder: 2);
+        var panelA = new AtomicSectionPanel(
+            atomicSection.Id,
+            "Knowledge panel",
+            AtomicSectionTeachingRole.Knowledge,
+            Difficulty.Basic,
+            sortOrder: 1);
+        await unitOfWork.AtomicSectionPanels.AddAsync(panelB);
+        await unitOfWork.AtomicSectionPanels.AddAsync(panelA);
+        await unitOfWork.SaveChangesAsync();
+
         var blockVersion1 = new ContentBlockVersion(blockA.Id, 1, "content-blocks/source/a/v1.docx");
         var blockVersion2 = new ContentBlockVersion(blockA.Id, 2, "content-blocks/source/a/v2.docx", isCurrent: true);
         await unitOfWork.ContentBlockVersions.AddAsync(blockVersion1);
@@ -112,7 +129,9 @@ public sealed class CmsV2RepositoryTests
             blockA.Id,
             ReferenceMode.FollowLatest,
             null,
-            sortOrder: 1);
+            sortOrder: 1,
+            atomicSectionPanelId: panelA.Id,
+            teachingRole: AtomicSectionTeachingRole.Knowledge);
         await unitOfWork.AtomicSectionItems.AddAsync(atomicItem);
         await unitOfWork.SaveChangesAsync();
 
@@ -200,8 +219,11 @@ public sealed class CmsV2RepositoryTests
         Assert.Equal(["提高班"], (await unitOfWork.Sections.ListByTeachingTopicAsync(childTopicB.Id)).Select(x => x.Title));
         Assert.Equal([sectionItemA.Id, sectionItemB.Id], (await unitOfWork.SectionItems.ListBySectionAsync(sectionA.Id)).Select(x => x.Id));
         Assert.Equal([sectionItemA.Id], (await unitOfWork.SectionItems.ListByTargetAsync(SectionItemTargetType.ContentBlock, blockA.Id)).Select(x => x.Id));
+        Assert.Equal([panelA.Id, panelB.Id], (await unitOfWork.AtomicSectionPanels.ListByAtomicSectionAsync(atomicSection.Id)).Select(x => x.Id));
         Assert.Equal([atomicItem.Id], (await unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(atomicSection.Id)).Select(x => x.Id));
         Assert.Equal([atomicItem.Id], (await unitOfWork.AtomicSectionItems.ListByContentBlockAsync(blockA.Id)).Select(x => x.Id));
+        Assert.Equal(panelA.Id, (await unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(atomicSection.Id)).Single().AtomicSectionPanelId);
+        Assert.Equal(AtomicSectionTeachingRole.Knowledge, (await unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(atomicSection.Id)).Single().TeachingRole);
         Assert.Equal([sectionVariant.Id], (await unitOfWork.SectionVariants.ListBySectionAsync(sectionA.Id)).Select(x => x.Id));
         Assert.Equal([variantItemA.Id, variantItemB.Id], (await unitOfWork.SectionVariantItems.ListBySectionVariantAsync(sectionVariant.Id)).Select(x => x.Id));
         Assert.Equal([variantItemA.Id], (await unitOfWork.SectionVariantItems.ListBySectionItemAsync(sectionItemA.Id)).Select(x => x.Id));
@@ -281,6 +303,42 @@ public sealed class CmsV2RepositoryTests
         await unitOfWork.SaveChangesAsync();
 
         await unitOfWork.Sections.AddAsync(new Section(topic.Id, "Duplicate Section"));
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => unitOfWork.SaveChangesAsync());
+    }
+
+    [Fact]
+    public async Task Atomic_section_panel_unique_constraint_blocks_duplicate_role_and_difficulty()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+
+        var topic = new TeachingTopic("Panel topic");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+
+        var section = new Section(topic.Id, "Panel Section");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+
+        var atomicSection = new AtomicSection(section.Id, "Panel AtomicSection");
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+
+        await unitOfWork.AtomicSectionPanels.AddAsync(new AtomicSectionPanel(
+            atomicSection.Id,
+            "First panel",
+            AtomicSectionTeachingRole.Example,
+            Difficulty.Basic,
+            sortOrder: 1));
+        await unitOfWork.SaveChangesAsync();
+
+        await unitOfWork.AtomicSectionPanels.AddAsync(new AtomicSectionPanel(
+            atomicSection.Id,
+            "Duplicate panel",
+            AtomicSectionTeachingRole.Example,
+            Difficulty.Basic,
+            sortOrder: 2));
 
         await Assert.ThrowsAsync<DbUpdateException>(() => unitOfWork.SaveChangesAsync());
     }

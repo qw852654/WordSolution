@@ -254,7 +254,11 @@ public sealed class HandoutGenerationUseCases
         var atomicItems = await _unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(
             atomicSectionId,
             cancellationToken);
-        foreach (var atomicItem in atomicItems)
+        var panels = await _unitOfWork.AtomicSectionPanels.ListByAtomicSectionAsync(
+            atomicSectionId,
+            cancellationToken);
+
+        foreach (var atomicItem in OrderAtomicSectionItemsForOutput(atomicItems, panels))
         {
             var lockedVersionId = atomicItem.ReferenceMode == ReferenceMode.LockedVersion
                 ? atomicItem.LockedContentBlockVersionId
@@ -269,6 +273,30 @@ public sealed class HandoutGenerationUseCases
                 new HashSet<int>(),
                 depth: 1,
                 cancellationToken);
+        }
+    }
+
+    private static IEnumerable<AtomicSectionItem> OrderAtomicSectionItemsForOutput(
+        IReadOnlyList<AtomicSectionItem> atomicItems,
+        IReadOnlyList<AtomicSectionPanel> panels)
+    {
+        foreach (var panel in panels.OrderBy(panel => panel.SortOrder).ThenBy(panel => panel.Id))
+        {
+            foreach (var item in atomicItems
+                .Where(item => item.AtomicSectionPanelId == panel.Id)
+                .OrderBy(item => item.SortOrder)
+                .ThenBy(item => item.Id))
+            {
+                yield return item;
+            }
+        }
+
+        foreach (var item in atomicItems
+            .Where(item => item.AtomicSectionPanelId is null)
+            .OrderBy(item => item.SortOrder)
+            .ThenBy(item => item.Id))
+        {
+            yield return item;
         }
     }
 
