@@ -1657,24 +1657,23 @@ It must not:
 First-version handout insertion uses:
 
 ```text
-SectionVariantPicker
+SectionVariantSelectionDialog
 AtomicSectionPicker
 ContentBlockPicker
 ```
 
-Picker responsibilities:
+Picker and selection dialog responsibilities:
 
 - query candidates through approved CMS V2 APIs or page-level composables;
 - provide simple search and filter;
 - show required metadata;
-- emit one selected target;
-- stay single-select in the first version.
+- `SectionVariantSelectionDialog` may emit multiple selected `SectionVariant` ids;
+- `AtomicSectionPicker` and `ContentBlockPicker` emit one selected target and stay single-select in the first version.
 
-Picker components must not:
+Picker and selection dialog components must not:
 
 - create source objects;
 - edit source objects;
-- batch add multiple targets;
 - implement advanced query builder behavior;
 - mutate `HandoutVersionItem` ordering.
 
@@ -1759,7 +1758,148 @@ Rules:
 - `TitleOverride / Note` edits affect only the current `HandoutVersionItem` occurrence and must not modify the source `SectionVariant`, `AtomicSection`, or `ContentBlock`.
 - Removing a `HandoutVersionItem` removes only the handout reference and must not delete source content.
 - The temporary add-to-end prompt that accepts `targetType + targetId` exists only as a bridge before the formal Picker components are implemented. It must be replaced by:
-  - `SectionVariantPicker`;
+  - `SectionVariantSelectionDialog`;
   - `AtomicSectionPicker`;
   - `ContentBlockPicker`.
 - The page must refresh the workspace aggregate after successful write operations instead of performing optimistic updates.
+
+## Current Update: Handout Creation Chain
+
+This section records the H1 documentation sync for the first production `Handout` creation chain. It supersedes older wording that treated all handout pickers as single-select components.
+
+### HandoutManagementPage
+
+`HandoutManagementPage` owns the `/handouts` route.
+
+Responsibilities:
+
+- render a Master-Detail management page;
+- list `Handout` entries in `HandoutListPanel`;
+- show the selected `Handout` and its `HandoutVersion` list in `HandoutDetailPanel`;
+- create, edit, and archive `Handout`;
+- create, edit, and archive `HandoutVersion`;
+- navigate to `/handouts/:handoutVersionId` after creating or opening a version.
+
+Boundaries:
+
+- it must not become a separate `/handouts/:handoutId` detail route in the first version;
+- creating a `Handout` must not auto-create a `HandoutVersion`;
+- it must not create `OutputForm` or generate Word;
+- it must not modify `Section`, `SectionVariant`, `AtomicSection`, or `ContentBlock`.
+
+### HandoutListPanel / HandoutDetailPanel
+
+`HandoutListPanel` is a business display component for choosing the current `Handout`.
+
+It may show:
+
+- title;
+- status;
+- version count;
+- updated time;
+- search and status filter controls.
+
+`HandoutDetailPanel` is a business display component for the selected `Handout`.
+
+It may emit:
+
+- create handout;
+- edit handout;
+- archive handout;
+- create version;
+- edit version;
+- archive version;
+- open version.
+
+Neither component calls CMS V2 API directly. Page-level code or an approved composable owns server-confirmed updates.
+
+### SectionVariantSelectionDialog
+
+`SectionVariantSelectionDialog` is the only first-version batch picker for handout content.
+
+Tree shape:
+
+```text
+TeachingTopic
+  -> Section
+    -> SectionVariant
+```
+
+Responsibilities:
+
+- display a checkbox tree of `TeachingTopic -> Section -> SectionVariant`;
+- treat `TeachingTopic` and `Section` as grouping nodes only;
+- allow writing only `SectionVariant` leaves into `HandoutVersionItem`;
+- keep `selectedVariantIds` and `existingVariantIds` as the authoritative state;
+- show existing variants as checked and locked;
+- support search without losing selection state;
+- emit only the new `SectionVariantId` list to the page.
+
+Boundaries:
+
+- it must not create, edit, archive, or delete `SectionVariant`;
+- it must not write `HandoutVersionItem` itself;
+- it must not select `TeachingTopic` or `Section` as real insert targets;
+- it must not use a one-off tree behavior that diverges from `BasicTree` / SectionPage tree behavior.
+
+The half-check logic belongs in a pure utility module, planned as:
+
+```text
+frontend-v2/src/utils/sectionVariantTreeSelection.ts
+```
+
+At minimum it should provide:
+
+```text
+collectSelectableVariantIds
+deriveNodeCheckState
+toggleVariant
+toggleGroup
+buildExistingVariantIds
+getNewVariantIds
+filterTree
+```
+
+### AtomicSectionPicker / ContentBlockPicker
+
+`AtomicSectionPicker` and `ContentBlockPicker` remain first-version single-select pickers.
+
+They may query candidates, show simple search/filter controls, emit one selected target, and let the page add it to a `HandoutVersion`.
+
+They must not implement batch selection in the first version.
+
+### HandoutOverviewFlyout
+
+`HandoutOverviewFlyout` is the global handout overview attached to `/handouts/:handoutVersionId`.
+
+Responsibilities:
+
+- reuse or extract the SectionPage left-edge hover behavior;
+- open after hovering the left screen edge for about 2 seconds;
+- use `Teleport`, overlay, `Escape` close, current-node highlight, and shared tree behavior;
+- display all `Handout -> HandoutVersion`;
+- expand the current `Handout`;
+- highlight the current `HandoutVersion`;
+- let the user switch versions quickly;
+- expose lightweight create / rename / archive intents.
+
+Boundaries:
+
+- it does not replace the permanent `HandoutStructurePanel`;
+- it does not show internal `HandoutVersionItem` structure;
+- it must not duplicate a second visual tree system if the SectionPage overview can be reused or extracted.
+
+### Handout stable editor protection
+
+The current `/handouts/:handoutVersionId` editor is considered stable enough to preserve.
+
+Future creation-chain work may minimally add:
+
+- empty workspace add-content button;
+- `SectionVariantSelectionDialog`;
+- root add-to-end and top-level add-after context actions;
+- `HandoutOverviewFlyout`;
+- archived read-only guards;
+- replacement for temporary `window.prompt` add/edit flows.
+
+It must not rewrite the current three-column layout, `OutputForm`, Word generation, `GeneratedFile` history, download, manifest, or delete behavior unless a later task explicitly targets those areas.

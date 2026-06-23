@@ -334,15 +334,59 @@ HandoutVersionItem: ContentBlock
 
 ## 10. Picker
 
-第一版使用三个轻量 Picker：
+第一版添加内容分两类：
 
 ```text
-SectionVariantPicker
+SectionVariantSelectionDialog
 AtomicSectionPicker
 ContentBlockPicker
 ```
 
-Picker 职责：
+### SectionVariantSelectionDialog
+
+`SectionVariantSelectionDialog` 是 Handout 创建链路中的批量追加选择器，不是同步编辑器。
+
+层级固定为：
+
+```text
+TeachingTopic
+  -> Section
+    -> SectionVariant
+```
+
+规则：
+
+- `TeachingTopic` / `Section` 只作为分组节点。
+- 只有 `SectionVariant` 叶子会写入 `HandoutVersionItem`。
+- 可一次选择多个 `SectionVariant`。
+- 当前 `HandoutVersion` 已经存在的 `SectionVariant` 默认勾选并锁定。
+- 选择权威状态只保存 `selectedVariantIds: Set<number>` 与 `existingVariantIds: Set<number>`。
+- 父节点半选、全选、取消必须由纯函数推导，不能散落在 Vue template 或 watcher。
+- 搜索支持匹配 `TeachingTopic.Title`、`Section.Title`、`SectionVariant.Title`，过滤后仍保留祖先路径且不丢选择状态。
+
+第一版建议建立纯函数模块：
+
+```text
+frontend-v2/src/utils/sectionVariantTreeSelection.ts
+```
+
+至少包含：
+
+```text
+collectSelectableVariantIds
+deriveNodeCheckState
+toggleVariant
+toggleGroup
+buildExistingVariantIds
+getNewVariantIds
+filterTree
+```
+
+### AtomicSectionPicker / ContentBlockPicker
+
+`AtomicSectionPicker` 和 `ContentBlockPicker` 第一版仍是轻量单选选择器。
+
+职责：
 
 - 查询候选。
 - 简单搜索。
@@ -351,15 +395,15 @@ Picker 职责：
 - 单选一个目标。
 - 确认。
 
-Picker 不负责：
+### Picker 不负责
 
 - 创建源对象。
 - 编辑源对象。
-- 多选。
-- 批量添加。
 - 高级查询器。
 - 跨页面拖入。
 - 修改 `SectionVariant` / `AtomicSection` / `ContentBlock`。
+
+说明：`SectionVariantSelectionDialog` 是上述“批量添加”限制的唯一例外，因为 Handout 初始内容和追加 `SectionVariant` 已确认采用批量追加树。
 
 ## 11. 添加 API 语义
 
@@ -553,7 +597,7 @@ AppendDocument(..., ImportFormatMode.KeepSourceFormatting)
 Pages：
 
 ```text
-HandoutIndexPage.vue
+HandoutManagementPage.vue
 HandoutPage.vue
 ```
 
@@ -565,7 +609,7 @@ HandoutWorkspace.vue
 HandoutInspector.vue
 HandoutOutputPanel.vue
 GeneratedFilePanel.vue
-SectionVariantPicker.vue
+SectionVariantSelectionDialog.vue
 AtomicSectionPicker.vue
 ContentBlockPicker.vue
 ```
@@ -678,45 +722,37 @@ DELETE /api/cms-v2/generated-files/{id}
 
 完善后端文档、UI 架构、HandoutPage 文档、开发计划和 Open Questions。不写实现代码。
 
-### Phase H2：技术调研与编号 Spike
+### Phase H2：后端 Handout / Version 管理
 
-围绕 Aspose 编号 API、跨 DOCX 列表定义统一、最小 fixture 和替代方案做验证。
+补齐 `Handout` / `HandoutVersion` 创建、编辑、归档、唯一性和 `SortOrder` 规则。
 
-### Phase H3：Domain 与 Persistence
+### Phase H3：SectionVariant 树与批量加入 API
 
-完成 `AtomicSection` target、mutation 方法、check constraint、migration 和测试。
+补齐 `GET /api/cms-v2/section-variants/tree` 和 `POST /api/cms-v2/handout-versions/{id}/items/batch-add-section-variants`。
 
-### Phase H4：Application 编排用例
+### Phase H4：`/handouts` 管理页
 
-完成 add after、move、remove、update、sort normalization 和测试。
+完成 Master–Detail 管理页、`Handout` 创建 / 编辑 / 归档、`HandoutVersion` 创建 / 编辑 / 归档。
 
-### Phase H5：Workspace Aggregate 与 API
+### Phase H5：HandoutOverviewFlyout
 
-完成 workspace query、item endpoints、template validation 和 API tests。
+在 `HandoutVersion` 编辑页复用 SectionPage 左边缘 hover 总览交互，显示所有 `Handout -> HandoutVersion`。
 
-### Phase H6：Render Plan 与 Word 生成重构
+### Phase H6：空 Version 批量选择
 
-完成 Render Plan、结构标题、模板保留、编号统一、生成器测试和 generation API tests。
+空 `HandoutVersion` 的 `HandoutWorkspace` 显示添加内容按钮，打开 `SectionVariantSelectionDialog` 并批量加入。
 
-### Phase H7：前端基础和 HandoutIndexPage
+### Phase H7：非空 Version 后插入
 
-完成 routes、DTO、APIs、Handout / Version 创建、mock / lab、typecheck / build。
+常驻结构树根节点支持添加到末尾，顶层 `HandoutVersionItem` 右键支持在该节点后添加。
 
-### Phase H8：HandoutPage 三栏与树
+### Phase H8：稳定编辑器衔接
 
-完成 `HandoutStructurePanel`、`HandoutWorkspace`、Inspector 和 mock 验收。
+以最小改动替换当前 `window.prompt` 临时入口，保留现有 `HandoutPage` 三栏、`OutputForm`、Word 生成和 `GeneratedFile` 能力。
 
-### Phase H9：真实编排接入
+### Phase H9：端到端上线验收
 
-完成 aggregate、picker、add after、duplicate warning、move、delete、edit。
-
-### Phase H10：Output 与 GeneratedFile
-
-完成 template、output form、generate、history、download、manifest。
-
-### Phase H11：端到端上线验收
-
-完成空库、真实数据、Word 编号、build/test 和文档状态更新。
+完成从已有 `SectionVariant` 到 `/handouts` 创建、创建 `HandoutVersion`、批量加入、生成 Word、查看 / 下载 `GeneratedFile` 的真实闭环。
 
 ## 25. 集中验收场景
 
@@ -763,5 +799,154 @@ OutputForm：课堂 Word
 - `HandoutVersionItem` 已接入上移、下移、编辑 `TitleOverride / Note`、移除引用。
 - `OutputForm` 已接入 `POST /api/cms-v2/output-forms/{id}/generate-word`。
 - `GeneratedFile` 已接入 manifest 查看、Word 下载和删除。
-- “添加到末尾”当前使用按 `targetType + targetId` 输入的临时入口，只用于验证后端写入链路；后续必须替换为正式 `SectionVariantPicker`、`AtomicSectionPicker`、`ContentBlockPicker`。
-- 仍未完成：`HandoutIndexPage`、创建 `Handout`、创建 `HandoutVersion`、正式 Picker、`OutputTemplate` 创建/选择 UI、`OutputForm` 创建 UI、讲义页面右键菜单、完整 manifest 展示组件。
+- “添加到末尾”当前使用按 `targetType + targetId` 输入的临时入口，只用于验证后端写入链路；后续必须替换为正式 `SectionVariantSelectionDialog`、`AtomicSectionPicker`、`ContentBlockPicker`。
+- 仍未完成：`/handouts` 管理页、创建 / 编辑 / 归档 `Handout`、创建 / 编辑 / 归档 `HandoutVersion`、`HandoutOverviewFlyout`、`SectionVariantSelectionDialog`、批量加入 `SectionVariant` API、讲义页面正式右键菜单、完整 manifest 展示组件。
+
+## 当前更新：Handout 创建链路上线口径
+
+本节依据 `CMS-V2-Handout-创建链路上线开发规格-rebuildUI.md` 补充，覆盖本文档中仍残留的旧 Picker 和旧阶段口径。
+
+### 目标链路
+
+```text
+已有 SectionVariant
+↓
+/handouts 创建 Handout
+↓
+在 Handout 下创建 HandoutVersion
+↓
+进入 /handouts/:handoutVersionId
+↓
+空 Version 通过 SectionVariantSelectionDialog 批量加入初始内容
+↓
+非空 Version 在根节点末尾或顶层 item 后继续追加内容
+↓
+沿用现有 OutputForm / Word 生成 / GeneratedFile 能力
+```
+
+### `/handouts` 管理页
+
+`/handouts` 是 Master–Detail 管理页，不是独立 `Handout` 详情页。
+
+左侧 `HandoutListPanel`：
+
+- 创建 `Handout`。
+- 标题搜索。
+- 状态筛选。
+- 默认隐藏 Archived，可切换显示。
+- 选择当前 `Handout`。
+
+右侧 `HandoutDetailPanel`：
+
+- 显示当前 `Handout` 标题、描述、状态、更新时间。
+- 编辑 / 归档当前 `Handout`。
+- 显示 `HandoutVersion` 列表。
+- 创建 / 编辑 / 归档 `HandoutVersion`。
+- 点击版本进入 `/handouts/:handoutVersionId`。
+
+创建 `Handout` 后：
+
+- 只创建 `Handout`。
+- 不自动创建 `HandoutVersion`。
+- 留在 `/handouts`。
+- 刷新列表并选中新 `Handout`。
+
+创建 `HandoutVersion` 后：
+
+- 刷新当前 `Handout` 的版本列表。
+- 跳转到稳定路由 `/handouts/:handoutVersionId`。
+- 不重命名该稳定路由。
+
+### 唯一性和归档
+
+- `Handout` 标题全局唯一，比较规则为 trim 后忽略英文大小写。
+- 同一 `Handout` 下 `HandoutVersion` 标题唯一，比较规则为 trim 后忽略英文大小写。
+- Archived 对象不参与当前名称冲突。
+- 第一版只做归档，不物理删除 `Handout` 或 `HandoutVersion`。
+- Archived `Handout` 默认从普通列表隐藏，不允许创建新 `HandoutVersion`。
+- Archived `HandoutVersion` 可查看历史，不允许新增 / 移动 / 删除内容，也不允许新的生成操作。
+
+### HandoutOverviewFlyout
+
+`/handouts/:handoutVersionId` 需要左边缘 hover 总览树，必须复用或抽取 SectionPage 已有左边缘触发行为：
+
+- 屏幕最左侧固定窄触发区。
+- hover 约 2 秒打开。
+- `Escape` 关闭。
+- `Teleport` 到 `body`。
+- 背景遮罩。
+- 树节点视觉、展开收起、右键菜单和当前节点高亮与 SectionPage 统一。
+
+树结构：
+
+```text
+Handout
+  -> HandoutVersion
+```
+
+职责：
+
+- 总览所有 `Handout` 和 `HandoutVersion`。
+- 当前 `Handout` 默认展开。
+- 当前 `HandoutVersion` 高亮。
+- 点击其他 `HandoutVersion` 快速跳转。
+- 提供轻量新建、重命名、归档入口。
+
+### SectionVariant 批量选择树
+
+第一版 `SectionVariant` 追加使用批量选择树，不使用单选 Picker。
+
+数据接口目标：
+
+```http
+GET /api/cms-v2/section-variants/tree
+```
+
+H0 审计结论：当前 `/api/cms-v2/teaching-structure` 数据接近可复用，但它属于教学结构管理树，携带管理 UI 字段。为了让 Handout 批量选择稳定表达过滤、排序、只读叶子和选择语义，H1 后续开发采用专用只读接口 `/section-variants/tree`。
+
+批量加入接口目标：
+
+```http
+POST /api/cms-v2/handout-versions/{id}/items/batch-add-section-variants
+```
+
+请求：
+
+```ts
+type BatchAddSectionVariantsRequest = {
+  sectionVariantIds: number[]
+  afterHandoutVersionItemId?: number | null
+}
+```
+
+响应：
+
+```ts
+type BatchAddSectionVariantsResult = {
+  createdItemIds: number[]
+  skippedExistingVariantIds: number[]
+}
+```
+
+语义：
+
+- `afterHandoutVersionItemId = null` 表示添加到末尾。
+- 指定顶层 `HandoutVersionItem.Id` 时，在该节点后连续插入。
+- 请求内 ID 不允许重复。
+- 已在当前版本中的 `SectionVariant` 由后端并发兜底跳过。
+- 后端按教学结构顺序写入，并重新规整整个版本的 `SortOrder`。
+
+### 稳定编辑页保护
+
+后续阶段不得大幅重构当前已经可用的：
+
+- `HandoutPage.vue` 三栏主体。
+- `HandoutStructurePanel`。
+- `HandoutWorkspace`。
+- `HandoutInspector`。
+- `HandoutOutputPanel`。
+- `OutputForm`。
+- Word 生成。
+- `GeneratedFile` 下载 / manifest / 删除。
+
+允许的最小改动只包括：空状态按钮、批量选择 Dialog、右键后插入、hover 总览、归档只读 guard、替换 `window.prompt` 临时入口和新增 API 对接。

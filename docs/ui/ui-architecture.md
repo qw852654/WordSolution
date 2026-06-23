@@ -338,3 +338,86 @@ SectionWorkspace
 - 在前端实现 PDF、条件内容、变量替换或学生 / 教师版实际过滤。
 
 详细规则见 `docs/ui/handout-page.md`。
+
+## 5.4 Handout 创建链路页面模式
+
+当前 Handout 上线链路分为两个页面：
+
+```text
+/handouts
+  Handout 管理页。
+
+/handouts/:handoutVersionId
+  当前 HandoutVersion 编排、输出和生成页面。
+```
+
+### `/handouts`
+
+`/handouts` 使用 Master–Detail 模式：
+
+```text
+左侧：HandoutListPanel
+右侧：HandoutDetailPanel
+```
+
+职责：
+
+- 创建 `Handout`。
+- 编辑 / 归档 `Handout`。
+- 查看当前 `Handout` 的 `HandoutVersion` 列表。
+- 创建 / 编辑 / 归档 `HandoutVersion`。
+- 创建 `HandoutVersion` 成功后跳转到 `/handouts/:handoutVersionId`。
+
+规则：
+
+- 第一版不做独立 `/handouts/:handoutId` 详情页。
+- 创建 `Handout` 不自动创建 `HandoutVersion`。
+- 创建 `HandoutVersion` 时不选择 `OutputForm`、`OutputTemplate` 或初始内容。
+
+### `/handouts/:handoutVersionId`
+
+该页面继续使用现有三栏稳定结构：
+
+```text
+左侧：HandoutStructurePanel
+中间：HandoutWorkspace
+右侧：HandoutInspectorAndOutput
+```
+
+新增链路能力只允许最小接入：
+
+- 空 `HandoutVersion` 的添加内容按钮。
+- `SectionVariantSelectionDialog` 批量选择树。
+- 根节点添加到末尾。
+- 顶层 `HandoutVersionItem` 在此后添加。
+- `HandoutOverviewFlyout` 左边缘总览。
+- Archived 只读 guard。
+- 替换临时 `window.prompt`。
+
+不得因为创建链路上线而重写现有 `OutputForm`、Word 生成、`GeneratedFile` 历史、下载、manifest 或三栏布局。
+
+### HandoutOverviewFlyout
+
+`HandoutOverviewFlyout` 是全局总览，不是当前版本结构树。
+
+```text
+HandoutOverviewFlyout
+  Handout
+    HandoutVersion
+```
+
+它复用或抽取 SectionPage 左边缘 hover 交互：固定边缘触发区、约 2 秒 hover、`Teleport`、遮罩、`Escape` 关闭、树节点高亮和右键菜单视觉。
+
+### SectionVariant 批量选择
+
+Handout 创建链路中的初始内容选择使用：
+
+```text
+TeachingTopic
+  -> Section
+    -> SectionVariant
+```
+
+只有 `SectionVariant` 是真实写入目标。`TeachingTopic` 和 `Section` 只作为分组展示。
+
+`SectionVariantSelectionDialog` 与普通单选 Picker 不同，它允许批量追加 `SectionVariant`，并通过纯函数维护 checked / partial / existing locked 状态。
