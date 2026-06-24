@@ -1,6 +1,9 @@
 using System.IO.Compression;
+using System.Net;
 using System.Security;
 using System.Text;
+using System.Text.RegularExpressions;
+using Aspose.Words;
 using WordSolution.CmsV2.Infrastructure.Documents;
 
 namespace WordSolution.CmsV2.Tests.Infrastructure;
@@ -93,6 +96,24 @@ public sealed class CmsV2FileAssetTests
     }
 
     [Fact]
+    public async Task AsposeContentBlockDocumentProcessor_exports_numbered_list_labels_inside_body_fragment()
+    {
+        var rootDirectory = CreateTempRoot();
+        var templateDocxPath = Path.Combine(rootDirectory, "template.docx");
+        var sourceDocxPath = Path.Combine(rootDirectory, "numbered.docx");
+        var htmlPath = Path.Combine(rootDirectory, "numbered.html");
+        await CreateMinimalDocxAsync(templateDocxPath, "模板正文");
+        CreateNumberedListDocx(sourceDocxPath);
+        var processor = new AsposeContentBlockDocumentProcessor(templateDocxPath);
+
+        await processor.GenerateHtmlPreviewAsync(sourceDocxPath, htmlPath);
+
+        var bodyText = ExtractBodyText(await File.ReadAllTextAsync(htmlPath));
+        Assert.Matches(@"1\.?\s*第一条", bodyText);
+        Assert.Matches(@"2\.?\s*第二条", bodyText);
+    }
+
+    [Fact]
     public async Task AsposeContentBlockDocumentProcessor_copies_default_template_when_creating_initial_docx()
     {
         var rootDirectory = CreateTempRoot();
@@ -113,6 +134,27 @@ public sealed class CmsV2FileAssetTests
             Path.GetTempPath(),
             "cms-v2-file-asset-tests",
             Guid.NewGuid().ToString("N"));
+    }
+
+    private static void CreateNumberedListDocx(string docxPath)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(docxPath)!);
+
+        var document = new Document();
+        var builder = new DocumentBuilder(document);
+        builder.ListFormat.ApplyNumberDefault();
+        builder.Writeln("第一条");
+        builder.Writeln("第二条");
+        builder.ListFormat.RemoveNumbers();
+        document.Save(docxPath);
+    }
+
+    private static string ExtractBodyText(string html)
+    {
+        var bodyMatch = Regex.Match(html, "<body[^>]*>([\\s\\S]*?)</body>", RegexOptions.IgnoreCase);
+        var bodyHtml = bodyMatch.Success ? bodyMatch.Groups[1].Value : html;
+        var withoutTags = Regex.Replace(bodyHtml, "<[^>]+>", string.Empty);
+        return WebUtility.HtmlDecode(withoutTags).Replace("\u00a0", " ");
     }
 
     private static async Task CreateMinimalDocxAsync(string docxPath, string text)

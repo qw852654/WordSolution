@@ -5,6 +5,7 @@ import { ArrowRight, FlaskConical, Network } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { CMS_V2_API_BASE } from '@/apis/cmsV2Client'
 import PageHeader from '@/components/presentation/PageHeader.vue'
+import { usePageTitle } from '@/composables/usePageTitle'
 import { scaffoldChecks } from '@/mocks'
 import { Button } from '@/components/ui/button'
 import {
@@ -17,6 +18,7 @@ import {
 } from '@/components/ui/card'
 
 const { t } = useI18n()
+usePageTitle('CMS V2')
 
 const checklistIds = computed(() => scaffoldChecks.map((item) => item.id))
 </script>

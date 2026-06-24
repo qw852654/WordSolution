@@ -23,6 +23,7 @@ import { useContentBlockActions } from '@/composables/useContentBlockActions'
 import { useContentBlockRelationActions } from '@/composables/useContentBlockRelationActions'
 import { useSectionItemActions } from '@/composables/useSectionItemActions'
 import { loadSectionPageData, type SectionPageDataModel } from '@/composables/useSectionPageData'
+import { usePageTitle } from '@/composables/usePageTitle'
 import { resolveAtomicSectionChildContentBlockTitle } from '@/utils/sectionInsertDefaults'
 import { createTeachingTopicNodeId, findTeachingTopicTreeNodePath } from '@/utils/teachingStructureTree'
 import type {
@@ -161,6 +162,8 @@ const sectionShell = computed<SectionPageShellModel>(() => {
       : t('sectionPage.api.emptyStatus'),
   }
 })
+const sectionPageTitleDetail = computed(() => sectionPageData.value?.section.title || `Section ${sectionId.value}`)
+usePageTitle('SectionPage', sectionPageTitleDetail)
 
 const sectionTreeNodes = computed(() => sectionPageData.value?.treeNodes ?? [])
 const sectionWorkspaceFlowItems = computed(() => sectionPageData.value?.flowItems ?? [])

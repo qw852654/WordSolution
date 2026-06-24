@@ -7,6 +7,7 @@ import AtomicSectionBlock from '@/components/business/AtomicSectionBlock.vue'
 import AtomicSectionPanelCreateOverlay from '@/components/business/AtomicSectionPanelCreateOverlay.vue'
 import PageHeader from '@/components/presentation/PageHeader.vue'
 import { Button } from '@/components/ui/button'
+import { usePageTitle } from '@/composables/usePageTitle'
 import { mockAtomicSectionPanelBlock } from '@/mocks'
 import type {
   AtomicSectionItemActionPayload,
@@ -21,6 +22,7 @@ import type {
 } from '@/types'
 
 const { t } = useI18n()
+usePageTitle('ComponentLab')
 const feedback = ref('')
 const overlayOpen = ref(false)
 const overlayModel = ref<AtomicSectionPanelCreateOverlayModel>({

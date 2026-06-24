@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { usePageTitle } from '@/composables/usePageTitle'
 
 const props = defineProps<{
   eyebrowKey: string
@@ -24,6 +25,7 @@ const props = defineProps<{
 
 const route = useRoute()
 const { t } = useI18n()
+usePageTitle(() => t(props.titleKey))
 
 const routeParam = computed(() => {
   if (!props.paramName) {

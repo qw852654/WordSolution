@@ -16,6 +16,7 @@ import EmptyState from '@/components/presentation/EmptyState.vue'
 import StatusPill from '@/components/presentation/StatusPill.vue'
 import { Button } from '@/components/ui/button'
 import { cmsV2Api } from '@/apis/cmsV2Client'
+import { usePageTitle } from '@/composables/usePageTitle'
 import { getNewVariantIds } from '@/utils/sectionVariantTreeSelection'
 import {
   mockGeneratedFiles,
@@ -88,6 +89,12 @@ const numericHandoutVersionId = computed(() => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null
 })
 const isDemoRoute = computed(() => routeHandoutVersionId.value === 'demo-handout')
+const handoutPageTitleDetail = computed(() =>
+  isDemoRoute.value
+    ? 'Mock Data'
+    : workspace.value?.version.title || `HandoutVersion ${routeHandoutVersionId.value}`,
+)
+usePageTitle('HandoutPage', handoutPageTitleDetail)
 let handoutOverviewTimer: number | undefined
 
 const treeNodes = computed<HandoutTreeNodeModel[]>(() => {

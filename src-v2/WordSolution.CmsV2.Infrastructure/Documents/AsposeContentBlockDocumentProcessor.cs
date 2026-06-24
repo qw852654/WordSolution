@@ -65,6 +65,7 @@ public sealed class AsposeContentBlockDocumentProcessor : IContentBlockDocumentP
             var saveOptions = new HtmlSaveOptions
             {
                 ExportImagesAsBase64 = true,
+                ExportListLabels = ExportListLabels.AsInlineText,
                 PrettyFormat = true
             };
 

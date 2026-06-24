@@ -7,10 +7,12 @@ import HandoutDetailPanel from '@/components/business/HandoutDetailPanel.vue'
 import HandoutListPanel from '@/components/business/HandoutListPanel.vue'
 import EmptyState from '@/components/presentation/EmptyState.vue'
 import { cmsV2Api } from '@/apis/cmsV2Client'
+import { usePageTitle } from '@/composables/usePageTitle'
 import type { CmsV2HandoutDto, CmsV2HandoutVersionDto } from '@/apis/cmsV2Client'
 
 const router = useRouter()
 const { t } = useI18n()
+usePageTitle('Handout')
 
 const handouts = ref<CmsV2HandoutDto[]>([])
 const versions = ref<CmsV2HandoutVersionDto[]>([])
