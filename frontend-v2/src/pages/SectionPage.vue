@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import SectionInspector from '@/components/business/SectionInspector.vue'
 import SectionTreeContextMenu from '@/components/business/SectionTreeContextMenu.vue'
 import SectionVariantCreatePanel from '@/components/business/SectionVariantCreatePanel.vue'
+import AtomicSectionPanelCreateOverlay from '@/components/business/AtomicSectionPanelCreateOverlay.vue'
 import TeachingTopicTree from '@/components/business/TeachingTopicTree.vue'
 import TeachingTopicTreeContextMenu from '@/components/business/TeachingTopicTreeContextMenu.vue'
 import InsertCreateOverlay from '@/components/containers/InsertCreateOverlay.vue'
@@ -32,7 +33,9 @@ import type {
   InsertRequestModel,
   AtomicSectionTeachingRole,
   AtomicSectionPanelActionPayload,
+  AtomicSectionPanelCreateOverlayModel,
   AtomicSectionPanelCreatePayload,
+  AtomicSectionPanelCreateSubmitPayload,
   AtomicSectionPanelMovePayload,
   AtomicSectionItemActionPayload,
   AtomicSectionItemMovePayload,
@@ -64,6 +67,7 @@ const sectionPageData = ref<SectionPageDataModel | null>(null)
 const selectedStructureNodeId = ref<string>()
 const activeInsertPointId = ref<string>()
 const activeCreatePanel = ref<InsertCreatePanelModel | null>(null)
+const activeAtomicSectionPanelCreatePanel = ref<AtomicSectionPanelCreateOverlayModel | null>(null)
 const sectionVariantCreateMetadata = ref<SectionVariantCreateMetadata | null>(null)
 const sectionVariantCreatePanelOpen = ref(false)
 const sectionVariantSelectionMode = ref(false)
@@ -93,8 +97,10 @@ const teachingTopicDisplayRootNodeId = ref<string | null>(null)
 const isLoadingSectionPage = ref(false)
 const sectionPageError = ref('')
 const isSubmittingInsertCreate = ref(false)
+const isCreatingAtomicSectionPanel = ref(false)
 const isDeletingContentBlockCascade = ref(false)
 const isUpdatingAtomicSectionItemClassification = ref(false)
+const atomicSectionPanelCreateError = ref('')
 
 function resolveSectionItemRemoveError(error: unknown, fallback: string) {
   const message = error instanceof Error ? error.message : ''
@@ -534,6 +540,39 @@ function getInsertPositionLabel(insertPointId: string) {
     : t('sectionPage.workspace.insertPanel.insertPositionLabel')
 }
 
+function getDefaultContentBlockTypeFromTeachingRole(
+  teachingRole?: AtomicSectionTeachingRole,
+): InsertCreateContentBlockType | undefined {
+  const map: Partial<Record<AtomicSectionTeachingRole, InsertCreateContentBlockType>> = {
+    Knowledge: '知识点',
+    Example: '例题',
+    Variant: '变式题',
+    Practice: '练习题',
+    Homework: '练习题',
+  }
+
+  return teachingRole ? map[teachingRole] : undefined
+}
+
+function getDefaultInsertDifficultyFromPanel(
+  difficulty?: string | null,
+): InsertCreateDifficulty | undefined {
+  const map: Record<string, InsertCreateDifficulty> = {
+    Unset: '未设置',
+    Basic: '基础',
+    Medium: '中档',
+    Advanced: '提高',
+    Top: '压轴',
+    未设置: '未设置',
+    基础: '基础',
+    中档: '中档',
+    提高: '提高',
+    压轴: '压轴',
+  }
+
+  return difficulty ? map[difficulty] : undefined
+}
+
 function requestInsert(request: InsertRequestModel) {
   if (isCreatingSectionVariant.value) {
     return
@@ -577,6 +616,12 @@ function requestInsert(request: InsertRequestModel) {
         atomicSectionTitle,
         atomicSectionPanelId: request.placement?.atomicSectionPanelId,
         atomicSectionTeachingRole: request.placement?.teachingRole,
+        defaultContentBlockType: getDefaultContentBlockTypeFromTeachingRole(
+          request.placement?.teachingRole,
+        ),
+        defaultDifficulty: getDefaultInsertDifficultyFromPanel(
+          request.placement?.atomicSectionPanelDifficulty,
+        ),
       }
       return
     }
@@ -763,30 +808,48 @@ function getAtomicSectionPanelDifficultyForApi(payload: AtomicSectionPanelAction
 }
 
 async function requestAtomicSectionPanelCreate(payload: AtomicSectionPanelCreatePayload) {
-  const title = window.prompt(
-    t('sectionPage.workspace.atomicSectionPanelActions.createPrompt'),
-    t('sectionPage.workspace.atomicSectionPanelActions.defaultPanelTitle'),
-  )
+  atomicSectionPanelCreateError.value = ''
+  activeAtomicSectionPanelCreatePanel.value = {
+    nodeId: payload.nodeId,
+    atomicSectionId: payload.atomicSectionId,
+    atomicSectionTitle: payload.title,
+    defaultTitle: payload.title || t('sectionPage.workspace.atomicSectionPanelActions.defaultPanelTitle'),
+  }
+}
 
-  if (title === null || title.trim() === '') {
+function cancelAtomicSectionPanelCreateOverlay() {
+  activeAtomicSectionPanelCreatePanel.value = null
+  atomicSectionPanelCreateError.value = ''
+}
+
+async function submitAtomicSectionPanelCreateOverlay(
+  payload: AtomicSectionPanelCreateSubmitPayload,
+) {
+  if (isCreatingAtomicSectionPanel.value) {
     return
   }
+
+  isCreatingAtomicSectionPanel.value = true
+  atomicSectionPanelCreateError.value = ''
 
   try {
     const created = await atomicSectionActions.createAtomicSectionPanel(
       payload.atomicSectionId,
-      title.trim(),
-      'Knowledge',
-      'Basic',
+      payload.title,
+      payload.teachingRole,
+      payload.difficulty,
     )
     selectedStructureNodeId.value = `atomic-section-panel-${created.id}`
     workspaceScrollTargetNodeId.value = selectedStructureNodeId.value
     workspaceScrollRequestKey.value += 1
+    activeAtomicSectionPanelCreatePanel.value = null
   } catch (error) {
-    sectionPageError.value =
+    atomicSectionPanelCreateError.value =
       error instanceof Error
         ? error.message
         : t('sectionPage.workspace.atomicSectionPanelActions.operationFailed')
+  } finally {
+    isCreatingAtomicSectionPanel.value = false
   }
 }
 
@@ -1840,6 +1903,7 @@ function mapInsertContentBlockType(type?: InsertCreateContentBlockType) {
 
 function mapInsertDifficulty(difficulty: InsertCreateDifficulty) {
   const map: Record<InsertCreateDifficulty, string> = {
+    未设置: 'Unset',
     基础: 'Basic',
     中档: 'Medium',
     提高: 'Advanced',
@@ -2465,6 +2529,16 @@ watch(sectionId, () => {
       :error-message="insertCreateError"
       @cancel="cancelInsertCreateOverlay"
       @submit="submitInsertCreateOverlay"
+    />
+
+    <AtomicSectionPanelCreateOverlay
+      v-if="activeAtomicSectionPanelCreatePanel"
+      :model="activeAtomicSectionPanelCreatePanel"
+      :open="activeAtomicSectionPanelCreatePanel !== null"
+      :busy="isCreatingAtomicSectionPanel"
+      :error-message="atomicSectionPanelCreateError"
+      @cancel="cancelAtomicSectionPanelCreateOverlay"
+      @submit="submitAtomicSectionPanelCreateOverlay"
     />
 
     <Teleport to="body">

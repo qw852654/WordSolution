@@ -333,6 +333,22 @@ export interface AtomicSectionPanelCreatePayload {
   title: string
 }
 
+export interface AtomicSectionPanelCreateOverlayModel {
+  nodeId: string
+  atomicSectionId: number
+  atomicSectionTitle: string
+  defaultTitle: string
+  disabled?: boolean
+}
+
+export interface AtomicSectionPanelCreateSubmitPayload {
+  nodeId: string
+  atomicSectionId: number
+  title: string
+  teachingRole: AtomicSectionTeachingRole
+  difficulty: string
+}
+
 export interface AtomicSectionPanelMovePayload extends AtomicSectionPanelActionPayload {
   direction: 'Up' | 'Down'
 }
@@ -427,6 +443,7 @@ export interface InsertPointPlacementModel {
   afterSortOrder?: number
   atomicSectionPanelId?: number | null
   teachingRole?: AtomicSectionTeachingRole
+  atomicSectionPanelDifficulty?: string | null
 }
 
 export interface InsertRequestModel {
@@ -445,7 +462,7 @@ export type InsertCreateContentBlockType =
   | '变式题组'
   | '练习题组'
 
-export type InsertCreateDifficulty = '基础' | '中档' | '提高' | '压轴'
+export type InsertCreateDifficulty = '未设置' | '基础' | '中档' | '提高' | '压轴'
 
 export interface InsertCreatePanelModel {
   insertPointId: string
@@ -459,6 +476,8 @@ export interface InsertCreatePanelModel {
   atomicSectionTitle?: string
   atomicSectionPanelId?: number | null
   atomicSectionTeachingRole?: AtomicSectionTeachingRole
+  defaultContentBlockType?: InsertCreateContentBlockType
+  defaultDifficulty?: InsertCreateDifficulty
   compositeBlockId?: number
   compositeBlockTitle?: string
   wrapSectionItemIds?: number[]

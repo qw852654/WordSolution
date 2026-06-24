@@ -314,6 +314,19 @@ const zhCN = {
       Practice: '练习',
       Homework: '课后练习',
     },
+    atomicSectionPanelCreateOverlay: {
+      dialogLabel: 'AtomicSectionPanelCreateOverlay',
+      eyebrow: '创建板块',
+      title: '新建 AtomicSectionPanel',
+      description: '填写板块元数据后，由 SectionPage 调用 CMS V2 API 创建。',
+      titleLabel: '名称',
+      titlePlaceholder: '输入板块名称',
+      titleRequired: '请输入名称后再确认。',
+      teachingRoleLabel: 'TeachingRole',
+      difficultyLabel: 'Difficulty',
+      cancel: '取消',
+      submit: '新建 AtomicSectionPanel',
+    },
     basicTree: {
       expand: '展开节点',
       collapse: '折叠节点',
@@ -473,6 +486,21 @@ const zhCN = {
           moveItem: '移动 item：{value} {direction}',
           removeItem: '移除 item：{value}',
         },
+      },
+      atomicSectionPanelCreate: {
+        title: 'AtomicSectionPanel 创建 overlay',
+        description:
+          '验收共享 CreateOverlayShell，以及复用它的新建 AtomicSectionPanel 元数据面板。',
+        open: '打开创建面板',
+        openDisabled: '打开禁用面板',
+        mockAtomicSectionTitle: '机械能守恒讲解单元',
+        mockPageTitle: 'SectionPage 背景区域',
+        mockPageDescription: '打开 overlay 后，背景应整体模糊，面板位于最上层。',
+        sharedShellLabel: 'CreateOverlayShell',
+        mockWorkspace: '这里模拟 SectionWorkspace。当前只验证 overlay，不创建真实数据。',
+        feedbackTitle: 'Mock payload',
+        emptyFeedback: '尚未提交 Mock Data。',
+        cancelled: '已取消 AtomicSectionPanel 创建。',
       },
       sectionVariantCreate: {
         description:

@@ -325,6 +325,19 @@ const en = {
       Practice: 'Practice',
       Homework: 'Homework',
     },
+    atomicSectionPanelCreateOverlay: {
+      dialogLabel: 'AtomicSectionPanelCreateOverlay',
+      eyebrow: 'Create panel',
+      title: 'Create AtomicSectionPanel',
+      description: 'Fill panel metadata, then SectionPage submits it to the CMS V2 API.',
+      titleLabel: 'Name',
+      titlePlaceholder: 'Enter panel name',
+      titleRequired: 'Enter a name before confirming.',
+      teachingRoleLabel: 'TeachingRole',
+      difficultyLabel: 'Difficulty',
+      cancel: 'Cancel',
+      submit: 'Create AtomicSectionPanel',
+    },
     basicTree: {
       expand: 'Expand node',
       collapse: 'Collapse node',
@@ -487,6 +500,21 @@ const en = {
           moveItem: 'Move item: {value} {direction}',
           removeItem: 'Remove item: {value}',
         },
+      },
+      atomicSectionPanelCreate: {
+        title: 'AtomicSectionPanel create overlay',
+        description:
+          'Validate the shared CreateOverlayShell and the AtomicSectionPanel metadata panel that reuses it.',
+        open: 'Open create panel',
+        openDisabled: 'Open disabled panel',
+        mockAtomicSectionTitle: 'Mechanical energy conservation teaching unit',
+        mockPageTitle: 'SectionPage background area',
+        mockPageDescription: 'When the overlay is open, the background should be blurred.',
+        sharedShellLabel: 'CreateOverlayShell',
+        mockWorkspace: 'This area mocks SectionWorkspace. Only the overlay is validated here.',
+        feedbackTitle: 'Mock payload',
+        emptyFeedback: 'No Mock Data has been submitted yet.',
+        cancelled: 'Cancelled AtomicSectionPanel creation.',
       },
       sectionVariantCreate: {
         description:

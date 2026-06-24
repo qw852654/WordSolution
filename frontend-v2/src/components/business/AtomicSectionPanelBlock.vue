@@ -120,6 +120,7 @@ function createPanelInsertPoint(
       afterSortOrder: afterChild?.sortOrder,
       atomicSectionPanelId: props.panel.panelId,
       teachingRole: props.panel.teachingRole,
+      atomicSectionPanelDifficulty: props.panel.difficultyValue ?? props.panel.difficulty,
     },
   }
 }

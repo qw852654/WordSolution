@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button } from '@/components/ui/button'
+import CreateOverlayShell from '@/components/containers/CreateOverlayShell.vue'
 import type {
   InsertCreateContentBlockType,
   InsertCreateDifficulty,
@@ -18,7 +18,9 @@ const contentBlockTypeOptions: InsertCreateContentBlockType[] = [
   '练习题组',
 ]
 
-const difficultyOptions: InsertCreateDifficulty[] = ['基础', '中档', '提高', '压轴']
+const defaultContentBlockType: InsertCreateContentBlockType = '知识点'
+const defaultDifficulty: InsertCreateDifficulty = '基础'
+const difficultyOptions: InsertCreateDifficulty[] = ['未设置', '基础', '中档', '提高', '压轴']
 
 const props = defineProps<{
   model: InsertCreatePanelModel
@@ -40,8 +42,8 @@ const form = reactive<{
   note: string
 }>({
   title: '',
-  contentBlockType: contentBlockTypeOptions[0],
-  difficulty: difficultyOptions[0],
+  contentBlockType: defaultContentBlockType,
+  difficulty: defaultDifficulty,
   note: '',
 })
 
@@ -73,8 +75,8 @@ const submitLabel = computed(() =>
 
 function resetForm() {
   form.title = ''
-  form.contentBlockType = contentBlockTypeOptions[0]
-  form.difficulty = difficultyOptions[0]
+  form.contentBlockType = props.model.defaultContentBlockType ?? defaultContentBlockType
+  form.difficulty = props.model.defaultDifficulty ?? defaultDifficulty
   form.note = ''
 }
 
@@ -116,6 +118,8 @@ watch(
     () => props.model.targetType,
     () => props.model.insertMode,
     () => props.model.atomicSectionId,
+    () => props.model.defaultContentBlockType,
+    () => props.model.defaultDifficulty,
   ],
   () => {
     if (props.open) {
@@ -127,115 +131,83 @@ watch(
 </script>
 
 <template>
-  <Teleport to="body">
-    <div
-      v-if="open"
-      class="fixed inset-0 z-50 flex min-h-screen items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-      :aria-label="t('components.insertCreateOverlay.dialogLabel')"
-    >
-      <div class="absolute inset-0 bg-background/70 backdrop-blur-sm" aria-hidden="true" />
+  <CreateOverlayShell
+    :open="open"
+    :dialog-label="t('components.insertCreateOverlay.dialogLabel')"
+    :eyebrow="t('components.insertCreateOverlay.insertPosition')"
+    :title="panelTitle"
+    :description="panelDescription"
+    :position-label="model.insertPositionLabel"
+    :cancel-label="t('components.insertCreateOverlay.cancel')"
+    :submit-label="submitLabel"
+    :submit-disabled="!canSubmit"
+    :error-message="errorMessage"
+    @cancel="handleCancel"
+    @submit="handleSubmit"
+  >
+    <div class="grid gap-3">
+      <label class="grid gap-1 text-sm font-medium">
+        <span>{{ t('components.insertCreateOverlay.sectionLabel') }}</span>
+        <input
+          :value="model.sectionTitle"
+          disabled
+          class="h-9 cursor-not-allowed rounded-md border bg-muted/30 px-3 text-sm text-muted-foreground outline-none"
+        />
+      </label>
 
-      <form
-        class="relative z-10 flex w-full max-w-xl flex-col gap-4 rounded-lg border bg-card p-4 text-card-foreground"
-        @submit.prevent="handleSubmit"
-      >
-        <header class="space-y-1">
-          <p class="text-xs font-medium text-muted-foreground">
-            {{ t('components.insertCreateOverlay.insertPosition') }}
-          </p>
-          <div class="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-            <h2 class="text-lg font-semibold tracking-normal">{{ panelTitle }}</h2>
-            <p class="text-sm text-muted-foreground">{{ model.insertPositionLabel }}</p>
-          </div>
-          <p class="text-sm text-muted-foreground">
-            {{ panelDescription }}
-          </p>
-        </header>
+      <label class="grid gap-1 text-sm font-medium">
+        <span>{{ t('components.insertCreateOverlay.titleLabel') }}</span>
+        <input
+          v-model="form.title"
+          :disabled="model.disabled"
+          class="h-9 rounded-md border bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50"
+          :placeholder="t('components.insertCreateOverlay.titlePlaceholder')"
+          :aria-invalid="showTitleRequired"
+        />
+        <span v-if="showTitleRequired" class="text-xs text-muted-foreground">
+          {{ t('components.insertCreateOverlay.titleRequired') }}
+        </span>
+      </label>
 
-        <div class="grid gap-3">
-          <label class="grid gap-1 text-sm font-medium">
-            <span>{{ t('components.insertCreateOverlay.sectionLabel') }}</span>
-            <input
-              :value="model.sectionTitle"
-              disabled
-              class="h-9 cursor-not-allowed rounded-md border bg-muted/30 px-3 text-sm text-muted-foreground outline-none"
-            />
-          </label>
-
-          <label class="grid gap-1 text-sm font-medium">
-            <span>{{ t('components.insertCreateOverlay.titleLabel') }}</span>
-            <input
-              v-model="form.title"
-              :disabled="model.disabled"
-              class="h-9 rounded-md border bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50"
-              :placeholder="t('components.insertCreateOverlay.titlePlaceholder')"
-              :aria-invalid="showTitleRequired"
-            />
-            <span v-if="showTitleRequired" class="text-xs text-muted-foreground">
-              {{ t('components.insertCreateOverlay.titleRequired') }}
-            </span>
-          </label>
-
-          <label v-if="isContentBlock" class="grid gap-1 text-sm font-medium">
-            <span>{{ t('components.insertCreateOverlay.contentBlockTypeLabel') }}</span>
-            <select
-              v-model="form.contentBlockType"
-              :disabled="model.disabled"
-              class="h-9 rounded-md border bg-background px-3 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option
-                v-for="contentBlockType in contentBlockTypeOptions"
-                :key="contentBlockType"
-                :value="contentBlockType"
-              >
-                {{ contentBlockType }}
-              </option>
-            </select>
-          </label>
-
-          <label class="grid gap-1 text-sm font-medium">
-            <span>{{ t('components.insertCreateOverlay.difficultyLabel') }}</span>
-            <select
-              v-model="form.difficulty"
-              :disabled="model.disabled"
-              class="h-9 rounded-md border bg-background px-3 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option v-for="difficulty in difficultyOptions" :key="difficulty" :value="difficulty">
-                {{ difficulty }}
-              </option>
-            </select>
-          </label>
-
-          <label v-if="!isContentBlock" class="grid gap-1 text-sm font-medium">
-            <span>{{ t('components.insertCreateOverlay.noteLabel') }}</span>
-            <textarea
-              v-model="form.note"
-              :disabled="model.disabled"
-              class="min-h-20 resize-y rounded-md border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50"
-              :placeholder="t('components.insertCreateOverlay.notePlaceholder')"
-            />
-          </label>
-        </div>
-
-        <p
-          v-if="errorMessage"
-          class="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-          role="alert"
+      <label v-if="isContentBlock" class="grid gap-1 text-sm font-medium">
+        <span>{{ t('components.insertCreateOverlay.contentBlockTypeLabel') }}</span>
+        <select
+          v-model="form.contentBlockType"
+          :disabled="model.disabled"
+          class="h-9 rounded-md border bg-background px-3 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {{ errorMessage }}
-        </p>
+          <option
+            v-for="contentBlockType in contentBlockTypeOptions"
+            :key="contentBlockType"
+            :value="contentBlockType"
+          >
+            {{ contentBlockType }}
+          </option>
+        </select>
+      </label>
 
-        <footer class="flex justify-end gap-2">
-          <Button type="button" variant="outline" @click="handleCancel">
-            {{ t('components.insertCreateOverlay.cancel') }}
-          </Button>
-          <Button type="submit" :disabled="!canSubmit">
-            {{ submitLabel }}
-          </Button>
-        </footer>
-      </form>
+      <label class="grid gap-1 text-sm font-medium">
+        <span>{{ t('components.insertCreateOverlay.difficultyLabel') }}</span>
+        <select
+          v-model="form.difficulty"
+          :disabled="model.disabled"
+          class="h-9 rounded-md border bg-background px-3 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <option v-for="difficulty in difficultyOptions" :key="difficulty" :value="difficulty">
+            {{ difficulty }}
+          </option>
+        </select>
+      </label>
+
+      <label v-if="!isContentBlock" class="grid gap-1 text-sm font-medium">
+        <span>{{ t('components.insertCreateOverlay.noteLabel') }}</span>
+        <textarea
+          v-model="form.note"
+          :disabled="model.disabled"
+          class="min-h-20 resize-y rounded-md border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50"
+          :placeholder="t('components.insertCreateOverlay.notePlaceholder')"
+        />
+      </label>
     </div>
-  </Teleport>
+  </CreateOverlayShell>
 </template>

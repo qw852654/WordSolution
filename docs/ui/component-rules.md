@@ -2113,3 +2113,73 @@ Rules:
 - unassigned insertion context must use `atomicSectionPanelId = null` and `teachingRole = Unclassified`;
 - `SectionInspector` may expose `AtomicSectionItem` teaching role and difficulty controls when the selected `ContentBlock` / `CompositeBlock` is an occurrence inside an `AtomicSection`; the inspector emits the intent, while `SectionPage` and `useAtomicSectionActions` call the real classification API;
 - `ComponentLab` should show only the current AtomicSection panel verification scenario for this round.
+## 当前补充约定：CreateOverlayShell
+
+`CreateOverlayShell` 是所有“创建 / 填写元数据”弹层的共享外壳。
+
+职责：
+
+- 负责全页 overlay。
+- 负责背景 `backdrop-blur`。
+- 负责统一的标题区、说明区、错误提示区和底部取消 / 确认按钮。
+- 负责提交表单的基础事件出口。
+
+边界：
+
+- 不理解 `ContentBlock`、`AtomicSection`、`AtomicSectionPanel` 等业务对象。
+- 不持有业务字段状态。
+- 不调用 API。
+- 不决定创建成功后的页面刷新、选中或滚动逻辑。
+
+使用规则：
+
+- 新增创建类弹层时，优先复用 `CreateOverlayShell`。
+- 具体字段表单放在业务 overlay 中，例如 `InsertCreateOverlay`、`AtomicSectionPanelCreateOverlay`。
+- 如果需要新增新的创建弹层，必须先在 `ComponentLab` 使用 Mock Data 验收，再接入真实页面。
+
+## 当前补充约定：AtomicSectionPanelCreateOverlay
+
+`AtomicSectionPanelCreateOverlay` 用于创建 `AtomicSectionPanel` 前填写元数据。
+
+字段：
+
+- 名称。
+- `TeachingRole`。
+- `Difficulty`。
+
+职责：
+
+- 复用 `CreateOverlayShell`。
+- 只负责字段输入、基础校验和 `submit` / `cancel` 事件。
+- 默认名称来自当前 `AtomicSection` 标题。
+- 默认 `TeachingRole = Knowledge`。
+- 默认 `Difficulty = Basic`。
+
+边界：
+
+- 不调用创建 API。
+- 不刷新 `SectionPage`。
+- 不修改 `AtomicSection` 或 `AtomicSectionPanel` 数据。
+- 不处理插入点、排序、删除等页面级动作。
+
+页面接入：
+
+- `SectionPage` 持有 overlay 打开状态。
+- `SectionPage` 在提交时调用 `createAtomicSectionPanel` action。
+- 创建成功后由 `SectionPage` 重新读取服务端确认后的数据，并选中新建 panel。
+
+## 当前补充约定：AtomicSectionPanel 内新建 ContentBlock 默认值
+
+当用户在 `AtomicSectionPanelBlock` 内部通过插入点新建 `ContentBlock` 时：
+
+- `ContentBlock` 类型默认来自当前 panel 的 `TeachingRole`。
+- `ContentBlock` 难度默认来自当前 panel 的 `Difficulty`。
+- 如果 panel 难度为 `Unset`，创建面板默认显示“未设置”，提交时传给后端 `Unset`。
+- `InsertCreateOverlay` 只负责展示和提交表单，不自行推断 panel 规则。
+- `AtomicSectionPanelBlock` 负责通过插入点上下文传出 `atomicSectionPanelId`、`teachingRole` 和 panel 难度。
+- `SectionPage` 负责把插入点上下文映射成创建面板默认字段，并在提交时调用页面级 action。
+
+边界：
+
+- Section 顶层、AtomicSection 未归组区、CompositeBlock 内部的新建默认值不因本规则改变。
+- 组件仍然不直接调用 API。
