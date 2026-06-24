@@ -199,6 +199,22 @@ public sealed class EfContentBlockVersionRepository(CmsV2DbContext context)
     }
 }
 
+public sealed class EfContentBlockVersionPartRepository(CmsV2DbContext context)
+    : EfRepository<ContentBlockVersionPart>(context), IContentBlockVersionPartRepository
+{
+    public Task<IReadOnlyList<ContentBlockVersionPart>> ListByContentBlockVersionAsync(
+        int contentBlockVersionId,
+        CancellationToken cancellationToken = default)
+    {
+        return ToReadOnlyListAsync(
+            Set.AsNoTracking()
+                .Where(part => part.ContentBlockVersionId == contentBlockVersionId)
+                .OrderBy(part => part.SortOrder)
+                .ThenBy(part => part.Id),
+            cancellationToken);
+    }
+}
+
 public sealed class EfContentBlockRelationRepository(CmsV2DbContext context)
     : EfRepository<ContentBlockRelation>(context), IContentBlockRelationRepository
 {

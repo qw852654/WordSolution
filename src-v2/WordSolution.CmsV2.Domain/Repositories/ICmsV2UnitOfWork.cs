@@ -22,6 +22,8 @@ public interface ICmsV2UnitOfWork
 
     IContentBlockVersionRepository ContentBlockVersions { get; }
 
+    IContentBlockVersionPartRepository ContentBlockVersionParts { get; }
+
     IContentBlockRelationRepository ContentBlockRelations { get; }
 
     IHandoutRepository Handouts { get; }

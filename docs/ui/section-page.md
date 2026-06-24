@@ -1143,7 +1143,8 @@ The Workspace must:
 - keep the page in the same Section context;
 - show an empty state when the `SectionVariant` contains no `SectionItem`.
 
-The first version does not support editing, deleting, renaming, copying, or reselecting `SectionVariant` contents from this mode.
+The first version does not support editing, renaming, copying, or reselecting `SectionVariant` contents from this mode.
+Deleting a `SectionVariant` is supported only from the `SectionTree` `SectionVariant` context menu; it does not happen inside the read-only Workspace view.
 
 ### Inspector behavior
 
@@ -1359,4 +1360,36 @@ docs/cms-v2/backend/题目结构化预览-输出样式重绑定-多题导入开�
 - `SectionPage` 不根据 Word 样式推断 `TeachingRole`。
 - 结构化预览组件必须先进入 `ComponentLab` 验收，再接入真实 `SectionPage`。
 
-第一版不在 `SectionPage` 中实现多题导入入口。多题导入属于后续独立流程，确认导入后的正式 `ContentBlock` 才进入 `SectionPage` 工作区。
+当前 `SectionPage` 已接入多题导入入口，但导入组件仍只负责候选题导入工作流。确认导入后的正式 `ContentBlock` 是否插入 `SectionPage` 工作区，由页面级导入上下文和后续插入逻辑决定。
+
+## 当前补充：多题导入组件上下文
+
+`SectionPage` 中的多题导入不再被视为“顶部工具栏专用功能”，而是一个可复用导入工作流。
+
+第一版已确认的导入目标包括：
+
+```text
+SectionTopLevel
+  在上帝小节顶层导入 ContentBlock。
+  后续自动插入时应创建顶层 SectionItem。
+
+AtomicSectionPanel
+  在 AtomicSection 内部具体 panel 中导入 ContentBlock。
+  后续自动插入时应创建 AtomicSectionItem，
+  并携带 AtomicSectionPanelId / TeachingRole / Difficulty。
+```
+
+当前本轮边界：
+
+- 抽出 `QuestionImportContext`，让同一 `QuestionImportDialog` 能表达不同导入目标。
+- 当前 Section 顶部入口使用 `SectionTopLevel` 上下文。
+- `AtomicSectionPanel` 上下文先作为复用口子保留，本轮不把入口接到 panel 内部。
+- 组件只负责上传、候选题、预览和确认元数据。
+- 组件不直接创建 `SectionItem` 或 `AtomicSectionItem`。
+- 插入到哪里必须由 `SectionPage` 或页面级 action 根据上下文决定。
+
+后续开发顺序：
+
+1. `SectionTopLevel`：确认候选题后创建 `ContentBlock`，并插入当前 Section 顶层末尾或指定插入点。
+2. `AtomicSectionPanel`：确认候选题后创建 `ContentBlock`，并插入当前 panel 内部。
+3. 如果后续支持其他导入目标，必须继续复用 `QuestionImportContext`，不得复制新的多题导入弹窗。

@@ -1,6 +1,7 @@
 using Aspose.Words;
 using Aspose.Words.Lists;
 using WordSolution.CmsV2.Domain.Documents;
+using WordSolution.CmsV2.Domain.Enums;
 
 namespace WordSolution.CmsV2.Infrastructure.Documents;
 
@@ -48,6 +49,7 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
             EnsureParentDirectory(outputDocxPath);
 
             var outputDocument = new Document(templateDocxPath);
+            ValidateRequiredOutputStyles(outputDocument, elements);
             var builder = new DocumentBuilder(outputDocument);
 
             builder.MoveToDocumentEnd();
@@ -86,7 +88,7 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
 
                 var sourceDocument = new Document(element.DocxPath!);
                 RemoveHeadersAndFooters(sourceDocument);
-                AppendBodyContent(outputDocument, sourceDocument);
+                AppendBodyContent(outputDocument, sourceDocument, element.OutputStemStyleName);
             }
 
             RebaseTopLevelNumberedParagraphs(outputDocument);
@@ -94,13 +96,43 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
         }, cancellationToken);
     }
 
-    private static void AppendBodyContent(Document outputDocument, Document sourceDocument)
+    private static void ValidateRequiredOutputStyles(
+        Document outputDocument,
+        IReadOnlyList<HandoutDocumentElement> elements)
+    {
+        var requiredStyleNames = elements
+            .Where(element => element.Kind == HandoutDocumentElementKind.ContentBlock)
+            .Select(element => element.OutputStemStyleName)
+            .Where(styleName => !string.IsNullOrWhiteSpace(styleName))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        foreach (var styleName in requiredStyleNames)
+        {
+            if (FindParagraphStyle(outputDocument, styleName!) is null)
+            {
+                throw new HandoutDocumentGenerationException(
+                    $"OutputTemplate is missing required style '{styleName}' for question stem output.");
+            }
+        }
+    }
+
+    private static void AppendBodyContent(
+        Document outputDocument,
+        Document sourceDocument,
+        string? outputStemStyleName)
     {
         var importer = new NodeImporter(
             sourceDocument,
             outputDocument,
             ImportFormatMode.KeepSourceFormatting);
         var targetBody = outputDocument.LastSection.Body;
+        var outputStyle = string.IsNullOrWhiteSpace(outputStemStyleName)
+            ? null
+            : FindParagraphStyle(outputDocument, outputStemStyleName)
+                ?? throw new HandoutDocumentGenerationException(
+                    $"OutputTemplate is missing required style '{outputStemStyleName}' for question stem output.");
+        var stemStyleRebound = false;
 
         foreach (Section sourceSection in sourceDocument.Sections)
         {
@@ -108,8 +140,99 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
             {
                 var importedNode = importer.ImportNode(sourceNode, isImportChildren: true);
                 targetBody.AppendChild(importedNode);
+
+                if (outputStyle is not null && !stemStyleRebound)
+                {
+                    stemStyleRebound = TryRebindImportedStemParagraph(sourceNode, importedNode, outputStyle);
+                }
             }
         }
+    }
+
+    private static bool TryRebindImportedStemParagraph(Node sourceNode, Node importedNode, Style outputStyle)
+    {
+        var sourceParagraphs = GetImportedParagraphs(sourceNode).ToArray();
+        var stemIndex = Array.FindIndex(sourceParagraphs, IsEffectiveStemParagraph);
+        if (stemIndex < 0)
+        {
+            return false;
+        }
+
+        var importedParagraphs = GetImportedParagraphs(importedNode).ToArray();
+        if (stemIndex >= importedParagraphs.Length)
+        {
+            return false;
+        }
+
+        RebindParagraphStyle(importedParagraphs[stemIndex], outputStyle);
+        return true;
+    }
+
+    private static void RebindParagraphStyle(Paragraph paragraph, Style outputStyle)
+    {
+        paragraph.ParagraphFormat.ClearFormatting();
+        paragraph.ParagraphFormat.Style = outputStyle;
+        paragraph.ParagraphFormat.StyleName = outputStyle.Name;
+        foreach (Run run in paragraph.GetChildNodes(NodeType.Run, true).OfType<Run>())
+        {
+            run.Font.ClearFormatting();
+        }
+    }
+
+    private static IEnumerable<Paragraph> GetImportedParagraphs(Node node)
+    {
+        if (node is Paragraph paragraph)
+        {
+            yield return paragraph;
+        }
+
+        if (node is not CompositeNode compositeNode)
+        {
+            yield break;
+        }
+
+        foreach (var childParagraph in compositeNode.GetChildNodes(NodeType.Paragraph, true).OfType<Paragraph>())
+        {
+            yield return childParagraph;
+        }
+    }
+
+    private static bool IsEffectiveStemParagraph(Paragraph paragraph)
+    {
+        var text = paragraph.GetText();
+        if (string.IsNullOrWhiteSpace(text) || IsAsposeEvaluationParagraph(text))
+        {
+            return false;
+        }
+
+        var partType = ResolveParagraphPartType(paragraph);
+        return partType is ContentBlockPartType.Stem or ContentBlockPartType.Other;
+    }
+
+    private static ContentBlockPartType ResolveParagraphPartType(Paragraph paragraph)
+    {
+        var styleNamePartType = QuestionPartStyleOptions.Default.ResolvePartType(paragraph.ParagraphFormat.StyleName);
+        if (styleNamePartType != ContentBlockPartType.Other)
+        {
+            return styleNamePartType;
+        }
+
+        return QuestionPartStyleOptions.Default.ResolvePartType(paragraph.ParagraphFormat.Style?.Name);
+    }
+
+    private static bool IsAsposeEvaluationParagraph(string text)
+    {
+        return text.Contains("Created with an evaluation copy of Aspose.Words", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("Evaluation Only. Created with Aspose.Words", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static Style? FindParagraphStyle(Document document, string styleName)
+    {
+        return document.Styles
+            .OfType<Style>()
+            .FirstOrDefault(style =>
+                style.Type == StyleType.Paragraph
+                && string.Equals(style.Name, styleName.Trim(), StringComparison.OrdinalIgnoreCase));
     }
 
     private static void WriteHeading(DocumentBuilder builder, string title, int headingLevel)

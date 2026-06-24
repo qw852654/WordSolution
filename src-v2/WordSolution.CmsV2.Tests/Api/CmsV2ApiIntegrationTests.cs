@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Security;
 using System.Text;
 using System.Text.Json;
+using Aspose.Words;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -122,6 +123,108 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.Equal(2, imported.GetProperty("versionNumber").GetInt32());
         Assert.Equal(2, updatedVersions.Length);
         Assert.Equal(firstVersionId, setCurrent.GetProperty("contentBlockVersionId").GetInt32());
+    }
+
+    [Fact]
+    public async Task ContentBlock_version_parts_endpoint_returns_structured_question_parts()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "结构化题目", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "结构化 Section", type = "NormalCourse", difficulty = "Medium", status = "Draft" });
+        var sectionId = section.GetProperty("id").GetInt32();
+        var contentBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks",
+            new
+            {
+                sectionId,
+                title = "题目",
+                blockType = "Question",
+                difficulty = "Medium",
+                status = "Draft"
+            });
+        var contentBlockId = contentBlock.GetProperty("id").GetInt32();
+        var importDocxPath = Path.Combine(factory.BankRootDirectory, "imports", "styled-question.docx");
+        CreateStyledQuestionDocx(importDocxPath);
+
+        await using var importStream = File.OpenRead(importDocxPath);
+        using var form = new MultipartFormDataContent
+        {
+            { new StreamContent(importStream), "file", "styled-question.docx" },
+            { new StringContent("true"), "setAsCurrent" }
+        };
+        var importedResponse = await client.PostAsync($"/api/cms-v2/content-blocks/{contentBlockId}/versions/import", form);
+        var imported = await ReadSuccessJsonAsync(importedResponse);
+        var versionId = imported.GetProperty("contentBlockVersionId").GetInt32();
+        var versions = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/content-blocks/{contentBlockId}/versions")
+            ?? [];
+        var parts = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/content-blocks/{contentBlockId}/versions/{versionId}/parts")
+            ?? [];
+        var html = await client.GetStringAsync($"/api/cms-v2/content-blocks/{contentBlockId}/versions/{versionId}/html-preview");
+
+        Assert.Contains(versions, version =>
+            version.GetProperty("id").GetInt32() == versionId
+            && version.GetProperty("partParseStatus").GetString() == "Parsed");
+        Assert.Equal(["Stem", "Answer", "Analysis"], parts.Select(part => part.GetProperty("partType").GetString()));
+        Assert.Contains("data-question-part=\"Stem\"", html);
+    }
+
+    [Fact]
+    public async Task Question_import_session_endpoints_split_preview_and_confirm_candidate()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "多题导入", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "多题导入 Section", type = "NormalCourse", difficulty = "Medium", status = "Draft" });
+        var sectionId = section.GetProperty("id").GetInt32();
+        var importDocxPath = Path.Combine(factory.BankRootDirectory, "imports", "multi-question-import.docx");
+        CreateMultiQuestionImportDocx(importDocxPath);
+
+        await using var importStream = File.OpenRead(importDocxPath);
+        using var form = new MultipartFormDataContent
+        {
+            { new StreamContent(importStream), "file", "multi-question-import.docx" },
+            { new StringContent($"{sectionId}"), "sectionId" }
+        };
+        var createSessionResponse = await client.PostAsync("/api/cms-v2/question-import-sessions", form);
+        var createdSession = await ReadSuccessJsonAsync(createSessionResponse);
+        var sessionId = createdSession.GetProperty("sessionId").GetString()!;
+        var session = await client.GetFromJsonAsync<JsonElement>($"/api/cms-v2/question-import-sessions/{sessionId}");
+        var candidates = session.GetProperty("candidates").EnumerateArray().ToArray();
+        var firstCandidateId = candidates[0].GetProperty("candidateId").GetString();
+
+        var confirmed = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/question-import-sessions/{sessionId}/candidates/{firstCandidateId}/confirm",
+            new
+            {
+                sectionId,
+                title = "确认导入题目",
+                blockType = "Question",
+                summary = "多题导入候选确认",
+                difficulty = "Medium",
+                questionType = "Calculation"
+            });
+        var contentBlockId = confirmed.GetProperty("contentBlockId").GetInt32();
+        var versionId = confirmed.GetProperty("contentBlockVersionId").GetInt32();
+        var parts = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/content-blocks/{contentBlockId}/versions/{versionId}/parts")
+            ?? [];
+
+        Assert.Equal(3, candidates.Length);
+        Assert.All(candidates, candidate =>
+        {
+            Assert.Equal("Parsed", candidate.GetProperty("parseStatus").GetString());
+            Assert.Contains("data-question-part=\"Stem\"", candidate.GetProperty("htmlPreview").GetString());
+        });
+        Assert.DoesNotContain("导入前说明", string.Join("\n", candidates.Select(candidate => candidate.GetProperty("htmlPreview").GetString())));
+        Assert.Equal(["Stem", "Answer"], parts.Select(part => part.GetProperty("partType").GetString()));
     }
 
     [Fact]
@@ -1368,6 +1471,60 @@ public sealed class CmsV2ApiIntegrationTests
               </w:body>
             </w:document>
             """);
+    }
+
+    private static void CreateStyledQuestionDocx(string docxPath)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(docxPath)!);
+
+        var document = new Document();
+        var body = document.FirstSection.Body;
+        body.RemoveAllChildren();
+
+        AddStyledParagraph(document, body, "例题", "题干第一段");
+        AddStyledParagraph(document, body, "答案", "答案第一段");
+        AddStyledParagraph(document, body, "解析", "解析第一段");
+
+        document.Save(docxPath);
+    }
+
+    private static void CreateMultiQuestionImportDocx(string docxPath)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(docxPath)!);
+
+        var document = new Document();
+        var body = document.FirstSection.Body;
+        body.RemoveAllChildren();
+
+        AddStyledParagraph(document, body, "正文", "导入前说明，应该被丢弃。");
+        AddStyledParagraph(document, body, "例题", "第一题题干");
+        AddStyledParagraph(document, body, "答案", "第一题答案");
+        AddStyledParagraph(document, body, "典型例题", "第二题题干");
+        AddStyledParagraph(document, body, "答案", "第二题答案");
+        AddStyledParagraph(document, body, "练习题", "第三题题干");
+        AddStyledParagraph(document, body, "答案", "第三题答案");
+
+        document.Save(docxPath);
+    }
+
+    private static void AddStyledParagraph(Document document, Body body, string styleName, string text)
+    {
+        EnsureParagraphStyle(document, styleName);
+        var paragraph = new Paragraph(document);
+        paragraph.ParagraphFormat.StyleName = styleName;
+        paragraph.AppendChild(new Run(document, text));
+        body.AppendChild(paragraph);
+    }
+
+    private static void EnsureParagraphStyle(Document document, string styleName)
+    {
+        if (document.Styles[styleName] is not null)
+        {
+            return;
+        }
+
+        var style = document.Styles.Add(StyleType.Paragraph, styleName);
+        style.Font.Name = "宋体";
     }
 
     private static async Task WriteEntryAsync(ZipArchive archive, string entryName, string content)

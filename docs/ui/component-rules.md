@@ -2224,3 +2224,78 @@ docs/cms-v2/backend/题目结构化预览-输出样式重绑定-多题导入开�
 - 解析失败。
 - 非题目内容块 `NotApplicable`。
 - 无 Word 文档。
+
+## 当前补充约定：QuestionImportDialog
+
+`QuestionImportDialog` 用于 `SectionPage` 中的多题 Word 临时导入流程。
+
+职责：
+
+- 选择并上传 `.docx` 文件。
+- 展示后端返回的临时候选题列表。
+- 展示候选题结构化 HTML 预览。
+- 展示候选题解析状态、警告和失败信息。
+- 为单个候选题填写确认导入时的轻量元数据。
+- 只发出 `upload`、`confirmCandidate`、`cancelSession`、`close` 事件。
+
+边界：
+
+- 不直接调用 CMS V2 API。
+- 不创建正式 `ContentBlock`。
+- 不把导入后的 `ContentBlock` 自动插入 `Section` 文档流。
+- 不解析 Word 样式。
+- 不持有 `SectionPage` 全局状态。
+
+页面接入：
+
+- `SectionPage` 负责调用 `question-import-sessions` 相关 API。
+- `SectionPage` 负责保存临时 session、错误提示和成功反馈。
+- `SectionPage` 负责在确认候选题后刷新当前 Section 数据。
+
+验收要求：
+
+- 上传多题 Word 后能看到候选题列表。
+- 点击候选题能看到结构化预览。
+- 确认候选题时能填写名称、备注、难度、题型。
+- 名称允许留空。
+- 取消导入会话会删除临时文件。
+- 导入失败时只显示错误，不伪造成功状态。
+
+### QuestionImportDialog 可复用上下文
+
+`QuestionImportDialog` 必须作为“多题导入工作流组件”使用，而不是只服务于 Section 顶部按钮的一次性弹窗。
+
+组件通过 `QuestionImportContext` 接收导入目标：
+
+```text
+SectionTopLevel
+  当前 Section 顶层导入。
+  后续确认候选题后，由页面级逻辑决定是否创建顶层 SectionItem。
+
+AtomicSectionPanel
+  当前 AtomicSectionPanel 内部导入。
+  后续确认候选题后，由页面级逻辑决定是否创建 AtomicSectionItem，
+  并写入 AtomicSectionPanelId / TeachingRole / Difficulty。
+```
+
+组件职责保持不变：
+
+- 选择并上传 `.docx` 文件。
+- 展示后端返回的临时候选题。
+- 展示候选题结构化 HTML 预览。
+- 为单个候选题填写轻量元数据。
+- 发出 `upload`、`confirmCandidate`、`cancelSession`、`close` 事件。
+
+组件禁止：
+
+- 直接调用 CMS V2 API。
+- 直接创建正式 `ContentBlock`。
+- 直接创建 `SectionItem`、`AtomicSectionItem` 或 `ContentBlockRelation`。
+- 根据 `QuestionImportContext` 自行决定插入位置。
+- 为 Section 顶层和 AtomicSectionPanel 分别复制两套导入 UI。
+
+页面级职责：
+
+- `SectionPage` 负责根据 `QuestionImportContext` 调用 API。
+- `SectionPage` 负责在确认候选题后刷新数据。
+- 后续如果需要“确认导入后自动插入当前位置”，也必须由 `SectionPage` 或页面级 action 完成，不进入 `QuestionImportDialog`。

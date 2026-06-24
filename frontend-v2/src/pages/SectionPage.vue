@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import SectionInspector from '@/components/business/SectionInspector.vue'
 import SectionTreeContextMenu from '@/components/business/SectionTreeContextMenu.vue'
 import SectionVariantCreatePanel from '@/components/business/SectionVariantCreatePanel.vue'
+import QuestionImportDialog from '@/components/business/QuestionImportDialog.vue'
 import AtomicSectionPanelCreateOverlay from '@/components/business/AtomicSectionPanelCreateOverlay.vue'
 import TeachingTopicTree from '@/components/business/TeachingTopicTree.vue'
 import TeachingTopicTreeContextMenu from '@/components/business/TeachingTopicTreeContextMenu.vue'
@@ -14,6 +15,7 @@ import SectionTopToolbar from '@/components/containers/SectionTopToolbar.vue'
 import SectionWorkspace from '@/components/containers/SectionWorkspace.vue'
 import {
   cmsV2Api,
+  type CmsV2QuestionImportSessionDto,
   type CmsV2SectionVariantItemDto,
   type CmsV2SectionVariantSelectionCandidateDto,
 } from '@/apis/cmsV2Client'
@@ -42,6 +44,8 @@ import type {
   AtomicSectionItemMovePayload,
   ContentBlockRelationActionPayload,
   ContentBlockRelationMovePayload,
+  QuestionImportConfirmPayload,
+  QuestionImportContext,
   SectionPageShellModel,
   SectionVariantCreateMetadata,
   SectionVariantPreviewState,
@@ -102,6 +106,11 @@ const isCreatingAtomicSectionPanel = ref(false)
 const isDeletingContentBlockCascade = ref(false)
 const isUpdatingAtomicSectionItemClassification = ref(false)
 const atomicSectionPanelCreateError = ref('')
+const questionImportOpen = ref(false)
+const questionImportSession = ref<CmsV2QuestionImportSessionDto | null>(null)
+const questionImportBusy = ref(false)
+const questionImportError = ref('')
+const questionImportFeedback = ref('')
 
 function resolveSectionItemRemoveError(error: unknown, fallback: string) {
   const message = error instanceof Error ? error.message : ''
@@ -441,6 +450,114 @@ function getCurrentNumericSectionId() {
   const currentSectionId = Number(sectionShell.value.sectionId)
 
   return Number.isInteger(currentSectionId) && currentSectionId > 0 ? currentSectionId : undefined
+}
+
+const questionImportContext = computed<QuestionImportContext>(() => ({
+  target: 'SectionTopLevel',
+  sectionId: getCurrentNumericSectionId() ?? 0,
+  sectionTitle: sectionShell.value.title,
+}))
+
+function openQuestionImportDialog() {
+  const currentSectionId = getCurrentNumericSectionId()
+  if (!currentSectionId) {
+    questionImportError.value = t('sectionPage.questionImport.missingSection')
+    questionImportOpen.value = true
+    return
+  }
+
+  questionImportOpen.value = true
+  questionImportError.value = ''
+  questionImportFeedback.value = ''
+}
+
+function closeQuestionImportDialog() {
+  if (questionImportBusy.value) {
+    return
+  }
+
+  questionImportOpen.value = false
+  questionImportError.value = ''
+}
+
+async function uploadQuestionImportFile(file: File) {
+  const currentSectionId = getCurrentNumericSectionId()
+  if (!currentSectionId) {
+    questionImportError.value = t('sectionPage.questionImport.missingSection')
+    return
+  }
+
+  questionImportBusy.value = true
+  questionImportError.value = ''
+  questionImportFeedback.value = t('sectionPage.questionImport.uploading')
+
+  try {
+    questionImportSession.value = await cmsV2Api.createQuestionImportSession(currentSectionId, file)
+    questionImportFeedback.value = t('sectionPage.questionImport.uploaded', {
+      count: questionImportSession.value.candidates.length,
+    })
+  } catch (error) {
+    questionImportError.value =
+      error instanceof Error ? error.message : t('sectionPage.questionImport.uploadFailed')
+  } finally {
+    questionImportBusy.value = false
+  }
+}
+
+async function confirmQuestionImportCandidate(payload: QuestionImportConfirmPayload) {
+  const currentSectionId = getCurrentNumericSectionId()
+  const sessionId = questionImportSession.value?.sessionId
+  if (!currentSectionId || !sessionId) {
+    questionImportError.value = t('sectionPage.questionImport.missingSession')
+    return
+  }
+
+  questionImportBusy.value = true
+  questionImportError.value = ''
+  questionImportFeedback.value = t('sectionPage.questionImport.confirming')
+
+  try {
+    const result = await cmsV2Api.confirmQuestionImportCandidate(sessionId, payload.candidateId, {
+      sectionId: currentSectionId,
+      title: payload.title,
+      blockType: 'Question',
+      summary: payload.summary,
+      difficulty: payload.difficulty,
+      questionType: payload.questionType === 'Unset' ? null : payload.questionType,
+    })
+    questionImportFeedback.value = t('sectionPage.questionImport.confirmed', {
+      contentBlockId: result.contentBlockId,
+    })
+    await loadCurrentSectionPage()
+  } catch (error) {
+    questionImportError.value =
+      error instanceof Error ? error.message : t('sectionPage.questionImport.confirmFailed')
+  } finally {
+    questionImportBusy.value = false
+  }
+}
+
+async function cancelQuestionImportSession() {
+  const sessionId = questionImportSession.value?.sessionId
+  if (!sessionId) {
+    questionImportOpen.value = false
+    return
+  }
+
+  questionImportBusy.value = true
+  questionImportError.value = ''
+
+  try {
+    await cmsV2Api.cancelQuestionImportSession(sessionId)
+    questionImportSession.value = null
+    questionImportFeedback.value = ''
+    questionImportOpen.value = false
+  } catch (error) {
+    questionImportError.value =
+      error instanceof Error ? error.message : t('sectionPage.questionImport.cancelFailed')
+  } finally {
+    questionImportBusy.value = false
+  }
 }
 
 function selectStructureNode(nodeId: string) {
@@ -2490,7 +2607,7 @@ watch(sectionId, () => {
       />
 
       <aside class="flex min-h-0 flex-col gap-3">
-        <SectionTopToolbar />
+        <SectionTopToolbar @request-question-import="openQuestionImportDialog" />
         <SectionInspector
           class="min-h-0 flex-1"
           :node="selectedStructureNode"
@@ -2521,6 +2638,19 @@ watch(sectionId, () => {
       :error-message="atomicSectionPanelCreateError"
       @cancel="cancelAtomicSectionPanelCreateOverlay"
       @submit="submitAtomicSectionPanelCreateOverlay"
+    />
+
+    <QuestionImportDialog
+      :open="questionImportOpen"
+      :import-context="questionImportContext"
+      :session="questionImportSession"
+      :busy="questionImportBusy"
+      :error-message="questionImportError"
+      :feedback-message="questionImportFeedback"
+      @close="closeQuestionImportDialog"
+      @upload="uploadQuestionImportFile"
+      @confirm-candidate="confirmQuestionImportCandidate"
+      @cancel-session="cancelQuestionImportSession"
     />
 
     <Teleport to="body">

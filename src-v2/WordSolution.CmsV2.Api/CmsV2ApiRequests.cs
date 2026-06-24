@@ -65,6 +65,14 @@ public sealed record CreateContentBlockRequest(
     QuestionType? QuestionType = null,
     ContentBlockStatus Status = ContentBlockStatus.Draft);
 
+public sealed record ConfirmQuestionImportCandidateRequest(
+    int SectionId,
+    string Title,
+    ContentBlockType BlockType,
+    string? Summary = null,
+    Difficulty Difficulty = Difficulty.Unset,
+    QuestionType? QuestionType = null);
+
 public sealed record SetCurrentContentBlockVersionRequest(int ContentBlockVersionId);
 
 public sealed record CreateContentBlockEditSessionRequest(bool OpenWord = true);

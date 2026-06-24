@@ -5,6 +5,7 @@ import type {
   CmsV2AtomicSectionPanelDto,
   CmsV2ContentBlockDto,
   CmsV2ContentBlockRelationDto,
+  CmsV2ContentBlockVersionPartDto,
   CmsV2ContentBlockVersionDto,
   CmsV2SectionDto,
   CmsV2SectionItemDto,
@@ -59,6 +60,7 @@ interface SectionDataBuildContext {
   atomicSectionItemsCache: Map<number, Promise<CmsV2AtomicSectionItemDto[]>>
   atomicSectionPanelsCache: Map<number, Promise<CmsV2AtomicSectionPanelDto[]>>
   relationCache: Map<number, Promise<CmsV2ContentBlockRelationDto[]>>
+  partCache: Map<number, Promise<CmsV2ContentBlockVersionPartDto[]>>
   workspaceNodeMap: Record<string, string>
 }
 
@@ -87,6 +89,7 @@ export async function loadSectionPageData(routeSectionId?: string): Promise<Sect
   const atomicSectionItemsCache = new Map<number, Promise<CmsV2AtomicSectionItemDto[]>>()
   const atomicSectionPanelsCache = new Map<number, Promise<CmsV2AtomicSectionPanelDto[]>>()
   const relationCache = new Map<number, Promise<CmsV2ContentBlockRelationDto[]>>()
+  const partCache = new Map<number, Promise<CmsV2ContentBlockVersionPartDto[]>>()
   const workspaceNodeMap: Record<string, string> = {}
 
   const context = {
@@ -95,6 +98,7 @@ export async function loadSectionPageData(routeSectionId?: string): Promise<Sect
     atomicSectionItemsCache,
     atomicSectionPanelsCache,
     relationCache,
+    partCache,
     workspaceNodeMap,
   }
 
@@ -257,6 +261,32 @@ async function resolveContentBlockRelations(
   return await request
 }
 
+async function resolveContentBlockVersionParts(
+  contentBlockId: number,
+  version: CmsV2ContentBlockVersionDto | undefined,
+  context: {
+    partCache: Map<number, Promise<CmsV2ContentBlockVersionPartDto[]>>
+  },
+) {
+  if (
+    !version ||
+    (version.partParseStatus !== 'Parsed' && version.partParseStatus !== 'ParsedWithWarnings')
+  ) {
+    return []
+  }
+
+  const cached = context.partCache.get(version.id)
+  if (cached) {
+    return await cached
+  }
+
+  const request = cmsV2Api
+    .listContentBlockVersionParts(contentBlockId, version.id)
+    .then((parts) => [...parts].sort((left, right) => left.sortOrder - right.sortOrder || left.id - right.id))
+  context.partCache.set(version.id, request)
+  return await request
+}
+
 function hasContentBlockWordDocument(resolvedBlock: ResolvedContentBlock) {
   return Boolean(getDisplayVersion(resolvedBlock.versions, 'FollowLatest'))
 }
@@ -358,6 +388,7 @@ async function buildAtomicSectionItemNode(
   context: {
     blockCache: Map<number, Promise<ResolvedContentBlock>>
     relationCache: Map<number, Promise<CmsV2ContentBlockRelationDto[]>>
+    partCache: Map<number, Promise<CmsV2ContentBlockVersionPartDto[]>>
     workspaceNodeMap: Record<string, string>
   },
 ): Promise<SectionTreeNodeModel> {
@@ -444,6 +475,7 @@ async function buildContentBlockRelationNode(
   context: {
     blockCache: Map<number, Promise<ResolvedContentBlock>>
     relationCache: Map<number, Promise<CmsV2ContentBlockRelationDto[]>>
+    partCache: Map<number, Promise<CmsV2ContentBlockVersionPartDto[]>>
     workspaceNodeMap: Record<string, string>
   },
 ): Promise<SectionTreeNodeModel> {
@@ -539,6 +571,7 @@ async function buildSectionFlowItem(
         resolvedBlock,
         item.referenceMode,
         item.lockedContentBlockVersionId,
+        context,
       ),
     }
   }
@@ -567,6 +600,7 @@ async function buildSectionFlowItem(
           resolvedBlock,
           item.referenceMode,
           item.lockedContentBlockVersionId,
+          context,
           item.titleOverride,
         ),
         status: mapStatus(resolvedBlock.block.status),
@@ -601,6 +635,7 @@ async function buildStructuredBlockChildFromAtomicSectionItem(
   context: {
     blockCache: Map<number, Promise<ResolvedContentBlock>>
     relationCache: Map<number, Promise<CmsV2ContentBlockRelationDto[]>>
+    partCache: Map<number, Promise<CmsV2ContentBlockVersionPartDto[]>>
     workspaceNodeMap: Record<string, string>
   },
 ): Promise<StructuredBlockChildModel> {
@@ -630,6 +665,7 @@ async function buildStructuredBlockChildFromRelation(
   context: {
     blockCache: Map<number, Promise<ResolvedContentBlock>>
     relationCache: Map<number, Promise<CmsV2ContentBlockRelationDto[]>>
+    partCache: Map<number, Promise<CmsV2ContentBlockVersionPartDto[]>>
     workspaceNodeMap: Record<string, string>
   },
 ): Promise<StructuredBlockChildModel> {
@@ -660,6 +696,7 @@ async function buildStructuredBlockChild(
   titleOverride: string | null | undefined,
   context: {
     relationCache: Map<number, Promise<CmsV2ContentBlockRelationDto[]>>
+    partCache: Map<number, Promise<CmsV2ContentBlockVersionPartDto[]>>
     workspaceNodeMap: Record<string, string>
     blockCache: Map<number, Promise<ResolvedContentBlock>>
   },
@@ -686,6 +723,7 @@ async function buildStructuredBlockChild(
         resolvedBlock,
         referenceMode,
         lockedVersionId,
+        context,
         titleOverride,
       ),
     }
@@ -720,6 +758,7 @@ async function buildStructuredBlockChild(
         resolvedBlock,
         referenceMode,
         lockedVersionId,
+        context,
         titleOverride,
       ),
       status: mapStatus(resolvedBlock.block.status),
@@ -736,10 +775,17 @@ async function buildContentBlockDisplay(
   resolvedBlock: ResolvedContentBlock,
   referenceMode: SectionReferenceMode,
   lockedVersionId?: number | null,
+  context?: {
+    partCache: Map<number, Promise<CmsV2ContentBlockVersionPartDto[]>>
+  },
   titleOverride?: string | null,
 ): Promise<ContentBlockDisplayModel> {
   const version = getDisplayVersion(resolvedBlock.versions, referenceMode, lockedVersionId)
   const htmlPreview = await readHtmlPreview(resolvedBlock.block.id, referenceMode, version?.id)
+  const parts =
+    context && version
+      ? await resolveContentBlockVersionParts(resolvedBlock.block.id, version, context)
+      : []
 
   return {
     id,
@@ -752,6 +798,15 @@ async function buildContentBlockDisplay(
     versionLabel: version ? `v${version.versionNumber}` : '未设置',
     htmlPreviewState: htmlPreview ? 'ready' : 'empty',
     htmlPreview,
+    partParseStatus: version?.partParseStatus ?? 'NotApplicable',
+    partParseMessage: version?.partParseMessage ?? null,
+    parts: parts.map((part) => ({
+      id: `${id}-part-${part.id}`,
+      partType: part.partType,
+      sortOrder: part.sortOrder,
+      plainText: part.plainText,
+      warningMessage: part.warningMessage,
+    })),
     disabled: resolvedBlock.block.status === 'Archived',
   }
 }

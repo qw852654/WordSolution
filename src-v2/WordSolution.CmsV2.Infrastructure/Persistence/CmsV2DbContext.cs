@@ -25,6 +25,8 @@ public sealed class CmsV2DbContext(DbContextOptions<CmsV2DbContext> options) : D
 
     public DbSet<ContentBlockVersion> ContentBlockVersions => Set<ContentBlockVersion>();
 
+    public DbSet<ContentBlockVersionPart> ContentBlockVersionParts => Set<ContentBlockVersionPart>();
+
     public DbSet<ContentBlockRelation> ContentBlockRelations => Set<ContentBlockRelation>();
 
     public DbSet<Handout> Handouts => Set<Handout>();

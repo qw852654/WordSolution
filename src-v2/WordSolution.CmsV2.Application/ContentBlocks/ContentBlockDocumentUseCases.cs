@@ -1,7 +1,9 @@
 using WordSolution.CmsV2.Application.Common;
 using WordSolution.CmsV2.Domain.Documents;
 using WordSolution.CmsV2.Domain.Entities;
+using WordSolution.CmsV2.Domain.Enums;
 using WordSolution.CmsV2.Domain.Repositories;
+using System.Text.Json;
 
 namespace WordSolution.CmsV2.Application.ContentBlocks;
 
@@ -227,6 +229,11 @@ public sealed class ContentBlockDocumentUseCases
         await _unitOfWork.ContentBlockVersions.AddAsync(version, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        if (ShouldGenerateQuestionParts(contentBlock.BlockType))
+        {
+            await GenerateQuestionPartsAsync(version, docxPath, htmlPreviewPath, cancellationToken);
+        }
+
         if (setAsCurrent)
         {
             version.MarkCurrent();
@@ -243,6 +250,52 @@ public sealed class ContentBlockDocumentUseCases
             docxPath,
             htmlPreviewPath,
             plainTextPath);
+    }
+
+    private async Task GenerateQuestionPartsAsync(
+        ContentBlockVersion version,
+        string docxPath,
+        string htmlPreviewPath,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var parseResult = await _documentProcessor.GenerateQuestionPartHtmlPreviewAsync(
+                docxPath,
+                htmlPreviewPath,
+                cancellationToken);
+
+            foreach (var part in parseResult.Parts)
+            {
+                await _unitOfWork.ContentBlockVersionParts.AddAsync(
+                    new ContentBlockVersionPart(
+                        version.Id,
+                        part.PartType,
+                        part.SortOrder,
+                        part.PlainText,
+                        JsonSerializer.Serialize(part.SourceStyleNames),
+                        part.WarningMessage),
+                    cancellationToken);
+            }
+
+            version.MarkPartParsed(parseResult.Status, parseResult.Message);
+            _unitOfWork.ContentBlockVersions.Update(version);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            version.MarkPartParsed(ContentBlockPartParseStatus.Failed, exception.Message);
+            _unitOfWork.ContentBlockVersions.Update(version);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    private static bool ShouldGenerateQuestionParts(ContentBlockType blockType)
+    {
+        return blockType is ContentBlockType.Question
+            or ContentBlockType.ExampleGroup
+            or ContentBlockType.ExerciseGroup
+            or ContentBlockType.VariantGroup;
     }
 
     private async Task<ContentBlock> RequireContentBlockAsync(int contentBlockId, CancellationToken cancellationToken)

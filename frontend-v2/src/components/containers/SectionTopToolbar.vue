@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { RefreshCw, Undo2 } from 'lucide-vue-next'
+import { FileUp, RefreshCw, Undo2 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 
 const { t } = useI18n()
+defineEmits<{
+  requestQuestionImport: []
+}>()
 
 const selectedQuestionBankId = ref('test')
 const questionBanks = [
@@ -27,6 +30,16 @@ const questionBanks = [
       <Button type="button" size="sm" variant="outline" class="h-8 px-2 text-xs" disabled>
         <RefreshCw class="size-3.5" />
         {{ t('sectionPage.toolbar.refresh') }}
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        class="h-8 px-2 text-xs"
+        @click="$emit('requestQuestionImport')"
+      >
+        <FileUp class="size-3.5" />
+        {{ t('sectionPage.toolbar.questionImport') }}
       </Button>
       <select
         v-model="selectedQuestionBankId"

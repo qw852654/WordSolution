@@ -184,6 +184,60 @@ public sealed class DomainModelRuleTests
     }
 
     [Fact]
+    public void Content_block_version_records_question_part_parse_status()
+    {
+        var updatedTime = new DateTimeOffset(2026, 6, 24, 8, 0, 0, TimeSpan.Zero);
+        var version = new ContentBlockVersion(
+            contentBlockId: 1,
+            versionNumber: 1,
+            docxPath: "content-blocks/source/1/v1.docx");
+
+        Assert.Equal(ContentBlockPartParseStatus.NotApplicable, version.PartParseStatus);
+        Assert.Null(version.PartParseMessage);
+
+        version.MarkPartParsed(
+            ContentBlockPartParseStatus.ParsedWithWarnings,
+            "Unknown style: 自定义样式",
+            updatedTime);
+
+        Assert.Equal(ContentBlockPartParseStatus.ParsedWithWarnings, version.PartParseStatus);
+        Assert.Equal("Unknown style: 自定义样式", version.PartParseMessage);
+        Assert.Equal(updatedTime, version.UpdatedTime);
+    }
+
+    [Fact]
+    public void Content_block_version_part_requires_valid_version_type_and_sort_order()
+    {
+        var part = new ContentBlockVersionPart(
+            contentBlockVersionId: 1,
+            partType: ContentBlockPartType.Stem,
+            sortOrder: 0,
+            plainText: " 题干 ",
+            sourceStyleNamesJson: """["例题","正文"]""",
+            warningMessage: " warning ");
+
+        Assert.Equal(1, part.ContentBlockVersionId);
+        Assert.Equal(ContentBlockPartType.Stem, part.PartType);
+        Assert.Equal(0, part.SortOrder);
+        Assert.Equal(" 题干 ", part.PlainText);
+        Assert.Equal("""["例题","正文"]""", part.SourceStyleNamesJson);
+        Assert.Equal("warning", part.WarningMessage);
+
+        Assert.Throws<DomainException>(() => new ContentBlockVersionPart(
+            contentBlockVersionId: 0,
+            partType: ContentBlockPartType.Stem,
+            sortOrder: 0));
+        Assert.Throws<DomainException>(() => new ContentBlockVersionPart(
+            contentBlockVersionId: 1,
+            partType: (ContentBlockPartType)999,
+            sortOrder: 0));
+        Assert.Throws<DomainException>(() => new ContentBlockVersionPart(
+            contentBlockVersionId: 1,
+            partType: ContentBlockPartType.Stem,
+            sortOrder: -1));
+    }
+
+    [Fact]
     public void Generated_file_records_generated_time()
     {
         var generatedTime = new DateTimeOffset(2026, 6, 9, 8, 30, 0, TimeSpan.Zero);

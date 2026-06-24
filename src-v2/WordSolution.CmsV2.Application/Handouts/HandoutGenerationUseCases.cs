@@ -11,6 +11,7 @@ namespace WordSolution.CmsV2.Application.Handouts;
 public sealed class HandoutGenerationUseCases
 {
     private const int MaxContentBlockExpandDepth = 10;
+    private static readonly QuestionOutputStyleOptions QuestionOutputStyles = QuestionOutputStyleOptions.Default;
 
     private readonly ICmsV2UnitOfWork _unitOfWork;
     private readonly ICmsV2FileAssetPathProvider _pathProvider;
@@ -108,6 +109,11 @@ public sealed class HandoutGenerationUseCases
             await CleanupOutputFileAsync(outputDocxPath);
             throw;
         }
+        catch (HandoutDocumentGenerationException exception)
+        {
+            await CleanupOutputFileAsync(outputDocxPath);
+            throw new CmsV2ApplicationException(exception.Message, exception);
+        }
         catch (Exception exception)
         {
             await CleanupOutputFileAsync(outputDocxPath);
@@ -133,6 +139,7 @@ public sealed class HandoutGenerationUseCases
                     item.TargetId,
                     lockedContentBlockVersionId: null,
                     item.TitleOverride,
+                    requestedOutputStemStyleName: null,
                     sources,
                     elements,
                     new HashSet<int>(),
@@ -215,6 +222,7 @@ public sealed class HandoutGenerationUseCases
                 sectionItem.TargetId,
                 lockedVersionId,
                 sectionItem.TitleOverride,
+                requestedOutputStemStyleName: null,
                 sources,
                 elements,
                 new HashSet<int>(),
@@ -258,16 +266,18 @@ public sealed class HandoutGenerationUseCases
             atomicSectionId,
             cancellationToken);
 
-        foreach (var atomicItem in OrderAtomicSectionItemsForOutput(atomicItems, panels))
+        foreach (var (atomicItem, teachingRole) in OrderAtomicSectionItemsForOutput(atomicItems, panels))
         {
             var lockedVersionId = atomicItem.ReferenceMode == ReferenceMode.LockedVersion
                 ? atomicItem.LockedContentBlockVersionId
                 : null;
+            var outputStemStyleName = QuestionOutputStyles.ResolveForTeachingRole(teachingRole);
 
             await ResolveContentBlockTreeAsync(
                 atomicItem.ContentBlockId,
                 lockedVersionId,
                 atomicItem.TitleOverride,
+                outputStemStyleName,
                 sources,
                 elements,
                 new HashSet<int>(),
@@ -276,7 +286,7 @@ public sealed class HandoutGenerationUseCases
         }
     }
 
-    private static IEnumerable<AtomicSectionItem> OrderAtomicSectionItemsForOutput(
+    private static IEnumerable<(AtomicSectionItem Item, AtomicSectionTeachingRole TeachingRole)> OrderAtomicSectionItemsForOutput(
         IReadOnlyList<AtomicSectionItem> atomicItems,
         IReadOnlyList<AtomicSectionPanel> panels)
     {
@@ -287,7 +297,9 @@ public sealed class HandoutGenerationUseCases
                 .OrderBy(item => item.SortOrder)
                 .ThenBy(item => item.Id))
             {
-                yield return item;
+                yield return (item, item.TeachingRole == AtomicSectionTeachingRole.Unclassified
+                    ? panel.TeachingRole
+                    : item.TeachingRole);
             }
         }
 
@@ -296,7 +308,7 @@ public sealed class HandoutGenerationUseCases
             .OrderBy(item => item.SortOrder)
             .ThenBy(item => item.Id))
         {
-            yield return item;
+            yield return (item, item.TeachingRole);
         }
     }
 
@@ -304,6 +316,7 @@ public sealed class HandoutGenerationUseCases
         int contentBlockId,
         int? lockedContentBlockVersionId,
         string? titleOverride,
+        string? requestedOutputStemStyleName,
         List<ResolvedHandoutSource> sources,
         List<HandoutDocumentElement> elements,
         HashSet<int> currentPath,
@@ -326,10 +339,14 @@ public sealed class HandoutGenerationUseCases
                 contentBlockId,
                 lockedContentBlockVersionId,
                 titleOverride,
+                requestedOutputStemStyleName,
                 sources.Count + 1,
                 cancellationToken);
             sources.Add(source);
-            elements.Add(HandoutDocumentElement.ContentBlock(source.Title, source.DocxPath));
+            elements.Add(HandoutDocumentElement.ContentBlock(
+                source.Title,
+                source.DocxPath,
+                source.OutputStemStyleName));
 
             var childRelations = await _unitOfWork.ContentBlockRelations.ListChildrenAsync(
                 contentBlockId,
@@ -345,6 +362,7 @@ public sealed class HandoutGenerationUseCases
                     relation.ChildBlockId,
                     childLockedVersionId,
                     relation.TitleOverride,
+                    QuestionOutputStyles.PracticeStemStyleName,
                     sources,
                     elements,
                     currentPath,
@@ -362,6 +380,7 @@ public sealed class HandoutGenerationUseCases
         int contentBlockId,
         int? lockedContentBlockVersionId,
         string? titleOverride,
+        string? requestedOutputStemStyleName,
         int sequence,
         CancellationToken cancellationToken)
     {
@@ -406,7 +425,23 @@ public sealed class HandoutGenerationUseCases
             version.Id,
             version.VersionNumber,
             string.IsNullOrWhiteSpace(titleOverride) ? contentBlock.Title : titleOverride.Trim(),
-            version.DocxPath);
+            version.DocxPath,
+            ResolveOutputStemStyleName(contentBlock.BlockType, requestedOutputStemStyleName));
+    }
+
+    private static string? ResolveOutputStemStyleName(
+        ContentBlockType contentBlockType,
+        string? requestedOutputStemStyleName)
+    {
+        var defaultStyleName = QuestionOutputStyles.ResolveForContentBlockType(contentBlockType);
+        if (defaultStyleName is null)
+        {
+            return null;
+        }
+
+        return string.IsNullOrWhiteSpace(requestedOutputStemStyleName)
+            ? defaultStyleName
+            : requestedOutputStemStyleName.Trim();
     }
 
     private async Task<OutputForm> RequireOutputFormAsync(int outputFormId, CancellationToken cancellationToken)
@@ -476,7 +511,8 @@ public sealed class HandoutGenerationUseCases
         int ContentBlockVersionId,
         int VersionNumber,
         string Title,
-        string DocxPath);
+        string DocxPath,
+        string? OutputStemStyleName);
 
     private sealed record ResolvedHandoutContent(
         IReadOnlyList<ResolvedHandoutSource> Sources,

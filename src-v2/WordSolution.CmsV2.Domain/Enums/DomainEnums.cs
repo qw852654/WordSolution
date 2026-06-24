@@ -127,6 +127,23 @@ public enum ContentBlockStatus
     Archived = 3
 }
 
+public enum ContentBlockPartType
+{
+    Stem = 1,
+    Answer = 2,
+    Analysis = 3,
+    Hint = 4,
+    Other = 5
+}
+
+public enum ContentBlockPartParseStatus
+{
+    NotApplicable = 0,
+    Parsed = 1,
+    ParsedWithWarnings = 2,
+    Failed = 3
+}
+
 public enum SectionVariantType
 {
     Lecture = 1,

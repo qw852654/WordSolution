@@ -293,6 +293,82 @@ public static class CmsV2ApiEndpointExtensions
             return Results.Ok(result);
         });
 
+        group.MapPost("/question-import-sessions", async (
+            HttpRequest request,
+            QuestionImportUseCases useCases,
+            IOptions<CmsV2ApiOptions> options,
+            CancellationToken cancellationToken) =>
+        {
+            var form = await request.ReadFormAsync(cancellationToken);
+            var file = form.Files.GetFile("file");
+            if (file is null || file.Length == 0)
+            {
+                return BadRequestProblem("Question import DOCX file is required.");
+            }
+
+            if (!int.TryParse(form["sectionId"], out var sectionId))
+            {
+                return BadRequestProblem("sectionId is required.");
+            }
+
+            await using var stream = file.OpenReadStream();
+            var result = await useCases.CreateSessionAsync(
+                new CreateQuestionImportSessionCommand(options.Value.BankRootDirectory, sectionId, stream),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
+        group.MapGet("/question-import-sessions/{sessionId}", async (
+            string sessionId,
+            QuestionImportUseCases useCases,
+            IOptions<CmsV2ApiOptions> options,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.GetSessionAsync(
+                new GetQuestionImportSessionCommand(options.Value.BankRootDirectory, sessionId),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
+        group.MapPost("/question-import-sessions/{sessionId}/candidates/{candidateId}/confirm", async (
+            string sessionId,
+            string candidateId,
+            ConfirmQuestionImportCandidateRequest request,
+            QuestionImportUseCases useCases,
+            IOptions<CmsV2ApiOptions> options,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.ConfirmCandidateAsync(
+                new ConfirmQuestionImportCandidateCommand(
+                    options.Value.BankRootDirectory,
+                    sessionId,
+                    candidateId,
+                    request.SectionId,
+                    request.Title,
+                    request.Summary,
+                    request.BlockType,
+                    request.Difficulty,
+                    request.QuestionType),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
+        group.MapDelete("/question-import-sessions/{sessionId}", async (
+            string sessionId,
+            QuestionImportUseCases useCases,
+            IOptions<CmsV2ApiOptions> options,
+            CancellationToken cancellationToken) =>
+        {
+            await useCases.CancelSessionAsync(
+                new CancelQuestionImportSessionCommand(options.Value.BankRootDirectory, sessionId),
+                cancellationToken);
+
+            return Results.NoContent();
+        });
+
         group.MapGet("/content-blocks/{id:int}/versions", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
         {
             if (await unitOfWork.ContentBlocks.GetByIdAsync(id, cancellationToken) is null)
@@ -378,6 +454,24 @@ public static class CmsV2ApiEndpointExtensions
             }
 
             return await ReadHtmlPreviewAsync(version, fileStore, cancellationToken);
+        });
+
+        group.MapGet("/content-blocks/{id:int}/versions/{versionId:int}/parts", async (
+            int id,
+            int versionId,
+            ICmsV2UnitOfWork unitOfWork,
+            CancellationToken cancellationToken) =>
+        {
+            var version = await unitOfWork.ContentBlockVersions.GetByIdAsync(versionId, cancellationToken);
+            if (version is null || version.ContentBlockId != id)
+            {
+                return NotFoundProblem($"ContentBlockVersion {versionId} was not found.");
+            }
+
+            var parts = await unitOfWork.ContentBlockVersionParts.ListByContentBlockVersionAsync(
+                versionId,
+                cancellationToken);
+            return Results.Ok(parts);
         });
 
         group.MapGet("/content-blocks/{id:int}/relations/children", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
@@ -1333,6 +1427,11 @@ public static class CmsV2ApiEndpointExtensions
     private static IResult NotFoundProblem(string detail)
     {
         return Results.Problem(detail: detail, title: "Resource not found.", statusCode: StatusCodes.Status404NotFound);
+    }
+
+    private static IResult BadRequestProblem(string detail)
+    {
+        return Results.Problem(detail: detail, title: "Bad request.", statusCode: StatusCodes.Status400BadRequest);
     }
 
     private static string[] EnumNames<TEnum>()

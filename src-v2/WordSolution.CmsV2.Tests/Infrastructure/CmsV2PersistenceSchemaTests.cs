@@ -18,6 +18,7 @@ public sealed class CmsV2PersistenceSchemaTests
         "SectionVariantItems",
         "ContentBlocks",
         "ContentBlockVersions",
+        "ContentBlockVersionParts",
         "ContentBlockRelations",
         "Handouts",
         "HandoutVersions",
@@ -84,6 +85,16 @@ public sealed class CmsV2PersistenceSchemaTests
         Assert.DoesNotContain("Difficulty", contentBlockVersionColumns);
         Assert.DoesNotContain("BlockType", contentBlockVersionColumns);
         Assert.DoesNotContain("QuestionType", contentBlockVersionColumns);
+        Assert.Contains("PartParseStatus", contentBlockVersionColumns);
+        Assert.Contains("PartParseMessage", contentBlockVersionColumns);
+
+        var contentBlockVersionPartColumns = await ReadTableColumnsAsync(context, "ContentBlockVersionParts");
+        Assert.Contains("ContentBlockVersionId", contentBlockVersionPartColumns);
+        Assert.Contains("PartType", contentBlockVersionPartColumns);
+        Assert.Contains("SortOrder", contentBlockVersionPartColumns);
+        Assert.Contains("PlainText", contentBlockVersionPartColumns);
+        Assert.Contains("SourceStyleNamesJson", contentBlockVersionPartColumns);
+        Assert.Contains("WarningMessage", contentBlockVersionPartColumns);
 
         var atomicSectionPanelColumns = await ReadTableColumnsAsync(context, "AtomicSectionPanels");
         Assert.Contains("AtomicSectionId", atomicSectionPanelColumns);
@@ -109,6 +120,21 @@ public sealed class CmsV2PersistenceSchemaTests
         Assert.Contains(
             contentVersionIndexes,
             index => index.IsUnique && index.Columns.SequenceEqual(["ContentBlockId", "VersionNumber"]));
+
+        var contentVersionPartIndexes = await ReadIndexesAsync(context, "ContentBlockVersionParts");
+        Assert.Contains(
+            contentVersionPartIndexes,
+            index => index.IsUnique && index.Columns.SequenceEqual(["ContentBlockVersionId", "PartType"]));
+        Assert.Contains(
+            contentVersionPartIndexes,
+            index => index.Columns.SequenceEqual(["ContentBlockVersionId", "SortOrder"]));
+
+        var contentVersionPartForeignKeys = await ReadForeignKeysAsync(context, "ContentBlockVersionParts");
+        Assert.Contains(
+            contentVersionPartForeignKeys,
+            foreignKey => foreignKey.Table == "ContentBlockVersions"
+                && foreignKey.From == "ContentBlockVersionId"
+                && foreignKey.OnDelete == "RESTRICT");
 
         var sectionIndexes = await ReadIndexesAsync(context, "Sections");
         Assert.Contains(

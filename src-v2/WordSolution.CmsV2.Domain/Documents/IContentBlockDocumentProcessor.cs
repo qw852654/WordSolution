@@ -14,4 +14,9 @@ public interface IContentBlockDocumentProcessor
     Task<string> ExtractPlainTextAsync(
         string docxPath,
         CancellationToken cancellationToken = default);
+
+    Task<QuestionPartParseResult> GenerateQuestionPartHtmlPreviewAsync(
+        string docxPath,
+        string htmlPreviewPath,
+        CancellationToken cancellationToken = default);
 }

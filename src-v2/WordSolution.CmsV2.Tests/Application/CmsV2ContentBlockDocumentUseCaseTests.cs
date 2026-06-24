@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Security;
 using System.Text;
+using Aspose.Words;
 using Microsoft.EntityFrameworkCore;
 using WordSolution.CmsV2.Application.Common;
 using WordSolution.CmsV2.Application.ContentBlocks;
@@ -85,6 +86,92 @@ public sealed class CmsV2ContentBlockDocumentUseCaseTests
         Assert.Contains("合外力做功等于动能变化", textFile);
         Assert.True(File.Exists(imported.DocxPath));
         Assert.True(File.Exists(imported.HtmlPreviewPath));
+    }
+
+    [Fact]
+    public async Task Import_question_docx_creates_structured_parts_and_html_preview()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        var useCases = CreateUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var contentBlock = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(
+                sectionId,
+                "结构化题目",
+                ContentBlockType.Question,
+                Difficulty: Difficulty.Medium));
+        var importDocxPath = Path.Combine(bankRootDirectory, "imports", "question.docx");
+        CreateStyledQuestionDocx(
+            importDocxPath,
+            ("例题", "题干第一段"),
+            ("答案", "答案第一段"),
+            ("解析", "解析第一段"),
+            ("教学讲解内容", "提示第一段"));
+
+        await using var importStream = File.OpenRead(importDocxPath);
+        var imported = await useCases.ImportContentBlockDocxVersionAsync(
+            new ImportContentBlockDocxVersionCommand(
+                bankRootDirectory,
+                contentBlock.Id,
+                importStream,
+                SetAsCurrent: true));
+
+        var version = await unitOfWork.ContentBlockVersions.GetByIdAsync(imported.ContentBlockVersionId);
+        var parts = await unitOfWork.ContentBlockVersionParts.ListByContentBlockVersionAsync(
+            imported.ContentBlockVersionId);
+        var html = await File.ReadAllTextAsync(imported.HtmlPreviewPath);
+
+        Assert.NotNull(version);
+        Assert.Equal(ContentBlockPartParseStatus.Parsed, version.PartParseStatus);
+        Assert.Null(version.PartParseMessage);
+        Assert.Equal(
+            [ContentBlockPartType.Stem, ContentBlockPartType.Answer, ContentBlockPartType.Analysis, ContentBlockPartType.Hint],
+            parts.Select(part => part.PartType));
+        Assert.Contains("题干第一段", parts.Single(part => part.PartType == ContentBlockPartType.Stem).PlainText);
+        Assert.Contains("data-question-part=\"Stem\"", html);
+        Assert.Contains("data-question-part=\"Answer\"", html);
+        Assert.Contains("data-question-part=\"Analysis\"", html);
+        Assert.Contains("data-question-part=\"Hint\"", html);
+    }
+
+    [Fact]
+    public async Task Import_non_question_docx_keeps_part_parse_status_not_applicable()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        var useCases = CreateUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var contentBlock = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(
+                sectionId,
+                "知识点说明",
+                ContentBlockType.KnowledgePoint,
+                Difficulty: Difficulty.Basic));
+        var importDocxPath = Path.Combine(bankRootDirectory, "imports", "knowledge.docx");
+        CreateStyledQuestionDocx(importDocxPath, ("例题", "虽然使用题目样式，但块类型不是题目"));
+
+        await using var importStream = File.OpenRead(importDocxPath);
+        var imported = await useCases.ImportContentBlockDocxVersionAsync(
+            new ImportContentBlockDocxVersionCommand(
+                bankRootDirectory,
+                contentBlock.Id,
+                importStream,
+                SetAsCurrent: true));
+
+        var version = await unitOfWork.ContentBlockVersions.GetByIdAsync(imported.ContentBlockVersionId);
+        var parts = await unitOfWork.ContentBlockVersionParts.ListByContentBlockVersionAsync(
+            imported.ContentBlockVersionId);
+        var html = await File.ReadAllTextAsync(imported.HtmlPreviewPath);
+
+        Assert.NotNull(version);
+        Assert.Equal(ContentBlockPartParseStatus.NotApplicable, version.PartParseStatus);
+        Assert.Empty(parts);
+        Assert.DoesNotContain("data-question-part", html);
     }
 
     [Fact]
@@ -238,6 +325,39 @@ public sealed class CmsV2ContentBlockDocumentUseCaseTests
             """);
     }
 
+    private static void CreateStyledQuestionDocx(
+        string docxPath,
+        params (string StyleName, string Text)[] paragraphs)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(docxPath)!);
+
+        var document = new Document();
+        var body = document.FirstSection.Body;
+        body.RemoveAllChildren();
+
+        foreach (var (styleName, text) in paragraphs)
+        {
+            EnsureParagraphStyle(document, styleName);
+            var paragraph = new Paragraph(document);
+            paragraph.ParagraphFormat.StyleName = styleName;
+            paragraph.AppendChild(new Run(document, text));
+            body.AppendChild(paragraph);
+        }
+
+        document.Save(docxPath);
+    }
+
+    private static void EnsureParagraphStyle(Document document, string styleName)
+    {
+        if (document.Styles[styleName] is not null)
+        {
+            return;
+        }
+
+        var style = document.Styles.Add(StyleType.Paragraph, styleName);
+        style.Font.Name = "宋体";
+    }
+
     private static async Task WriteEntryAsync(ZipArchive archive, string entryName, string content)
     {
         var entry = archive.CreateEntry(entryName);
@@ -262,6 +382,14 @@ public sealed class CmsV2ContentBlockDocumentUseCaseTests
         }
 
         public Task<string> ExtractPlainTextAsync(string docxPath, CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("The test processor is configured to fail.");
+        }
+
+        public Task<QuestionPartParseResult> GenerateQuestionPartHtmlPreviewAsync(
+            string docxPath,
+            string htmlPreviewPath,
+            CancellationToken cancellationToken = default)
         {
             throw new InvalidOperationException("The test processor is configured to fail.");
         }

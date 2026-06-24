@@ -10,6 +10,9 @@ namespace WordSolution.CmsV2.Tests.Application;
 
 public sealed class CmsV2HandoutManagementUseCaseTests
 {
+    private const string DefaultOutputTemplateDocxPath =
+        "src-v2/WordSolution.CmsV2.Infrastructure/Documents/Templates/content-block-default.docx";
+
     [Fact]
     public async Task CreateHandoutAsync_rejects_duplicate_active_title_and_ignores_archived_title()
     {
@@ -88,18 +91,46 @@ public sealed class CmsV2HandoutManagementUseCaseTests
     }
 
     [Fact]
-    public async Task CreateHandoutVersionAsync_creates_default_word_output_form_when_active_template_exists()
+    public async Task CreateHandoutVersionAsync_creates_default_word_output_form_with_shared_template()
     {
         await using var context = await CreateMigratedContextAsync();
         var unitOfWork = new EfCmsV2UnitOfWork(context);
         var handouts = new HandoutUseCases(unitOfWork);
         var handout = await handouts.CreateHandoutAsync(new CreateHandoutCommand("Output form handout"));
-        var template = new OutputTemplate("Shared template", "E:\\template.docx");
+        var template = new OutputTemplate("Shared template", DefaultOutputTemplateDocxPath);
         await unitOfWork.OutputTemplates.AddAsync(template);
         await unitOfWork.SaveChangesAsync();
 
         var version = await handouts.CreateHandoutVersionAsync(
             new CreateHandoutVersionCommand(handout.Id, "Default output version"));
+
+        var outputForms = await unitOfWork.OutputForms.ListByHandoutVersionAsync(version.Id);
+        var outputForm = Assert.Single(outputForms);
+        Assert.Equal(template.Id, outputForm.OutputTemplateId);
+        Assert.Equal("课堂 Word", outputForm.Title);
+        Assert.Equal(OutputAudience.Student, outputForm.Audience);
+        Assert.Equal(OutputFormat.Word, outputForm.OutputFormat);
+        Assert.Equal(VisibilityMode.Classroom, outputForm.VisibilityMode);
+        Assert.Equal(OutputFormStatus.Active, outputForm.Status);
+        Assert.Equal(1, outputForm.SortOrder);
+    }
+
+    [Fact]
+    public async Task CreateHandoutVersionAsync_creates_default_template_and_output_form_when_template_is_missing()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var handouts = new HandoutUseCases(unitOfWork);
+        var handout = await handouts.CreateHandoutAsync(new CreateHandoutCommand("Missing template handout"));
+
+        var version = await handouts.CreateHandoutVersionAsync(
+            new CreateHandoutVersionCommand(handout.Id, "Default output version"));
+
+        var templates = await unitOfWork.OutputTemplates.ListAsync();
+        var template = Assert.Single(templates);
+        Assert.Equal("默认 Word 模板", template.Title);
+        Assert.Equal(DefaultOutputTemplateDocxPath, template.TemplateDocxPath);
+        Assert.Equal(OutputTemplateStatus.Active, template.Status);
 
         var outputForms = await unitOfWork.OutputForms.ListByHandoutVersionAsync(version.Id);
         var outputForm = Assert.Single(outputForms);

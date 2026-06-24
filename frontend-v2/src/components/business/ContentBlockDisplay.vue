@@ -23,6 +23,34 @@ const { t } = useI18n()
 const hasReadyPreview = computed(
   () => props.block.htmlPreviewState === 'ready' && Boolean(props.block.htmlPreview),
 )
+const usesStructuredPreview = computed(
+  () =>
+    hasReadyPreview.value &&
+    (props.block.partParseStatus === 'Parsed' ||
+      props.block.partParseStatus === 'ParsedWithWarnings'),
+)
+const questionPartHtml = computed(() => {
+  const html = props.block.htmlPreview ?? ''
+  const sections = new Map<string, string>()
+  const pattern =
+    /<section\b[^>]*data-question-part=["']([^"']+)["'][^>]*>([\s\S]*?)<\/section>/gi
+  let match: RegExpExecArray | null
+
+  while ((match = pattern.exec(html))) {
+    sections.set(match[1], match[2].trim())
+  }
+
+  return sections
+})
+const visibleQuestionParts = computed(() =>
+  ['Answer', 'Analysis', 'Hint', 'Other']
+    .map((partType) => ({
+      partType,
+      html: questionPartHtml.value.get(partType) ?? '',
+      warningMessage: props.block.parts?.find((part) => part.partType === partType)?.warningMessage,
+    }))
+    .filter((part) => part.html || part.warningMessage),
+)
 const previewStateLabel = computed(() =>
   t(`components.contentBlockDisplay.previewState.${props.block.htmlPreviewState}`),
 )
@@ -83,8 +111,36 @@ const difficultyMarkerClass = computed(() => getDifficultyMarkerClass(props.bloc
         </Button>
       </div>
 
+      <div v-if="usesStructuredPreview" class="grid gap-2">
+        <div
+          v-if="questionPartHtml.get('Stem')"
+          class="content-block-display-preview text-sm leading-7"
+          v-html="questionPartHtml.get('Stem')"
+        />
+        <details
+          v-for="part in visibleQuestionParts"
+          :key="part.partType"
+          class="content-block-display-part rounded-md border border-border px-3 py-2 text-sm"
+          :open="part.partType === 'Other'"
+        >
+          <summary class="cursor-pointer font-medium">
+            {{ t(`components.contentBlockDisplay.part.${part.partType}`) }}
+          </summary>
+          <p v-if="part.warningMessage" class="mt-2 text-xs text-destructive">
+            {{ part.warningMessage }}
+          </p>
+          <div
+            v-if="part.html"
+            class="content-block-display-preview mt-2 leading-7"
+            v-html="part.html"
+          />
+        </details>
+        <p v-if="block.partParseMessage" class="text-xs text-muted-foreground">
+          {{ block.partParseMessage }}
+        </p>
+      </div>
       <div
-        v-if="hasReadyPreview"
+        v-else-if="hasReadyPreview"
         class="content-block-display-preview text-sm leading-7"
         v-html="block.htmlPreview"
       />

@@ -1,6 +1,8 @@
 using Aspose.Words;
 using Aspose.Words.Saving;
+using Aspose.Words.Tables;
 using WordSolution.CmsV2.Domain.Documents;
+using WordSolution.CmsV2.Domain.Enums;
 
 namespace WordSolution.CmsV2.Infrastructure.Documents;
 
@@ -13,16 +15,26 @@ public sealed class AsposeContentBlockDocumentProcessor : IContentBlockDocumentP
         "content-block-default.docx");
 
     private readonly string _templateDocxPath;
+    private readonly QuestionPartStyleOptions _questionPartStyleOptions;
 
     public AsposeContentBlockDocumentProcessor()
-        : this(DefaultTemplateDocxPath)
+        : this(DefaultTemplateDocxPath, QuestionPartStyleOptions.Default)
     {
     }
 
     public AsposeContentBlockDocumentProcessor(string templateDocxPath)
+        : this(templateDocxPath, QuestionPartStyleOptions.Default)
+    {
+    }
+
+    public AsposeContentBlockDocumentProcessor(
+        string templateDocxPath,
+        QuestionPartStyleOptions questionPartStyleOptions)
     {
         ValidatePath(templateDocxPath, nameof(templateDocxPath));
         _templateDocxPath = Path.GetFullPath(templateDocxPath);
+        _questionPartStyleOptions = questionPartStyleOptions
+            ?? throw new ArgumentNullException(nameof(questionPartStyleOptions));
     }
 
     public Task CreateBlankDocxAsync(
@@ -90,6 +102,79 @@ public sealed class AsposeContentBlockDocumentProcessor : IContentBlockDocumentP
         }, cancellationToken);
     }
 
+    public Task<QuestionPartParseResult> GenerateQuestionPartHtmlPreviewAsync(
+        string docxPath,
+        string htmlPreviewPath,
+        CancellationToken cancellationToken = default)
+    {
+        ValidatePath(docxPath, nameof(docxPath));
+        ValidatePath(htmlPreviewPath, nameof(htmlPreviewPath));
+
+        return Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            EnsureParentDirectory(htmlPreviewPath);
+
+            var document = new Document(docxPath);
+            RemoveHeadersAndFooters(document);
+
+            var classifiedNodes = ClassifyTopLevelNodes(document);
+            var groupedNodes = classifiedNodes
+                .GroupBy(node => node.PartType)
+                .OrderBy(group => group.Min(node => node.SourceOrder))
+                .ToList();
+
+            var parts = new List<QuestionPartParseResultItem>();
+            var sectionHtml = new List<string>();
+            var sortOrder = 0;
+            var warnings = new List<string>();
+
+            foreach (var group in groupedNodes)
+            {
+                var nodes = group.OrderBy(node => node.SourceOrder).ToList();
+                var warning = string.Join(
+                    Environment.NewLine,
+                    nodes.Select(node => node.WarningMessage).Where(message => !string.IsNullOrWhiteSpace(message)));
+                if (!string.IsNullOrWhiteSpace(warning))
+                {
+                    warnings.Add(warning);
+                }
+
+                var sourceStyleNames = nodes
+                    .SelectMany(node => node.SourceStyleNames)
+                    .Select(QuestionPartStyleOptions.NormalizeStyleName)
+                    .OfType<string>()
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(styleName => styleName, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+
+                var plainText = string.Join(
+                    Environment.NewLine,
+                    nodes.Select(node => node.Node.ToString(SaveFormat.Text).TrimEnd('\r', '\n')));
+
+                parts.Add(new QuestionPartParseResultItem(
+                    group.Key,
+                    sortOrder,
+                    plainText,
+                    sourceStyleNames,
+                    string.IsNullOrWhiteSpace(warning) ? null : warning));
+
+                sectionHtml.Add(BuildQuestionPartSectionHtml(document, group.Key, nodes.Select(node => node.Node)));
+                sortOrder++;
+            }
+
+            var html = BuildStructuredHtmlDocument(sectionHtml);
+            File.WriteAllText(htmlPreviewPath, html);
+
+            var status = warnings.Count == 0
+                ? ContentBlockPartParseStatus.Parsed
+                : ContentBlockPartParseStatus.ParsedWithWarnings;
+            var message = warnings.Count == 0 ? null : string.Join(Environment.NewLine, warnings);
+
+            return new QuestionPartParseResult(status, message, parts);
+        }, cancellationToken);
+    }
+
     private static void RemoveHeadersAndFooters(Document document)
     {
         foreach (Section section in document.Sections)
@@ -114,4 +199,171 @@ public sealed class AsposeContentBlockDocumentProcessor : IContentBlockDocumentP
             throw new ArgumentException("File path cannot be empty.", parameterName);
         }
     }
+
+    private IReadOnlyList<ClassifiedNode> ClassifyTopLevelNodes(Document document)
+    {
+        var result = new List<ClassifiedNode>();
+        var body = document.FirstSection.Body;
+        var sourceOrder = 0;
+
+        var childNodes = body.GetChildNodes(NodeType.Any, false).Cast<Node>().ToArray();
+        for (var nodeIndex = 0; nodeIndex < childNodes.Length; nodeIndex++)
+        {
+            var node = childNodes[nodeIndex];
+            if (node.NodeType == NodeType.Paragraph)
+            {
+                var paragraph = (Paragraph)node;
+                var styleName = paragraph.ParagraphFormat.StyleName;
+                if (IsTrailingGeneratedNormalParagraph(paragraph, nodeIndex, childNodes.Length))
+                {
+                    continue;
+                }
+
+                var partType = _questionPartStyleOptions.ResolvePartType(styleName);
+                result.Add(new ClassifiedNode(
+                    node,
+                    partType,
+                    sourceOrder,
+                    [styleName],
+                    partType == ContentBlockPartType.Other ? $"Unknown paragraph style: {styleName}" : null));
+                sourceOrder++;
+                continue;
+            }
+
+            if (node.NodeType == NodeType.Table)
+            {
+                result.Add(ClassifyTableNode((Table)node, sourceOrder));
+                sourceOrder++;
+                continue;
+            }
+
+            if (node.NodeType == NodeType.Section)
+            {
+                continue;
+            }
+
+            result.Add(new ClassifiedNode(
+                node,
+                ContentBlockPartType.Other,
+                sourceOrder,
+                [],
+                $"Unsupported top-level node type: {node.NodeType}"));
+            sourceOrder++;
+        }
+
+        return result;
+    }
+
+    private static bool IsTrailingGeneratedNormalParagraph(
+        Paragraph paragraph,
+        int nodeIndex,
+        int nodeCount)
+    {
+        return nodeIndex == nodeCount - 1
+            && string.Equals(paragraph.ParagraphFormat.StyleName, "Normal", StringComparison.OrdinalIgnoreCase)
+            && string.IsNullOrWhiteSpace(paragraph.ToString(SaveFormat.Text));
+    }
+
+    private ClassifiedNode ClassifyTableNode(Table table, int sourceOrder)
+    {
+        var styleNames = table.GetChildNodes(NodeType.Paragraph, true)
+            .OfType<Paragraph>()
+            .Select(paragraph => paragraph.ParagraphFormat.StyleName)
+            .ToArray();
+        var effectivePartTypes = styleNames
+            .Select(_questionPartStyleOptions.ResolvePartType)
+            .Distinct()
+            .ToArray();
+
+        if (effectivePartTypes.Length == 1)
+        {
+            var partType = effectivePartTypes[0];
+            return new ClassifiedNode(
+                table,
+                partType,
+                sourceOrder,
+                styleNames,
+                partType == ContentBlockPartType.Other ? "Table uses unknown paragraph styles." : null);
+        }
+
+        return new ClassifiedNode(
+            table,
+            ContentBlockPartType.Other,
+            sourceOrder,
+            styleNames,
+            "Table contains mixed question part styles.");
+    }
+
+    private static string BuildQuestionPartSectionHtml(
+        Document sourceDocument,
+        ContentBlockPartType partType,
+        IEnumerable<Node> sourceNodes)
+    {
+        var fragment = new Document();
+        fragment.RemoveAllChildren();
+
+        var section = new Section(fragment);
+        fragment.AppendChild(section);
+        var body = new Body(fragment);
+        section.AppendChild(body);
+
+        foreach (var sourceNode in sourceNodes)
+        {
+            body.AppendChild(fragment.ImportNode(sourceNode, true));
+        }
+
+        var bodyHtml = SaveDocumentBodyHtml(fragment);
+        return $"""<section data-question-part="{partType}">{bodyHtml}</section>""";
+    }
+
+    private static string SaveDocumentBodyHtml(Document document)
+    {
+        using var stream = new MemoryStream();
+        var saveOptions = new HtmlSaveOptions
+        {
+            ExportImagesAsBase64 = true,
+            ExportListLabels = ExportListLabels.AsInlineText,
+            PrettyFormat = false
+        };
+        document.Save(stream, saveOptions);
+        stream.Position = 0;
+        using var reader = new StreamReader(stream);
+        var html = reader.ReadToEnd();
+        var bodyStart = html.IndexOf("<body", StringComparison.OrdinalIgnoreCase);
+        if (bodyStart < 0)
+        {
+            return html;
+        }
+
+        var bodyContentStart = html.IndexOf('>', bodyStart);
+        var bodyEnd = html.LastIndexOf("</body>", StringComparison.OrdinalIgnoreCase);
+        if (bodyContentStart < 0 || bodyEnd < 0 || bodyEnd <= bodyContentStart)
+        {
+            return html;
+        }
+
+        return html[(bodyContentStart + 1)..bodyEnd].Trim();
+    }
+
+    private static string BuildStructuredHtmlDocument(IEnumerable<string> sections)
+    {
+        return $"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8" />
+        </head>
+        <body>
+        {string.Join(Environment.NewLine, sections)}
+        </body>
+        </html>
+        """;
+    }
+
+    private sealed record ClassifiedNode(
+        Node Node,
+        ContentBlockPartType PartType,
+        int SourceOrder,
+        IReadOnlyList<string> SourceStyleNames,
+        string? WarningMessage);
 }

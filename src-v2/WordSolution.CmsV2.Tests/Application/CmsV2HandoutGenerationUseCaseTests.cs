@@ -11,8 +11,13 @@ using WordSolution.CmsV2.Domain.Enums;
 using WordSolution.CmsV2.Infrastructure.Documents;
 using WordSolution.CmsV2.Infrastructure.Persistence;
 using WordSolution.CmsV2.Infrastructure.Repositories;
+using AsposeDocumentBuilder = Aspose.Words.DocumentBuilder;
+using AsposeNodeType = Aspose.Words.NodeType;
 using AsposeDocument = Aspose.Words.Document;
+using AsposeParagraph = Aspose.Words.Paragraph;
+using AsposeRun = Aspose.Words.Run;
 using AsposeSaveFormat = Aspose.Words.SaveFormat;
+using AsposeStyleType = Aspose.Words.StyleType;
 
 namespace WordSolution.CmsV2.Tests.Application;
 
@@ -447,6 +452,148 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
         AssertHeadingUsesTemplateStyleWithoutDirectRunFormatting(result.FilePath, "Render AtomicSection", "Heading3");
     }
 
+    [Fact]
+    public async Task GenerateHandoutWord_rebinds_question_stem_style_by_atomic_section_occurrence()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        var setup = await CreateOutputFormAsync(unitOfWork, bankRootDirectory);
+        CreateTemplateWithQuestionOutputStyles(
+            setup.OutputTemplate.TemplateDocxPath,
+            "例题",
+            "变式",
+            "练习题");
+        var exampleBlock = await CreateQuestionContentBlockWithStyledVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Example question",
+            "Example stem");
+        var variantBlock = await CreateQuestionContentBlockWithStyledVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Variant question",
+            "Variant stem");
+        var practiceBlock = await CreateQuestionContentBlockWithStyledVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Practice question",
+            "Practice stem");
+        var topic = new TeachingTopic("Style Topic");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+        var section = new Section(topic.Id, "Style Section");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+        var atomicSection = new AtomicSection(section.Id, "Style AtomicSection");
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+        var examplePanel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "Example panel",
+            AtomicSectionTeachingRole.Example,
+            Difficulty.Basic,
+            sortOrder: 1);
+        var variantPanel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "Variant panel",
+            AtomicSectionTeachingRole.Variant,
+            Difficulty.Medium,
+            sortOrder: 2);
+        var practicePanel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "Practice panel",
+            AtomicSectionTeachingRole.Practice,
+            Difficulty.Medium,
+            sortOrder: 3);
+        await unitOfWork.AtomicSectionPanels.AddAsync(examplePanel);
+        await unitOfWork.AtomicSectionPanels.AddAsync(variantPanel);
+        await unitOfWork.AtomicSectionPanels.AddAsync(practicePanel);
+        await unitOfWork.SaveChangesAsync();
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            exampleBlock.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 1,
+            atomicSectionPanelId: examplePanel.Id));
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            variantBlock.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 1,
+            atomicSectionPanelId: variantPanel.Id));
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            practiceBlock.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 1,
+            atomicSectionPanelId: practicePanel.Id));
+        await unitOfWork.HandoutVersionItems.AddAsync(new HandoutVersionItem(
+            setup.HandoutVersion.Id,
+            HandoutVersionItemTargetType.AtomicSection,
+            atomicSection.Id,
+            sortOrder: 1));
+        await unitOfWork.SaveChangesAsync();
+
+        var result = await CreateUseCases(unitOfWork).GenerateHandoutWordAsync(
+            new GenerateHandoutWordCommand(bankRootDirectory, setup.OutputForm.Id));
+
+        AssertParagraphUsesStyleName(result.FilePath, "Example stem", "例题");
+        AssertParagraphUsesStyleName(result.FilePath, "Variant stem", "变式");
+        AssertParagraphUsesStyleName(result.FilePath, "Practice stem", "练习题");
+        AssertNoInsertedSectionBreaks(result.FilePath);
+    }
+
+    [Fact]
+    public async Task GenerateHandoutWord_rejects_missing_question_output_style_without_generated_record()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        var setup = await CreateOutputFormAsync(unitOfWork, bankRootDirectory);
+        CreateTemplateWithQuestionOutputStyles(
+            setup.OutputTemplate.TemplateDocxPath,
+            "例题",
+            "练习题");
+        var variantBlock = await CreateQuestionContentBlockWithStyledVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Variant question",
+            "Variant stem");
+        var topic = new TeachingTopic("Missing Style Topic");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+        var section = new Section(topic.Id, "Missing Style Section");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+        var atomicSection = new AtomicSection(section.Id, "Missing Style AtomicSection");
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            variantBlock.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 1,
+            teachingRole: AtomicSectionTeachingRole.Variant));
+        await unitOfWork.HandoutVersionItems.AddAsync(new HandoutVersionItem(
+            setup.HandoutVersion.Id,
+            HandoutVersionItemTargetType.AtomicSection,
+            atomicSection.Id,
+            sortOrder: 1));
+        await unitOfWork.SaveChangesAsync();
+
+        var exception = await Assert.ThrowsAsync<CmsV2ApplicationException>(
+            () => CreateUseCases(unitOfWork).GenerateHandoutWordAsync(
+                new GenerateHandoutWordCommand(bankRootDirectory, setup.OutputForm.Id)));
+
+        Assert.Contains("变式", exception.Message);
+        Assert.Empty(await unitOfWork.GeneratedFiles.ListByOutputFormAsync(setup.OutputForm.Id));
+    }
+
     [Theory]
     [InlineData(OutputFormat.Pdf)]
     [InlineData(OutputFormat.WordAndPdf)]
@@ -609,10 +756,11 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
         string title,
         string text,
         int versionNumber,
-        bool isCurrent)
+        bool isCurrent,
+        ContentBlockType blockType = ContentBlockType.GeneralText)
     {
         var sectionId = await CreateSectionAsync(unitOfWork);
-        var block = new ContentBlock(sectionId, title, ContentBlockType.GeneralText);
+        var block = new ContentBlock(sectionId, title, blockType);
         await unitOfWork.ContentBlocks.AddAsync(block);
         await unitOfWork.SaveChangesAsync();
         var docxPath = Path.Combine(
@@ -639,6 +787,41 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
             unitOfWork.ContentBlockVersions.Update(version);
             await unitOfWork.SaveChangesAsync();
         }
+
+        return new ContentBlockSetup(block, version);
+    }
+
+    private static async Task<ContentBlockSetup> CreateQuestionContentBlockWithStyledVersionAsync(
+        EfCmsV2UnitOfWork unitOfWork,
+        string bankRootDirectory,
+        string title,
+        string stemText)
+    {
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var block = new ContentBlock(sectionId, title, ContentBlockType.Question);
+        await unitOfWork.ContentBlocks.AddAsync(block);
+        await unitOfWork.SaveChangesAsync();
+
+        var docxPath = Path.Combine(
+            bankRootDirectory,
+            "content-blocks",
+            "source",
+            block.Id.ToString(),
+            "v1.docx");
+        CreateStyledQuestionDocx(docxPath, stemText);
+        var version = new ContentBlockVersion(
+            block.Id,
+            versionNumber: 1,
+            docxPath,
+            plainText: stemText,
+            isCurrent: true);
+        await unitOfWork.ContentBlockVersions.AddAsync(version);
+        await unitOfWork.SaveChangesAsync();
+        block.SetCurrentVersion(version.Id);
+        version.MarkCurrent();
+        unitOfWork.ContentBlocks.Update(block);
+        unitOfWork.ContentBlockVersions.Update(version);
+        await unitOfWork.SaveChangesAsync();
 
         return new ContentBlockSetup(block, version);
     }
@@ -712,6 +895,69 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
 
         Assert.Empty(documentXml.Descendants(w + "pPr").Elements(w + "sectPr"));
         Assert.Single(documentXml.Descendants(w + "body").Elements(w + "sectPr"));
+    }
+
+    private static void AssertParagraphUsesStyleName(string docxPath, string paragraphText, string expectedStyleName)
+    {
+        var document = new AsposeDocument(docxPath);
+        var paragraph = document
+            .GetChildNodes(AsposeNodeType.Paragraph, true)
+            .OfType<AsposeParagraph>()
+            .Single(paragraph => string.Equals(
+                paragraph.GetText().Trim(),
+                paragraphText,
+                StringComparison.Ordinal));
+
+        Assert.Equal(expectedStyleName, paragraph.ParagraphFormat.StyleName);
+    }
+
+    private static void CreateTemplateWithQuestionOutputStyles(string docxPath, params string[] styleNames)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(docxPath)!);
+
+        var document = new AsposeDocument();
+        var builder = new AsposeDocumentBuilder(document);
+        builder.Writeln("Template body");
+
+        foreach (var styleName in styleNames)
+        {
+            if (document.Styles[styleName] is not null)
+            {
+                continue;
+            }
+
+            var style = document.Styles.Add(AsposeStyleType.Paragraph, styleName);
+            style.Font.Name = "Microsoft YaHei";
+            style.Font.Size = 12;
+            style.Font.Bold = true;
+        }
+
+        document.Save(docxPath);
+    }
+
+    private static void CreateStyledQuestionDocx(string docxPath, string stemText)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(docxPath)!);
+
+        var document = new AsposeDocument();
+        var body = document.FirstSection.Body;
+        body.RemoveAllChildren();
+        AddStyledParagraph(document, body, "正文", stemText);
+        AddStyledParagraph(document, body, "答案", $"{stemText} answer");
+        document.Save(docxPath);
+    }
+
+    private static void AddStyledParagraph(AsposeDocument document, Aspose.Words.Body body, string styleName, string text)
+    {
+        if (document.Styles[styleName] is null)
+        {
+            document.Styles.Add(AsposeStyleType.Paragraph, styleName);
+        }
+
+        var paragraph = new AsposeParagraph(document);
+        paragraph.ParagraphFormat.StyleName = styleName;
+        paragraph.AppendChild(new AsposeRun(document, text));
+        body.AppendChild(paragraph);
     }
 
     private static async Task CreateMinimalDocxAsync(string docxPath, string text)

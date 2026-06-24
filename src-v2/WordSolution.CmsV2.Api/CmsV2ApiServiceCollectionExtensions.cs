@@ -38,6 +38,7 @@ public static class CmsV2ApiServiceCollectionExtensions
         services.AddSingleton<ICmsV2FileAssetPathProvider, CmsV2FileAssetPathProvider>();
         services.AddSingleton<IContentBlockFileStore, LocalContentBlockFileStore>();
         services.AddSingleton<IContentBlockDocumentProcessor, AsposeContentBlockDocumentProcessor>();
+        services.AddSingleton<IQuestionImportDocumentProcessor, AsposeQuestionImportDocumentProcessor>();
         services.AddSingleton<IContentBlockEditSessionStore, LocalContentBlockEditSessionStore>();
         services.AddSingleton<IContentBlockEditSessionFileStore, LocalContentBlockEditSessionFileStore>();
         services.AddSingleton<IContentBlockEditSessionLauncher, LocalContentBlockEditSessionLauncher>();
@@ -48,6 +49,7 @@ public static class CmsV2ApiServiceCollectionExtensions
         services.AddScoped<ContentBlockEditSessionUseCases>();
         services.AddScoped<ContentBlockDeletionUseCases>();
         services.AddScoped<ContentBlockRelationUseCases>();
+        services.AddScoped<QuestionImportUseCases>();
         services.AddScoped<SectionUseCases>();
         services.AddScoped<AtomicSectionUseCases>();
         services.AddScoped<SectionVariantUseCases>();

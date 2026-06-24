@@ -556,6 +556,16 @@ Inspector 只显示当前选中节点上下文，不做跨页面全局信息面�
 
 `Audience` / `VisibilityMode` 第一版只作为元数据，不实际做学生版 / 教师版内容过滤。
 
+每个 `HandoutVersion` 拥有自己的 `OutputForm`。创建新的 `HandoutVersion` 时，系统应自动为该 version 创建一个默认 Word `OutputForm`，这样新 version 打开后可以直接进入生成 Word 流程。
+
+这里的“共用”只指共用同一份默认 `OutputTemplate` DOCX 文件，不表示所有 `HandoutVersion` 共用同一个 `OutputForm` 记录。
+
+默认 `OutputTemplate` 路径固定为：
+
+```text
+src-v2/WordSolution.CmsV2.Infrastructure/Documents/Templates/content-block-default.docx
+```
+
 ## 19. GeneratedFile
 
 每次成功生成都写入一条 `GeneratedFile`。历史记录按生成时间倒序显示。

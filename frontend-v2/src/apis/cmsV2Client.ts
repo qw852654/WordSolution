@@ -126,8 +126,59 @@ export interface CmsV2ContentBlockVersionDto {
   docxPath: string
   htmlPreviewPath?: string | null
   plainText?: string | null
+  partParseStatus?: 'NotApplicable' | 'Parsed' | 'ParsedWithWarnings' | 'Failed'
+  partParseMessage?: string | null
   isCurrent: boolean
   updatedTime: string
+}
+
+export interface CmsV2ContentBlockVersionPartDto {
+  id: number
+  contentBlockVersionId: number
+  partType: 'Stem' | 'Answer' | 'Analysis' | 'Hint' | 'Other'
+  sortOrder: number
+  plainText?: string | null
+  sourceStyleNamesJson: string
+  warningMessage?: string | null
+}
+
+export type CmsV2ContentBlockPartParseStatus =
+  | 'NotApplicable'
+  | 'Parsed'
+  | 'ParsedWithWarnings'
+  | 'Failed'
+
+export interface CmsV2QuestionImportCandidatePartDto {
+  partType: 'Stem' | 'Answer' | 'Analysis' | 'Hint' | 'Other'
+  sortOrder: number
+  plainText: string
+  sourceStyleNames: string[]
+  warningMessage?: string | null
+}
+
+export interface CmsV2QuestionImportCandidateDto {
+  candidateId: string
+  sortOrder: number
+  parseStatus: CmsV2ContentBlockPartParseStatus
+  parseMessage?: string | null
+  htmlPreview?: string | null
+  parts: CmsV2QuestionImportCandidatePartDto[]
+}
+
+export interface CmsV2QuestionImportSessionDto {
+  sessionId: string
+  sectionId: number
+  createdTime: string
+  candidates: CmsV2QuestionImportCandidateDto[]
+}
+
+export interface CmsV2ConfirmQuestionImportCandidateRequest {
+  sectionId: number
+  title: string
+  blockType: string
+  summary?: string | null
+  difficulty: string
+  questionType?: string | null
 }
 
 export interface CmsV2ContentBlockRelationDto {
@@ -641,6 +692,13 @@ export async function cmsV2FetchText(path: string, init?: RequestInit): Promise<
   return await response.text()
 }
 
+export async function cmsV2PostForm<T>(path: string, formData: FormData): Promise<T> {
+  return await cmsV2FetchJson<T>(path, {
+    method: 'POST',
+    body: formData,
+  })
+}
+
 function withQuery(path: string, query: Record<string, string | number | undefined>) {
   const params = new URLSearchParams()
 
@@ -792,6 +850,29 @@ export const cmsV2Api = {
     versionId
       ? cmsV2FetchText(`/content-blocks/${contentBlockId}/versions/${versionId}/html-preview`)
       : cmsV2FetchText(`/content-blocks/${contentBlockId}/html-preview`),
+  listContentBlockVersionParts: (contentBlockId: number, versionId: number) =>
+    cmsV2FetchJson<CmsV2ContentBlockVersionPartDto[]>(
+      `/content-blocks/${contentBlockId}/versions/${versionId}/parts`,
+    ),
+  createQuestionImportSession: (sectionId: number, file: File) => {
+    const formData = new FormData()
+    formData.set('sectionId', String(sectionId))
+    formData.set('file', file)
+    return cmsV2PostForm<CmsV2QuestionImportSessionDto>('/question-import-sessions', formData)
+  },
+  getQuestionImportSession: (sessionId: string) =>
+    cmsV2FetchJson<CmsV2QuestionImportSessionDto>(`/question-import-sessions/${sessionId}`),
+  confirmQuestionImportCandidate: (
+    sessionId: string,
+    candidateId: string,
+    request: CmsV2ConfirmQuestionImportCandidateRequest,
+  ) =>
+    cmsV2PostJson<CmsV2ContentBlockDocumentVersionResultDto>(
+      `/question-import-sessions/${sessionId}/candidates/${candidateId}/confirm`,
+      request,
+    ),
+  cancelQuestionImportSession: (sessionId: string) =>
+    cmsV2Delete(`/question-import-sessions/${sessionId}`),
   createContentBlockEditSession: (
     contentBlockId: number,
     request: CmsV2CreateContentBlockEditSessionRequest,

@@ -7,6 +7,11 @@ namespace WordSolution.CmsV2.Application.Handouts;
 
 public sealed class HandoutUseCases
 {
+    private const string DefaultOutputTemplateTitle = "默认 Word 模板";
+    private const string DefaultOutputTemplateDocxPath =
+        "src-v2/WordSolution.CmsV2.Infrastructure/Documents/Templates/content-block-default.docx";
+    private const string DefaultOutputFormTitle = "课堂 Word";
+
     private readonly ICmsV2UnitOfWork _unitOfWork;
 
     public HandoutUseCases(ICmsV2UnitOfWork unitOfWork)
@@ -484,20 +489,12 @@ public sealed class HandoutUseCases
         int handoutVersionId,
         CancellationToken cancellationToken)
     {
-        var template = (await _unitOfWork.OutputTemplates.ListAsync(cancellationToken))
-            .Where(candidate => candidate.Status == OutputTemplateStatus.Active)
-            .OrderBy(candidate => candidate.Id)
-            .FirstOrDefault();
-
-        if (template is null)
-        {
-            return;
-        }
+        var template = await EnsureDefaultOutputTemplateAsync(cancellationToken);
 
         var outputForm = new OutputForm(
             handoutVersionId,
             template.Id,
-            "课堂 Word",
+            DefaultOutputFormTitle,
             OutputAudience.Student,
             OutputFormat.Word,
             VisibilityMode.Classroom,
@@ -505,6 +502,33 @@ public sealed class HandoutUseCases
             sortOrder: 1);
 
         await _unitOfWork.OutputForms.AddAsync(outputForm, cancellationToken);
+    }
+
+    private async Task<OutputTemplate> EnsureDefaultOutputTemplateAsync(CancellationToken cancellationToken)
+    {
+        var defaultTemplatePath = NormalizeTemplatePath(DefaultOutputTemplateDocxPath);
+        var template = (await _unitOfWork.OutputTemplates.ListAsync(cancellationToken))
+            .Where(candidate => candidate.Status == OutputTemplateStatus.Active)
+            .Where(candidate => string.Equals(
+                NormalizeTemplatePath(candidate.TemplateDocxPath),
+                defaultTemplatePath,
+                StringComparison.OrdinalIgnoreCase))
+            .OrderBy(candidate => candidate.Id)
+            .FirstOrDefault();
+
+        if (template is not null)
+        {
+            return template;
+        }
+
+        template = new OutputTemplate(
+            DefaultOutputTemplateTitle,
+            DefaultOutputTemplateDocxPath,
+            "CMS V2 默认 Word 输出模板");
+        await _unitOfWork.OutputTemplates.AddAsync(template, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return template;
     }
 
     private async Task RequireWritableHandoutVersionAsync(int handoutVersionId, CancellationToken cancellationToken)
@@ -612,6 +636,11 @@ public sealed class HandoutUseCases
     private static string NormalizeTitle(string title)
     {
         return string.IsNullOrWhiteSpace(title) ? string.Empty : title.Trim();
+    }
+
+    private static string NormalizeTemplatePath(string templateDocxPath)
+    {
+        return templateDocxPath.Trim().Replace('\\', '/');
     }
 
     private static IReadOnlyList<SectionVariantSelectionTreeTopicDto> BuildSectionVariantSelectionTree(

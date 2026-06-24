@@ -81,6 +81,13 @@ public interface IContentBlockVersionRepository : IRepository<ContentBlockVersio
         CancellationToken cancellationToken = default);
 }
 
+public interface IContentBlockVersionPartRepository : IRepository<ContentBlockVersionPart>
+{
+    Task<IReadOnlyList<ContentBlockVersionPart>> ListByContentBlockVersionAsync(
+        int contentBlockVersionId,
+        CancellationToken cancellationToken = default);
+}
+
 public interface IContentBlockRelationRepository : IRepository<ContentBlockRelation>
 {
     Task<IReadOnlyList<ContentBlockRelation>> ListChildrenAsync(

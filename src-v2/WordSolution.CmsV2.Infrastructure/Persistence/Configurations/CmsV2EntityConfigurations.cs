@@ -329,6 +329,8 @@ internal sealed class ContentBlockVersionConfiguration : IEntityTypeConfiguratio
         builder.Property(entity => entity.DocxPath).HasMaxLength(CmsV2EntityConfiguration.PathMaxLength).IsRequired();
         builder.Property(entity => entity.HtmlPreviewPath).HasMaxLength(CmsV2EntityConfiguration.PathMaxLength);
         builder.Property(entity => entity.PlainText);
+        builder.Property(entity => entity.PartParseStatus).HasConversion<int>().IsRequired();
+        builder.Property(entity => entity.PartParseMessage).HasMaxLength(CmsV2EntityConfiguration.DescriptionMaxLength);
         builder.Property(entity => entity.IsCurrent).IsRequired();
         CmsV2EntityConfiguration.ConfigureUpdatedTime(builder);
 
@@ -337,6 +339,29 @@ internal sealed class ContentBlockVersionConfiguration : IEntityTypeConfiguratio
         builder.HasOne<ContentBlock>()
             .WithMany()
             .HasForeignKey(entity => entity.ContentBlockId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class ContentBlockVersionPartConfiguration : IEntityTypeConfiguration<ContentBlockVersionPart>
+{
+    public void Configure(EntityTypeBuilder<ContentBlockVersionPart> builder)
+    {
+        builder.ToTable("ContentBlockVersionParts");
+        CmsV2EntityConfiguration.ConfigurePrimaryKey(builder);
+
+        builder.Property(entity => entity.ContentBlockVersionId).IsRequired();
+        builder.Property(entity => entity.PartType).HasConversion<int>().IsRequired();
+        builder.Property(entity => entity.SortOrder).IsRequired();
+        builder.Property(entity => entity.PlainText);
+        builder.Property(entity => entity.SourceStyleNamesJson).IsRequired();
+        builder.Property(entity => entity.WarningMessage).HasMaxLength(CmsV2EntityConfiguration.DescriptionMaxLength);
+
+        builder.HasIndex(entity => new { entity.ContentBlockVersionId, entity.PartType }).IsUnique();
+        builder.HasIndex(entity => new { entity.ContentBlockVersionId, entity.SortOrder });
+        builder.HasOne<ContentBlockVersion>()
+            .WithMany()
+            .HasForeignKey(entity => entity.ContentBlockVersionId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -64,6 +64,34 @@ export interface SectionVariantSelectionCandidateModel {
 
 export type WorkspaceItemSelectionState = 'none' | 'selectable' | 'selected' | 'unavailable'
 
+export type QuestionImportTarget = 'SectionTopLevel' | 'AtomicSectionPanel'
+
+export type QuestionImportContext =
+  | {
+      target: 'SectionTopLevel'
+      sectionId: number
+      sectionTitle: string
+    }
+  | {
+      target: 'AtomicSectionPanel'
+      sectionId: number
+      sectionTitle: string
+      atomicSectionId: number
+      atomicSectionTitle: string
+      atomicSectionPanelId: number
+      atomicSectionPanelTitle: string
+      teachingRole: AtomicSectionTeachingRole
+      difficulty: string
+    }
+
+export interface QuestionImportConfirmPayload {
+  candidateId: string
+  title: string
+  summary?: string
+  difficulty: 'Basic' | 'Medium' | 'Advanced' | 'Top'
+  questionType: 'Unset' | 'Choice' | 'Blank' | 'Calculation' | 'Experiment' | 'Diagram' | 'Composite'
+}
+
 export type SectionVariantCreateSubmitPayload = SectionVariantCreateMetadata & {
   selectedSectionItemIds: number[]
 }
@@ -243,6 +271,22 @@ export interface SectionPageShellModel {
 
 export type HtmlPreviewState = 'ready' | 'loading' | 'empty' | 'error'
 
+export type ContentBlockPartParseStatus =
+  | 'NotApplicable'
+  | 'Parsed'
+  | 'ParsedWithWarnings'
+  | 'Failed'
+
+export type ContentBlockPartType = 'Stem' | 'Answer' | 'Analysis' | 'Hint' | 'Other'
+
+export interface ContentBlockDisplayPartModel {
+  id: string
+  partType: ContentBlockPartType
+  sortOrder: number
+  plainText?: string | null
+  warningMessage?: string | null
+}
+
 export interface ContentBlockDisplayModel {
   id: string
   title: string
@@ -254,6 +298,9 @@ export interface ContentBlockDisplayModel {
   versionLabel: string
   htmlPreviewState: HtmlPreviewState
   htmlPreview?: string | null
+  partParseStatus?: ContentBlockPartParseStatus
+  partParseMessage?: string | null
+  parts?: ContentBlockDisplayPartModel[]
   selected?: boolean
   disabled?: boolean
 }

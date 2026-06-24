@@ -21,6 +21,7 @@ public sealed class EfCmsV2UnitOfWork : ICmsV2UnitOfWork
         SectionVariantItems = new EfSectionVariantItemRepository(context);
         ContentBlocks = new EfContentBlockRepository(context);
         ContentBlockVersions = new EfContentBlockVersionRepository(context);
+        ContentBlockVersionParts = new EfContentBlockVersionPartRepository(context);
         ContentBlockRelations = new EfContentBlockRelationRepository(context);
         Handouts = new EfHandoutRepository(context);
         HandoutVersions = new EfHandoutVersionRepository(context);
@@ -50,6 +51,8 @@ public sealed class EfCmsV2UnitOfWork : ICmsV2UnitOfWork
     public IContentBlockRepository ContentBlocks { get; }
 
     public IContentBlockVersionRepository ContentBlockVersions { get; }
+
+    public IContentBlockVersionPartRepository ContentBlockVersionParts { get; }
 
     public IContentBlockRelationRepository ContentBlockRelations { get; }
 

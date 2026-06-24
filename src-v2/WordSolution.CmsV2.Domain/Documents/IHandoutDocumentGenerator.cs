@@ -4,6 +4,19 @@ public sealed record HandoutDocumentSource(
     string Title,
     string DocxPath);
 
+public sealed class HandoutDocumentGenerationException : Exception
+{
+    public HandoutDocumentGenerationException(string message)
+        : base(message)
+    {
+    }
+
+    public HandoutDocumentGenerationException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+    }
+}
+
 public enum HandoutDocumentElementKind
 {
     Heading = 1,
@@ -14,7 +27,8 @@ public sealed record HandoutDocumentElement(
     HandoutDocumentElementKind Kind,
     string Title,
     string? DocxPath,
-    int HeadingLevel)
+    int HeadingLevel,
+    string? OutputStemStyleName = null)
 {
     public static HandoutDocumentElement Heading(string title, int headingLevel)
     {
@@ -25,13 +39,17 @@ public sealed record HandoutDocumentElement(
             headingLevel);
     }
 
-    public static HandoutDocumentElement ContentBlock(string title, string docxPath)
+    public static HandoutDocumentElement ContentBlock(
+        string title,
+        string docxPath,
+        string? outputStemStyleName = null)
     {
         return new HandoutDocumentElement(
             HandoutDocumentElementKind.ContentBlock,
             title,
             docxPath,
-            HeadingLevel: 0);
+            HeadingLevel: 0,
+            OutputStemStyleName: outputStemStyleName);
     }
 }
 
