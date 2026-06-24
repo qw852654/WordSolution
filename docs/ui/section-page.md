@@ -1342,3 +1342,21 @@ AtomicSection
 - 不在前端伪造 panel 数据。
 - 不做 panel 标题进入 Word 输出。
 - 不做按学生层级自动选题。
+
+## 当前补充：题目结构化预览接入边界
+
+题目结构化预览、输出样式重绑定和多题导入的完整开发约定见：
+
+```text
+docs/cms-v2/backend/题目结构化预览-输出样式重绑定-多题导入开发文档.md
+```
+
+`SectionPage` 后续只负责展示和触发页面级动作：
+
+- `Workspace` 中的 `ContentBlockDisplay` 根据当前版本结构解析状态展示普通预览或结构化预览。
+- `SectionPage` 不解析 Word 样式。
+- `SectionPage` 不在前端推断 `Stem / Answer / Analysis / Hint / Other`。
+- `SectionPage` 不根据 Word 样式推断 `TeachingRole`。
+- 结构化预览组件必须先进入 `ComponentLab` 验收，再接入真实 `SectionPage`。
+
+第一版不在 `SectionPage` 中实现多题导入入口。多题导入属于后续独立流程，确认导入后的正式 `ContentBlock` 才进入 `SectionPage` 工作区。

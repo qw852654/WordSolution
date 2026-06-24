@@ -2183,3 +2183,44 @@ Rules:
 
 - Section 顶层、AtomicSection 未归组区、CompositeBlock 内部的新建默认值不因本规则改变。
 - 组件仍然不直接调用 API。
+
+## 当前补充约定：结构化 ContentBlockDisplay
+
+题目结构化预览、输出样式重绑定和多题导入的完整开发约定见：
+
+```text
+docs/cms-v2/backend/题目结构化预览-输出样式重绑定-多题导入开发文档.md
+```
+
+### ContentBlockDisplay 后续展示规则
+
+`ContentBlockDisplay` 后续需要同时支持普通预览和题目结构化预览。
+
+当当前 `ContentBlockVersion` 的 Part 解析状态为：
+
+- `Parsed` / `ParsedWithWarnings`：显示结构化题目预览。
+- `Failed`：显示解析失败提示，保留重新生成或 Word 编辑入口。
+- `NotApplicable`：继续显示普通整块 HTML 预览。
+- 无 docx / 无 HTML：继续显示“没有 Word 文档，点击 Word 编辑创建”的轻量提示。
+
+结构化题目预览第一版组件职责：
+
+- `Stem` 常显。
+- `Answer`、`Analysis`、`Hint` 可折叠。
+- `Other` 显示为警告区域。
+- 保留空段落和图片、公式、表格渲染结果。
+- 组件只接收后端返回的结构化 HTML / Part 元数据，不自行解析 Word 样式。
+- 组件只 emit 用户意图，不调用 API。
+
+### ComponentLab 验收要求
+
+结构化预览组件接入真实页面前，必须先在 `ComponentLab` 使用 Mock Data 验收：
+
+- 只有 Stem。
+- Stem + Answer。
+- Stem + Answer + Analysis。
+- Stem + Hint。
+- 存在 Other warning。
+- 解析失败。
+- 非题目内容块 `NotApplicable`。
+- 无 Word 文档。
