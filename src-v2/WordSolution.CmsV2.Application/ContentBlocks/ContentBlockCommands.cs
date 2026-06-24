@@ -34,6 +34,10 @@ public sealed record SetCurrentContentBlockVersionCommand(
     int ContentBlockId,
     int ContentBlockVersionId);
 
+public sealed record ChangeContentBlockDifficultyCommand(
+    int ContentBlockId,
+    Difficulty Difficulty);
+
 public sealed record AddContentBlockRelationCommand(
     int ParentBlockId,
     int ChildBlockId,

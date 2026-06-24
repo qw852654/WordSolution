@@ -138,6 +138,180 @@ public sealed class CmsV2ContentBlockDocumentUseCaseTests
     }
 
     [Fact]
+    public async Task Import_question_docx_without_stem_marks_part_parse_failed()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        var useCases = CreateUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var contentBlock = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(
+                sectionId,
+                "缺少题干的题目",
+                ContentBlockType.Question,
+                Difficulty: Difficulty.Medium));
+        var importDocxPath = Path.Combine(bankRootDirectory, "imports", "question-without-stem.docx");
+        CreateStyledQuestionDocx(
+            importDocxPath,
+            ("答案", "只有答案"),
+            ("解析", "只有解析"));
+
+        await using var importStream = File.OpenRead(importDocxPath);
+        var imported = await useCases.ImportContentBlockDocxVersionAsync(
+            new ImportContentBlockDocxVersionCommand(
+                bankRootDirectory,
+                contentBlock.Id,
+                importStream,
+                SetAsCurrent: true));
+
+        var version = await unitOfWork.ContentBlockVersions.GetByIdAsync(imported.ContentBlockVersionId);
+        var parts = await unitOfWork.ContentBlockVersionParts.ListByContentBlockVersionAsync(
+            imported.ContentBlockVersionId);
+
+        Assert.NotNull(version);
+        Assert.Equal(ContentBlockPartParseStatus.Failed, version.PartParseStatus);
+        Assert.Contains("Stem", version.PartParseMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(parts);
+    }
+
+    [Fact]
+    public async Task Import_question_docx_outputs_parts_and_html_in_fixed_system_order()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        var useCases = CreateUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var contentBlock = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(
+                sectionId,
+                "顺序混乱的题目",
+                ContentBlockType.Question,
+                Difficulty: Difficulty.Medium));
+        var importDocxPath = Path.Combine(bankRootDirectory, "imports", "question-mixed-order.docx");
+        CreateStyledQuestionDocx(
+            importDocxPath,
+            ("答案", "答案提前出现"),
+            ("自定义样式", "未知样式内容"),
+            ("例题", "题干后出现"),
+            ("教学讲解内容", "提示内容"),
+            ("解析", "解析最后出现"));
+
+        await using var importStream = File.OpenRead(importDocxPath);
+        var imported = await useCases.ImportContentBlockDocxVersionAsync(
+            new ImportContentBlockDocxVersionCommand(
+                bankRootDirectory,
+                contentBlock.Id,
+                importStream,
+                SetAsCurrent: true));
+
+        var version = await unitOfWork.ContentBlockVersions.GetByIdAsync(imported.ContentBlockVersionId);
+        var parts = await unitOfWork.ContentBlockVersionParts.ListByContentBlockVersionAsync(
+            imported.ContentBlockVersionId);
+        var html = await File.ReadAllTextAsync(imported.HtmlPreviewPath);
+
+        Assert.NotNull(version);
+        Assert.Equal(ContentBlockPartParseStatus.ParsedWithWarnings, version.PartParseStatus);
+        Assert.Equal(
+            [ContentBlockPartType.Stem, ContentBlockPartType.Answer, ContentBlockPartType.Analysis, ContentBlockPartType.Hint, ContentBlockPartType.Other],
+            parts.Select(part => part.PartType));
+        Assert.Equal([0, 1, 2, 3, 4], parts.Select(part => part.SortOrder));
+        AssertQuestionPartHtmlOrder(
+            html,
+            "Stem",
+            "Answer",
+            "Analysis",
+            "Hint",
+            "Other");
+    }
+
+    [Theory]
+    [InlineData(ContentBlockType.ExampleGroup)]
+    [InlineData(ContentBlockType.ExerciseGroup)]
+    [InlineData(ContentBlockType.VariantGroup)]
+    public async Task Import_non_question_group_docx_keeps_part_parse_status_not_applicable(
+        ContentBlockType blockType)
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        var useCases = CreateUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var contentBlock = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(
+                sectionId,
+                $"{blockType} 组",
+                blockType,
+                Difficulty: Difficulty.Medium));
+        var importDocxPath = Path.Combine(bankRootDirectory, "imports", $"{blockType}.docx");
+        CreateStyledQuestionDocx(importDocxPath, ("例题", "组类型不应生成题目 Part"));
+
+        await using var importStream = File.OpenRead(importDocxPath);
+        var imported = await useCases.ImportContentBlockDocxVersionAsync(
+            new ImportContentBlockDocxVersionCommand(
+                bankRootDirectory,
+                contentBlock.Id,
+                importStream,
+                SetAsCurrent: true));
+
+        var version = await unitOfWork.ContentBlockVersions.GetByIdAsync(imported.ContentBlockVersionId);
+        var parts = await unitOfWork.ContentBlockVersionParts.ListByContentBlockVersionAsync(
+            imported.ContentBlockVersionId);
+        var html = await File.ReadAllTextAsync(imported.HtmlPreviewPath);
+
+        Assert.NotNull(version);
+        Assert.Equal(ContentBlockPartParseStatus.NotApplicable, version.PartParseStatus);
+        Assert.Empty(parts);
+        Assert.DoesNotContain("data-question-part", html);
+    }
+
+    [Fact]
+    public async Task Import_question_docx_with_mixed_part_table_records_warning_and_keeps_table_in_other()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        var useCases = CreateUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var contentBlock = await contentBlocks.CreateContentBlockAsync(
+            new CreateContentBlockCommand(
+                sectionId,
+                "混合表格题目",
+                ContentBlockType.Question,
+                Difficulty: Difficulty.Medium));
+        var importDocxPath = Path.Combine(bankRootDirectory, "imports", "question-mixed-table.docx");
+        CreateQuestionDocxWithMixedPartTable(importDocxPath);
+
+        await using var importStream = File.OpenRead(importDocxPath);
+        var imported = await useCases.ImportContentBlockDocxVersionAsync(
+            new ImportContentBlockDocxVersionCommand(
+                bankRootDirectory,
+                contentBlock.Id,
+                importStream,
+                SetAsCurrent: true));
+
+        var version = await unitOfWork.ContentBlockVersions.GetByIdAsync(imported.ContentBlockVersionId);
+        var parts = await unitOfWork.ContentBlockVersionParts.ListByContentBlockVersionAsync(
+            imported.ContentBlockVersionId);
+        var otherPart = parts.Single(part => part.PartType == ContentBlockPartType.Other);
+
+        Assert.NotNull(version);
+        Assert.Equal(ContentBlockPartParseStatus.ParsedWithWarnings, version.PartParseStatus);
+        Assert.Contains("mixed question part styles", version.PartParseMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(
+            [ContentBlockPartType.Stem, ContentBlockPartType.Other],
+            parts.Select(part => part.PartType));
+        Assert.Contains("mixed question part styles", otherPart.WarningMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("表格答案", otherPart.PlainText);
+        Assert.Contains("表格解析", otherPart.PlainText);
+    }
+
+    [Fact]
     public async Task Import_non_question_docx_keeps_part_parse_status_not_applicable()
     {
         await using var context = await CreateMigratedContextAsync();
@@ -345,6 +519,63 @@ public sealed class CmsV2ContentBlockDocumentUseCaseTests
         }
 
         document.Save(docxPath);
+    }
+
+    private static void CreateQuestionDocxWithMixedPartTable(string docxPath)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(docxPath)!);
+
+        var document = new Document();
+        var body = document.FirstSection.Body;
+        body.RemoveAllChildren();
+        EnsureParagraphStyle(document, "例题");
+        EnsureParagraphStyle(document, "答案");
+        EnsureParagraphStyle(document, "解析");
+
+        var stem = new Paragraph(document);
+        stem.ParagraphFormat.StyleName = "例题";
+        stem.AppendChild(new Run(document, "题干"));
+        body.AppendChild(stem);
+
+        var table = new Aspose.Words.Tables.Table(document);
+        var row = new Aspose.Words.Tables.Row(document);
+        table.AppendChild(row);
+        row.AppendChild(CreateTableCell(document, "答案", "表格答案"));
+        row.AppendChild(CreateTableCell(document, "解析", "表格解析"));
+        body.AppendChild(table);
+
+        document.Save(docxPath);
+    }
+
+    private static Aspose.Words.Tables.Cell CreateTableCell(
+        Document document,
+        string styleName,
+        string text)
+    {
+        var cell = new Aspose.Words.Tables.Cell(document);
+        var paragraph = new Paragraph(document);
+        paragraph.ParagraphFormat.StyleName = styleName;
+        paragraph.AppendChild(new Run(document, text));
+        cell.AppendChild(paragraph);
+
+        return cell;
+    }
+
+    private static void AssertQuestionPartHtmlOrder(string html, params string[] partNames)
+    {
+        var previousIndex = -1;
+        foreach (var partName in partNames)
+        {
+            var index = html.IndexOf(
+                $"data-question-part=\"{partName}\"",
+                StringComparison.Ordinal);
+
+            Assert.True(index >= 0, $"Expected HTML to contain question part {partName}.");
+            Assert.True(
+                index > previousIndex,
+                $"Expected question part {partName} to appear after the previous part.");
+            previousIndex = index;
+        }
     }
 
     private static void EnsureParagraphStyle(Document document, string styleName)

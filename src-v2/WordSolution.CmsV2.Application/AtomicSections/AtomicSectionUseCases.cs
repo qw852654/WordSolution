@@ -320,6 +320,31 @@ public sealed class AtomicSectionUseCases
         return result!;
     }
 
+    public async Task<AtomicSection> ChangeAtomicSectionDifficultyAsync(
+        ChangeAtomicSectionDifficultyCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        AtomicSection? result = null;
+
+        await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+        {
+            var atomicSection = await _unitOfWork.AtomicSections.GetByIdAsync(
+                command.AtomicSectionId,
+                transactionCancellationToken);
+            if (atomicSection is null)
+            {
+                throw new CmsV2ApplicationException($"AtomicSection {command.AtomicSectionId} was not found.");
+            }
+
+            atomicSection.ChangeDifficulty(command.Difficulty);
+            _unitOfWork.AtomicSections.Update(atomicSection);
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+            result = atomicSection;
+        }, cancellationToken);
+
+        return result!;
+    }
+
     public async Task MoveAtomicSectionItemAsync(
         MoveAtomicSectionItemCommand command,
         CancellationToken cancellationToken = default)

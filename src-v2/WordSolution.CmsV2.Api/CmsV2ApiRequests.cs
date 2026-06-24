@@ -1,4 +1,5 @@
 using WordSolution.CmsV2.Domain.Enums;
+using WordSolution.CmsV2.Application.ContentBlocks;
 
 namespace WordSolution.CmsV2.Api;
 
@@ -65,15 +66,16 @@ public sealed record CreateContentBlockRequest(
     QuestionType? QuestionType = null,
     ContentBlockStatus Status = ContentBlockStatus.Draft);
 
-public sealed record ConfirmQuestionImportCandidateRequest(
-    int SectionId,
-    string Title,
-    ContentBlockType BlockType,
-    string? Summary = null,
-    Difficulty Difficulty = Difficulty.Unset,
-    QuestionType? QuestionType = null);
+public sealed record CreateQuestionImportSessionRequest(
+    InsertQuestionContext Context,
+    bool OpenWord = true);
+
+public sealed record ConfirmQuestionImportRequest(
+    IReadOnlyList<ConfirmQuestionImportCandidateSelection> Candidates);
 
 public sealed record SetCurrentContentBlockVersionRequest(int ContentBlockVersionId);
+
+public sealed record ChangeContentBlockDifficultyRequest(Difficulty Difficulty);
 
 public sealed record CreateContentBlockEditSessionRequest(bool OpenWord = true);
 
@@ -145,6 +147,8 @@ public sealed record AddAtomicSectionItemRequest(
 public sealed record MoveAtomicSectionItemRequest(string Direction);
 
 public sealed record RenameAtomicSectionRequest(string Title);
+
+public sealed record ChangeAtomicSectionDifficultyRequest(Difficulty Difficulty);
 
 public sealed record CreateAtomicSectionPanelRequest(
     string Title,

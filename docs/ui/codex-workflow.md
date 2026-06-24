@@ -294,3 +294,50 @@ H11 端到端上线验收
 - 新增 Handout 可复用组件前，先向用户说明组件职责、输入、事件和 ComponentLab 验收范围。
 - 组件必须先在 ComponentLab 使用 Mock Data 验收。
 - 真实页面接入必须另起一轮或获得用户明确确认。
+
+## 10. 题目结构化与多题导入任务工作流
+
+涉及题目结构化预览、输出 Word 样式重绑定或多题导入时，必须先读取：
+
+```text
+docs/cms-v2/backend/题目结构化预览-输出样式重绑定-多题导入开发文档.md
+docs/ui/component-rules.md
+docs/ui/section-page.md
+```
+
+当前已收口口径：
+
+- `Question` 缺 Stem 是失败，不是 warning。
+- Part 输出顺序固定为 `Stem / Answer / Analysis / Hint / Other`。
+- 非 `Question` 内容块默认 `NotApplicable`，不生成题目 Parts。
+- 输出 Word 样式重绑定严格 Stem-only，不使用 `Other` 兜底。
+- 输出预检使用 `POST /api/cms-v2/output-forms/{id}/validate-word-generation`。
+- 多题导入主流程是临时 Word session、状态轮询、candidates 查询和批量 confirm。
+- Workspace 顶部支持 Section 顶层多题导入，`AtomicSectionPanelBlock` 内部支持 `导入题目`，两者复用 `QuestionImportDialog`。
+- `AtomicSectionPanelId` 导入上下文由后端校验 panel / AtomicSection / Section 归属，并在确认后创建归属该 panel 的 `AtomicSectionItem`。
+
+禁止回归：
+
+- 不把多题导入做回本地 `.docx` multipart 上传主流程。
+- 不恢复 `/question-import-sessions/{sessionId}/candidates/{candidateId}/confirm` 逐候选确认。
+- 不在 `QuestionImportDialog` 中直接调用 API 或创建正式 `ContentBlock`。
+- 不在非 panel 导入上下文中伪造 `atomicSectionPanelId`；panel 导入必须来自 `AtomicSectionPanelBlock` 的 `导入题目` 入口，并交由后端校验。
+
+## 11. Phase 5 前端收口验收
+
+当前 `frontend-v2` 只有 `typecheck` 和 `build` 脚本，尚未建立前端单元测试或组件测试脚本。Phase 5 不临时引入新的大测试体系，多题导入前端收口采用以下验收方式：
+
+- 运行 `npm run typecheck`，确认类型层面不再引用上传式 question import 请求或单候选确认 API。
+- 运行 `npm run build`，确认 `QuestionImportDialog`、`SectionPage`、i18n 和 API DTO 能一起通过构建。
+- 人工验收 `QuestionImportDialog`：启动 session、显示状态、重新打开 Word、取消 session、`ReadyForReview` 后展示候选列表。
+- 人工验收候选确认：候选默认可勾选、允许取消勾选、标题允许为空、批量确认只发出 `confirmCandidates`，没有单候选入库按钮。
+- 人工验收 `SectionPage`：创建 session 后轮询，读取 candidates，批量确认后刷新当前 Section，并定位首个新增节点。
+- 人工验收边界：界面不提供本地 `.docx` 文件上传作为多题导入主入口，不在组件内创建正式 `ContentBlock`、`SectionItem` 或 `AtomicSectionItem`。
+
+## 12. Phase 5 收口执行边界
+
+Phase 5 只做测试、文档和一致性检查，不新增业务能力。
+
+- 不修改 V1、VSTO 或 `Word本地文件操作核心库`。
+- 不 stage、commit、reset、checkout。
+- 多题导入文档不得再把 `AtomicSectionPanel` 的 non-null `atomicSectionPanelId` 写成待确认或未接入事项。

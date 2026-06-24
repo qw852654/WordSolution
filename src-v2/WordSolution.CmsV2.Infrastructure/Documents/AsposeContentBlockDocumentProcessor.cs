@@ -8,6 +8,15 @@ namespace WordSolution.CmsV2.Infrastructure.Documents;
 
 public sealed class AsposeContentBlockDocumentProcessor : IContentBlockDocumentProcessor
 {
+    private static readonly ContentBlockPartType[] QuestionPartSystemOrder =
+    [
+        ContentBlockPartType.Stem,
+        ContentBlockPartType.Answer,
+        ContentBlockPartType.Analysis,
+        ContentBlockPartType.Hint,
+        ContentBlockPartType.Other
+    ];
+
     private static readonly string DefaultTemplateDocxPath = Path.Combine(
         AppContext.BaseDirectory,
         "Documents",
@@ -119,19 +128,31 @@ public sealed class AsposeContentBlockDocumentProcessor : IContentBlockDocumentP
             RemoveHeadersAndFooters(document);
 
             var classifiedNodes = ClassifyTopLevelNodes(document);
-            var groupedNodes = classifiedNodes
+            var groupedNodesByPartType = classifiedNodes
                 .GroupBy(node => node.PartType)
-                .OrderBy(group => group.Min(node => node.SourceOrder))
-                .ToList();
+                .ToDictionary(group => group.Key, group => group.OrderBy(node => node.SourceOrder).ToList());
+
+            if (!groupedNodesByPartType.TryGetValue(ContentBlockPartType.Stem, out var stemNodes)
+                || !stemNodes.Any(node => HasEffectiveStemContent(node.Node)))
+            {
+                return new QuestionPartParseResult(
+                    ContentBlockPartParseStatus.Failed,
+                    "Question part parsing failed: Stem part was not found.",
+                    []);
+            }
 
             var parts = new List<QuestionPartParseResultItem>();
             var sectionHtml = new List<string>();
             var sortOrder = 0;
             var warnings = new List<string>();
 
-            foreach (var group in groupedNodes)
+            foreach (var partType in QuestionPartSystemOrder)
             {
-                var nodes = group.OrderBy(node => node.SourceOrder).ToList();
+                if (!groupedNodesByPartType.TryGetValue(partType, out var nodes))
+                {
+                    continue;
+                }
+
                 var warning = string.Join(
                     Environment.NewLine,
                     nodes.Select(node => node.WarningMessage).Where(message => !string.IsNullOrWhiteSpace(message)));
@@ -153,13 +174,13 @@ public sealed class AsposeContentBlockDocumentProcessor : IContentBlockDocumentP
                     nodes.Select(node => node.Node.ToString(SaveFormat.Text).TrimEnd('\r', '\n')));
 
                 parts.Add(new QuestionPartParseResultItem(
-                    group.Key,
+                    partType,
                     sortOrder,
                     plainText,
                     sourceStyleNames,
                     string.IsNullOrWhiteSpace(warning) ? null : warning));
 
-                sectionHtml.Add(BuildQuestionPartSectionHtml(document, group.Key, nodes.Select(node => node.Node)));
+                sectionHtml.Add(BuildQuestionPartSectionHtml(document, partType, nodes.Select(node => node.Node)));
                 sortOrder++;
             }
 
@@ -214,7 +235,8 @@ public sealed class AsposeContentBlockDocumentProcessor : IContentBlockDocumentP
             {
                 var paragraph = (Paragraph)node;
                 var styleName = paragraph.ParagraphFormat.StyleName;
-                if (IsTrailingGeneratedNormalParagraph(paragraph, nodeIndex, childNodes.Length))
+                if (IsAsposeEvaluationParagraph(paragraph)
+                    || IsTrailingGeneratedNormalParagraph(paragraph, nodeIndex, childNodes.Length))
                 {
                     continue;
                 }
@@ -262,6 +284,15 @@ public sealed class AsposeContentBlockDocumentProcessor : IContentBlockDocumentP
         return nodeIndex == nodeCount - 1
             && string.Equals(paragraph.ParagraphFormat.StyleName, "Normal", StringComparison.OrdinalIgnoreCase)
             && string.IsNullOrWhiteSpace(paragraph.ToString(SaveFormat.Text));
+    }
+
+    private static bool IsAsposeEvaluationParagraph(Paragraph paragraph)
+    {
+        return paragraph.ToString(SaveFormat.Text)
+            .TrimStart()
+            .StartsWith(
+                "Created with an evaluation copy of Aspose.Words.",
+                StringComparison.Ordinal);
     }
 
     private ClassifiedNode ClassifyTableNode(Table table, int sourceOrder)
@@ -314,6 +345,23 @@ public sealed class AsposeContentBlockDocumentProcessor : IContentBlockDocumentP
 
         var bodyHtml = SaveDocumentBodyHtml(fragment);
         return $"""<section data-question-part="{partType}">{bodyHtml}</section>""";
+    }
+
+    private static bool HasEffectiveStemContent(Node node)
+    {
+        var text = node.ToString(SaveFormat.Text);
+        if (text.Any(character => !char.IsWhiteSpace(character) && !char.IsControl(character)))
+        {
+            return true;
+        }
+
+        if (node is not CompositeNode compositeNode)
+        {
+            return false;
+        }
+
+        return compositeNode.GetChildNodes(NodeType.Shape, true).Count > 0
+            || compositeNode.GetChildNodes(NodeType.OfficeMath, true).Count > 0;
     }
 
     private static string SaveDocumentBodyHtml(Document document)

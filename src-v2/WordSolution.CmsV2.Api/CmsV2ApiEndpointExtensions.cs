@@ -294,26 +294,16 @@ public static class CmsV2ApiEndpointExtensions
         });
 
         group.MapPost("/question-import-sessions", async (
-            HttpRequest request,
+            CreateQuestionImportSessionRequest request,
             QuestionImportUseCases useCases,
             IOptions<CmsV2ApiOptions> options,
             CancellationToken cancellationToken) =>
         {
-            var form = await request.ReadFormAsync(cancellationToken);
-            var file = form.Files.GetFile("file");
-            if (file is null || file.Length == 0)
-            {
-                return BadRequestProblem("Question import DOCX file is required.");
-            }
-
-            if (!int.TryParse(form["sectionId"], out var sectionId))
-            {
-                return BadRequestProblem("sectionId is required.");
-            }
-
-            await using var stream = file.OpenReadStream();
             var result = await useCases.CreateSessionAsync(
-                new CreateQuestionImportSessionCommand(options.Value.BankRootDirectory, sectionId, stream),
+                new CreateQuestionImportSessionCommand(
+                    options.Value.BankRootDirectory,
+                    request.Context,
+                    request.OpenWord),
                 cancellationToken);
 
             return Results.Ok(result);
@@ -332,41 +322,60 @@ public static class CmsV2ApiEndpointExtensions
             return Results.Ok(result);
         });
 
-        group.MapPost("/question-import-sessions/{sessionId}/candidates/{candidateId}/confirm", async (
+        group.MapGet("/question-import-sessions/{sessionId}/candidates", async (
             string sessionId,
-            string candidateId,
-            ConfirmQuestionImportCandidateRequest request,
             QuestionImportUseCases useCases,
             IOptions<CmsV2ApiOptions> options,
             CancellationToken cancellationToken) =>
         {
-            var result = await useCases.ConfirmCandidateAsync(
-                new ConfirmQuestionImportCandidateCommand(
-                    options.Value.BankRootDirectory,
-                    sessionId,
-                    candidateId,
-                    request.SectionId,
-                    request.Title,
-                    request.Summary,
-                    request.BlockType,
-                    request.Difficulty,
-                    request.QuestionType),
+            var result = await useCases.GetCandidatesAsync(
+                new GetQuestionImportSessionCommand(options.Value.BankRootDirectory, sessionId),
                 cancellationToken);
 
             return Results.Ok(result);
         });
 
-        group.MapDelete("/question-import-sessions/{sessionId}", async (
+        group.MapPost("/question-import-sessions/{sessionId}/confirm", async (
+            string sessionId,
+            ConfirmQuestionImportRequest request,
+            QuestionImportUseCases useCases,
+            IOptions<CmsV2ApiOptions> options,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.ConfirmAsync(
+                new ConfirmQuestionImportCommand(
+                    options.Value.BankRootDirectory,
+                    sessionId,
+                    request.Candidates),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
+        group.MapPost("/question-import-sessions/{sessionId}/cancel", async (
             string sessionId,
             QuestionImportUseCases useCases,
             IOptions<CmsV2ApiOptions> options,
             CancellationToken cancellationToken) =>
         {
-            await useCases.CancelSessionAsync(
+            var result = await useCases.CancelSessionAsync(
                 new CancelQuestionImportSessionCommand(options.Value.BankRootDirectory, sessionId),
                 cancellationToken);
 
-            return Results.NoContent();
+            return Results.Ok(result);
+        });
+
+        group.MapPost("/question-import-sessions/{sessionId}/reopen", async (
+            string sessionId,
+            QuestionImportUseCases useCases,
+            IOptions<CmsV2ApiOptions> options,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.ReopenSessionAsync(
+                new ReopenQuestionImportSessionCommand(options.Value.BankRootDirectory, sessionId),
+                cancellationToken);
+
+            return Results.Ok(result);
         });
 
         group.MapGet("/content-blocks/{id:int}/versions", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
@@ -390,6 +399,19 @@ public static class CmsV2ApiEndpointExtensions
                 cancellationToken);
 
             return Results.Ok(new { contentBlockId = id, contentBlockVersionId = request.ContentBlockVersionId });
+        });
+
+        group.MapPost("/content-blocks/{id:int}/difficulty", async (
+            int id,
+            ChangeContentBlockDifficultyRequest request,
+            ContentBlockUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.ChangeContentBlockDifficultyAsync(
+                new ChangeContentBlockDifficultyCommand(id, request.Difficulty),
+                cancellationToken);
+
+            return Results.Ok(result);
         });
 
         group.MapGet("/content-blocks/{id:int}/docx", async (
@@ -745,6 +767,19 @@ public static class CmsV2ApiEndpointExtensions
         {
             var result = await useCases.RenameAtomicSectionAsync(
                 new RenameAtomicSectionCommand(id, request.Title),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
+        group.MapPost("/atomic-sections/{id:int}/difficulty", async (
+            int id,
+            ChangeAtomicSectionDifficultyRequest request,
+            AtomicSectionUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.ChangeAtomicSectionDifficultyAsync(
+                new ChangeAtomicSectionDifficultyCommand(id, request.Difficulty),
                 cancellationToken);
 
             return Results.Ok(result);
@@ -1256,6 +1291,19 @@ public static class CmsV2ApiEndpointExtensions
         {
             var result = await useCases.GenerateHandoutWordAsync(
                 new GenerateHandoutWordCommand(options.Value.BankRootDirectory, id, request.GeneratedTime),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
+        group.MapPost("/output-forms/{id:int}/validate-word-generation", async (
+            int id,
+            HandoutGenerationUseCases useCases,
+            IOptions<CmsV2ApiOptions> options,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.ValidateHandoutWordGenerationAsync(
+                new ValidateHandoutWordGenerationCommand(options.Value.BankRootDirectory, id),
                 cancellationToken);
 
             return Results.Ok(result);

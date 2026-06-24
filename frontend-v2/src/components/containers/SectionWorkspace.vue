@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
+import { FileUp } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import AtomicSectionBlock from '@/components/business/AtomicSectionBlock.vue'
 import CompositeBlock from '@/components/business/CompositeBlock.vue'
@@ -97,6 +98,7 @@ const emit = defineEmits<{
   clearVariantSelection: []
   cancelVariantSelection: []
   confirmVariantSelection: []
+  requestQuestionImport: []
   requestAtomicChildContentBlock: [request: AtomicSectionWorkspaceActionPayload]
   requestAtomicMove: [request: AtomicSectionWorkspaceMovePayload]
   requestAtomicRename: [request: AtomicSectionWorkspaceActionPayload]
@@ -109,6 +111,7 @@ const emit = defineEmits<{
   requestAtomicSectionPanelRename: [request: AtomicSectionPanelActionPayload]
   requestAtomicSectionPanelMove: [request: AtomicSectionPanelMovePayload]
   requestAtomicSectionPanelRemove: [request: AtomicSectionPanelActionPayload]
+  requestAtomicSectionPanelQuestionImport: [request: AtomicSectionPanelActionPayload]
   requestContentBlockOpenWord: [request: ContentBlockWorkspaceActionPayload]
   requestContentBlockMove: [request: ContentBlockWorkspaceMovePayload]
   requestContentBlockRemove: [request: ContentBlockWorkspaceActionPayload]
@@ -644,6 +647,17 @@ watch(
         >
           {{ readOnlyLabel }}
         </span>
+        <Button
+          v-if="!readOnlyMode && !activeWorkspaceSelectionMode"
+          type="button"
+          size="sm"
+          variant="outline"
+          class="h-7 px-2 text-xs"
+          @click="emit('requestQuestionImport')"
+        >
+          <FileUp class="size-3.5" aria-hidden="true" />
+          {{ t('sectionPage.workspace.questionImport') }}
+        </Button>
         <template v-if="variantSelectionMode">
           <Button
             type="button"
@@ -815,6 +829,7 @@ watch(
                 @rename-atomic-section-panel="emit('requestAtomicSectionPanelRename', $event)"
                 @move-atomic-section-panel="emit('requestAtomicSectionPanelMove', $event)"
                 @remove-atomic-section-panel="emit('requestAtomicSectionPanelRemove', $event)"
+                @request-atomic-section-panel-question-import="emit('requestAtomicSectionPanelQuestionImport', $event)"
                 @open-content-block-relation-word="emit('requestContentBlockRelationOpenWord', $event)"
                 @move-content-block-relation="emit('requestContentBlockRelationMove', $event)"
                 @remove-content-block-relation="emit('requestContentBlockRelationRemove', $event)"

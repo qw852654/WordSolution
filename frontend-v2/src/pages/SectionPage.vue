@@ -15,6 +15,10 @@ import SectionTopToolbar from '@/components/containers/SectionTopToolbar.vue'
 import SectionWorkspace from '@/components/containers/SectionWorkspace.vue'
 import {
   cmsV2Api,
+  type CmsV2Difficulty,
+  type CmsV2InsertQuestionContext,
+  type CmsV2QuestionImportCandidateDto,
+  type CmsV2QuestionImportConfirmResultDto,
   type CmsV2QuestionImportSessionDto,
   type CmsV2SectionVariantItemDto,
   type CmsV2SectionVariantSelectionCandidateDto,
@@ -44,8 +48,9 @@ import type {
   AtomicSectionItemMovePayload,
   ContentBlockRelationActionPayload,
   ContentBlockRelationMovePayload,
-  QuestionImportConfirmPayload,
+  QuestionImportCandidateSelectionPayload,
   QuestionImportContext,
+  SectionDifficultyChangePayload,
   SectionPageShellModel,
   SectionVariantCreateMetadata,
   SectionVariantPreviewState,
@@ -105,9 +110,14 @@ const isSubmittingInsertCreate = ref(false)
 const isCreatingAtomicSectionPanel = ref(false)
 const isDeletingContentBlockCascade = ref(false)
 const isUpdatingAtomicSectionItemClassification = ref(false)
+const isUpdatingNodeDifficulty = ref(false)
 const atomicSectionPanelCreateError = ref('')
 const questionImportOpen = ref(false)
+const activeQuestionImportContext = ref<QuestionImportContext | null>(null)
 const questionImportSession = ref<CmsV2QuestionImportSessionDto | null>(null)
+const questionImportCandidates = ref<CmsV2QuestionImportCandidateDto[]>([])
+const questionImportCandidatesLoading = ref(false)
+const questionImportCandidatesLoadedSessionId = ref<string>()
 const questionImportBusy = ref(false)
 const questionImportError = ref('')
 const questionImportFeedback = ref('')
@@ -126,7 +136,10 @@ function resolveSectionItemRemoveError(error: unknown, fallback: string) {
   return message || fallback
 }
 let teachingTopicDrawerTimer: number | undefined
+let questionImportPollTimer: number | undefined
+let questionImportPollInFlight = false
 let sectionPageLoadSequence = 0
+const QUESTION_IMPORT_POLL_INTERVAL_MS = 2000
 
 interface AtomicSectionWorkspaceActionPayload {
   nodeId: string
@@ -452,23 +465,190 @@ function getCurrentNumericSectionId() {
   return Number.isInteger(currentSectionId) && currentSectionId > 0 ? currentSectionId : undefined
 }
 
-const questionImportContext = computed<QuestionImportContext>(() => ({
-  target: 'SectionTopLevel',
-  sectionId: getCurrentNumericSectionId() ?? 0,
-  sectionTitle: sectionShell.value.title,
-}))
+function createSectionTopLevelQuestionImportContext(): QuestionImportContext {
+  return {
+    target: 'SectionTopLevel',
+    sectionId: getCurrentNumericSectionId() ?? 0,
+    sectionTitle: sectionShell.value.title,
+    defaultDifficulty: 'Medium',
+  }
+}
 
-function openQuestionImportDialog() {
-  const currentSectionId = getCurrentNumericSectionId()
-  if (!currentSectionId) {
-    questionImportError.value = t('sectionPage.questionImport.missingSection')
-    questionImportOpen.value = true
+const questionImportContext = computed<QuestionImportContext>(
+  () => activeQuestionImportContext.value ?? createSectionTopLevelQuestionImportContext(),
+)
+
+function getQuestionImportContextKey(context: QuestionImportContext) {
+  if (context.target === 'AtomicSectionPanel') {
+    return [
+      context.target,
+      context.sectionId,
+      context.atomicSectionId,
+      context.atomicSectionPanelId,
+    ].join(':')
+  }
+
+  return [context.target, context.sectionId, context.afterSectionItemId ?? 'end'].join(':')
+}
+
+function normalizeCmsV2Difficulty(difficulty?: string): CmsV2Difficulty {
+  return difficulty === 'Unset' ||
+    difficulty === 'Basic' ||
+    difficulty === 'Medium' ||
+    difficulty === 'Advanced' ||
+    difficulty === 'Top'
+    ? difficulty
+    : 'Medium'
+}
+
+function resetQuestionImportSessionState() {
+  stopQuestionImportPolling()
+  questionImportSession.value = null
+  clearQuestionImportCandidates()
+}
+
+function buildQuestionImportApiContext(): CmsV2InsertQuestionContext | undefined {
+  const context = questionImportContext.value
+  if (!context.sectionId) {
+    return undefined
+  }
+
+  if (context.target === 'AtomicSectionPanel') {
+    return {
+      sectionId: context.sectionId,
+      atomicSectionId: context.atomicSectionId,
+      atomicSectionPanelId: context.atomicSectionPanelId,
+      afterAtomicSectionItemId: null,
+      afterSectionItemId: null,
+      defaultTeachingRole: context.teachingRole,
+      defaultDifficulty: normalizeCmsV2Difficulty(context.difficulty),
+    }
+  }
+
+  return {
+    sectionId: context.sectionId,
+    atomicSectionId: null,
+    atomicSectionPanelId: null,
+    afterAtomicSectionItemId: null,
+    afterSectionItemId: context.target === 'SectionTopLevel' ? context.afterSectionItemId ?? null : null,
+    defaultTeachingRole: 'Unclassified',
+    defaultDifficulty: normalizeCmsV2Difficulty(context.defaultDifficulty),
+  }
+}
+
+function shouldPollQuestionImportSession(status?: CmsV2QuestionImportSessionDto['status']) {
+  return status === 'Created' || status === 'Opening' || status === 'Editing' || status === 'Parsing'
+}
+
+function clearQuestionImportCandidates() {
+  questionImportCandidates.value = []
+  questionImportCandidatesLoadedSessionId.value = undefined
+}
+
+function stopQuestionImportPolling() {
+  if (questionImportPollTimer !== undefined) {
+    window.clearTimeout(questionImportPollTimer)
+    questionImportPollTimer = undefined
+  }
+}
+
+function scheduleQuestionImportPolling() {
+  stopQuestionImportPolling()
+
+  if (!shouldPollQuestionImportSession(questionImportSession.value?.status)) {
     return
   }
 
+  questionImportPollTimer = window.setTimeout(() => {
+    void pollQuestionImportSession()
+  }, QUESTION_IMPORT_POLL_INTERVAL_MS)
+}
+
+async function loadQuestionImportCandidates(sessionId: string, force = false) {
+  if (!force && questionImportCandidatesLoadedSessionId.value === sessionId) {
+    return
+  }
+
+  questionImportCandidatesLoading.value = true
+
+  try {
+    questionImportCandidates.value = await cmsV2Api.listQuestionImportCandidates(sessionId)
+    questionImportCandidatesLoadedSessionId.value = sessionId
+  } catch (error) {
+    questionImportError.value =
+      error instanceof Error ? error.message : t('sectionPage.questionImport.candidatesFailed')
+  } finally {
+    questionImportCandidatesLoading.value = false
+  }
+}
+
+async function applyQuestionImportSession(session: CmsV2QuestionImportSessionDto) {
+  questionImportSession.value = session
+
+  if (session.status === 'ReadyForReview') {
+    stopQuestionImportPolling()
+    await loadQuestionImportCandidates(session.sessionId)
+    if (!questionImportError.value) {
+      questionImportFeedback.value = t('sectionPage.questionImport.ready')
+    }
+    return
+  }
+
+  if (shouldPollQuestionImportSession(session.status)) {
+    questionImportFeedback.value = t('sectionPage.questionImport.polling')
+    scheduleQuestionImportPolling()
+    return
+  }
+
+  stopQuestionImportPolling()
+}
+
+async function pollQuestionImportSession() {
+  const sessionId = questionImportSession.value?.sessionId
+  if (!sessionId || questionImportPollInFlight) {
+    return
+  }
+
+  questionImportPollInFlight = true
+
+  try {
+    await applyQuestionImportSession(await cmsV2Api.getQuestionImportSession(sessionId))
+  } catch (error) {
+    questionImportError.value =
+      error instanceof Error ? error.message : t('sectionPage.questionImport.pollFailed')
+    scheduleQuestionImportPolling()
+  } finally {
+    questionImportPollInFlight = false
+  }
+}
+
+function openQuestionImportDialog(context?: QuestionImportContext) {
+  const nextContext = context ?? createSectionTopLevelQuestionImportContext()
+  const currentContext = activeQuestionImportContext.value
+
+  if (
+    !currentContext ||
+    getQuestionImportContextKey(currentContext) !== getQuestionImportContextKey(nextContext)
+  ) {
+    resetQuestionImportSessionState()
+  }
+
+  activeQuestionImportContext.value = nextContext
   questionImportOpen.value = true
   questionImportError.value = ''
   questionImportFeedback.value = ''
+
+  if (!nextContext.sectionId) {
+    questionImportError.value = t('sectionPage.questionImport.missingSection')
+    return
+  }
+
+  if (!questionImportSession.value) {
+    void startQuestionImportSession()
+    return
+  }
+
+  scheduleQuestionImportPolling()
 }
 
 function closeQuestionImportDialog() {
@@ -480,55 +660,112 @@ function closeQuestionImportDialog() {
   questionImportError.value = ''
 }
 
-async function uploadQuestionImportFile(file: File) {
-  const currentSectionId = getCurrentNumericSectionId()
-  if (!currentSectionId) {
+async function startQuestionImportSession() {
+  const context = buildQuestionImportApiContext()
+  if (!context) {
     questionImportError.value = t('sectionPage.questionImport.missingSection')
     return
   }
 
   questionImportBusy.value = true
   questionImportError.value = ''
-  questionImportFeedback.value = t('sectionPage.questionImport.uploading')
+  questionImportFeedback.value = t('sectionPage.questionImport.starting')
+  clearQuestionImportCandidates()
 
   try {
-    questionImportSession.value = await cmsV2Api.createQuestionImportSession(currentSectionId, file)
-    questionImportFeedback.value = t('sectionPage.questionImport.uploaded', {
-      count: questionImportSession.value.candidates.length,
+    const session = await cmsV2Api.createQuestionImportSession({
+      context,
+      openWord: true,
     })
+    questionImportFeedback.value = t('sectionPage.questionImport.started')
+    await applyQuestionImportSession(session)
   } catch (error) {
     questionImportError.value =
-      error instanceof Error ? error.message : t('sectionPage.questionImport.uploadFailed')
+      error instanceof Error ? error.message : t('sectionPage.questionImport.startFailed')
   } finally {
     questionImportBusy.value = false
   }
 }
 
-async function confirmQuestionImportCandidate(payload: QuestionImportConfirmPayload) {
-  const currentSectionId = getCurrentNumericSectionId()
+async function reopenQuestionImportSession() {
   const sessionId = questionImportSession.value?.sessionId
-  if (!currentSectionId || !sessionId) {
+  if (!sessionId) {
     questionImportError.value = t('sectionPage.questionImport.missingSession')
     return
   }
 
   questionImportBusy.value = true
   questionImportError.value = ''
-  questionImportFeedback.value = t('sectionPage.questionImport.confirming')
+  questionImportFeedback.value = t('sectionPage.questionImport.reopening')
+  clearQuestionImportCandidates()
 
   try {
-    const result = await cmsV2Api.confirmQuestionImportCandidate(sessionId, payload.candidateId, {
-      sectionId: currentSectionId,
-      title: payload.title,
-      blockType: 'Question',
-      summary: payload.summary,
-      difficulty: payload.difficulty,
-      questionType: payload.questionType === 'Unset' ? null : payload.questionType,
+    const session = await cmsV2Api.reopenQuestionImportSession(sessionId)
+    questionImportFeedback.value = t('sectionPage.questionImport.reopened')
+    await applyQuestionImportSession(session)
+  } catch (error) {
+    questionImportError.value =
+      error instanceof Error ? error.message : t('sectionPage.questionImport.reopenFailed')
+  } finally {
+    questionImportBusy.value = false
+  }
+}
+
+function resolveImportedNodeId(result: CmsV2QuestionImportConfirmResultDto) {
+  if (result.firstInsertedNodeType === 'SectionItem' && result.firstInsertedNodeId) {
+    return `section-item-${result.firstInsertedNodeId}`
+  }
+
+  if (result.firstInsertedNodeType === 'AtomicSectionItem' && result.firstInsertedNodeId) {
+    return `atomic-section-item-${result.firstInsertedNodeId}`
+  }
+
+  const firstSectionItemId = result.sectionItemIds[0]
+  if (firstSectionItemId) {
+    return `section-item-${firstSectionItemId}`
+  }
+
+  const firstAtomicSectionItemId = result.atomicSectionItemIds[0]
+  return firstAtomicSectionItemId ? `atomic-section-item-${firstAtomicSectionItemId}` : undefined
+}
+
+async function confirmQuestionImportCandidates(
+  payload: QuestionImportCandidateSelectionPayload[],
+) {
+  const sessionId = questionImportSession.value?.sessionId
+  if (!sessionId) {
+    questionImportError.value = t('sectionPage.questionImport.missingSession')
+    return
+  }
+
+  if (!payload.some((candidate) => candidate.selected)) {
+    questionImportError.value = t('sectionPage.questionImport.noSelectedCandidates')
+    return
+  }
+
+  questionImportBusy.value = true
+  questionImportError.value = ''
+  questionImportFeedback.value = t('sectionPage.questionImport.confirming')
+  stopQuestionImportPolling()
+
+  try {
+    const result = await cmsV2Api.confirmQuestionImportCandidates(sessionId, {
+      candidates: payload,
     })
+    const importedNodeId = resolveImportedNodeId(result)
     questionImportFeedback.value = t('sectionPage.questionImport.confirmed', {
-      contentBlockId: result.contentBlockId,
+      count: result.contentBlockIds.length,
     })
+    questionImportSession.value = null
+    clearQuestionImportCandidates()
+    questionImportOpen.value = false
     await loadCurrentSectionPage()
+
+    if (importedNodeId) {
+      selectedStructureNodeId.value = importedNodeId
+      workspaceScrollTargetNodeId.value = importedNodeId
+      workspaceScrollRequestKey.value += 1
+    }
   } catch (error) {
     questionImportError.value =
       error instanceof Error ? error.message : t('sectionPage.questionImport.confirmFailed')
@@ -546,10 +783,12 @@ async function cancelQuestionImportSession() {
 
   questionImportBusy.value = true
   questionImportError.value = ''
+  stopQuestionImportPolling()
 
   try {
     await cmsV2Api.cancelQuestionImportSession(sessionId)
     questionImportSession.value = null
+    clearQuestionImportCandidates()
     questionImportFeedback.value = ''
     questionImportOpen.value = false
   } catch (error) {
@@ -923,6 +1162,26 @@ function requestAtomicSectionPanelSelect(payload: AtomicSectionPanelActionPayloa
   workspaceScrollRequestKey.value += 1
 }
 
+function requestAtomicSectionPanelQuestionImport(payload: AtomicSectionPanelActionPayload) {
+  const currentSectionId = getCurrentNumericSectionId()
+  if (!currentSectionId) {
+    questionImportError.value = t('sectionPage.questionImport.missingSection')
+    return
+  }
+
+  openQuestionImportDialog({
+    target: 'AtomicSectionPanel',
+    sectionId: currentSectionId,
+    sectionTitle: sectionShell.value.title,
+    atomicSectionId: payload.atomicSectionId,
+    atomicSectionTitle: getAtomicSectionTitleById(payload.atomicSectionId) ?? payload.title,
+    atomicSectionPanelId: payload.atomicSectionPanelId,
+    atomicSectionPanelTitle: payload.title,
+    teachingRole: payload.teachingRole,
+    difficulty: getAtomicSectionPanelDifficultyForApi(payload),
+  })
+}
+
 function getAtomicSectionPanelDifficultyForApi(payload: AtomicSectionPanelActionPayload) {
   return payload.difficultyValue ?? mapInsertDifficulty(payload.difficulty as InsertCreateDifficulty)
 }
@@ -1069,6 +1328,59 @@ async function requestAtomicSectionItemClassificationChange(payload: {
         : t('sectionPage.workspace.atomicSectionPanelActions.operationFailed')
   } finally {
     isUpdatingAtomicSectionItemClassification.value = false
+  }
+}
+
+async function requestNodeDifficultyChange(payload: SectionDifficultyChangePayload) {
+  if (isUpdatingNodeDifficulty.value) {
+    return
+  }
+
+  const difficulty = normalizeCmsV2Difficulty(payload.difficulty)
+  isUpdatingNodeDifficulty.value = true
+  sectionPageError.value = ''
+
+  try {
+    if (payload.kind === 'ContentBlock' || payload.kind === 'CompositeBlock') {
+      const contentBlockId = findContentBlockIdForWorkspaceNode(payload.nodeId)
+      if (typeof contentBlockId !== 'number') {
+        throw new Error(t('sectionPage.workspace.difficultyActions.targetMissing'))
+      }
+
+      await cmsV2Api.changeContentBlockDifficulty(contentBlockId, { difficulty })
+    } else if (payload.kind === 'AtomicSection') {
+      if (typeof payload.atomicSectionId !== 'number') {
+        throw new Error(t('sectionPage.workspace.difficultyActions.targetMissing'))
+      }
+
+      await cmsV2Api.changeAtomicSectionDifficulty(payload.atomicSectionId, { difficulty })
+    } else if (payload.kind === 'AtomicSectionPanel') {
+      if (
+        typeof payload.atomicSectionId !== 'number' ||
+        typeof payload.atomicSectionPanelId !== 'number' ||
+        !payload.teachingRole
+      ) {
+        throw new Error(t('sectionPage.workspace.difficultyActions.targetMissing'))
+      }
+
+      await cmsV2Api.updateAtomicSectionPanel(
+        payload.atomicSectionId,
+        payload.atomicSectionPanelId,
+        {
+          title: payload.title ?? '',
+          teachingRole: payload.teachingRole,
+          difficulty,
+        },
+      )
+    }
+
+    selectedStructureNodeId.value = payload.nodeId
+    await loadCurrentSectionPage()
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error ? error.message : t('sectionPage.workspace.difficultyActions.operationFailed')
+  } finally {
+    isUpdatingNodeDifficulty.value = false
   }
 }
 
@@ -2522,10 +2834,18 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopTeachingTopicDrawerTimer()
+  stopQuestionImportPolling()
   document.removeEventListener('keydown', handleDocumentKeydown)
 })
 
 watch(sectionId, () => {
+  stopQuestionImportPolling()
+  questionImportSession.value = null
+  activeQuestionImportContext.value = null
+  clearQuestionImportCandidates()
+  questionImportOpen.value = false
+  questionImportError.value = ''
+  questionImportFeedback.value = ''
   void loadCurrentSectionPage()
 })
 </script>
@@ -2586,6 +2906,7 @@ watch(sectionId, () => {
         @clear-variant-selection="clearSectionVariantSelection"
         @cancel-variant-selection="cancelSectionVariantSelectionMode"
         @confirm-variant-selection="confirmSectionVariantSelection"
+        @request-question-import="openQuestionImportDialog()"
         @request-atomic-child-content-block="requestAtomicChildContentBlock"
         @request-atomic-move="requestAtomicMove"
         @request-atomic-rename="requestAtomicRename"
@@ -2598,6 +2919,7 @@ watch(sectionId, () => {
         @request-atomic-section-panel-rename="requestAtomicSectionPanelRename"
         @request-atomic-section-panel-move="requestAtomicSectionPanelMove"
         @request-atomic-section-panel-remove="requestAtomicSectionPanelRemove"
+        @request-atomic-section-panel-question-import="requestAtomicSectionPanelQuestionImport"
         @request-content-block-open-word="requestContentBlockOpenWord"
         @request-content-block-move="requestContentBlockMove"
         @request-content-block-remove="requestContentBlockRemove"
@@ -2607,7 +2929,7 @@ watch(sectionId, () => {
       />
 
       <aside class="flex min-h-0 flex-col gap-3">
-        <SectionTopToolbar @request-question-import="openQuestionImportDialog" />
+        <SectionTopToolbar />
         <SectionInspector
           class="min-h-0 flex-1"
           :node="selectedStructureNode"
@@ -2615,8 +2937,10 @@ watch(sectionId, () => {
           :variant-item-count="sectionVariantItemCount"
           :deleting-content-block-cascade="isDeletingContentBlockCascade"
           :updating-atomic-section-item-classification="isUpdatingAtomicSectionItemClassification"
+          :updating-node-difficulty="isUpdatingNodeDifficulty"
           @delete-content-block-cascade="requestDeleteContentBlockCascade"
           @change-atomic-section-item-classification="requestAtomicSectionItemClassificationChange"
+          @change-node-difficulty="requestNodeDifficultyChange"
         />
       </aside>
     </section>
@@ -2644,12 +2968,15 @@ watch(sectionId, () => {
       :open="questionImportOpen"
       :import-context="questionImportContext"
       :session="questionImportSession"
+      :candidates="questionImportCandidates"
       :busy="questionImportBusy"
+      :candidates-loading="questionImportCandidatesLoading"
       :error-message="questionImportError"
       :feedback-message="questionImportFeedback"
       @close="closeQuestionImportDialog"
-      @upload="uploadQuestionImportFile"
-      @confirm-candidate="confirmQuestionImportCandidate"
+      @start-session="startQuestionImportSession"
+      @reopen-session="reopenQuestionImportSession"
+      @confirm-candidates="confirmQuestionImportCandidates"
       @cancel-session="cancelQuestionImportSession"
     />
 

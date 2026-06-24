@@ -90,3 +90,7 @@ public sealed record RemoveAtomicSectionItemCommand(
 public sealed record RenameAtomicSectionCommand(
     int AtomicSectionId,
     string Title);
+
+public sealed record ChangeAtomicSectionDifficultyCommand(
+    int AtomicSectionId,
+    Difficulty Difficulty);

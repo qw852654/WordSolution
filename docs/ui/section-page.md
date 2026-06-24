@@ -1358,38 +1358,89 @@ docs/cms-v2/backend/题目结构化预览-输出样式重绑定-多题导入开�
 - `SectionPage` 不解析 Word 样式。
 - `SectionPage` 不在前端推断 `Stem / Answer / Analysis / Hint / Other`。
 - `SectionPage` 不根据 Word 样式推断 `TeachingRole`。
+- 非 `Question ContentBlock` 默认展示普通预览；`ExampleGroup / ExerciseGroup / VariantGroup` 不因本能力线被前端强制当作结构化题目 Part。
 - 结构化预览组件必须先进入 `ComponentLab` 验收，再接入真实 `SectionPage`。
 
-当前 `SectionPage` 已接入多题导入入口，但导入组件仍只负责候选题导入工作流。确认导入后的正式 `ContentBlock` 是否插入 `SectionPage` 工作区，由页面级导入上下文和后续插入逻辑决定。
+Phase 4 已完成 `SectionPage` 多题导入前端重写。早期实现曾经是“选择 `.docx` 文件上传并逐个候选确认”，该口径是历史偏差，已修正，不得作为当前验收依据。
+
+当前实现已经校准的链路包括：
+
+- `QuestionImportDialog` 的面板结构。
+- `cmsV2Client.createQuestionImportSession` 的请求形态。
+- `SectionPage` 的导入上下文传递。
+- 候选题确认方式。
+- 导入成功后插入到 Section 顶层、AtomicSection 或 AtomicSectionPanel 上下文的页面级刷新和定位。
+
+因此，后续如搜索到“上传式导入 / 逐候选确认”等描述，应按历史偏差处理，不得恢复为主流程。
+
+正式目标：
+
+```text
+SectionPage 在可插入题目的上下文触发多题导入
+-> 后端创建临时 Word 并自动打开
+-> 用户粘贴 / 整理题目后保存关闭
+-> 后端检测关闭并自动切割
+-> 前端轮询到 ReadyForReview
+-> 前端展示候选题确认页
+-> 用户勾选并确认
+-> 后端批量正式入库
+-> SectionPage 刷新并定位首个新增题目
+```
+
+确认导入后的正式 `ContentBlock` 是否插入 `SectionPage` 工作区，由页面级导入上下文和后续插入逻辑决定。
+
+确认前 `SectionPage` 不得展示任何伪造的正式新增题成功态；后端也不得写正式数据库或正式 `content-blocks/` 资产目录。
 
 ## 当前补充：多题导入组件上下文
 
 `SectionPage` 中的多题导入不再被视为“顶部工具栏专用功能”，而是一个可复用导入工作流。
 
-第一版已确认的导入目标包括：
+当前已确认的导入目标包括：
 
 ```text
 SectionTopLevel
   在上帝小节顶层导入 ContentBlock。
   后续自动插入时应创建顶层 SectionItem。
 
+AtomicSection
+  在 AtomicSection 内部导入 ContentBlock。
+  确认候选题后，由后端创建 AtomicSectionItem。
+
 AtomicSectionPanel
   在 AtomicSection 内部具体 panel 中导入 ContentBlock。
-  后续自动插入时应创建 AtomicSectionItem，
-  并携带 AtomicSectionPanelId / TeachingRole / Difficulty。
+  确认候选题后，由后端创建归属该 panel 的 AtomicSectionItem。
+  默认 TeachingRole / Difficulty 来自 panel 本身。
 ```
 
-当前本轮边界：
+当前实现边界：
 
 - 抽出 `QuestionImportContext`，让同一 `QuestionImportDialog` 能表达不同导入目标。
-- 当前 Section 顶部入口使用 `SectionTopLevel` 上下文。
-- `AtomicSectionPanel` 上下文先作为复用口子保留，本轮不把入口接到 panel 内部。
-- 组件只负责上传、候选题、预览和确认元数据。
+- Workspace 顶部入口使用 `SectionTopLevel` 上下文。
+- `AtomicSection` 上下文已有后端确认路径。
+- `AtomicSectionPanelBlock` 内部 `导入题目` 使用 `AtomicSectionPanel` 上下文。
+- `SectionPage` 构造 API context 时传入 `sectionId`、`atomicSectionId`、`atomicSectionPanelId`、默认教学职责和默认难度。
+- 后端校验 panel 属于指定 AtomicSection，AtomicSection 属于指定 Section。
+- 组件只负责展示临时 Word 会话、候选题、预览和确认元数据。
 - 组件不直接创建 `SectionItem` 或 `AtomicSectionItem`。
 - 插入到哪里必须由 `SectionPage` 或页面级 action 根据上下文决定。
+- 组件不得把正式流程写成“选择并上传 `.docx` 文件”。
+- 组件不得逐个候选题单独入库。
+- 候选确认页只允许勾选、标题输入、查看结构状态和预览；不做拆题、合题、正文编辑、逐题 TeachingRole / Difficulty / 标签编辑。
 
-后续开发顺序：
+当前完成情况：
 
-1. `SectionTopLevel`：确认候选题后创建 `ContentBlock`，并插入当前 Section 顶层末尾或指定插入点。
-2. `AtomicSectionPanel`：确认候选题后创建 `ContentBlock`，并插入当前 panel 内部。
-3. 如果后续支持其他导入目标，必须继续复用 `QuestionImportContext`，不得复制新的多题导入弹窗。
+1. 已替换上传式实现：创建临时 Word 会话、自动打开、轮询关闭后切割。
+2. 已支持 `SectionTopLevel`：确认候选题后创建 `ContentBlock`，并插入当前 Section 顶层。
+3. 已支持 `AtomicSectionPanel` 上下文的前端入口和后端确认路径；确认后创建归属该 panel 的 `AtomicSectionItem`，默认使用 panel 的 `TeachingRole` / `Difficulty`。
+4. 如果后续支持其他导入目标，必须继续复用 `QuestionImportContext`，不得复制新的多题导入弹窗。
+
+### 题目结构化与输出样式校准结果
+
+`SectionPage` 当前与原始规格的关系如下：
+
+- 结构化预览：可以消费后端 `data-question-part` HTML，但组件验收仍要覆盖 Stem、Answer、Analysis、Hint、Other、warning、Failed、NotApplicable、无 Word 文档。
+- 多题导入：当前已切换为临时 Word session、轮询、candidate 查询和批量确认；上传式面板是历史偏差，已修正。
+- 输出样式重绑定：属于后端生成链路，`SectionPage` 只显示生成结果和错误，不在前端计算或写死输出样式。
+- 输出预检：后端已提供 `validate-word-generation`，`SectionPage` 只负责展示预检或生成错误，不在前端计算样式问题。
+- 插入上下文：Section 顶层、AtomicSection 和 AtomicSectionPanel 内部导入必须共用 `QuestionImportContext`，不能各写一套导入面板。
+- 页面级刷新：正式批量导入成功后，`SectionPage` 负责刷新 Section 数据，并定位首个新增题目；组件本身不得保存成功状态或伪造插入结果。

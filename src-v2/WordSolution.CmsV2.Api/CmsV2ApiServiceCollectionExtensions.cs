@@ -39,6 +39,8 @@ public static class CmsV2ApiServiceCollectionExtensions
         services.AddSingleton<IContentBlockFileStore, LocalContentBlockFileStore>();
         services.AddSingleton<IContentBlockDocumentProcessor, AsposeContentBlockDocumentProcessor>();
         services.AddSingleton<IQuestionImportDocumentProcessor, AsposeQuestionImportDocumentProcessor>();
+        services.AddSingleton<IQuestionImportSessionLauncher, LocalQuestionImportSessionLauncher>();
+        services.AddSingleton<IQuestionImportDocumentCloseChecker, LocalQuestionImportDocumentCloseChecker>();
         services.AddSingleton<IContentBlockEditSessionStore, LocalContentBlockEditSessionStore>();
         services.AddSingleton<IContentBlockEditSessionFileStore, LocalContentBlockEditSessionFileStore>();
         services.AddSingleton<IContentBlockEditSessionLauncher, LocalContentBlockEditSessionLauncher>();

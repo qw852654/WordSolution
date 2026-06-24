@@ -548,6 +548,110 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
     }
 
     [Fact]
+    public async Task ValidateHandoutWordGeneration_reports_missing_question_stem_and_generate_does_not_write_generated_record()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        var setup = await CreateOutputFormAsync(unitOfWork, bankRootDirectory);
+        CreateTemplateWithQuestionOutputStyles(
+            setup.OutputTemplate.TemplateDocxPath,
+            "例题",
+            "变式",
+            "练习题");
+        var block = await CreateQuestionContentBlockWithOnlyOtherVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Only other question",
+            "Unknown style content");
+        await unitOfWork.HandoutVersionItems.AddAsync(new HandoutVersionItem(
+            setup.HandoutVersion.Id,
+            HandoutVersionItemTargetType.ContentBlock,
+            block.ContentBlock.Id,
+            sortOrder: 1));
+        await unitOfWork.SaveChangesAsync();
+        var useCases = CreateUseCases(unitOfWork);
+
+        var validation = await useCases.ValidateHandoutWordGenerationAsync(
+            new ValidateHandoutWordGenerationCommand(bankRootDirectory, setup.OutputForm.Id));
+        var exception = await Assert.ThrowsAsync<CmsV2ApplicationException>(
+            () => useCases.GenerateHandoutWordAsync(
+                new GenerateHandoutWordCommand(bankRootDirectory, setup.OutputForm.Id)));
+
+        var issue = Assert.Single(validation.Issues);
+        Assert.False(validation.IsValid);
+        Assert.Equal("MissingQuestionStem", issue.Code);
+        Assert.Equal(setup.OutputForm.Id, issue.OutputFormId);
+        Assert.Equal(block.ContentBlock.Id, issue.ContentBlockId);
+        Assert.Equal(block.Version.Id, issue.ContentBlockVersionId);
+        Assert.Equal("练习题", issue.RequiredStyleName);
+        Assert.Equal("Practice", issue.OccurrenceRole);
+        Assert.Contains("Stem", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(await unitOfWork.GeneratedFiles.ListByOutputFormAsync(setup.OutputForm.Id));
+    }
+
+    [Fact]
+    public async Task GenerateHandoutWord_rebinds_first_effective_stem_only_and_does_not_use_other_as_fallback()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        var setup = await CreateOutputFormAsync(unitOfWork, bankRootDirectory);
+        CreateTemplateWithQuestionOutputStyles(
+            setup.OutputTemplate.TemplateDocxPath,
+            "例题",
+            "变式",
+            "练习题");
+        var block = await CreateQuestionContentBlockWithOtherBeforeStemAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Other before stem",
+            "Other lead",
+            "Actual stem");
+        await unitOfWork.HandoutVersionItems.AddAsync(new HandoutVersionItem(
+            setup.HandoutVersion.Id,
+            HandoutVersionItemTargetType.ContentBlock,
+            block.ContentBlock.Id,
+            sortOrder: 1));
+        await unitOfWork.SaveChangesAsync();
+
+        var result = await CreateUseCases(unitOfWork).GenerateHandoutWordAsync(
+            new GenerateHandoutWordCommand(bankRootDirectory, setup.OutputForm.Id));
+
+        AssertParagraphUsesStyleName(result.FilePath, "Other lead", "未知样式");
+        AssertParagraphUsesStyleName(result.FilePath, "Actual stem", "练习题");
+    }
+
+    [Fact]
+    public async Task ValidateHandoutWordGeneration_allows_non_question_content_without_stem()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        var setup = await CreateOutputFormAsync(unitOfWork, bankRootDirectory);
+        var block = await CreateContentBlockWithVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "普通文本",
+            "No question stem here",
+            versionNumber: 1,
+            isCurrent: true,
+            blockType: ContentBlockType.GeneralText);
+        await unitOfWork.HandoutVersionItems.AddAsync(new HandoutVersionItem(
+            setup.HandoutVersion.Id,
+            HandoutVersionItemTargetType.ContentBlock,
+            block.ContentBlock.Id,
+            sortOrder: 1));
+        await unitOfWork.SaveChangesAsync();
+
+        var validation = await CreateUseCases(unitOfWork).ValidateHandoutWordGenerationAsync(
+            new ValidateHandoutWordGenerationCommand(bankRootDirectory, setup.OutputForm.Id));
+
+        Assert.True(validation.IsValid);
+        Assert.Empty(validation.Issues);
+    }
+
+    [Fact]
     public async Task GenerateHandoutWord_rejects_missing_question_output_style_without_generated_record()
     {
         await using var context = await CreateMigratedContextAsync();
@@ -591,6 +695,57 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
                 new GenerateHandoutWordCommand(bankRootDirectory, setup.OutputForm.Id)));
 
         Assert.Contains("变式", exception.Message);
+        Assert.Empty(await unitOfWork.GeneratedFiles.ListByOutputFormAsync(setup.OutputForm.Id));
+    }
+
+    [Fact]
+    public async Task ValidateHandoutWordGeneration_reports_missing_output_style_without_generated_record()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        var setup = await CreateOutputFormAsync(unitOfWork, bankRootDirectory);
+        CreateTemplateWithQuestionOutputStyles(
+            setup.OutputTemplate.TemplateDocxPath,
+            "例题",
+            "练习题");
+        var variantBlock = await CreateQuestionContentBlockWithStyledVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Variant question",
+            "Variant stem");
+        var topic = new TeachingTopic("Validate Missing Style Topic");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+        var section = new Section(topic.Id, "Validate Missing Style Section");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+        var atomicSection = new AtomicSection(section.Id, "Validate Missing Style AtomicSection");
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            variantBlock.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 1,
+            teachingRole: AtomicSectionTeachingRole.Variant));
+        await unitOfWork.HandoutVersionItems.AddAsync(new HandoutVersionItem(
+            setup.HandoutVersion.Id,
+            HandoutVersionItemTargetType.AtomicSection,
+            atomicSection.Id,
+            sortOrder: 1));
+        await unitOfWork.SaveChangesAsync();
+
+        var validation = await CreateUseCases(unitOfWork).ValidateHandoutWordGenerationAsync(
+            new ValidateHandoutWordGenerationCommand(bankRootDirectory, setup.OutputForm.Id));
+
+        var issue = Assert.Single(validation.Issues);
+        Assert.False(validation.IsValid);
+        Assert.Equal("MissingOutputStyle", issue.Code);
+        Assert.Equal(setup.OutputForm.Id, issue.OutputFormId);
+        Assert.Equal(setup.OutputTemplate.Id, issue.OutputTemplateId);
+        Assert.Equal("变式", issue.RequiredStyleName);
         Assert.Empty(await unitOfWork.GeneratedFiles.ListByOutputFormAsync(setup.OutputForm.Id));
     }
 
@@ -826,6 +981,77 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
         return new ContentBlockSetup(block, version);
     }
 
+    private static async Task<ContentBlockSetup> CreateQuestionContentBlockWithOnlyOtherVersionAsync(
+        EfCmsV2UnitOfWork unitOfWork,
+        string bankRootDirectory,
+        string title,
+        string otherText)
+    {
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var block = new ContentBlock(sectionId, title, ContentBlockType.Question);
+        await unitOfWork.ContentBlocks.AddAsync(block);
+        await unitOfWork.SaveChangesAsync();
+
+        var docxPath = Path.Combine(
+            bankRootDirectory,
+            "content-blocks",
+            "source",
+            block.Id.ToString(),
+            "v1.docx");
+        CreateOnlyOtherQuestionDocx(docxPath, otherText);
+        var version = new ContentBlockVersion(
+            block.Id,
+            versionNumber: 1,
+            docxPath,
+            plainText: otherText,
+            isCurrent: true);
+        await unitOfWork.ContentBlockVersions.AddAsync(version);
+        await unitOfWork.SaveChangesAsync();
+        block.SetCurrentVersion(version.Id);
+        version.MarkCurrent();
+        unitOfWork.ContentBlocks.Update(block);
+        unitOfWork.ContentBlockVersions.Update(version);
+        await unitOfWork.SaveChangesAsync();
+
+        return new ContentBlockSetup(block, version);
+    }
+
+    private static async Task<ContentBlockSetup> CreateQuestionContentBlockWithOtherBeforeStemAsync(
+        EfCmsV2UnitOfWork unitOfWork,
+        string bankRootDirectory,
+        string title,
+        string otherText,
+        string stemText)
+    {
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var block = new ContentBlock(sectionId, title, ContentBlockType.Question);
+        await unitOfWork.ContentBlocks.AddAsync(block);
+        await unitOfWork.SaveChangesAsync();
+
+        var docxPath = Path.Combine(
+            bankRootDirectory,
+            "content-blocks",
+            "source",
+            block.Id.ToString(),
+            "v1.docx");
+        CreateQuestionDocxWithOtherBeforeStem(docxPath, otherText, stemText);
+        var version = new ContentBlockVersion(
+            block.Id,
+            versionNumber: 1,
+            docxPath,
+            plainText: $"{otherText}\n{stemText}",
+            isCurrent: true);
+        await unitOfWork.ContentBlockVersions.AddAsync(version);
+        await unitOfWork.SaveChangesAsync();
+        block.SetCurrentVersion(version.Id);
+        version.MarkCurrent();
+        unitOfWork.ContentBlocks.Update(block);
+        unitOfWork.ContentBlockVersions.Update(version);
+        await unitOfWork.SaveChangesAsync();
+
+        return new ContentBlockSetup(block, version);
+    }
+
     private static async Task<CmsV2DbContext> CreateMigratedContextAsync()
     {
         var databasePath = Path.Combine(
@@ -942,6 +1168,31 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
         var document = new AsposeDocument();
         var body = document.FirstSection.Body;
         body.RemoveAllChildren();
+        AddStyledParagraph(document, body, "正文", stemText);
+        AddStyledParagraph(document, body, "答案", $"{stemText} answer");
+        document.Save(docxPath);
+    }
+
+    private static void CreateOnlyOtherQuestionDocx(string docxPath, string otherText)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(docxPath)!);
+
+        var document = new AsposeDocument();
+        var body = document.FirstSection.Body;
+        body.RemoveAllChildren();
+        AddStyledParagraph(document, body, "未知样式", otherText);
+        AddStyledParagraph(document, body, "答案", $"{otherText} answer");
+        document.Save(docxPath);
+    }
+
+    private static void CreateQuestionDocxWithOtherBeforeStem(string docxPath, string otherText, string stemText)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(docxPath)!);
+
+        var document = new AsposeDocument();
+        var body = document.FirstSection.Body;
+        body.RemoveAllChildren();
+        AddStyledParagraph(document, body, "未知样式", otherText);
         AddStyledParagraph(document, body, "正文", stemText);
         AddStyledParagraph(document, body, "答案", $"{stemText} answer");
         document.Save(docxPath);

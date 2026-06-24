@@ -46,49 +46,37 @@ public sealed class HandoutGenerationUseCases
         {
             return await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
             {
-                var outputForm = await RequireOutputFormAsync(command.OutputFormId, transactionCancellationToken);
-                if (outputForm.OutputFormat != OutputFormat.Word)
+                var context = await ResolveHandoutWordGenerationContextAsync(
+                    command.OutputFormId,
+                    transactionCancellationToken);
+                var issues = await ValidateResolvedHandoutWordGenerationAsync(context, transactionCancellationToken);
+                if (issues.Count > 0)
                 {
-                    throw new CmsV2ApplicationException("Only Word output is supported in the current stage.");
+                    throw new CmsV2ApplicationException(CreateValidationFailureMessage(issues));
                 }
 
-                var handoutVersion = await RequireHandoutVersionAsync(
-                    outputForm.HandoutVersionId,
-                    transactionCancellationToken);
-                var outputTemplate = await RequireOutputTemplateAsync(
-                    outputForm.OutputTemplateId,
-                    transactionCancellationToken);
-
-                if (!await _fileStore.ExistsAsync(outputTemplate.TemplateDocxPath, transactionCancellationToken))
-                {
-                    throw new CmsV2ApplicationException($"OutputTemplate file was not found: {outputTemplate.TemplateDocxPath}");
-                }
-
-                var resolvedContent = await ResolveHandoutContentAsync(
-                    handoutVersion.Id,
-                    transactionCancellationToken);
                 outputDocxPath = _pathProvider.GetGeneratedHandoutDocxPath(
                     command.BankRootDirectory,
-                    handoutVersion.Id,
-                    outputForm.Id,
-                    outputForm.Title,
+                    context.HandoutVersion.Id,
+                    context.OutputForm.Id,
+                    context.OutputForm.Title,
                     generatedTime);
 
                 await _documentGenerator.GenerateWordAsync(
-                    handoutVersion.Title,
-                    outputTemplate.TemplateDocxPath,
-                    resolvedContent.Elements,
+                    context.HandoutVersion.Title,
+                    context.OutputTemplate.TemplateDocxPath,
+                    context.ResolvedContent.Elements,
                     outputDocxPath,
                     generatedTime,
                     transactionCancellationToken);
 
                 var manifestJson = CreateVersionManifestJson(
-                    outputForm.Id,
-                    handoutVersion.Id,
+                    context.OutputForm.Id,
+                    context.HandoutVersion.Id,
                     generatedTime,
-                    resolvedContent.Sources);
+                    context.ResolvedContent.Sources);
                 var generatedFile = new GeneratedFile(
-                    outputForm.Id,
+                    context.OutputForm.Id,
                     outputDocxPath,
                     manifestJson,
                     generatedTime);
@@ -98,8 +86,8 @@ public sealed class HandoutGenerationUseCases
 
                 return new GeneratedHandoutFileResult(
                     generatedFile.Id,
-                    outputForm.Id,
-                    handoutVersion.Id,
+                    context.OutputForm.Id,
+                    context.HandoutVersion.Id,
                     outputDocxPath,
                     manifestJson);
             }, cancellationToken);
@@ -121,6 +109,76 @@ public sealed class HandoutGenerationUseCases
         }
     }
 
+    public async Task<HandoutWordGenerationValidationResult> ValidateHandoutWordGenerationAsync(
+        ValidateHandoutWordGenerationCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(command.BankRootDirectory))
+        {
+            throw new CmsV2ApplicationException("BankRootDirectory cannot be empty.");
+        }
+
+        var context = await ResolveHandoutWordGenerationContextAsync(command.OutputFormId, cancellationToken);
+        var issues = await ValidateResolvedHandoutWordGenerationAsync(context, cancellationToken);
+        return new HandoutWordGenerationValidationResult(issues.Count == 0, issues);
+    }
+
+    private async Task<ResolvedHandoutWordGenerationContext> ResolveHandoutWordGenerationContextAsync(
+        int outputFormId,
+        CancellationToken cancellationToken)
+    {
+        var outputForm = await RequireOutputFormAsync(outputFormId, cancellationToken);
+        if (outputForm.OutputFormat != OutputFormat.Word)
+        {
+            throw new CmsV2ApplicationException("Only Word output is supported in the current stage.");
+        }
+
+        var handoutVersion = await RequireHandoutVersionAsync(
+            outputForm.HandoutVersionId,
+            cancellationToken);
+        var outputTemplate = await RequireOutputTemplateAsync(
+            outputForm.OutputTemplateId,
+            cancellationToken);
+
+        if (!await _fileStore.ExistsAsync(outputTemplate.TemplateDocxPath, cancellationToken))
+        {
+            throw new CmsV2ApplicationException($"OutputTemplate file was not found: {outputTemplate.TemplateDocxPath}");
+        }
+
+        var resolvedContent = await ResolveHandoutContentAsync(
+            handoutVersion.Id,
+            cancellationToken);
+
+        return new ResolvedHandoutWordGenerationContext(
+            outputForm,
+            handoutVersion,
+            outputTemplate,
+            resolvedContent);
+    }
+
+    private async Task<IReadOnlyList<HandoutDocumentGenerationIssue>> ValidateResolvedHandoutWordGenerationAsync(
+        ResolvedHandoutWordGenerationContext context,
+        CancellationToken cancellationToken)
+    {
+        var issues = await _documentGenerator.ValidateWordGenerationAsync(
+            context.OutputTemplate.TemplateDocxPath,
+            context.ResolvedContent.Elements,
+            cancellationToken);
+
+        return issues
+            .Select(issue => issue with
+            {
+                OutputFormId = issue.OutputFormId ?? context.OutputForm.Id,
+                OutputTemplateId = issue.OutputTemplateId ?? context.OutputTemplate.Id
+            })
+            .ToArray();
+    }
+
+    private static string CreateValidationFailureMessage(IReadOnlyList<HandoutDocumentGenerationIssue> issues)
+    {
+        return string.Join(Environment.NewLine, issues.Select(issue => $"{issue.Code}: {issue.Message}"));
+    }
+
     private async Task<ResolvedHandoutContent> ResolveHandoutContentAsync(
         int handoutVersionId,
         CancellationToken cancellationToken)
@@ -140,6 +198,7 @@ public sealed class HandoutGenerationUseCases
                     lockedContentBlockVersionId: null,
                     item.TitleOverride,
                     requestedOutputStemStyleName: null,
+                    requestedOccurrenceRole: null,
                     sources,
                     elements,
                     new HashSet<int>(),
@@ -223,6 +282,7 @@ public sealed class HandoutGenerationUseCases
                 lockedVersionId,
                 sectionItem.TitleOverride,
                 requestedOutputStemStyleName: null,
+                requestedOccurrenceRole: null,
                 sources,
                 elements,
                 new HashSet<int>(),
@@ -278,6 +338,7 @@ public sealed class HandoutGenerationUseCases
                 lockedVersionId,
                 atomicItem.TitleOverride,
                 outputStemStyleName,
+                teachingRole.ToString(),
                 sources,
                 elements,
                 new HashSet<int>(),
@@ -317,6 +378,7 @@ public sealed class HandoutGenerationUseCases
         int? lockedContentBlockVersionId,
         string? titleOverride,
         string? requestedOutputStemStyleName,
+        string? requestedOccurrenceRole,
         List<ResolvedHandoutSource> sources,
         List<HandoutDocumentElement> elements,
         HashSet<int> currentPath,
@@ -340,13 +402,17 @@ public sealed class HandoutGenerationUseCases
                 lockedContentBlockVersionId,
                 titleOverride,
                 requestedOutputStemStyleName,
+                requestedOccurrenceRole,
                 sources.Count + 1,
                 cancellationToken);
             sources.Add(source);
             elements.Add(HandoutDocumentElement.ContentBlock(
                 source.Title,
                 source.DocxPath,
-                source.OutputStemStyleName));
+                source.OutputStemStyleName,
+                source.ContentBlockId,
+                source.ContentBlockVersionId,
+                source.OccurrenceRole));
 
             var childRelations = await _unitOfWork.ContentBlockRelations.ListChildrenAsync(
                 contentBlockId,
@@ -363,6 +429,7 @@ public sealed class HandoutGenerationUseCases
                     childLockedVersionId,
                     relation.TitleOverride,
                     QuestionOutputStyles.PracticeStemStyleName,
+                    nameof(AtomicSectionTeachingRole.Practice),
                     sources,
                     elements,
                     currentPath,
@@ -381,6 +448,7 @@ public sealed class HandoutGenerationUseCases
         int? lockedContentBlockVersionId,
         string? titleOverride,
         string? requestedOutputStemStyleName,
+        string? requestedOccurrenceRole,
         int sequence,
         CancellationToken cancellationToken)
     {
@@ -419,6 +487,11 @@ public sealed class HandoutGenerationUseCases
             throw new CmsV2ApplicationException($"ContentBlockVersion DOCX file was not found: {version.DocxPath}");
         }
 
+        var outputStemStyle = ResolveOutputStemStyle(
+            contentBlock.BlockType,
+            requestedOutputStemStyleName,
+            requestedOccurrenceRole);
+
         return new ResolvedHandoutSource(
             sequence,
             contentBlock.Id,
@@ -426,22 +499,28 @@ public sealed class HandoutGenerationUseCases
             version.VersionNumber,
             string.IsNullOrWhiteSpace(titleOverride) ? contentBlock.Title : titleOverride.Trim(),
             version.DocxPath,
-            ResolveOutputStemStyleName(contentBlock.BlockType, requestedOutputStemStyleName));
+            outputStemStyle.StyleName,
+            outputStemStyle.OccurrenceRole);
     }
 
-    private static string? ResolveOutputStemStyleName(
+    private static ResolvedOutputStemStyle ResolveOutputStemStyle(
         ContentBlockType contentBlockType,
-        string? requestedOutputStemStyleName)
+        string? requestedOutputStemStyleName,
+        string? requestedOccurrenceRole)
     {
-        var defaultStyleName = QuestionOutputStyles.ResolveForContentBlockType(contentBlockType);
-        if (defaultStyleName is null)
+        if (contentBlockType != ContentBlockType.Question)
         {
-            return null;
+            return new ResolvedOutputStemStyle(null, null);
         }
 
-        return string.IsNullOrWhiteSpace(requestedOutputStemStyleName)
-            ? defaultStyleName
+        var styleName = string.IsNullOrWhiteSpace(requestedOutputStemStyleName)
+            ? QuestionOutputStyles.PracticeStemStyleName
             : requestedOutputStemStyleName.Trim();
+        var occurrenceRole = string.IsNullOrWhiteSpace(requestedOccurrenceRole)
+            ? nameof(AtomicSectionTeachingRole.Practice)
+            : requestedOccurrenceRole.Trim();
+
+        return new ResolvedOutputStemStyle(styleName, occurrenceRole);
     }
 
     private async Task<OutputForm> RequireOutputFormAsync(int outputFormId, CancellationToken cancellationToken)
@@ -512,11 +591,22 @@ public sealed class HandoutGenerationUseCases
         int VersionNumber,
         string Title,
         string DocxPath,
-        string? OutputStemStyleName);
+        string? OutputStemStyleName,
+        string? OccurrenceRole);
 
     private sealed record ResolvedHandoutContent(
         IReadOnlyList<ResolvedHandoutSource> Sources,
         IReadOnlyList<HandoutDocumentElement> Elements);
+
+    private sealed record ResolvedHandoutWordGenerationContext(
+        OutputForm OutputForm,
+        HandoutVersion HandoutVersion,
+        OutputTemplate OutputTemplate,
+        ResolvedHandoutContent ResolvedContent);
+
+    private sealed record ResolvedOutputStemStyle(
+        string? StyleName,
+        string? OccurrenceRole);
 
     private sealed record VersionManifest(
         int SchemaVersion,

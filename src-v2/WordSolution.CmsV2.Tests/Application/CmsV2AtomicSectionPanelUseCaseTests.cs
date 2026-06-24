@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using WordSolution.CmsV2.Application.AtomicSections;
 using WordSolution.CmsV2.Application.Common;
+using WordSolution.CmsV2.Application.ContentBlocks;
 using WordSolution.CmsV2.Domain.Entities;
 using WordSolution.CmsV2.Domain.Enums;
 using WordSolution.CmsV2.Infrastructure.Persistence;
@@ -144,6 +145,68 @@ public sealed class CmsV2AtomicSectionPanelUseCaseTests
         Assert.Equal(panel.Id, reloadedItem.AtomicSectionPanelId);
         Assert.Equal(AtomicSectionTeachingRole.Example, reloadedItem.TeachingRole);
         Assert.Equal(Difficulty.Medium, reloadedBlock.Difficulty);
+    }
+
+    [Fact]
+    public async Task ChangeContentBlockDifficulty_reassigns_referencing_atomic_section_items()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var (_, atomicSection) = await CreateAtomicSectionAsync(unitOfWork);
+        var basicPanel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "Example basic",
+            AtomicSectionTeachingRole.Example,
+            Difficulty.Basic,
+            sortOrder: 10);
+        var mediumPanel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "Example medium",
+            AtomicSectionTeachingRole.Example,
+            Difficulty.Medium,
+            sortOrder: 20);
+        await unitOfWork.AtomicSectionPanels.AddAsync(basicPanel);
+        await unitOfWork.AtomicSectionPanels.AddAsync(mediumPanel);
+        await unitOfWork.SaveChangesAsync();
+
+        var block = await CreateContentBlockAsync(unitOfWork, "example", ContentBlockType.Question, Difficulty.Basic);
+        var item = await CreateAtomicSectionItemAsync(
+            unitOfWork,
+            atomicSection.Id,
+            block.Id,
+            sortOrder: 10,
+            teachingRole: AtomicSectionTeachingRole.Example,
+            panelId: basicPanel.Id);
+
+        await contentBlocks.ChangeContentBlockDifficultyAsync(
+            new ChangeContentBlockDifficultyCommand(block.Id, Difficulty.Medium));
+
+        var reloadedBlock = await unitOfWork.ContentBlocks.GetByIdAsync(block.Id);
+        var reloadedItem = await unitOfWork.AtomicSectionItems.GetByIdAsync(item.Id);
+
+        Assert.NotNull(reloadedBlock);
+        Assert.NotNull(reloadedItem);
+        Assert.Equal(Difficulty.Medium, reloadedBlock.Difficulty);
+        Assert.Equal(mediumPanel.Id, reloadedItem.AtomicSectionPanelId);
+        Assert.Equal(10, reloadedItem.SortOrder);
+    }
+
+    [Fact]
+    public async Task ChangeAtomicSectionDifficulty_updates_atomic_section_itself()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var atomicSections = new AtomicSectionUseCases(unitOfWork);
+        var (_, atomicSection) = await CreateAtomicSectionAsync(unitOfWork);
+
+        await atomicSections.ChangeAtomicSectionDifficultyAsync(
+            new ChangeAtomicSectionDifficultyCommand(atomicSection.Id, Difficulty.Top));
+
+        var reloaded = await unitOfWork.AtomicSections.GetByIdAsync(atomicSection.Id);
+
+        Assert.NotNull(reloaded);
+        Assert.Equal(Difficulty.Top, reloaded.Difficulty);
     }
 
     [Fact]

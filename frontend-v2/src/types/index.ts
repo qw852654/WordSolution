@@ -71,6 +71,8 @@ export type QuestionImportContext =
       target: 'SectionTopLevel'
       sectionId: number
       sectionTitle: string
+      afterSectionItemId?: number | null
+      defaultDifficulty?: string
     }
   | {
       target: 'AtomicSectionPanel'
@@ -84,12 +86,10 @@ export type QuestionImportContext =
       difficulty: string
     }
 
-export interface QuestionImportConfirmPayload {
+export interface QuestionImportCandidateSelectionPayload {
   candidateId: string
+  selected: boolean
   title: string
-  summary?: string
-  difficulty: 'Basic' | 'Medium' | 'Advanced' | 'Top'
-  questionType: 'Unset' | 'Choice' | 'Blank' | 'Calculation' | 'Experiment' | 'Diagram' | 'Composite'
 }
 
 export type SectionVariantCreateSubmitPayload = SectionVariantCreateMetadata & {
@@ -404,6 +404,22 @@ export interface AtomicSectionPanelCreateSubmitPayload {
 
 export interface AtomicSectionPanelMovePayload extends AtomicSectionPanelActionPayload {
   direction: 'Up' | 'Down'
+}
+
+export type SectionDifficultyEditableNodeKind =
+  | 'ContentBlock'
+  | 'CompositeBlock'
+  | 'AtomicSection'
+  | 'AtomicSectionPanel'
+
+export interface SectionDifficultyChangePayload {
+  nodeId: string
+  kind: SectionDifficultyEditableNodeKind
+  difficulty: string
+  atomicSectionId?: number
+  atomicSectionPanelId?: number
+  title?: string
+  teachingRole?: AtomicSectionTeachingRole
 }
 
 export interface StructuredBlockModel {

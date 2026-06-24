@@ -1,5 +1,6 @@
 using WordSolution.CmsV2.Application.Common;
 using WordSolution.CmsV2.Domain.Entities;
+using WordSolution.CmsV2.Domain.Enums;
 using WordSolution.CmsV2.Domain.Repositories;
 
 namespace WordSolution.CmsV2.Application.ContentBlocks;
@@ -149,6 +150,26 @@ public sealed class ContentBlockUseCases
             cancellationToken);
     }
 
+    public async Task<ContentBlock> ChangeContentBlockDifficultyAsync(
+        ChangeContentBlockDifficultyCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        ContentBlock? result = null;
+
+        await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+        {
+            var contentBlock = await RequireContentBlockAsync(command.ContentBlockId, transactionCancellationToken);
+            contentBlock.ChangeDifficulty(command.Difficulty);
+            _unitOfWork.ContentBlocks.Update(contentBlock);
+
+            await ReassignAtomicSectionItemsForContentBlockAsync(contentBlock, transactionCancellationToken);
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+            result = contentBlock;
+        }, cancellationToken);
+
+        return result!;
+    }
+
     private async Task SetCurrentContentBlockVersionCoreAsync(
         int contentBlockId,
         int contentBlockVersionId,
@@ -198,6 +219,117 @@ public sealed class ContentBlockUseCases
         if (await _unitOfWork.Sections.GetByIdAsync(sectionId, cancellationToken) is null)
         {
             throw new CmsV2ApplicationException($"Section {sectionId} was not found.");
+        }
+    }
+
+    private async Task ReassignAtomicSectionItemsForContentBlockAsync(
+        ContentBlock contentBlock,
+        CancellationToken cancellationToken)
+    {
+        var items = (await _unitOfWork.AtomicSectionItems.ListByContentBlockAsync(
+                contentBlock.Id,
+                cancellationToken))
+            .OrderBy(item => item.AtomicSectionId)
+            .ThenBy(item => item.SortOrder)
+            .ThenBy(item => item.Id)
+            .ToList();
+        var affectedScopes = new HashSet<(int AtomicSectionId, int? PanelId)>();
+
+        foreach (var item in items)
+        {
+            var sourcePanelId = item.AtomicSectionPanelId;
+            var targetPanelId = await ResolvePanelIdAsync(
+                item.AtomicSectionId,
+                item.TeachingRole,
+                contentBlock.Difficulty,
+                cancellationToken);
+
+            if (sourcePanelId == targetPanelId)
+            {
+                continue;
+            }
+
+            var sortOrder = await NextAtomicSectionItemSortOrderAsync(
+                item.AtomicSectionId,
+                targetPanelId,
+                cancellationToken);
+            item.ChangeClassification(targetPanelId, item.TeachingRole, sortOrder);
+            _unitOfWork.AtomicSectionItems.Update(item);
+
+            affectedScopes.Add((item.AtomicSectionId, sourcePanelId));
+            affectedScopes.Add((item.AtomicSectionId, targetPanelId));
+        }
+
+        if (affectedScopes.Count == 0)
+        {
+            return;
+        }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        foreach (var (atomicSectionId, panelId) in affectedScopes)
+        {
+            await NormalizeAtomicSectionItemSortOrdersAsync(atomicSectionId, panelId, cancellationToken);
+        }
+    }
+
+    private async Task<int?> ResolvePanelIdAsync(
+        int atomicSectionId,
+        AtomicSectionTeachingRole teachingRole,
+        Difficulty difficulty,
+        CancellationToken cancellationToken)
+    {
+        if (teachingRole == AtomicSectionTeachingRole.Unclassified)
+        {
+            return null;
+        }
+
+        var panels = (await _unitOfWork.AtomicSectionPanels.ListByAtomicSectionAsync(atomicSectionId, cancellationToken))
+            .OrderBy(panel => panel.SortOrder)
+            .ThenBy(panel => panel.Id)
+            .ToList();
+        var exact = panels.FirstOrDefault(panel =>
+            panel.TeachingRole == teachingRole && panel.Difficulty == difficulty);
+        if (exact is not null)
+        {
+            return exact.Id;
+        }
+
+        var fallback = panels.FirstOrDefault(panel =>
+            panel.TeachingRole == teachingRole && panel.Difficulty == Difficulty.Unset);
+        return fallback?.Id;
+    }
+
+    private async Task<int> NextAtomicSectionItemSortOrderAsync(
+        int atomicSectionId,
+        int? panelId,
+        CancellationToken cancellationToken)
+    {
+        var items = await _unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(atomicSectionId, cancellationToken);
+        var maxSortOrder = items
+            .Where(item => item.AtomicSectionPanelId == panelId)
+            .Select(item => item.SortOrder)
+            .DefaultIfEmpty(0)
+            .Max();
+
+        return maxSortOrder + 10;
+    }
+
+    private async Task NormalizeAtomicSectionItemSortOrdersAsync(
+        int atomicSectionId,
+        int? panelId,
+        CancellationToken cancellationToken)
+    {
+        var items = (await _unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(atomicSectionId, cancellationToken))
+            .Where(item => item.AtomicSectionPanelId == panelId)
+            .OrderBy(item => item.SortOrder)
+            .ThenBy(item => item.Id)
+            .ToList();
+
+        for (var index = 0; index < items.Count; index++)
+        {
+            items[index].ChangeSortOrder((index + 1) * 10);
+            _unitOfWork.AtomicSectionItems.Update(items[index]);
         }
     }
 }

@@ -23,6 +23,7 @@ public sealed class CmsV2HandoutWorkspaceUseCaseTests
         await unitOfWork.SaveChangesAsync();
         var handoutVersion = await handouts.CreateHandoutVersionAsync(
             new CreateHandoutVersionCommand(handout.Id, "Student version"));
+        var defaultOutputForm = Assert.Single(await unitOfWork.OutputForms.ListByHandoutVersionAsync(handoutVersion.Id));
 
         var sectionBlock = await CreateContentBlockAsync(unitOfWork, sectionId, "Section block");
         var atomicBlock = await CreateContentBlockAsync(unitOfWork, sectionId, "Atomic child");
@@ -104,7 +105,7 @@ public sealed class CmsV2HandoutWorkspaceUseCaseTests
         Assert.Contains(workspace.Items[0].Children, child => child.NodeKind == "SectionItem" && child.Title == "Section block");
         Assert.Contains(workspace.Items[1].Children, child => child.NodeKind == "AtomicSectionItem" && child.Children.Any(grandChild => grandChild.Title == "Atomic child"));
         Assert.Equal("Direct block", workspace.Items[2].Title);
-        Assert.Equal([outputForm.Id], workspace.OutputForms.Select(form => form.Id));
+        Assert.Equal([defaultOutputForm.Id, outputForm.Id], workspace.OutputForms.Select(form => form.Id));
         Assert.Equal([generatedFile.Id], workspace.GeneratedFiles.Select(file => file.Id));
     }
 

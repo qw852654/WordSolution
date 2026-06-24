@@ -165,20 +165,62 @@ export interface CmsV2QuestionImportCandidateDto {
   parts: CmsV2QuestionImportCandidatePartDto[]
 }
 
+export type CmsV2QuestionImportSessionStatus =
+  | 'Created'
+  | 'Opening'
+  | 'Editing'
+  | 'Parsing'
+  | 'ReadyForReview'
+  | 'Importing'
+  | 'Imported'
+  | 'Failed'
+  | 'Cancelled'
+  | 'Expired'
+
+export type CmsV2Difficulty = 'Unset' | 'Basic' | 'Medium' | 'Advanced' | 'Top'
+
+export interface CmsV2InsertQuestionContext {
+  sectionId: number
+  atomicSectionId?: number | null
+  atomicSectionPanelId?: number | null
+  afterAtomicSectionItemId?: number | null
+  afterSectionItemId?: number | null
+  defaultTeachingRole: CmsV2AtomicSectionTeachingRole
+  defaultDifficulty: CmsV2Difficulty
+}
+
+export interface CmsV2CreateQuestionImportSessionRequest {
+  context: CmsV2InsertQuestionContext
+  openWord: boolean
+}
+
 export interface CmsV2QuestionImportSessionDto {
   sessionId: string
-  sectionId: number
+  context: CmsV2InsertQuestionContext
+  status: CmsV2QuestionImportSessionStatus
+  message?: string | null
   createdTime: string
+  updatedTime: string
   candidates: CmsV2QuestionImportCandidateDto[]
 }
 
-export interface CmsV2ConfirmQuestionImportCandidateRequest {
-  sectionId: number
+export interface CmsV2ConfirmQuestionImportCandidateSelectionDto {
+  candidateId: string
+  selected: boolean
   title: string
-  blockType: string
-  summary?: string | null
-  difficulty: string
-  questionType?: string | null
+}
+
+export interface CmsV2ConfirmQuestionImportRequest {
+  candidates: CmsV2ConfirmQuestionImportCandidateSelectionDto[]
+}
+
+export interface CmsV2QuestionImportConfirmResultDto {
+  contentBlockIds: number[]
+  contentBlockVersionIds: number[]
+  sectionItemIds: number[]
+  atomicSectionItemIds: number[]
+  firstInsertedNodeType?: 'SectionItem' | 'AtomicSectionItem' | string | null
+  firstInsertedNodeId?: number | null
 }
 
 export interface CmsV2ContentBlockRelationDto {
@@ -572,6 +614,10 @@ export interface CmsV2ChangeAtomicSectionItemClassificationRequest {
   difficulty: string
 }
 
+export interface CmsV2ChangeDifficultyRequest {
+  difficulty: CmsV2Difficulty
+}
+
 export interface CmsV2AddContentBlockRelationRequest {
   childBlockId: number
   referenceMode: 'FollowLatest' | 'LockedVersion'
@@ -808,6 +854,14 @@ export const cmsV2Api = {
     cmsV2PostJson<CmsV2AtomicSectionDto>(`/atomic-sections/${atomicSectionId}/title`, {
       title,
     }),
+  changeAtomicSectionDifficulty: (
+    atomicSectionId: number,
+    request: CmsV2ChangeDifficultyRequest,
+  ) =>
+    cmsV2PostJson<CmsV2AtomicSectionDto>(
+      `/atomic-sections/${atomicSectionId}/difficulty`,
+      request,
+    ),
   listAtomicSectionItems: (atomicSectionId: number) =>
     cmsV2FetchJson<CmsV2AtomicSectionItemDto[]>(`/atomic-sections/${atomicSectionId}/items`),
   addAtomicSectionItem: (
@@ -839,6 +893,14 @@ export const cmsV2Api = {
   listContentBlocks: () => cmsV2FetchJson<CmsV2ContentBlockDto[]>('/content-blocks'),
   createContentBlock: (request: CmsV2CreateContentBlockRequest) =>
     cmsV2PostJson<CmsV2CreatedEntityResultDto>('/content-blocks', request),
+  changeContentBlockDifficulty: (
+    contentBlockId: number,
+    request: CmsV2ChangeDifficultyRequest,
+  ) =>
+    cmsV2PostJson<CmsV2ContentBlockDto>(
+      `/content-blocks/${contentBlockId}/difficulty`,
+      request,
+    ),
   createContentBlockWithBlankDocument: (request: CmsV2CreateContentBlockWithBlankDocumentRequest) =>
     cmsV2PostJson<CmsV2ContentBlockDocumentVersionResultDto>(
       '/content-blocks/blank-document',
@@ -854,25 +916,32 @@ export const cmsV2Api = {
     cmsV2FetchJson<CmsV2ContentBlockVersionPartDto[]>(
       `/content-blocks/${contentBlockId}/versions/${versionId}/parts`,
     ),
-  createQuestionImportSession: (sectionId: number, file: File) => {
-    const formData = new FormData()
-    formData.set('sectionId', String(sectionId))
-    formData.set('file', file)
-    return cmsV2PostForm<CmsV2QuestionImportSessionDto>('/question-import-sessions', formData)
-  },
+  createQuestionImportSession: (request: CmsV2CreateQuestionImportSessionRequest) =>
+    cmsV2PostJson<CmsV2QuestionImportSessionDto>('/question-import-sessions', request),
   getQuestionImportSession: (sessionId: string) =>
     cmsV2FetchJson<CmsV2QuestionImportSessionDto>(`/question-import-sessions/${sessionId}`),
-  confirmQuestionImportCandidate: (
+  listQuestionImportCandidates: (sessionId: string) =>
+    cmsV2FetchJson<CmsV2QuestionImportCandidateDto[]>(
+      `/question-import-sessions/${sessionId}/candidates`,
+    ),
+  confirmQuestionImportCandidates: (
     sessionId: string,
-    candidateId: string,
-    request: CmsV2ConfirmQuestionImportCandidateRequest,
+    request: CmsV2ConfirmQuestionImportRequest,
   ) =>
-    cmsV2PostJson<CmsV2ContentBlockDocumentVersionResultDto>(
-      `/question-import-sessions/${sessionId}/candidates/${candidateId}/confirm`,
+    cmsV2PostJson<CmsV2QuestionImportConfirmResultDto>(
+      `/question-import-sessions/${sessionId}/confirm`,
       request,
     ),
   cancelQuestionImportSession: (sessionId: string) =>
-    cmsV2Delete(`/question-import-sessions/${sessionId}`),
+    cmsV2PostJson<CmsV2QuestionImportSessionDto>(
+      `/question-import-sessions/${sessionId}/cancel`,
+      {},
+    ),
+  reopenQuestionImportSession: (sessionId: string) =>
+    cmsV2PostJson<CmsV2QuestionImportSessionDto>(
+      `/question-import-sessions/${sessionId}/reopen`,
+      {},
+    ),
   createContentBlockEditSession: (
     contentBlockId: number,
     request: CmsV2CreateContentBlockEditSessionRequest,

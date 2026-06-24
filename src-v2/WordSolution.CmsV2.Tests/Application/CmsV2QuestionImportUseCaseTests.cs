@@ -15,121 +15,434 @@ namespace WordSolution.CmsV2.Tests.Application;
 public sealed class CmsV2QuestionImportUseCaseTests
 {
     [Fact]
-    public async Task CreateSession_splits_candidates_by_question_start_styles_and_discards_intro()
+    public async Task CreateSession_creates_temporary_word_session_without_formal_content_and_launches_when_requested()
     {
         await using var context = await CreateMigratedContextAsync();
         var unitOfWork = new EfCmsV2UnitOfWork(context);
         var sectionId = await CreateSectionAsync(unitOfWork);
         var bankRootDirectory = CreateTempRoot();
-        var sourceDocxPath = Path.Combine(bankRootDirectory, "imports", "multi-question.docx");
-        CreateMultiQuestionDocx(sourceDocxPath);
-        var useCases = CreateUseCases(unitOfWork);
+        var launcher = new FakeQuestionImportSessionLauncher();
+        var closeChecker = new FakeQuestionImportDocumentCloseChecker();
+        var useCases = CreateUseCases(unitOfWork, launcher, closeChecker);
 
-        await using var stream = File.OpenRead(sourceDocxPath);
         var session = await useCases.CreateSessionAsync(
-            new CreateQuestionImportSessionCommand(bankRootDirectory, sectionId, stream));
+            new CreateQuestionImportSessionCommand(
+                bankRootDirectory,
+                new InsertQuestionContext(
+                    sectionId,
+                    AtomicSectionId: null,
+                    AtomicSectionPanelId: null,
+                    AfterAtomicSectionItemId: null,
+                    AfterSectionItemId: null,
+                    DefaultTeachingRole: AtomicSectionTeachingRole.Unclassified,
+                    DefaultDifficulty: Difficulty.Basic),
+                OpenWord: true));
 
-        Assert.Equal(sectionId, session.SectionId);
-        Assert.Equal(3, session.Candidates.Count);
-        Assert.All(session.Candidates, candidate =>
+        var sessionDirectory = Path.Combine(bankRootDirectory, "edit-sessions", "question-imports", session.SessionId);
+
+        Assert.Equal(QuestionImportSessionStatus.Editing, session.Status);
+        Assert.Equal(sectionId, session.Context.SectionId);
+        Assert.Empty(session.Candidates);
+        Assert.True(File.Exists(Path.Combine(sessionDirectory, "source.docx")));
+        Assert.Equal(Path.Combine(sessionDirectory, "source.docx"), launcher.OpenedDocxPaths.Single());
+        Assert.Empty(await unitOfWork.ContentBlocks.ListAsync());
+        Assert.Empty(await unitOfWork.ContentBlockVersions.ListAsync());
+        Assert.Empty(await unitOfWork.SectionItems.ListBySectionAsync(sectionId));
+    }
+
+    [Fact]
+    public async Task GetSession_when_source_word_is_closed_splits_candidates_and_enters_ready_for_review()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var bankRootDirectory = CreateTempRoot();
+        var closeChecker = new FakeQuestionImportDocumentCloseChecker { IsClosed = true };
+        var useCases = CreateUseCases(unitOfWork, new FakeQuestionImportSessionLauncher(), closeChecker);
+
+        var session = await useCases.CreateSessionAsync(
+            new CreateQuestionImportSessionCommand(
+                bankRootDirectory,
+                new InsertQuestionContext(
+                    sectionId,
+                    null,
+                    null,
+                    null,
+                    null,
+                    AtomicSectionTeachingRole.Unclassified,
+                    Difficulty.Medium),
+                OpenWord: false));
+        CreateMultiQuestionDocx(Path.Combine(bankRootDirectory, "edit-sessions", "question-imports", session.SessionId, "source.docx"));
+
+        var readySession = await useCases.GetSessionAsync(
+            new GetQuestionImportSessionCommand(bankRootDirectory, session.SessionId));
+
+        Assert.Equal(QuestionImportSessionStatus.ReadyForReview, readySession.Status);
+        Assert.Equal(3, readySession.Candidates.Count);
+        Assert.All(readySession.Candidates, candidate =>
         {
             Assert.Equal(ContentBlockPartParseStatus.Parsed, candidate.ParseStatus);
             Assert.NotNull(candidate.HtmlPreview);
             Assert.Contains("data-question-part=\"Stem\"", candidate.HtmlPreview);
         });
-        Assert.DoesNotContain("导入前说明", string.Join("\n", session.Candidates.Select(candidate => candidate.HtmlPreview)));
-        Assert.Contains("典型例题题干", session.Candidates[1].HtmlPreview);
-        Assert.Contains("练习题题干", session.Candidates[2].HtmlPreview);
+        Assert.DoesNotContain("导入前说明", string.Join("\n", readySession.Candidates.Select(candidate => candidate.HtmlPreview)));
     }
 
     [Fact]
-    public async Task ConfirmCandidate_creates_formal_version_parts_and_neutralizes_first_stem_style()
+    public async Task Reopen_reopens_source_word_and_returns_to_editing()
     {
         await using var context = await CreateMigratedContextAsync();
         var unitOfWork = new EfCmsV2UnitOfWork(context);
         var sectionId = await CreateSectionAsync(unitOfWork);
         var bankRootDirectory = CreateTempRoot();
-        var sourceDocxPath = Path.Combine(bankRootDirectory, "imports", "multi-question.docx");
-        CreateMultiQuestionDocx(sourceDocxPath);
-        var useCases = CreateUseCases(unitOfWork);
+        var launcher = new FakeQuestionImportSessionLauncher();
+        var closeChecker = new FakeQuestionImportDocumentCloseChecker { IsClosed = true };
+        var useCases = CreateUseCases(unitOfWork, launcher, closeChecker);
 
-        await using var stream = File.OpenRead(sourceDocxPath);
         var session = await useCases.CreateSessionAsync(
-            new CreateQuestionImportSessionCommand(bankRootDirectory, sectionId, stream));
-        var result = await useCases.ConfirmCandidateAsync(
-            new ConfirmQuestionImportCandidateCommand(
+            new CreateQuestionImportSessionCommand(
                 bankRootDirectory,
-                session.SessionId,
-                session.Candidates[0].CandidateId,
-                sectionId,
-                "导入题目 1",
-                "候选题目确认导入",
-                ContentBlockType.Question,
-                Difficulty.Medium,
-                QuestionType.Calculation));
+                new InsertQuestionContext(sectionId, null, null, null, null, AtomicSectionTeachingRole.Unclassified, Difficulty.Basic),
+                OpenWord: false));
+        CreateMultiQuestionDocx(Path.Combine(bankRootDirectory, "edit-sessions", "question-imports", session.SessionId, "source.docx"));
+        _ = await useCases.GetSessionAsync(new GetQuestionImportSessionCommand(bankRootDirectory, session.SessionId));
 
-        var block = await unitOfWork.ContentBlocks.GetByIdAsync(result.ContentBlockId);
-        var version = await unitOfWork.ContentBlockVersions.GetByIdAsync(result.ContentBlockVersionId);
-        var parts = await unitOfWork.ContentBlockVersionParts.ListByContentBlockVersionAsync(result.ContentBlockVersionId);
-        var document = new Document(result.DocxPath);
-        var firstEffectiveParagraph = document
-            .GetChildNodes(NodeType.Paragraph, true)
-            .OfType<Paragraph>()
-            .First(paragraph => !string.IsNullOrWhiteSpace(paragraph.GetText())
-                && !paragraph.GetText().Contains("Created with an evaluation copy of Aspose.Words", StringComparison.OrdinalIgnoreCase));
+        var reopened = await useCases.ReopenSessionAsync(
+            new ReopenQuestionImportSessionCommand(bankRootDirectory, session.SessionId));
 
-        Assert.NotNull(block);
-        Assert.NotNull(version);
-        Assert.Equal(result.ContentBlockVersionId, block.CurrentVersionId);
-        Assert.Equal(ContentBlockPartParseStatus.Parsed, version.PartParseStatus);
-        Assert.Equal(
-            [ContentBlockPartType.Stem, ContentBlockPartType.Answer],
-            parts.Select(part => part.PartType));
-        Assert.Equal("正文", firstEffectiveParagraph.ParagraphFormat.StyleName);
-        Assert.Contains("第一题答案", parts.Single(part => part.PartType == ContentBlockPartType.Answer).PlainText);
+        Assert.Equal(QuestionImportSessionStatus.Editing, reopened.Status);
+        Assert.Single(launcher.OpenedDocxPaths);
     }
 
     [Fact]
-    public async Task ConfirmCandidate_rejects_wrong_section_without_creating_content_block()
+    public async Task ConfirmImport_batch_creates_formal_question_versions_and_section_items()
     {
         await using var context = await CreateMigratedContextAsync();
         var unitOfWork = new EfCmsV2UnitOfWork(context);
         var sectionId = await CreateSectionAsync(unitOfWork);
-        var otherSectionId = await CreateSectionAsync(unitOfWork, "另一个主题", "另一个 Section");
         var bankRootDirectory = CreateTempRoot();
-        var sourceDocxPath = Path.Combine(bankRootDirectory, "imports", "multi-question.docx");
-        CreateMultiQuestionDocx(sourceDocxPath);
-        var useCases = CreateUseCases(unitOfWork);
+        var useCases = CreateUseCases(
+            unitOfWork,
+            new FakeQuestionImportSessionLauncher(),
+            new FakeQuestionImportDocumentCloseChecker { IsClosed = true });
 
-        await using var stream = File.OpenRead(sourceDocxPath);
-        var session = await useCases.CreateSessionAsync(
-            new CreateQuestionImportSessionCommand(bankRootDirectory, sectionId, stream));
+        var session = await CreateReadySessionAsync(useCases, bankRootDirectory, sectionId);
 
-        await Assert.ThrowsAsync<CmsV2ApplicationException>(() => useCases.ConfirmCandidateAsync(
-            new ConfirmQuestionImportCandidateCommand(
+        var result = await useCases.ConfirmAsync(
+            new ConfirmQuestionImportCommand(
                 bankRootDirectory,
                 session.SessionId,
-                session.Candidates[0].CandidateId,
-                otherSectionId,
-                "错误 Section",
-                null,
-                ContentBlockType.Question,
-                Difficulty.Basic,
-                QuestionType.Calculation)));
+                [
+                    new ConfirmQuestionImportCandidateSelection(session.Candidates[0].CandidateId, Selected: true, Title: "导入题目 1"),
+                    new ConfirmQuestionImportCandidateSelection(session.Candidates[1].CandidateId, Selected: false, Title: "跳过"),
+                    new ConfirmQuestionImportCandidateSelection(session.Candidates[2].CandidateId, Selected: true, Title: string.Empty)
+                ]));
+
+        var blocks = await unitOfWork.ContentBlocks.ListAsync();
+        var versions = await unitOfWork.ContentBlockVersions.ListAsync();
+        var parts = await unitOfWork.ContentBlockVersionParts.ListAsync();
+        var sectionItems = await unitOfWork.SectionItems.ListBySectionAsync(sectionId);
+
+        Assert.Equal(2, result.ContentBlockIds.Count);
+        Assert.Equal(2, result.ContentBlockVersionIds.Count);
+        Assert.Equal(2, result.SectionItemIds.Count);
+        Assert.Empty(result.AtomicSectionItemIds);
+        Assert.Equal(result.SectionItemIds[0], result.FirstInsertedNodeId);
+        Assert.Equal("SectionItem", result.FirstInsertedNodeType);
+        Assert.Equal(2, blocks.Count);
+        Assert.All(blocks, block =>
+        {
+            Assert.Equal(ContentBlockType.Question, block.BlockType);
+            Assert.Equal(QuestionType.Unset, block.QuestionType);
+            Assert.Equal(Difficulty.Medium, block.Difficulty);
+        });
+        Assert.Equal(["导入题目 1", string.Empty], blocks.OrderBy(block => block.Id).Select(block => block.Title));
+        Assert.Equal(2, versions.Count);
+        Assert.Equal(2, sectionItems.Count);
+        Assert.All(sectionItems, item => Assert.Equal(SectionItemTargetType.ContentBlock, item.TargetType));
+        Assert.Contains(parts, part => part.PartType == ContentBlockPartType.Answer);
+        Assert.All(versions, version => Assert.True(File.Exists(version.DocxPath)));
+    }
+
+    [Fact]
+    public async Task ConfirmImport_with_atomic_section_context_creates_atomic_section_items()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var atomicSection = new AtomicSection(sectionId, "AS");
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+        var bankRootDirectory = CreateTempRoot();
+        var useCases = CreateUseCases(
+            unitOfWork,
+            new FakeQuestionImportSessionLauncher(),
+            new FakeQuestionImportDocumentCloseChecker { IsClosed = true });
+
+        var session = await CreateReadySessionAsync(
+            useCases,
+            bankRootDirectory,
+            sectionId,
+            atomicSection.Id,
+            AtomicSectionTeachingRole.Example,
+            Difficulty.Advanced);
+
+        var result = await useCases.ConfirmAsync(
+            new ConfirmQuestionImportCommand(
+                bankRootDirectory,
+                session.SessionId,
+                [new ConfirmQuestionImportCandidateSelection(session.Candidates[0].CandidateId, Selected: true, Title: "AS 题目")]));
+
+        var items = await unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(atomicSection.Id);
+        var block = await unitOfWork.ContentBlocks.GetByIdAsync(result.ContentBlockIds.Single());
+
+        Assert.Empty(result.SectionItemIds);
+        Assert.Single(result.AtomicSectionItemIds);
+        Assert.Equal(result.AtomicSectionItemIds.Single(), result.FirstInsertedNodeId);
+        Assert.Equal("AtomicSectionItem", result.FirstInsertedNodeType);
+        Assert.Single(items);
+        Assert.Equal(AtomicSectionTeachingRole.Example, items.Single().TeachingRole);
+        Assert.Null(items.Single().AtomicSectionPanelId);
+        Assert.Equal(Difficulty.Advanced, block!.Difficulty);
+    }
+
+    [Fact]
+    public async Task ConfirmImport_with_atomic_section_panel_context_creates_panel_items_and_orders_within_panel()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var atomicSection = new AtomicSection(sectionId, "AS");
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+
+        var panel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "例题 panel",
+            AtomicSectionTeachingRole.Example,
+            Difficulty.Basic,
+            sortOrder: 10);
+        await unitOfWork.AtomicSectionPanels.AddAsync(panel);
+        await unitOfWork.SaveChangesAsync();
+
+        var existingPanelBlock = await CreateContentBlockAsync(unitOfWork, sectionId, "既有 panel 题", Difficulty.Basic);
+        var existingPanelItem = new AtomicSectionItem(
+            atomicSection.Id,
+            existingPanelBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10,
+            atomicSectionPanelId: panel.Id,
+            teachingRole: AtomicSectionTeachingRole.Example);
+        await unitOfWork.AtomicSectionItems.AddAsync(existingPanelItem);
+
+        var existingUnassignedBlock = await CreateContentBlockAsync(unitOfWork, sectionId, "未归组题", Difficulty.Unset);
+        var existingUnassignedItem = new AtomicSectionItem(
+            atomicSection.Id,
+            existingUnassignedBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10,
+            teachingRole: AtomicSectionTeachingRole.Unclassified);
+        await unitOfWork.AtomicSectionItems.AddAsync(existingUnassignedItem);
+        await unitOfWork.SaveChangesAsync();
+
+        var bankRootDirectory = CreateTempRoot();
+        var useCases = CreateUseCases(
+            unitOfWork,
+            new FakeQuestionImportSessionLauncher(),
+            new FakeQuestionImportDocumentCloseChecker { IsClosed = true });
+
+        var session = await CreateReadySessionAsync(
+            useCases,
+            bankRootDirectory,
+            sectionId,
+            atomicSection.Id,
+            AtomicSectionTeachingRole.Example,
+            Difficulty.Basic,
+            atomicSectionPanelId: panel.Id);
+
+        var result = await useCases.ConfirmAsync(
+            new ConfirmQuestionImportCommand(
+                bankRootDirectory,
+                session.SessionId,
+                [
+                    new ConfirmQuestionImportCandidateSelection(session.Candidates[0].CandidateId, Selected: true, Title: "Panel 题 1"),
+                    new ConfirmQuestionImportCandidateSelection(session.Candidates[1].CandidateId, Selected: true, Title: "Panel 题 2")
+                ]));
+
+        var items = await unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(atomicSection.Id);
+        var panelItems = items
+            .Where(item => item.AtomicSectionPanelId == panel.Id)
+            .OrderBy(item => item.SortOrder)
+            .ThenBy(item => item.Id)
+            .ToArray();
+        var unassignedItems = items.Where(item => item.AtomicSectionPanelId is null).ToArray();
+        var importedBlocks = await Task.WhenAll(result.ContentBlockIds.Select(id => unitOfWork.ContentBlocks.GetByIdAsync(id)));
+
+        Assert.Empty(result.SectionItemIds);
+        Assert.Equal(2, result.AtomicSectionItemIds.Count);
+        Assert.Equal(result.AtomicSectionItemIds[0], result.FirstInsertedNodeId);
+        Assert.Equal("AtomicSectionItem", result.FirstInsertedNodeType);
+        Assert.Equal([existingPanelItem.Id, .. result.AtomicSectionItemIds], panelItems.Select(item => item.Id));
+        Assert.Equal([10, 20, 30], panelItems.Select(item => item.SortOrder));
+        Assert.All(panelItems, item => Assert.Equal(AtomicSectionTeachingRole.Example, item.TeachingRole));
+        Assert.Single(unassignedItems);
+        Assert.Equal(existingUnassignedItem.Id, unassignedItems.Single().Id);
+        Assert.All(importedBlocks, block => Assert.Equal(Difficulty.Basic, block!.Difficulty));
+    }
+
+    [Fact]
+    public async Task CreateSession_rejects_panel_context_when_after_item_is_outside_that_panel()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var atomicSection = new AtomicSection(sectionId, "AS");
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+
+        var targetPanel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "例题 panel",
+            AtomicSectionTeachingRole.Example,
+            Difficulty.Basic,
+            sortOrder: 10);
+        var otherPanel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "练习 panel",
+            AtomicSectionTeachingRole.Practice,
+            Difficulty.Basic,
+            sortOrder: 20);
+        await unitOfWork.AtomicSectionPanels.AddAsync(targetPanel);
+        await unitOfWork.AtomicSectionPanels.AddAsync(otherPanel);
+        await unitOfWork.SaveChangesAsync();
+
+        var block = await CreateContentBlockAsync(unitOfWork, sectionId, "其他 panel 题", Difficulty.Basic);
+        var otherPanelItem = new AtomicSectionItem(
+            atomicSection.Id,
+            block.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10,
+            atomicSectionPanelId: otherPanel.Id,
+            teachingRole: AtomicSectionTeachingRole.Practice);
+        await unitOfWork.AtomicSectionItems.AddAsync(otherPanelItem);
+        await unitOfWork.SaveChangesAsync();
+
+        var bankRootDirectory = CreateTempRoot();
+        var useCases = CreateUseCases(unitOfWork, new FakeQuestionImportSessionLauncher(), new FakeQuestionImportDocumentCloseChecker());
+
+        var exception = await Assert.ThrowsAsync<CmsV2ApplicationException>(() => useCases.CreateSessionAsync(
+            new CreateQuestionImportSessionCommand(
+                bankRootDirectory,
+                new InsertQuestionContext(
+                    sectionId,
+                    AtomicSectionId: atomicSection.Id,
+                    AtomicSectionPanelId: targetPanel.Id,
+                    AfterAtomicSectionItemId: otherPanelItem.Id,
+                    AfterSectionItemId: null,
+                    DefaultTeachingRole: targetPanel.TeachingRole,
+                    DefaultDifficulty: targetPanel.Difficulty),
+                OpenWord: false)));
+
+        Assert.Contains("same AtomicSectionPanel", exception.Message);
+    }
+
+    [Fact]
+    public async Task CancelSession_deletes_temporary_session_without_creating_formal_data()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var bankRootDirectory = CreateTempRoot();
+        var useCases = CreateUseCases(unitOfWork, new FakeQuestionImportSessionLauncher(), new FakeQuestionImportDocumentCloseChecker());
+
+        var session = await useCases.CreateSessionAsync(
+            new CreateQuestionImportSessionCommand(
+                bankRootDirectory,
+                new InsertQuestionContext(sectionId, null, null, null, null, AtomicSectionTeachingRole.Unclassified, Difficulty.Basic),
+                OpenWord: false));
+
+        var cancelled = await useCases.CancelSessionAsync(
+            new CancelQuestionImportSessionCommand(bankRootDirectory, session.SessionId));
+
+        Assert.Equal(QuestionImportSessionStatus.Cancelled, cancelled.Status);
+        Assert.False(Directory.Exists(Path.Combine(bankRootDirectory, "edit-sessions", "question-imports", session.SessionId)));
+        Assert.Empty(await unitOfWork.ContentBlocks.ListAsync());
+        Assert.Empty(await unitOfWork.ContentBlockVersions.ListAsync());
+    }
+
+    [Fact]
+    public async Task ConfirmImport_failure_rolls_back_database_and_cleans_formal_files()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var bankRootDirectory = CreateTempRoot();
+        var importProcessor = new FailingNeutralizeQuestionImportDocumentProcessor();
+        var useCases = CreateUseCases(
+            unitOfWork,
+            new FakeQuestionImportSessionLauncher(),
+            new FakeQuestionImportDocumentCloseChecker { IsClosed = true },
+            importProcessor);
+        var session = await CreateReadySessionAsync(useCases, bankRootDirectory, sectionId);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => useCases.ConfirmAsync(
+            new ConfirmQuestionImportCommand(
+                bankRootDirectory,
+                session.SessionId,
+                [new ConfirmQuestionImportCandidateSelection(session.Candidates[0].CandidateId, Selected: true, Title: "失败题目")])));
 
         Assert.Empty(await unitOfWork.ContentBlocks.ListAsync());
         Assert.Empty(await unitOfWork.ContentBlockVersions.ListAsync());
         Assert.Empty(await unitOfWork.ContentBlockVersionParts.ListAsync());
+        Assert.Empty(await unitOfWork.SectionItems.ListBySectionAsync(sectionId));
+        Assert.False(File.Exists(Path.Combine(bankRootDirectory, "content-blocks", "source", "1", "v1.docx")));
+        Assert.True(Directory.Exists(Path.Combine(bankRootDirectory, "edit-sessions", "question-imports", session.SessionId)));
     }
 
-    private static QuestionImportUseCases CreateUseCases(EfCmsV2UnitOfWork unitOfWork)
+    private static async Task<QuestionImportSessionDto> CreateReadySessionAsync(
+        QuestionImportUseCases useCases,
+        string bankRootDirectory,
+        int sectionId,
+        int? atomicSectionId = null,
+        AtomicSectionTeachingRole defaultTeachingRole = AtomicSectionTeachingRole.Unclassified,
+        Difficulty defaultDifficulty = Difficulty.Medium,
+        int? atomicSectionPanelId = null,
+        int? afterAtomicSectionItemId = null,
+        int? afterSectionItemId = null)
+    {
+        var session = await useCases.CreateSessionAsync(
+            new CreateQuestionImportSessionCommand(
+                bankRootDirectory,
+                new InsertQuestionContext(
+                    sectionId,
+                    atomicSectionId,
+                    atomicSectionPanelId,
+                    afterAtomicSectionItemId,
+                    afterSectionItemId,
+                    defaultTeachingRole,
+                    defaultDifficulty),
+                OpenWord: false));
+        CreateMultiQuestionDocx(Path.Combine(bankRootDirectory, "edit-sessions", "question-imports", session.SessionId, "source.docx"));
+        return await useCases.GetSessionAsync(new GetQuestionImportSessionCommand(bankRootDirectory, session.SessionId));
+    }
+
+    private static QuestionImportUseCases CreateUseCases(
+        EfCmsV2UnitOfWork unitOfWork,
+        IQuestionImportSessionLauncher launcher,
+        IQuestionImportDocumentCloseChecker closeChecker,
+        IQuestionImportDocumentProcessor? questionImportProcessor = null)
     {
         return new QuestionImportUseCases(
             unitOfWork,
             new CmsV2FileAssetPathProvider(),
             new LocalContentBlockFileStore(),
             new AsposeContentBlockDocumentProcessor(),
-            new AsposeQuestionImportDocumentProcessor());
+            questionImportProcessor ?? new AsposeQuestionImportDocumentProcessor(),
+            launcher,
+            closeChecker);
     }
 
     private static async Task<int> CreateSectionAsync(
@@ -146,6 +459,25 @@ public sealed class CmsV2QuestionImportUseCaseTests
         await unitOfWork.SaveChangesAsync();
 
         return section.Id;
+    }
+
+    private static async Task<ContentBlock> CreateContentBlockAsync(
+        EfCmsV2UnitOfWork unitOfWork,
+        int sectionId,
+        string title,
+        Difficulty difficulty)
+    {
+        var block = new ContentBlock(
+            sectionId,
+            title,
+            ContentBlockType.Question,
+            difficulty: difficulty,
+            questionType: QuestionType.Unset,
+            status: ContentBlockStatus.Active);
+        await unitOfWork.ContentBlocks.AddAsync(block);
+        await unitOfWork.SaveChangesAsync();
+
+        return block;
     }
 
     private static async Task<CmsV2DbContext> CreateMigratedContextAsync()
@@ -206,5 +538,49 @@ public sealed class CmsV2QuestionImportUseCaseTests
         }
 
         document.Styles.Add(StyleType.Paragraph, styleName);
+    }
+
+    private sealed class FakeQuestionImportSessionLauncher : IQuestionImportSessionLauncher
+    {
+        public List<string> OpenedDocxPaths { get; } = [];
+
+        public Task OpenAsync(QuestionImportSessionLaunchRequest request, CancellationToken cancellationToken = default)
+        {
+            OpenedDocxPaths.Add(request.SourceDocxPath);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeQuestionImportDocumentCloseChecker : IQuestionImportDocumentCloseChecker
+    {
+        public bool IsClosed { get; init; }
+
+        public Task<bool> IsClosedAsync(string sourceDocxPath, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(IsClosed);
+        }
+    }
+
+    private sealed class FailingNeutralizeQuestionImportDocumentProcessor : IQuestionImportDocumentProcessor
+    {
+        private readonly AsposeQuestionImportDocumentProcessor _inner = new();
+
+        public Task<IReadOnlyList<QuestionImportCandidateDocumentResult>> SplitCandidatesAsync(
+            string sourceDocxPath,
+            string candidateDirectory,
+            CancellationToken cancellationToken = default)
+        {
+            return _inner.SplitCandidatesAsync(sourceDocxPath, candidateDirectory, cancellationToken);
+        }
+
+        public Task CreateNeutralizedCandidateDocxAsync(
+            string candidateDocxPath,
+            string outputDocxPath,
+            CancellationToken cancellationToken = default)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(outputDocxPath)!);
+            File.Copy(candidateDocxPath, outputDocxPath, overwrite: true);
+            throw new InvalidOperationException("Simulated formal docx failure.");
+        }
     }
 }

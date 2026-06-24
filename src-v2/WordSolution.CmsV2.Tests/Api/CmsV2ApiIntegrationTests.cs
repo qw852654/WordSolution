@@ -174,7 +174,7 @@ public sealed class CmsV2ApiIntegrationTests
     }
 
     [Fact]
-    public async Task Question_import_session_endpoints_split_preview_and_confirm_candidate()
+    public async Task Question_import_session_endpoints_parse_candidates_and_batch_confirm()
     {
         await using var factory = new CmsV2ApiFactory();
         var client = factory.CreateClient();
@@ -184,46 +184,66 @@ public sealed class CmsV2ApiIntegrationTests
             "/api/cms-v2/sections",
             new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "多题导入 Section", type = "NormalCourse", difficulty = "Medium", status = "Draft" });
         var sectionId = section.GetProperty("id").GetInt32();
-        var importDocxPath = Path.Combine(factory.BankRootDirectory, "imports", "multi-question-import.docx");
-        CreateMultiQuestionImportDocx(importDocxPath);
-
-        await using var importStream = File.OpenRead(importDocxPath);
-        using var form = new MultipartFormDataContent
-        {
-            { new StreamContent(importStream), "file", "multi-question-import.docx" },
-            { new StringContent($"{sectionId}"), "sectionId" }
-        };
-        var createSessionResponse = await client.PostAsync("/api/cms-v2/question-import-sessions", form);
+        var createSessionResponse = await client.PostAsJsonAsync(
+            "/api/cms-v2/question-import-sessions",
+            new
+            {
+                context = new
+                {
+                    sectionId,
+                    atomicSectionId = (int?)null,
+                    atomicSectionPanelId = (int?)null,
+                    afterAtomicSectionItemId = (int?)null,
+                    afterSectionItemId = (int?)null,
+                    defaultTeachingRole = "Unclassified",
+                    defaultDifficulty = "Medium"
+                },
+                openWord = false
+            });
         var createdSession = await ReadSuccessJsonAsync(createSessionResponse);
         var sessionId = createdSession.GetProperty("sessionId").GetString()!;
+        var importDocxPath = Path.Combine(factory.BankRootDirectory, "edit-sessions", "question-imports", sessionId, "source.docx");
+        CreateMultiQuestionImportDocx(importDocxPath);
+
         var session = await client.GetFromJsonAsync<JsonElement>($"/api/cms-v2/question-import-sessions/{sessionId}");
+        var candidatesFromEndpoint = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/question-import-sessions/{sessionId}/candidates")
+            ?? [];
         var candidates = session.GetProperty("candidates").EnumerateArray().ToArray();
-        var firstCandidateId = candidates[0].GetProperty("candidateId").GetString();
 
         var confirmed = await PostJsonAsync(
             client,
-            $"/api/cms-v2/question-import-sessions/{sessionId}/candidates/{firstCandidateId}/confirm",
+            $"/api/cms-v2/question-import-sessions/{sessionId}/confirm",
             new
             {
-                sectionId,
-                title = "确认导入题目",
-                blockType = "Question",
-                summary = "多题导入候选确认",
-                difficulty = "Medium",
-                questionType = "Calculation"
+                candidates = candidates.Select((candidate, index) => new
+                {
+                    candidateId = candidate.GetProperty("candidateId").GetString(),
+                    selected = index != 1,
+                    title = index == 0 ? "确认导入题目" : string.Empty
+                }).ToArray()
             });
-        var contentBlockId = confirmed.GetProperty("contentBlockId").GetInt32();
-        var versionId = confirmed.GetProperty("contentBlockVersionId").GetInt32();
-        var parts = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/content-blocks/{contentBlockId}/versions/{versionId}/parts")
+        var contentBlockIds = confirmed.GetProperty("contentBlockIds").EnumerateArray().Select(item => item.GetInt32()).ToArray();
+        var versionIds = confirmed.GetProperty("contentBlockVersionIds").EnumerateArray().Select(item => item.GetInt32()).ToArray();
+        var sectionItemIds = confirmed.GetProperty("sectionItemIds").EnumerateArray().Select(item => item.GetInt32()).ToArray();
+        var parts = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/content-blocks/{contentBlockIds[0]}/versions/{versionIds[0]}/parts")
+            ?? [];
+        var sectionItems = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/sections/{sectionId}/items")
             ?? [];
 
+        Assert.Equal("ReadyForReview", session.GetProperty("status").GetString());
         Assert.Equal(3, candidates.Length);
+        Assert.Equal(3, candidatesFromEndpoint.Length);
         Assert.All(candidates, candidate =>
         {
             Assert.Equal("Parsed", candidate.GetProperty("parseStatus").GetString());
             Assert.Contains("data-question-part=\"Stem\"", candidate.GetProperty("htmlPreview").GetString());
         });
         Assert.DoesNotContain("导入前说明", string.Join("\n", candidates.Select(candidate => candidate.GetProperty("htmlPreview").GetString())));
+        Assert.Equal(2, contentBlockIds.Length);
+        Assert.Equal(2, versionIds.Length);
+        Assert.Equal(2, sectionItemIds.Length);
+        Assert.Equal("SectionItem", confirmed.GetProperty("firstInsertedNodeType").GetString());
+        Assert.Equal(2, sectionItems.Length);
         Assert.Equal(["Stem", "Answer"], parts.Select(part => part.GetProperty("partType").GetString()));
     }
 
@@ -526,6 +546,16 @@ public sealed class CmsV2ApiIntegrationTests
                 difficulty = "Basic"
             });
         var panelId = panel.GetProperty("id").GetInt32();
+        var mediumPanel = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/atomic-sections/{atomicSectionId}/panels",
+            new
+            {
+                title = "Example medium",
+                teachingRole = "Example",
+                difficulty = "Medium"
+            });
+        var mediumPanelId = mediumPanel.GetProperty("id").GetInt32();
         var item = await PostJsonAsync(
             client,
             $"/api/cms-v2/atomic-sections/{atomicSectionId}/items",
@@ -539,7 +569,17 @@ public sealed class CmsV2ApiIntegrationTests
             });
         var items = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/atomic-sections/{atomicSectionId}/items")
             ?? [];
-        var deletePanel = await client.DeleteAsync($"/api/cms-v2/atomic-sections/{atomicSectionId}/panels/{panelId}");
+        var updatedBlock = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/content-blocks/{blockId}/difficulty",
+            new { difficulty = "Medium" });
+        var updatedAtomicSection = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/atomic-sections/{atomicSectionId}/difficulty",
+            new { difficulty = "Advanced" });
+        var itemsAfterDifficultyChange = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/atomic-sections/{atomicSectionId}/items")
+            ?? [];
+        var deletePanel = await client.DeleteAsync($"/api/cms-v2/atomic-sections/{atomicSectionId}/panels/{mediumPanelId}");
         var deleted = await ReadSuccessJsonAsync(deletePanel);
         var contentBlockAfterDelete = await client.GetAsync($"/api/cms-v2/content-blocks/{blockId}");
 
@@ -548,6 +588,10 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.Equal(item.GetProperty("id").GetInt32(), items[0].GetProperty("id").GetInt32());
         Assert.Equal(panelId, items[0].GetProperty("atomicSectionPanelId").GetInt32());
         Assert.Equal("Example", items[0].GetProperty("teachingRole").GetString());
+        Assert.Equal("Medium", updatedBlock.GetProperty("difficulty").GetString());
+        Assert.Equal("Advanced", updatedAtomicSection.GetProperty("difficulty").GetString());
+        Assert.Single(itemsAfterDifficultyChange);
+        Assert.Equal(mediumPanelId, itemsAfterDifficultyChange[0].GetProperty("atomicSectionPanelId").GetInt32());
         Assert.Equal(1, deleted.GetProperty("removedAtomicSectionItemCount").GetInt32());
         Assert.Equal(HttpStatusCode.OK, contentBlockAfterDelete.StatusCode);
     }
@@ -883,6 +927,92 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.Empty(generatedFilesAfterDelete);
         Assert.Equal(HttpStatusCode.NotFound, manifestAfterDelete.StatusCode);
         Assert.False(File.Exists(generatedFilePath));
+    }
+
+    [Fact]
+    public async Task Output_form_validate_word_generation_endpoint_returns_structured_issues_without_generating_file()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var templatePath = Path.Combine(factory.BankRootDirectory, "templates", "missing-style-template.docx");
+        await CreateMinimalDocxAsync(templatePath, "模板正文");
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "输出预检", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "预检小节", type = "NormalCourse", difficulty = "Medium", status = "Draft" });
+        var contentBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks/blank-document",
+            new
+            {
+                sectionId = section.GetProperty("id").GetInt32(),
+                title = "预检题目",
+                blockType = "Question",
+                questionType = "Unset",
+                status = "Draft"
+            });
+        var importDocxPath = Path.Combine(factory.BankRootDirectory, "imports", "validate-question.docx");
+        CreateStyledQuestionDocx(importDocxPath);
+        await using (var importStream = File.OpenRead(importDocxPath))
+        using (var form = new MultipartFormDataContent
+        {
+            { new StreamContent(importStream), "file", "source.docx" },
+            { new StringContent("true"), "setAsCurrent" }
+        })
+        {
+            await ReadSuccessJsonAsync(await client.PostAsync(
+                $"/api/cms-v2/content-blocks/{contentBlock.GetProperty("contentBlockId").GetInt32()}/versions/import",
+                form));
+        }
+
+        var handout = await PostJsonAsync(client, "/api/cms-v2/handouts", new { title = "预检讲义", status = "Draft" });
+        var handoutVersion = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/handouts/{handout.GetProperty("id").GetInt32()}/versions",
+            new { title = "预检版本", type = "Normal", status = "Draft", sortOrder = 1 });
+        await PostJsonAsync(
+            client,
+            $"/api/cms-v2/handout-versions/{handoutVersion.GetProperty("id").GetInt32()}/items",
+            new { targetType = "ContentBlock", targetId = contentBlock.GetProperty("contentBlockId").GetInt32(), sortOrder = 1 });
+        var template = await PostJsonAsync(
+            client,
+            "/api/cms-v2/output-templates",
+            new { title = "缺样式模板", templateDocxPath = templatePath, status = "Active" });
+        var outputForm = await PostJsonAsync(
+            client,
+            "/api/cms-v2/output-forms",
+            new
+            {
+                handoutVersionId = handoutVersion.GetProperty("id").GetInt32(),
+                outputTemplateId = template.GetProperty("id").GetInt32(),
+                title = "学生版",
+                audience = "Student",
+                outputFormat = "Word",
+                visibilityMode = "StudentNoAnswer",
+                status = "Active"
+            });
+        var outputFormId = outputForm.GetProperty("id").GetInt32();
+
+        var validationResponse = await client.PostAsync(
+            $"/api/cms-v2/output-forms/{outputFormId}/validate-word-generation",
+            content: null);
+        var validation = JsonDocument.Parse(await validationResponse.Content.ReadAsStringAsync()).RootElement.Clone();
+        var generateResponse = await client.PostAsJsonAsync(
+            $"/api/cms-v2/output-forms/{outputFormId}/generate-word",
+            new { generatedTime = "2026-06-09T00:00:00Z" });
+        var generatedFiles = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/output-forms/{outputFormId}/generated-files")
+            ?? [];
+
+        Assert.Equal(HttpStatusCode.OK, validationResponse.StatusCode);
+        Assert.False(validation.GetProperty("isValid").GetBoolean());
+        var issue = Assert.Single(validation.GetProperty("issues").EnumerateArray());
+        Assert.Equal("MissingOutputStyle", issue.GetProperty("code").GetString());
+        Assert.Equal(outputFormId, issue.GetProperty("outputFormId").GetInt32());
+        Assert.Equal(template.GetProperty("id").GetInt32(), issue.GetProperty("outputTemplateId").GetInt32());
+        Assert.Equal("练习题", issue.GetProperty("requiredStyleName").GetString());
+        Assert.Equal(HttpStatusCode.BadRequest, generateResponse.StatusCode);
+        Assert.Empty(generatedFiles);
     }
 
     [Fact]
@@ -1242,6 +1372,7 @@ public sealed class CmsV2ApiIntegrationTests
         var version = await client.GetFromJsonAsync<JsonElement>($"/api/cms-v2/handout-versions/{handoutVersionId}");
         var workspace = await client.GetFromJsonAsync<JsonElement>($"/api/cms-v2/handout-versions/{handoutVersionId}/workspace");
         var items = workspace.GetProperty("items").EnumerateArray().ToArray();
+        var outputForms = workspace.GetProperty("outputForms").EnumerateArray().ToArray();
 
         Assert.Equal(handoutVersionId, version.GetProperty("id").GetInt32());
         Assert.Equal(handout.GetProperty("id").GetInt32(), workspace.GetProperty("handout").GetProperty("id").GetInt32());
@@ -1250,7 +1381,10 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.Equal(item.GetProperty("id").GetInt32(), items[0].GetProperty("handoutVersionItemId").GetInt32());
         Assert.Equal("ContentBlock", items[0].GetProperty("targetType").GetString());
         Assert.Equal("Workspace Block", items[0].GetProperty("title").GetString());
-        Assert.Empty(workspace.GetProperty("outputForms").EnumerateArray());
+        var outputForm = Assert.Single(outputForms);
+        Assert.Equal("课堂 Word", outputForm.GetProperty("title").GetString());
+        Assert.Equal("Word", outputForm.GetProperty("outputFormat").GetString());
+        Assert.Equal("Classroom", outputForm.GetProperty("visibilityMode").GetString());
         Assert.Empty(workspace.GetProperty("generatedFiles").EnumerateArray());
     }
 

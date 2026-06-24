@@ -2026,6 +2026,7 @@ Archived `Handout` or `HandoutVersion` entries must be rendered read-only in `Ha
 - 显示 panel 标题、教学职责、难度和操作入口。
 - 承载该 panel 下的 `SectionItemView` 文档流。
 - 暴露 panel 内首位、中间、末尾的插入点。
+- 在 panel 操作区暴露 `导入题目` 事件入口；弹窗状态、API 调用、导入后刷新和定位仍由 `SectionPage` 持有。
 
 事件：
 
@@ -2203,6 +2204,8 @@ docs/cms-v2/backend/题目结构化预览-输出样式重绑定-多题导入开�
 - `NotApplicable`：继续显示普通整块 HTML 预览。
 - 无 docx / 无 HTML：继续显示“没有 Word 文档，点击 Word 编辑创建”的轻量提示。
 
+`NotApplicable` 是非 `Question ContentBlock` 的默认展示口径。`ExampleGroup / ExerciseGroup / VariantGroup` 等组类型不因本能力线强制生成 `data-question-part`，也不在 `ContentBlockDisplay` 内临时伪造成题目 Part。
+
 结构化题目预览第一版组件职责：
 
 - `Stem` 常显。
@@ -2231,12 +2234,14 @@ docs/cms-v2/backend/题目结构化预览-输出样式重绑定-多题导入开�
 
 职责：
 
-- 选择并上传 `.docx` 文件。
-- 展示后端返回的临时候选题列表。
+- 展示临时 Word 导入会话状态。
+- 引导用户启动会话并打开临时 Word。
+- 在 `ReadyForReview` 后展示后端返回的临时候选题列表。
 - 展示候选题结构化 HTML 预览。
 - 展示候选题解析状态、警告和失败信息。
-- 为单个候选题填写确认导入时的轻量元数据。
-- 只发出 `upload`、`confirmCandidate`、`cancelSession`、`close` 事件。
+- 为候选题填写确认导入时的轻量元数据。
+- 支持勾选 / 取消勾选候选题。
+- 只发出 `startSession`、`reopenSession`、`confirmCandidates`、`cancelSession`、`close` 事件。
 
 边界：
 
@@ -2245,19 +2250,26 @@ docs/cms-v2/backend/题目结构化预览-输出样式重绑定-多题导入开�
 - 不把导入后的 `ContentBlock` 自动插入 `Section` 文档流。
 - 不解析 Word 样式。
 - 不持有 `SectionPage` 全局状态。
+- 不要求用户选择并上传本地 `.docx` 作为主流程。
+- 不逐个候选题单独入库。
+- 不在确认前写正式数据库或正式 `content-blocks/` 资产目录。
 
 页面接入：
 
 - `SectionPage` 负责调用 `question-import-sessions` 相关 API。
 - `SectionPage` 负责保存临时 session、错误提示和成功反馈。
-- `SectionPage` 负责在确认候选题后刷新当前 Section 数据。
+- `SectionPage` 负责启动临时 Word 会话、轮询会话状态、处理重新打开和取消。
+- `SectionPage` 负责在批量确认候选题后刷新当前 Section 数据并定位首个新增题目。
 
 验收要求：
 
-- 上传多题 Word 后能看到候选题列表。
+- 启动导入会话后能自动打开临时 Word。
+- 用户保存并关闭 Word 后，前端能轮询到 `ReadyForReview`。
 - 点击候选题能看到结构化预览。
-- 确认候选题时能填写名称、备注、难度、题型。
+- 确认候选题时能勾选 / 取消勾选候选题。
+- 确认候选题时能填写标题。
 - 名称允许留空。
+- 候选确认页只允许勾选、标题输入、查看结构状态和预览。
 - 取消导入会话会删除临时文件。
 - 导入失败时只显示错误，不伪造成功状态。
 
@@ -2272,19 +2284,23 @@ SectionTopLevel
   当前 Section 顶层导入。
   后续确认候选题后，由页面级逻辑决定是否创建顶层 SectionItem。
 
+AtomicSection
+  当前 AtomicSection 内部导入。
+  后续确认候选题后，由后端创建 AtomicSectionItem。
+
 AtomicSectionPanel
-  当前 AtomicSectionPanel 内部导入。
-  后续确认候选题后，由页面级逻辑决定是否创建 AtomicSectionItem，
-  并写入 AtomicSectionPanelId / TeachingRole / Difficulty。
+  当前 AtomicSectionPanel 内部导入目标。
+  确认候选题后，由后端创建归属该 panel 的 AtomicSectionItem。
+  默认 TeachingRole / Difficulty 来自 panel 本身。
 ```
 
 组件职责保持不变：
 
-- 选择并上传 `.docx` 文件。
+- 展示临时 Word 导入会话状态。
 - 展示后端返回的临时候选题。
 - 展示候选题结构化 HTML 预览。
-- 为单个候选题填写轻量元数据。
-- 发出 `upload`、`confirmCandidate`、`cancelSession`、`close` 事件。
+- 为候选题填写轻量元数据。
+- 发出 `startSession`、`reopenSession`、`confirmCandidates`、`cancelSession`、`close` 事件。
 
 组件禁止：
 
@@ -2292,10 +2308,36 @@ AtomicSectionPanel
 - 直接创建正式 `ContentBlock`。
 - 直接创建 `SectionItem`、`AtomicSectionItem` 或 `ContentBlockRelation`。
 - 根据 `QuestionImportContext` 自行决定插入位置。
-- 为 Section 顶层和 AtomicSectionPanel 分别复制两套导入 UI。
+- 为 Section 顶层、AtomicSection 和 AtomicSectionPanel 分别复制多套导入 UI。
+- 把主流程做成“选择并上传 `.docx` 文件”。
+- 逐个候选题单独确认入库。
+- 在确认页提供拆题、合题、正文编辑、逐题 TeachingRole / Difficulty / 标签编辑。
 
 页面级职责：
 
 - `SectionPage` 负责根据 `QuestionImportContext` 调用 API。
-- `SectionPage` 负责在确认候选题后刷新数据。
-- 后续如果需要“确认导入后自动插入当前位置”，也必须由 `SectionPage` 或页面级 action 完成，不进入 `QuestionImportDialog`。
+- `SectionPage` 负责轮询会话状态，直到 `ReadyForReview` 后展示候选题确认。
+- `SectionPage` 负责在批量确认候选题后刷新数据。
+- Section 顶层、AtomicSection 或 AtomicSectionPanel 的插入目标映射必须由 `SectionPage` 或页面级 action 完成，不进入 `QuestionImportDialog`。
+
+### 当前实现状态
+
+Phase 4 已将 `QuestionImportDialog` 改为“临时 Word 会话 + 状态轮询 + 批量确认”模式。早期“选择 `.docx` 文件并上传”“单候选确认入库”“创建 session 后立即切割”的实现是历史偏差，已修正，不得作为后续主流程参考。
+
+当前 `QuestionImportDialog` 第一版必须包含以下区域：
+
+1. 会话启动区：展示导入目标、启动临时 Word、重新打开临时 Word、取消会话。
+2. 会话状态区：展示 `Created / Opening / Editing / Parsing / ReadyForReview / Importing / Imported / Failed / Cancelled / Expired` 等状态和错误。
+3. 候选列表区：候选题默认全部勾选，支持取消勾选，不逐个入库。
+4. 候选预览区：展示每道候选题的结构化 HTML、解析状态、警告和错误。
+5. 候选元数据区：第一版只允许填写标题；标题允许为空，不允许逐题修改难度、TeachingRole、标签或题型。
+6. 批量确认区：一次提交全部候选选择，成功后由页面级逻辑刷新 Section 并定位首个新增题目。
+
+当前 `QuestionImportDialog` 禁止包含：
+
+- 本地 `.docx` 文件上传输入作为主流程。
+- 单个候选题确认入库按钮。
+- 手工拆题 / 合题。
+- 正文编辑器。
+- 逐题 TeachingRole / Difficulty 修改。
+- 自行创建 `SectionItem`、`AtomicSectionItem` 或 `ContentBlockRelation`。

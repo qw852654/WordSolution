@@ -7,6 +7,22 @@ namespace WordSolution.CmsV2.Infrastructure.Documents;
 
 public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
 {
+    public Task<IReadOnlyList<HandoutDocumentGenerationIssue>> ValidateWordGenerationAsync(
+        string templateDocxPath,
+        IReadOnlyList<HandoutDocumentElement> elements,
+        CancellationToken cancellationToken = default)
+    {
+        ValidatePath(templateDocxPath, nameof(templateDocxPath));
+        ArgumentNullException.ThrowIfNull(elements);
+
+        return Task.Run<IReadOnlyList<HandoutDocumentGenerationIssue>>(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var outputDocument = new Document(templateDocxPath);
+            return ValidateWordGeneration(outputDocument, elements);
+        }, cancellationToken);
+    }
+
     public Task GenerateWordAsync(
         string handoutTitle,
         string templateDocxPath,
@@ -49,7 +65,8 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
             EnsureParentDirectory(outputDocxPath);
 
             var outputDocument = new Document(templateDocxPath);
-            ValidateRequiredOutputStyles(outputDocument, elements);
+            var issues = ValidateWordGeneration(outputDocument, elements);
+            ThrowIfValidationIssues(issues);
             var builder = new DocumentBuilder(outputDocument);
 
             builder.MoveToDocumentEnd();
@@ -100,6 +117,22 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
         Document outputDocument,
         IReadOnlyList<HandoutDocumentElement> elements)
     {
+        ThrowIfValidationIssues(ValidateRequiredOutputStylesAsIssues(outputDocument, elements));
+    }
+
+    private static IReadOnlyList<HandoutDocumentGenerationIssue> ValidateWordGeneration(
+        Document outputDocument,
+        IReadOnlyList<HandoutDocumentElement> elements)
+    {
+        return ValidateRequiredOutputStylesAsIssues(outputDocument, elements)
+            .Concat(ValidateQuestionStemParagraphs(elements))
+            .ToArray();
+    }
+
+    private static IReadOnlyList<HandoutDocumentGenerationIssue> ValidateRequiredOutputStylesAsIssues(
+        Document outputDocument,
+        IReadOnlyList<HandoutDocumentElement> elements)
+    {
         var requiredStyleNames = elements
             .Where(element => element.Kind == HandoutDocumentElementKind.ContentBlock)
             .Select(element => element.OutputStemStyleName)
@@ -107,14 +140,52 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        foreach (var styleName in requiredStyleNames)
+        return requiredStyleNames
+            .Where(styleName => FindParagraphStyle(outputDocument, styleName!) is null)
+            .Select(styleName => new HandoutDocumentGenerationIssue(
+                "MissingOutputStyle",
+                $"OutputTemplate is missing required style '{styleName}' for question stem output.",
+                RequiredStyleName: styleName))
+            .ToArray();
+    }
+
+    private static IReadOnlyList<HandoutDocumentGenerationIssue> ValidateQuestionStemParagraphs(
+        IReadOnlyList<HandoutDocumentElement> elements)
+    {
+        var issues = new List<HandoutDocumentGenerationIssue>();
+
+        foreach (var element in elements.Where(element =>
+            element.Kind == HandoutDocumentElementKind.ContentBlock
+            && !string.IsNullOrWhiteSpace(element.OutputStemStyleName)))
         {
-            if (FindParagraphStyle(outputDocument, styleName!) is null)
+            ValidatePath(element.DocxPath ?? string.Empty, nameof(element.DocxPath));
+            var sourceDocument = new Document(element.DocxPath!);
+            if (ContainsEffectiveStemParagraph(sourceDocument))
             {
-                throw new HandoutDocumentGenerationException(
-                    $"OutputTemplate is missing required style '{styleName}' for question stem output.");
+                continue;
             }
+
+            issues.Add(new HandoutDocumentGenerationIssue(
+                "MissingQuestionStem",
+                $"Question ContentBlock {element.ContentBlockId?.ToString() ?? element.Title} does not contain an effective Stem paragraph.",
+                ContentBlockId: element.ContentBlockId,
+                ContentBlockVersionId: element.ContentBlockVersionId,
+                RequiredStyleName: element.OutputStemStyleName,
+                OccurrenceRole: element.OccurrenceRole));
         }
+
+        return issues;
+    }
+
+    private static void ThrowIfValidationIssues(IReadOnlyList<HandoutDocumentGenerationIssue> issues)
+    {
+        if (issues.Count == 0)
+        {
+            return;
+        }
+
+        throw new HandoutDocumentGenerationException(
+            string.Join(Environment.NewLine, issues.Select(issue => $"{issue.Code}: {issue.Message}")));
     }
 
     private static void AppendBodyContent(
@@ -146,6 +217,12 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
                     stemStyleRebound = TryRebindImportedStemParagraph(sourceNode, importedNode, outputStyle);
                 }
             }
+        }
+
+        if (outputStyle is not null && !stemStyleRebound)
+        {
+            throw new HandoutDocumentGenerationException(
+                $"MissingQuestionStem: question source does not contain an effective Stem paragraph for output style '{outputStemStyleName}'.");
         }
     }
 
@@ -206,7 +283,15 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
         }
 
         var partType = ResolveParagraphPartType(paragraph);
-        return partType is ContentBlockPartType.Stem or ContentBlockPartType.Other;
+        return partType is ContentBlockPartType.Stem;
+    }
+
+    private static bool ContainsEffectiveStemParagraph(Document document)
+    {
+        return document
+            .GetChildNodes(NodeType.Paragraph, true)
+            .OfType<Paragraph>()
+            .Any(IsEffectiveStemParagraph);
     }
 
     private static ContentBlockPartType ResolveParagraphPartType(Paragraph paragraph)

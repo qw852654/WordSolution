@@ -292,10 +292,7 @@ public sealed class ContentBlockDocumentUseCases
 
     private static bool ShouldGenerateQuestionParts(ContentBlockType blockType)
     {
-        return blockType is ContentBlockType.Question
-            or ContentBlockType.ExampleGroup
-            or ContentBlockType.ExerciseGroup
-            or ContentBlockType.VariantGroup;
+        return blockType is ContentBlockType.Question;
     }
 
     private async Task<ContentBlock> RequireContentBlockAsync(int contentBlockId, CancellationToken cancellationToken)

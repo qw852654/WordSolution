@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { FileUp } from 'lucide-vue-next'
 import CompositeBlock from '@/components/business/CompositeBlock.vue'
 import ContentBlockDisplay from '@/components/business/ContentBlockDisplay.vue'
 import { getDifficultyMarkerClass } from '@/components/business/difficultyTone'
@@ -32,6 +33,7 @@ const emit = defineEmits<{
   renamePanel: [payload: AtomicSectionPanelActionPayload]
   movePanel: [payload: AtomicSectionPanelMovePayload]
   removePanel: [payload: AtomicSectionPanelActionPayload]
+  requestQuestionImport: [payload: AtomicSectionPanelActionPayload]
   selectContentBlock: [id: string]
   toggleCollapse: [id: string]
   openAtomicSectionItemWord: [payload: AtomicSectionItemActionPayload]
@@ -138,6 +140,17 @@ function createPanelInsertPoint(
     @select-title="emit('selectPanel', createPanelPayload())"
   >
     <template #actions>
+      <Button
+        v-if="!readOnly"
+        type="button"
+        size="sm"
+        variant="ghost"
+        :disabled="panel.disabled"
+        @click.stop="emit('requestQuestionImport', createPanelPayload())"
+      >
+        <FileUp class="size-3.5" aria-hidden="true" />
+        {{ t('components.atomicSectionPanel.importQuestions') }}
+      </Button>
       <Button
         v-if="!readOnly"
         type="button"

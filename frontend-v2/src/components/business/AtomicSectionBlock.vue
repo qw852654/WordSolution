@@ -46,6 +46,7 @@ const emit = defineEmits<{
   renameAtomicSectionPanel: [payload: AtomicSectionPanelActionPayload]
   moveAtomicSectionPanel: [payload: AtomicSectionPanelMovePayload]
   removeAtomicSectionPanel: [payload: AtomicSectionPanelActionPayload]
+  requestAtomicSectionPanelQuestionImport: [payload: AtomicSectionPanelActionPayload]
   openAtomicSectionItemWord: [payload: AtomicSectionItemActionPayload]
   moveAtomicSectionItem: [payload: AtomicSectionItemMovePayload]
   removeAtomicSectionItem: [payload: AtomicSectionItemActionPayload]
@@ -235,6 +236,7 @@ function createAtomicSectionInsertPoint(
             @rename-panel="emit('renameAtomicSectionPanel', $event)"
             @move-panel="emit('moveAtomicSectionPanel', $event)"
             @remove-panel="emit('removeAtomicSectionPanel', $event)"
+            @request-question-import="emit('requestAtomicSectionPanelQuestionImport', $event)"
             @select-content-block="emit('selectContentBlock', $event)"
             @toggle-collapse="emit('toggleCollapse', $event)"
             @open-atomic-section-item-word="emit('openAtomicSectionItemWord', $event)"

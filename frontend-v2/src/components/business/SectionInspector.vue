@@ -13,6 +13,8 @@ import {
 } from '@/components/ui/card'
 import type {
   AtomicSectionTeachingRole,
+  SectionDifficultyChangePayload,
+  SectionDifficultyEditableNodeKind,
   SectionPageShellModel,
   SectionTreeNodeModel,
 } from '@/types'
@@ -23,6 +25,7 @@ const props = defineProps<{
   variantItemCount?: number
   deletingContentBlockCascade?: boolean
   updatingAtomicSectionItemClassification?: boolean
+  updatingNodeDifficulty?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -33,6 +36,7 @@ const emit = defineEmits<{
     teachingRole: AtomicSectionTeachingRole
     difficulty: string
   }]
+  changeNodeDifficulty: [payload: SectionDifficultyChangePayload]
 }>()
 
 const { t } = useI18n()
@@ -74,6 +78,20 @@ const showAtomicSectionItemClassification = computed(() =>
   typeof props.node.atomicSectionId === 'number' &&
   typeof props.node.atomicSectionItemId === 'number',
 )
+const editableDifficultyKind = computed<SectionDifficultyEditableNodeKind | undefined>(() => {
+  const kind = props.node?.kind
+  if (
+    kind === 'ContentBlock' ||
+    kind === 'CompositeBlock' ||
+    kind === 'AtomicSection' ||
+    kind === 'AtomicSectionPanel'
+  ) {
+    return kind
+  }
+
+  return undefined
+})
+const showNodeDifficultyEditor = computed(() => Boolean(editableDifficultyKind.value))
 
 function changeAtomicSectionItemClassification(
   next: Partial<{
@@ -95,6 +113,24 @@ function changeAtomicSectionItemClassification(
     atomicSectionItemId: node.atomicSectionItemId,
     teachingRole: next.teachingRole ?? node.teachingRole ?? 'Unclassified',
     difficulty: next.difficulty ?? node.difficultyValue ?? 'Unset',
+  })
+}
+
+function changeNodeDifficulty(difficulty: string) {
+  const node = props.node
+  const kind = editableDifficultyKind.value
+  if (!node || !kind || difficulty === (node.difficultyValue ?? 'Unset')) {
+    return
+  }
+
+  emit('changeNodeDifficulty', {
+    nodeId: node.id,
+    kind,
+    difficulty,
+    atomicSectionId: node.atomicSectionId,
+    atomicSectionPanelId: node.atomicSectionPanelId,
+    title: node.title,
+    teachingRole: node.teachingRole,
   })
 }
 
@@ -232,6 +268,38 @@ const detailRows = computed(() => {
         </div>
       </dl>
     </WeakScrollArea>
+
+    <div v-if="showNodeDifficultyEditor" class="border-t px-4 py-3">
+      <div class="grid gap-2">
+        <p class="text-xs font-medium">
+          {{ t('components.sectionInspector.nodeDifficulty') }}
+        </p>
+        <label class="grid gap-1 text-xs text-muted-foreground">
+          <span>{{ t('components.sectionInspector.difficulty') }}</span>
+          <select
+            class="h-9 rounded-md border bg-background px-2 text-sm text-foreground"
+            :value="node.difficultyValue ?? 'Unset'"
+            :disabled="updatingNodeDifficulty"
+            @change="changeNodeDifficulty(($event.target as HTMLSelectElement).value)"
+          >
+            <option
+              v-for="difficulty in difficultyOptions"
+              :key="difficulty"
+              :value="difficulty"
+            >
+              {{ t(`common.difficulty.${difficulty}`) }}
+            </option>
+          </select>
+        </label>
+        <p class="text-xs text-muted-foreground">
+          {{
+            updatingNodeDifficulty
+              ? t('components.sectionInspector.nodeDifficultyUpdating')
+              : t('components.sectionInspector.nodeDifficultyDescription')
+          }}
+        </p>
+      </div>
+    </div>
 
     <div v-if="showAtomicSectionItemClassification" class="border-t px-4 py-3">
       <div class="grid gap-2">

@@ -1,40 +1,77 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { FileText, Upload, X } from 'lucide-vue-next'
+import { CheckCircle2, CircleAlert, FileText, Loader2, RefreshCw, RotateCcw, X } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
-import type { CmsV2QuestionImportCandidateDto, CmsV2QuestionImportSessionDto } from '@/apis/cmsV2Client'
-import type { QuestionImportConfirmPayload, QuestionImportContext } from '@/types'
+import type {
+  CmsV2QuestionImportCandidateDto,
+  CmsV2QuestionImportSessionDto,
+  CmsV2QuestionImportSessionStatus,
+} from '@/apis/cmsV2Client'
+import type { QuestionImportCandidateSelectionPayload, QuestionImportContext } from '@/types'
+import StatusPill from '@/components/presentation/StatusPill.vue'
 import { Button } from '@/components/ui/button'
 
-const props = defineProps<{
-  open: boolean
-  importContext: QuestionImportContext
-  session?: CmsV2QuestionImportSessionDto | null
-  busy?: boolean
-  errorMessage?: string
-  feedbackMessage?: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    open: boolean
+    importContext: QuestionImportContext
+    session?: CmsV2QuestionImportSessionDto | null
+    candidates?: CmsV2QuestionImportCandidateDto[]
+    busy?: boolean
+    candidatesLoading?: boolean
+    errorMessage?: string
+    feedbackMessage?: string
+  }>(),
+  {
+    candidates: () => [],
+    busy: false,
+    candidatesLoading: false,
+    errorMessage: '',
+    feedbackMessage: '',
+  },
+)
 
 const emit = defineEmits<{
   close: []
-  upload: [file: File]
-  confirmCandidate: [payload: QuestionImportConfirmPayload]
+  startSession: []
+  reopenSession: []
+  confirmCandidates: [payload: QuestionImportCandidateSelectionPayload[]]
   cancelSession: []
 }>()
 
 const { t } = useI18n()
-const selectedFile = ref<File | null>(null)
 const selectedCandidateId = ref<string>()
-const metadata = reactive({
-  title: '',
-  summary: '',
-  difficulty: 'Medium' as QuestionImportConfirmPayload['difficulty'],
-  questionType: 'Calculation' as QuestionImportConfirmPayload['questionType'],
-})
+const candidateDrafts = reactive<Record<string, QuestionImportCandidateSelectionPayload>>({})
 
-const candidates = computed(() => props.session?.candidates ?? [])
+const candidates = computed(() =>
+  props.candidates.length ? props.candidates : props.session?.candidates ?? [],
+)
 const selectedCandidate = computed(() =>
   candidates.value.find((candidate) => candidate.candidateId === selectedCandidateId.value),
+)
+const selectedCandidateDraft = computed(() =>
+  selectedCandidate.value ? getCandidateDraft(selectedCandidate.value) : undefined,
+)
+const selectedCandidateTitle = computed(() => selectedCandidateDraft.value?.title ?? '')
+const selectedCount = computed(
+  () => candidates.value.filter((candidate) => getCandidateDraft(candidate).selected).length,
+)
+const hasSession = computed(() => Boolean(props.session))
+const sessionStatus = computed<CmsV2QuestionImportSessionStatus | undefined>(
+  () => props.session?.status,
+)
+const isReviewReady = computed(() => sessionStatus.value === 'ReadyForReview')
+const hasTerminalSession = computed(() =>
+  ['Imported', 'Failed', 'Cancelled', 'Expired'].includes(sessionStatus.value ?? ''),
+)
+const canReopenSession = computed(
+  () =>
+    Boolean(props.session) &&
+    !props.busy &&
+    !['Importing', 'Imported', 'Cancelled', 'Expired'].includes(sessionStatus.value ?? ''),
+)
+const canConfirmCandidates = computed(
+  () => isReviewReady.value && !props.busy && !props.candidatesLoading && selectedCount.value > 0,
 )
 const importTargetTitle = computed(() => {
   if (props.importContext.target === 'AtomicSectionPanel') {
@@ -56,9 +93,45 @@ const importTargetDescription = computed(() => {
     sectionTitle: props.importContext.sectionTitle,
   })
 })
-const hasSession = computed(() => Boolean(props.session))
-const uploadDisabled = computed(() => props.busy || !selectedFile.value)
-const confirmDisabled = computed(() => props.busy || !selectedCandidate.value)
+const sessionStatusTone = computed<'neutral' | 'active' | 'muted' | 'danger'>(() => {
+  switch (sessionStatus.value) {
+    case 'ReadyForReview':
+    case 'Imported':
+      return 'active'
+    case 'Failed':
+    case 'Cancelled':
+    case 'Expired':
+      return 'danger'
+    case 'Editing':
+    case 'Opening':
+    case 'Parsing':
+    case 'Importing':
+      return 'muted'
+    default:
+      return 'neutral'
+  }
+})
+const waitingIcon = computed(() => {
+  if (sessionStatus.value === 'ReadyForReview' || sessionStatus.value === 'Imported') {
+    return CheckCircle2
+  }
+
+  if (hasTerminalSession.value) {
+    return CircleAlert
+  }
+
+  return Loader2
+})
+const selectedCandidateWarnings = computed(() => {
+  const candidate = selectedCandidate.value
+  if (!candidate) {
+    return []
+  }
+
+  return candidate.parts
+    .filter((part) => Boolean(part.warningMessage))
+    .map((part) => `${getPartLabel(part.partType)}: ${part.warningMessage}`)
+})
 const parseToneByStatus = {
   Parsed: 'text-muted-foreground',
   ParsedWithWarnings: 'text-muted-foreground',
@@ -66,61 +139,84 @@ const parseToneByStatus = {
   NotApplicable: 'text-muted-foreground',
 } satisfies Record<NonNullable<CmsV2QuestionImportCandidateDto['parseStatus']>, string>
 
-function handleFileChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  selectedFile.value = input.files?.[0] ?? null
-}
-
-function submitUpload() {
-  if (selectedFile.value) {
-    emit('upload', selectedFile.value)
+function getCandidateDraft(candidate: CmsV2QuestionImportCandidateDto) {
+  if (!candidateDrafts[candidate.candidateId]) {
+    candidateDrafts[candidate.candidateId] = {
+      candidateId: candidate.candidateId,
+      selected: true,
+      title: '',
+    }
   }
+
+  return candidateDrafts[candidate.candidateId]
 }
 
-function submitConfirm() {
-  const candidate = selectedCandidate.value
-  if (!candidate) {
+function getSessionStatusLabel(status?: CmsV2QuestionImportSessionStatus) {
+  return status ? t(`sectionPage.questionImport.status.${status}`) : t('sectionPage.questionImport.noSession')
+}
+
+function getParseStatusLabel(status: CmsV2QuestionImportCandidateDto['parseStatus']) {
+  return t(`sectionPage.questionImport.parseStatus.${status}`)
+}
+
+function getPartLabel(partType: CmsV2QuestionImportCandidateDto['parts'][number]['partType']) {
+  return t(`sectionPage.questionImport.part.${partType}`)
+}
+
+function selectCandidate(candidateId: string) {
+  selectedCandidateId.value = candidateId
+}
+
+function handleCandidateSelectionChange(
+  candidate: CmsV2QuestionImportCandidateDto,
+  event: Event,
+) {
+  getCandidateDraft(candidate).selected = (event.target as HTMLInputElement).checked
+}
+
+function handleSelectedTitleInput(event: Event) {
+  if (!selectedCandidate.value) {
     return
   }
 
-  emit('confirmCandidate', {
-    candidateId: candidate.candidateId,
-    title: metadata.title.trim(),
-    summary: metadata.summary.trim() || undefined,
-    difficulty: metadata.difficulty,
-    questionType: metadata.questionType,
-  })
+  getCandidateDraft(selectedCandidate.value).title = (event.target as HTMLInputElement).value
 }
 
-function resetMetadataForCandidate(candidate?: CmsV2QuestionImportCandidateDto) {
-  metadata.title = ''
-  metadata.summary = candidate?.parts.find((part) => part.partType === 'Stem')?.plainText.slice(0, 80) ?? ''
-  metadata.difficulty = 'Medium'
-  metadata.questionType = 'Calculation'
+function submitConfirmCandidates() {
+  if (!canConfirmCandidates.value) {
+    return
+  }
+
+  emit(
+    'confirmCandidates',
+    candidates.value.map((candidate) => ({
+      candidateId: candidate.candidateId,
+      selected: getCandidateDraft(candidate).selected,
+      title: getCandidateDraft(candidate).title.trim(),
+    })),
+  )
 }
 
 watch(
   candidates,
   (value) => {
-    if (!value.length) {
-      selectedCandidateId.value = undefined
-      resetMetadataForCandidate()
-      return
+    const candidateIds = new Set(value.map((candidate) => candidate.candidateId))
+
+    for (const candidate of value) {
+      getCandidateDraft(candidate)
     }
 
-    if (!selectedCandidateId.value || !value.some((candidate) => candidate.candidateId === selectedCandidateId.value)) {
-      selectedCandidateId.value = value[0].candidateId
-      resetMetadataForCandidate(value[0])
+    for (const candidateId of Object.keys(candidateDrafts)) {
+      if (!candidateIds.has(candidateId)) {
+        delete candidateDrafts[candidateId]
+      }
+    }
+
+    if (!value.some((candidate) => candidate.candidateId === selectedCandidateId.value)) {
+      selectedCandidateId.value = value[0]?.candidateId
     }
   },
   { immediate: true },
-)
-
-watch(
-  selectedCandidate,
-  (candidate) => {
-    resetMetadataForCandidate(candidate)
-  },
 )
 </script>
 
@@ -162,6 +258,7 @@ watch(
             size="sm"
             variant="ghost"
             class="h-8 px-2"
+            :aria-label="t('sectionPage.questionImport.closeLabel')"
             :disabled="busy"
             @click="emit('close')"
           >
@@ -170,57 +267,142 @@ watch(
         </header>
 
         <div class="grid max-h-[calc(100vh-10rem)] gap-4 overflow-auto p-4">
-          <div v-if="!hasSession" class="grid gap-3 rounded-lg border bg-background p-4">
-            <label class="grid gap-2 text-sm">
-              <span class="font-medium">{{ t('sectionPage.questionImport.fileLabel') }}</span>
-              <input
-                type="file"
-                accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                class="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                :disabled="busy"
-                @change="handleFileChange"
-              >
-            </label>
-            <div class="flex flex-wrap justify-end gap-2">
-              <Button type="button" variant="outline" :disabled="busy" @click="emit('close')">
-                {{ t('sectionPage.questionImport.cancelAction') }}
-              </Button>
-              <Button type="button" :disabled="uploadDisabled" @click="submitUpload">
-                <Upload class="size-4" />
-                {{ t('sectionPage.questionImport.uploadAction') }}
-              </Button>
+          <section class="grid gap-3 rounded-lg border bg-background p-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="min-w-0">
+                <p class="text-sm font-medium">
+                  {{ t('sectionPage.questionImport.sessionTitle') }}
+                </p>
+                <p class="mt-1 text-xs text-muted-foreground">
+                  {{ props.session?.sessionId ?? t('sectionPage.questionImport.noSession') }}
+                </p>
+              </div>
+              <StatusPill
+                v-if="sessionStatus"
+                :label="getSessionStatusLabel(sessionStatus)"
+                :tone="sessionStatusTone"
+              />
             </div>
-          </div>
 
-          <div v-else class="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)_320px]">
+            <p
+              v-if="props.session?.message"
+              class="rounded-md border bg-muted/20 px-3 py-2 text-sm text-muted-foreground"
+            >
+              {{ props.session.message }}
+            </p>
+
+            <div class="flex flex-wrap justify-end gap-2">
+              <Button
+                v-if="!hasSession"
+                type="button"
+                :disabled="busy"
+                @click="emit('startSession')"
+              >
+                <FileText class="size-4" />
+                {{ t('sectionPage.questionImport.startSessionAction') }}
+              </Button>
+              <template v-else>
+                <Button
+                  type="button"
+                  variant="outline"
+                  :disabled="!canReopenSession"
+                  @click="emit('reopenSession')"
+                >
+                  <RotateCcw class="size-4" />
+                  {{ t('sectionPage.questionImport.reopenSessionAction') }}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  :disabled="busy"
+                  @click="emit('cancelSession')"
+                >
+                  <X class="size-4" />
+                  {{ t('sectionPage.questionImport.cancelSessionAction') }}
+                </Button>
+              </template>
+            </div>
+          </section>
+
+          <section
+            v-if="hasSession && !isReviewReady"
+            class="grid min-h-[16rem] place-items-center rounded-lg border bg-background p-6 text-center"
+          >
+            <component
+              :is="waitingIcon"
+              class="size-7 text-muted-foreground"
+              :class="!hasTerminalSession ? 'animate-spin' : ''"
+            />
+            <div class="mt-3 grid gap-1">
+              <p class="text-sm font-medium">
+                {{ getSessionStatusLabel(sessionStatus) }}
+              </p>
+              <p class="text-sm text-muted-foreground">
+                {{ t('sectionPage.questionImport.statusHint') }}
+              </p>
+            </div>
+          </section>
+
+          <div v-if="hasSession && isReviewReady" class="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)_320px]">
             <aside class="grid content-start gap-2 rounded-lg border bg-background p-3">
               <div class="flex items-center justify-between gap-2">
                 <h3 class="text-sm font-semibold">
                   {{ t('sectionPage.questionImport.candidateListTitle') }}
                 </h3>
                 <span class="text-xs text-muted-foreground">
-                  {{ t('sectionPage.questionImport.candidateCount', { count: candidates.length }) }}
+                  {{ t('sectionPage.questionImport.selectedCount', { selected: selectedCount, total: candidates.length }) }}
                 </span>
               </div>
-              <button
-                v-for="candidate in candidates"
-                :key="candidate.candidateId"
-                type="button"
-                class="grid gap-1 rounded-md border px-3 py-2 text-left text-sm hover:bg-muted/50"
-                :class="candidate.candidateId === selectedCandidateId ? 'bg-muted' : 'bg-card'"
-                :disabled="busy"
-                @click="selectedCandidateId = candidate.candidateId"
+
+              <p
+                v-if="candidatesLoading"
+                class="rounded-md border bg-muted/20 px-3 py-2 text-sm text-muted-foreground"
               >
-                <span class="font-medium">
-                  {{ t('sectionPage.questionImport.candidateTitle', { index: candidate.sortOrder }) }}
-                </span>
-                <span class="text-xs" :class="parseToneByStatus[candidate.parseStatus]">
-                  {{ candidate.parseStatus }}
-                </span>
-                <span v-if="candidate.parseMessage" class="text-xs text-muted-foreground">
-                  {{ candidate.parseMessage }}
-                </span>
-              </button>
+                <Loader2 class="mr-1 inline size-4 animate-spin" />
+                {{ t('sectionPage.questionImport.candidatesLoading') }}
+              </p>
+
+              <p
+                v-else-if="!candidates.length"
+                class="rounded-md border bg-muted/20 px-3 py-2 text-sm text-muted-foreground"
+              >
+                {{ t('sectionPage.questionImport.candidatesEmpty') }}
+              </p>
+
+              <template v-else>
+                <div
+                  v-for="candidate in candidates"
+                  :key="candidate.candidateId"
+                  class="grid gap-2 rounded-md border px-3 py-2"
+                  :class="candidate.candidateId === selectedCandidateId ? 'bg-muted' : 'bg-card'"
+                >
+                  <label class="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      class="size-4 rounded border-input"
+                      :checked="getCandidateDraft(candidate).selected"
+                      :disabled="busy"
+                      @change="handleCandidateSelectionChange(candidate, $event)"
+                    >
+                    <span class="font-medium">
+                      {{ t('sectionPage.questionImport.candidateTitle', { index: candidate.sortOrder }) }}
+                    </span>
+                  </label>
+                  <button
+                    type="button"
+                    class="grid gap-1 text-left text-xs text-muted-foreground"
+                    :disabled="busy"
+                    @click="selectCandidate(candidate.candidateId)"
+                  >
+                    <span :class="parseToneByStatus[candidate.parseStatus]">
+                      {{ getParseStatusLabel(candidate.parseStatus) }}
+                    </span>
+                    <span v-if="candidate.parseMessage">
+                      {{ candidate.parseMessage }}
+                    </span>
+                  </button>
+                </div>
+              </template>
             </aside>
 
             <section class="grid min-h-[28rem] content-start gap-3 rounded-lg border bg-background p-3">
@@ -241,67 +423,59 @@ watch(
             </section>
 
             <aside class="grid content-start gap-3 rounded-lg border bg-background p-3">
-              <h3 class="text-sm font-semibold">
-                {{ t('sectionPage.questionImport.metadataTitle') }}
-              </h3>
+              <div class="flex items-center justify-between gap-2">
+                <h3 class="text-sm font-semibold">
+                  {{ t('sectionPage.questionImport.metadataTitle') }}
+                </h3>
+                <RefreshCw v-if="props.busy" class="size-4 animate-spin text-muted-foreground" />
+              </div>
+
               <label class="grid gap-1 text-sm">
                 <span>{{ t('sectionPage.questionImport.titleLabel') }}</span>
                 <input
-                  v-model="metadata.title"
+                  :value="selectedCandidateTitle"
                   class="rounded-md border border-input bg-background px-3 py-2"
                   :placeholder="t('sectionPage.questionImport.titlePlaceholder')"
-                  :disabled="busy"
+                  :disabled="busy || !selectedCandidate"
+                  @input="handleSelectedTitleInput"
                 >
               </label>
-              <label class="grid gap-1 text-sm">
-                <span>{{ t('sectionPage.questionImport.summaryLabel') }}</span>
-                <textarea
-                  v-model="metadata.summary"
-                  rows="3"
-                  class="rounded-md border border-input bg-background px-3 py-2"
-                  :disabled="busy"
-                />
-              </label>
-              <label class="grid gap-1 text-sm">
-                <span>{{ t('sectionPage.questionImport.difficultyLabel') }}</span>
-                <select
-                  v-model="metadata.difficulty"
-                  class="rounded-md border border-input bg-background px-3 py-2"
-                  :disabled="busy"
+
+              <div v-if="selectedCandidate" class="grid gap-2 text-sm">
+                <p class="font-medium">
+                  {{ t('sectionPage.questionImport.partStatusTitle') }}
+                </p>
+                <div class="grid gap-1">
+                  <p
+                    v-for="part in selectedCandidate.parts"
+                    :key="`${part.partType}-${part.sortOrder}`"
+                    class="rounded-md border bg-muted/20 px-2 py-1 text-xs text-muted-foreground"
+                  >
+                    <span class="font-medium text-foreground">{{ getPartLabel(part.partType) }}</span>
+                    <span v-if="part.warningMessage" class="ml-1 text-destructive">
+                      {{ part.warningMessage }}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              <div v-if="selectedCandidateWarnings.length" class="grid gap-1 text-sm">
+                <p class="font-medium text-destructive">
+                  {{ t('sectionPage.questionImport.warningTitle') }}
+                </p>
+                <p
+                  v-for="warning in selectedCandidateWarnings"
+                  :key="warning"
+                  class="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-xs text-destructive"
                 >
-                  <option value="Basic">{{ t('sectionPage.questionImport.difficulty.basic') }}</option>
-                  <option value="Medium">{{ t('sectionPage.questionImport.difficulty.medium') }}</option>
-                  <option value="Advanced">{{ t('sectionPage.questionImport.difficulty.advanced') }}</option>
-                  <option value="Top">{{ t('sectionPage.questionImport.difficulty.top') }}</option>
-                </select>
-              </label>
-              <label class="grid gap-1 text-sm">
-                <span>{{ t('sectionPage.questionImport.questionTypeLabel') }}</span>
-                <select
-                  v-model="metadata.questionType"
-                  class="rounded-md border border-input bg-background px-3 py-2"
-                  :disabled="busy"
-                >
-                  <option value="Unset">{{ t('sectionPage.questionImport.questionType.unset') }}</option>
-                  <option value="Choice">{{ t('sectionPage.questionImport.questionType.choice') }}</option>
-                  <option value="Blank">{{ t('sectionPage.questionImport.questionType.blank') }}</option>
-                  <option value="Calculation">{{ t('sectionPage.questionImport.questionType.calculation') }}</option>
-                  <option value="Experiment">{{ t('sectionPage.questionImport.questionType.experiment') }}</option>
-                  <option value="Diagram">{{ t('sectionPage.questionImport.questionType.diagram') }}</option>
-                  <option value="Composite">{{ t('sectionPage.questionImport.questionType.composite') }}</option>
-                </select>
-              </label>
+                  {{ warning }}
+                </p>
+              </div>
+
               <div class="grid gap-2 border-t pt-3">
-                <Button type="button" :disabled="confirmDisabled" @click="submitConfirm">
+                <Button type="button" :disabled="!canConfirmCandidates" @click="submitConfirmCandidates">
+                  <CheckCircle2 class="size-4" />
                   {{ t('sectionPage.questionImport.confirmAction') }}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  :disabled="busy"
-                  @click="emit('cancelSession')"
-                >
-                  {{ t('sectionPage.questionImport.cancelSessionAction') }}
                 </Button>
               </div>
             </aside>

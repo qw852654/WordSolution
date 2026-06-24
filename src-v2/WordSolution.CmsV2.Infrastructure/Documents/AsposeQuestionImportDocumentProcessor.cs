@@ -111,8 +111,8 @@ public sealed class AsposeQuestionImportDocumentProcessor : IQuestionImportDocum
 
         var styleNamePartType = QuestionPartStyleOptions.Default.ResolvePartType(paragraph.ParagraphFormat.StyleName);
         var stylePartType = QuestionPartStyleOptions.Default.ResolvePartType(paragraph.ParagraphFormat.Style?.Name);
-        return styleNamePartType is ContentBlockPartType.Stem or ContentBlockPartType.Other
-            || stylePartType is ContentBlockPartType.Stem or ContentBlockPartType.Other;
+        return styleNamePartType is ContentBlockPartType.Stem
+            || stylePartType is ContentBlockPartType.Stem;
     }
 
     private static void SaveCandidateIfAny(
