@@ -15,11 +15,13 @@ public sealed record AddAtomicSectionItemCommand(
     int ContentBlockId,
     ReferenceMode ReferenceMode,
     int? LockedContentBlockVersionId,
-    int SortOrder,
+    int? SortOrder = null,
     string? TitleOverride = null,
     string? Note = null,
     int? AtomicSectionPanelId = null,
-    AtomicSectionTeachingRole TeachingRole = AtomicSectionTeachingRole.Unclassified);
+    AtomicSectionTeachingRole TeachingRole = AtomicSectionTeachingRole.Unclassified,
+    int? BeforeAtomicSectionItemId = null,
+    int? AfterAtomicSectionItemId = null);
 
 public sealed record AtomicSectionPanelDto(
     int Id,
@@ -34,6 +36,7 @@ public sealed record CreateAtomicSectionPanelCommand(
     string Title,
     AtomicSectionTeachingRole TeachingRole,
     Difficulty Difficulty = Difficulty.Unset,
+    int? BeforeAtomicSectionPanelId = null,
     int? AfterAtomicSectionPanelId = null);
 
 public sealed record UpdateAtomicSectionPanelCommand(

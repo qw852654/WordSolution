@@ -70,6 +70,47 @@ public sealed class CmsV2AtomicSectionPanelUseCaseTests
     }
 
     [Fact]
+    public async Task CreateAtomicSectionPanel_inserts_by_anchor()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var atomicSections = new AtomicSectionUseCases(unitOfWork);
+        var (_, atomicSection) = await CreateAtomicSectionAsync(unitOfWork);
+
+        var first = await atomicSections.CreateAtomicSectionPanelAsync(
+            new CreateAtomicSectionPanelCommand(
+                atomicSection.Id,
+                "Knowledge",
+                AtomicSectionTeachingRole.Knowledge,
+                Difficulty.Basic));
+        var second = await atomicSections.CreateAtomicSectionPanelAsync(
+            new CreateAtomicSectionPanelCommand(
+                atomicSection.Id,
+                "Practice",
+                AtomicSectionTeachingRole.Practice,
+                Difficulty.Basic));
+        var inserted = await atomicSections.CreateAtomicSectionPanelAsync(
+            new CreateAtomicSectionPanelCommand(
+                atomicSection.Id,
+                "Example",
+                AtomicSectionTeachingRole.Example,
+                Difficulty.Basic,
+                AfterAtomicSectionPanelId: first.Id));
+        var beforeFirst = await atomicSections.CreateAtomicSectionPanelAsync(
+            new CreateAtomicSectionPanelCommand(
+                atomicSection.Id,
+                "Homework",
+                AtomicSectionTeachingRole.Homework,
+                Difficulty.Basic,
+                BeforeAtomicSectionPanelId: first.Id));
+
+        var panels = await unitOfWork.AtomicSectionPanels.ListByAtomicSectionAsync(atomicSection.Id);
+
+        Assert.Equal([beforeFirst.Id, first.Id, inserted.Id, second.Id], panels.Select(panel => panel.Id));
+        Assert.Equal([10, 20, 30, 40], panels.Select(panel => panel.SortOrder));
+    }
+
+    [Fact]
     public async Task ChangeAtomicSectionItemClassification_updates_content_block_difficulty_and_assigns_matching_panel()
     {
         await using var context = await CreateMigratedContextAsync();
@@ -158,6 +199,100 @@ public sealed class CmsV2AtomicSectionPanelUseCaseTests
         Assert.NotNull(reloadedUnassigned);
         Assert.Equal(10, reloadedUnassigned.SortOrder);
         Assert.Null(reloadedUnassigned.AtomicSectionPanelId);
+    }
+
+    [Fact]
+    public async Task AddAtomicSectionItem_inserts_by_anchor_inside_panel_scope()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var atomicSections = new AtomicSectionUseCases(unitOfWork);
+        var (_, atomicSection) = await CreateAtomicSectionAsync(unitOfWork);
+        var panel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "Example basic",
+            AtomicSectionTeachingRole.Example,
+            Difficulty.Basic,
+            sortOrder: 10);
+        await unitOfWork.AtomicSectionPanels.AddAsync(panel);
+        await unitOfWork.SaveChangesAsync();
+
+        var firstBlock = await CreateContentBlockAsync(unitOfWork, "first", ContentBlockType.Question, Difficulty.Basic);
+        var secondBlock = await CreateContentBlockAsync(unitOfWork, "second", ContentBlockType.Question, Difficulty.Basic);
+        var insertedBlock = await CreateContentBlockAsync(unitOfWork, "inserted", ContentBlockType.Question, Difficulty.Basic);
+        var firstItem = await atomicSections.AddAtomicSectionItemAsync(
+            new AddAtomicSectionItemCommand(
+                atomicSection.Id,
+                firstBlock.Id,
+                ReferenceMode.FollowLatest,
+                null,
+                AtomicSectionPanelId: panel.Id,
+                TeachingRole: AtomicSectionTeachingRole.Example));
+        var secondItem = await atomicSections.AddAtomicSectionItemAsync(
+            new AddAtomicSectionItemCommand(
+                atomicSection.Id,
+                secondBlock.Id,
+                ReferenceMode.FollowLatest,
+                null,
+                AtomicSectionPanelId: panel.Id,
+                TeachingRole: AtomicSectionTeachingRole.Example));
+
+        var insertedItem = await atomicSections.AddAtomicSectionItemAsync(
+            new AddAtomicSectionItemCommand(
+                atomicSection.Id,
+                insertedBlock.Id,
+                ReferenceMode.FollowLatest,
+                null,
+                AtomicSectionPanelId: panel.Id,
+                TeachingRole: AtomicSectionTeachingRole.Example,
+                AfterAtomicSectionItemId: firstItem.Id));
+
+        var items = await unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(atomicSection.Id);
+        var panelItems = items
+            .Where(item => item.AtomicSectionPanelId == panel.Id)
+            .OrderBy(item => item.SortOrder)
+            .ThenBy(item => item.Id)
+            .ToList();
+
+        Assert.Equal([firstItem.Id, insertedItem.Id, secondItem.Id], panelItems.Select(item => item.Id));
+        Assert.Equal([10, 20, 30], panelItems.Select(item => item.SortOrder));
+    }
+
+    [Fact]
+    public async Task AddAtomicSectionItem_rejects_anchor_from_different_panel_scope()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var atomicSections = new AtomicSectionUseCases(unitOfWork);
+        var (_, atomicSection) = await CreateAtomicSectionAsync(unitOfWork);
+        var panel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "Example basic",
+            AtomicSectionTeachingRole.Example,
+            Difficulty.Basic,
+            sortOrder: 10);
+        await unitOfWork.AtomicSectionPanels.AddAsync(panel);
+        await unitOfWork.SaveChangesAsync();
+
+        var panelBlock = await CreateContentBlockAsync(unitOfWork, "panel", ContentBlockType.Question, Difficulty.Basic);
+        var unassignedBlock = await CreateContentBlockAsync(unitOfWork, "unassigned", ContentBlockType.Question, Difficulty.Unset);
+        var panelItem = await atomicSections.AddAtomicSectionItemAsync(
+            new AddAtomicSectionItemCommand(
+                atomicSection.Id,
+                panelBlock.Id,
+                ReferenceMode.FollowLatest,
+                null,
+                AtomicSectionPanelId: panel.Id,
+                TeachingRole: AtomicSectionTeachingRole.Example));
+
+        await Assert.ThrowsAsync<CmsV2ApplicationException>(
+            () => atomicSections.AddAtomicSectionItemAsync(
+                new AddAtomicSectionItemCommand(
+                    atomicSection.Id,
+                    unassignedBlock.Id,
+                    ReferenceMode.FollowLatest,
+                    null,
+                    AfterAtomicSectionItemId: panelItem.Id)));
     }
 
     [Fact]

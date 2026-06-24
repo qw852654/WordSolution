@@ -77,13 +77,23 @@ public sealed class AtomicSectionUseCases
                     teachingRole,
                     contentBlock.Difficulty,
                     transactionCancellationToken);
+            var insertIndex = await ResolveItemInsertIndexAsync(
+                command.AtomicSectionId,
+                panelId,
+                command.BeforeAtomicSectionItemId,
+                command.AfterAtomicSectionItemId,
+                transactionCancellationToken);
+            var sortOrder = command.SortOrder ?? await NextItemSortOrderAsync(
+                command.AtomicSectionId,
+                panelId,
+                transactionCancellationToken);
 
             var item = new AtomicSectionItem(
                 command.AtomicSectionId,
                 command.ContentBlockId,
                 command.ReferenceMode,
                 command.LockedContentBlockVersionId,
-                command.SortOrder,
+                sortOrder,
                 command.TitleOverride,
                 command.Note,
                 atomicSectionPanelId: panelId,
@@ -91,6 +101,17 @@ public sealed class AtomicSectionUseCases
 
             await _unitOfWork.AtomicSectionItems.AddAsync(item, transactionCancellationToken);
             await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+            if (insertIndex.HasValue)
+            {
+                await ReorderItemInScopeAsync(
+                    command.AtomicSectionId,
+                    panelId,
+                    item.Id,
+                    insertIndex.Value,
+                    transactionCancellationToken);
+                await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+            }
+
             result = new CreatedEntityResult(item.Id);
         }, cancellationToken);
 
@@ -106,18 +127,13 @@ public sealed class AtomicSectionUseCases
         await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
         {
             _ = await GetAtomicSectionForCommandAsync(command.AtomicSectionId, transactionCancellationToken);
-            if (command.AfterAtomicSectionPanelId.HasValue)
-            {
-                _ = await GetAtomicSectionPanelForCommandAsync(
-                    command.AtomicSectionId,
-                    command.AfterAtomicSectionPanelId.Value,
-                    transactionCancellationToken);
-            }
 
             var panels = await ListPanelsAsync(command.AtomicSectionId, transactionCancellationToken);
-            var sortOrder = command.AfterAtomicSectionPanelId.HasValue
-                ? panels.Single(panel => panel.Id == command.AfterAtomicSectionPanelId.Value).SortOrder + 10
-                : (panels.Count == 0 ? 10 : panels.Max(panel => panel.SortOrder) + 10);
+            var insertIndex = ResolvePanelInsertIndex(
+                panels,
+                command.BeforeAtomicSectionPanelId,
+                command.AfterAtomicSectionPanelId);
+            var sortOrder = panels.Count == 0 ? 10 : panels.Max(panel => panel.SortOrder) + 10;
             var panel = new AtomicSectionPanel(
                 command.AtomicSectionId,
                 command.Title,
@@ -128,7 +144,19 @@ public sealed class AtomicSectionUseCases
             await _unitOfWork.AtomicSectionPanels.AddAsync(panel, transactionCancellationToken);
             await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
             await ReassignMatchingUnassignedItemsToPanelAsync(panel, transactionCancellationToken);
-            await NormalizePanelSortOrdersAsync(command.AtomicSectionId, transactionCancellationToken);
+            if (insertIndex.HasValue)
+            {
+                await ReorderPanelInScopeAsync(
+                    command.AtomicSectionId,
+                    panel.Id,
+                    insertIndex.Value,
+                    transactionCancellationToken);
+            }
+            else
+            {
+                await NormalizePanelSortOrdersAsync(command.AtomicSectionId, transactionCancellationToken);
+            }
+
             await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
             result = ToPanelDto(panel);
         }, cancellationToken);
@@ -522,6 +550,76 @@ public sealed class AtomicSectionUseCases
         return maxSortOrder + 10;
     }
 
+    private async Task<int?> ResolveItemInsertIndexAsync(
+        int atomicSectionId,
+        int? panelId,
+        int? beforeAtomicSectionItemId,
+        int? afterAtomicSectionItemId,
+        CancellationToken cancellationToken)
+    {
+        if (beforeAtomicSectionItemId.HasValue && afterAtomicSectionItemId.HasValue)
+        {
+            throw new CmsV2ApplicationException("Only one AtomicSectionItem insertion anchor can be specified.");
+        }
+
+        if (!beforeAtomicSectionItemId.HasValue && !afterAtomicSectionItemId.HasValue)
+        {
+            return null;
+        }
+
+        var siblings = (await _unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(atomicSectionId, cancellationToken))
+            .Where(item => item.AtomicSectionPanelId == panelId)
+            .OrderBy(item => item.SortOrder)
+            .ThenBy(item => item.Id)
+            .ToList();
+
+        if (beforeAtomicSectionItemId.HasValue)
+        {
+            var beforeIndex = siblings.FindIndex(item => item.Id == beforeAtomicSectionItemId.Value);
+            if (beforeIndex < 0)
+            {
+                throw new CmsV2ApplicationException("Before AtomicSectionItem was not found in the target AtomicSection item scope.");
+            }
+
+            return beforeIndex;
+        }
+
+        var afterIndex = siblings.FindIndex(item => item.Id == afterAtomicSectionItemId!.Value);
+        if (afterIndex < 0)
+        {
+            throw new CmsV2ApplicationException("After AtomicSectionItem was not found in the target AtomicSection item scope.");
+        }
+
+        return afterIndex + 1;
+    }
+
+    private async Task ReorderItemInScopeAsync(
+        int atomicSectionId,
+        int? panelId,
+        int atomicSectionItemId,
+        int insertIndex,
+        CancellationToken cancellationToken)
+    {
+        var siblings = (await _unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(atomicSectionId, cancellationToken))
+            .Where(item => item.AtomicSectionPanelId == panelId && item.Id != atomicSectionItemId)
+            .OrderBy(item => item.SortOrder)
+            .ThenBy(item => item.Id)
+            .ToList();
+        var inserted = await GetAtomicSectionItemForCommandAsync(
+            atomicSectionId,
+            atomicSectionItemId,
+            cancellationToken);
+        var boundedIndex = Math.Clamp(insertIndex, 0, siblings.Count);
+
+        siblings.Insert(boundedIndex, inserted);
+
+        for (var index = 0; index < siblings.Count; index++)
+        {
+            siblings[index].ChangeSortOrder((index + 1) * 10);
+            _unitOfWork.AtomicSectionItems.Update(siblings[index]);
+        }
+    }
+
     private async Task NormalizeItemSortOrdersAsync(
         int atomicSectionId,
         int? panelId,
@@ -543,6 +641,73 @@ public sealed class AtomicSectionUseCases
     private async Task NormalizePanelSortOrdersAsync(int atomicSectionId, CancellationToken cancellationToken)
     {
         var panels = await ListPanelsAsync(atomicSectionId, cancellationToken);
+        for (var index = 0; index < panels.Count; index++)
+        {
+            panels[index].ChangeSortOrder((index + 1) * 10);
+            _unitOfWork.AtomicSectionPanels.Update(panels[index]);
+        }
+    }
+
+    private static int? ResolvePanelInsertIndex(
+        IReadOnlyList<AtomicSectionPanel> panels,
+        int? beforeAtomicSectionPanelId,
+        int? afterAtomicSectionPanelId)
+    {
+        if (beforeAtomicSectionPanelId.HasValue && afterAtomicSectionPanelId.HasValue)
+        {
+            throw new CmsV2ApplicationException("Only one AtomicSectionPanel insertion anchor can be specified.");
+        }
+
+        if (!beforeAtomicSectionPanelId.HasValue && !afterAtomicSectionPanelId.HasValue)
+        {
+            return null;
+        }
+
+        if (beforeAtomicSectionPanelId.HasValue)
+        {
+            var beforeIndex = panels
+                .Select((panel, index) => new { panel, index })
+                .FirstOrDefault(candidate => candidate.panel.Id == beforeAtomicSectionPanelId.Value)
+                ?.index ?? -1;
+            if (beforeIndex < 0)
+            {
+                throw new CmsV2ApplicationException("Before AtomicSectionPanel was not found in the target AtomicSection.");
+            }
+
+            return beforeIndex;
+        }
+
+        var afterIndex = panels
+            .Select((panel, index) => new { panel, index })
+            .FirstOrDefault(candidate => candidate.panel.Id == afterAtomicSectionPanelId!.Value)
+            ?.index ?? -1;
+        if (afterIndex < 0)
+        {
+            throw new CmsV2ApplicationException("After AtomicSectionPanel was not found in the target AtomicSection.");
+        }
+
+        return afterIndex + 1;
+    }
+
+    private async Task ReorderPanelInScopeAsync(
+        int atomicSectionId,
+        int atomicSectionPanelId,
+        int insertIndex,
+        CancellationToken cancellationToken)
+    {
+        var panels = (await _unitOfWork.AtomicSectionPanels.ListByAtomicSectionAsync(atomicSectionId, cancellationToken))
+            .Where(panel => panel.Id != atomicSectionPanelId)
+            .OrderBy(panel => panel.SortOrder)
+            .ThenBy(panel => panel.Id)
+            .ToList();
+        var inserted = await GetAtomicSectionPanelForCommandAsync(
+            atomicSectionId,
+            atomicSectionPanelId,
+            cancellationToken);
+        var boundedIndex = Math.Clamp(insertIndex, 0, panels.Count);
+
+        panels.Insert(boundedIndex, inserted);
+
         for (var index = 0; index < panels.Count; index++)
         {
             panels[index].ChangeSortOrder((index + 1) * 10);

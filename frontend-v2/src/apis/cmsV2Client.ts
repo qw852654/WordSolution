@@ -483,17 +483,20 @@ export interface CmsV2AddAtomicSectionItemRequest {
   contentBlockId: number
   referenceMode: 'FollowLatest' | 'LockedVersion'
   lockedContentBlockVersionId?: number | null
-  sortOrder: number
+  sortOrder?: number | null
   titleOverride?: string | null
   note?: string | null
   atomicSectionPanelId?: number | null
   teachingRole?: CmsV2AtomicSectionTeachingRole
+  beforeAtomicSectionItemId?: number | null
+  afterAtomicSectionItemId?: number | null
 }
 
 export interface CmsV2CreateAtomicSectionPanelRequest {
   title: string
   teachingRole: CmsV2AtomicSectionTeachingRole
   difficulty: string
+  beforeAtomicSectionPanelId?: number | null
   afterAtomicSectionPanelId?: number | null
 }
 

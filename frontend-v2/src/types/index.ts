@@ -331,6 +331,8 @@ export interface AtomicSectionPanelCreatePayload {
   nodeId: string
   atomicSectionId: number
   title: string
+  beforeAtomicSectionPanelId?: number | null
+  afterAtomicSectionPanelId?: number | null
 }
 
 export interface AtomicSectionPanelCreateOverlayModel {
@@ -338,6 +340,8 @@ export interface AtomicSectionPanelCreateOverlayModel {
   atomicSectionId: number
   atomicSectionTitle: string
   defaultTitle: string
+  beforeAtomicSectionPanelId?: number | null
+  afterAtomicSectionPanelId?: number | null
   disabled?: boolean
 }
 
@@ -347,6 +351,8 @@ export interface AtomicSectionPanelCreateSubmitPayload {
   title: string
   teachingRole: AtomicSectionTeachingRole
   difficulty: string
+  beforeAtomicSectionPanelId?: number | null
+  afterAtomicSectionPanelId?: number | null
 }
 
 export interface AtomicSectionPanelMovePayload extends AtomicSectionPanelActionPayload {

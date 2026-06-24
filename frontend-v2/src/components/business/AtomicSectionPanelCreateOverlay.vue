@@ -60,6 +60,8 @@ function submit() {
     title,
     teachingRole: form.teachingRole,
     difficulty: form.difficulty,
+    beforeAtomicSectionPanelId: props.model.beforeAtomicSectionPanelId,
+    afterAtomicSectionPanelId: props.model.afterAtomicSectionPanelId,
   })
 }
 

@@ -16,6 +16,7 @@ import type {
   AtomicSectionItemMovePayload,
   AtomicSectionPanelActionPayload,
   AtomicSectionPanelCreatePayload,
+  AtomicSectionPanelModel,
   AtomicSectionPanelMovePayload,
   ContentBlockRelationActionPayload,
   ContentBlockRelationMovePayload,
@@ -70,7 +71,10 @@ const childContentBlockActions: SectionItemViewAction[] = [
   'Remove',
 ]
 
-function createPanelCreatePayload(): AtomicSectionPanelCreatePayload | undefined {
+function createPanelCreatePayload(
+  beforePanel?: AtomicSectionPanelModel,
+  afterPanel?: AtomicSectionPanelModel,
+): AtomicSectionPanelCreatePayload | undefined {
   if (!props.block.atomicSectionId) {
     return undefined
   }
@@ -79,14 +83,21 @@ function createPanelCreatePayload(): AtomicSectionPanelCreatePayload | undefined
     nodeId: props.block.id,
     atomicSectionId: props.block.atomicSectionId,
     title: props.block.title,
+    beforeAtomicSectionPanelId: beforePanel?.panelId ?? null,
+    afterAtomicSectionPanelId: afterPanel?.panelId ?? null,
   }
 }
 
-function emitCreatePanel() {
-  const payload = createPanelCreatePayload()
+function emitCreatePanel(beforePanel?: AtomicSectionPanelModel, afterPanel?: AtomicSectionPanelModel) {
+  const payload = createPanelCreatePayload(beforePanel, afterPanel)
   if (payload) {
     emit('createAtomicSectionPanel', payload)
   }
+}
+
+function getLastPanel() {
+  const panels = props.block.panels ?? []
+  return panels.length ? panels[panels.length - 1] : undefined
 }
 
 function createAtomicSectionItemActionPayload(
@@ -182,7 +193,7 @@ function createAtomicSectionInsertPoint(
         size="sm"
         variant="ghost"
         :disabled="block.disabled || !block.atomicSectionId"
-        @click.stop="emitCreatePanel"
+        @click.stop="emitCreatePanel(undefined, getLastPanel())"
       >
         {{ t('components.atomicSectionPanel.create') }}
       </Button>
@@ -203,26 +214,53 @@ function createAtomicSectionInsertPoint(
     <template v-if="isExpanded">
       <p class="text-sm leading-6 text-muted-foreground">{{ block.summary }}</p>
       <div v-if="hasPanelLayout" class="space-y-1">
-        <AtomicSectionPanelBlock
-          v-for="panel in block.panels"
-          :key="panel.id"
-          :panel="panel"
-          :node-id-map="nodeIdMap"
-          :read-only="readOnly"
-          @select-panel="emit('selectAtomicSectionPanel', $event)"
-          @rename-panel="emit('renameAtomicSectionPanel', $event)"
-          @move-panel="emit('moveAtomicSectionPanel', $event)"
-          @remove-panel="emit('removeAtomicSectionPanel', $event)"
-          @select-content-block="emit('selectContentBlock', $event)"
-          @toggle-collapse="emit('toggleCollapse', $event)"
-          @open-atomic-section-item-word="emit('openAtomicSectionItemWord', $event)"
-          @move-atomic-section-item="emit('moveAtomicSectionItem', $event)"
-          @remove-atomic-section-item="emit('removeAtomicSectionItem', $event)"
-          @open-content-block-relation-word="emit('openContentBlockRelationWord', $event)"
-          @move-content-block-relation="emit('moveContentBlockRelation', $event)"
-          @remove-content-block-relation="emit('removeContentBlockRelation', $event)"
-          @request-insert="emit('requestInsert', $event)"
-        />
+        <template v-for="(panel, index) in block.panels" :key="panel.id">
+          <div v-if="!readOnly" class="flex justify-center py-1">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              class="h-6 px-2 text-xs text-muted-foreground"
+              :disabled="block.disabled || !block.atomicSectionId"
+              @click.stop="emitCreatePanel(panel)"
+            >
+              {{ t('components.atomicSectionPanel.create') }}
+            </Button>
+          </div>
+          <AtomicSectionPanelBlock
+            :panel="panel"
+            :node-id-map="nodeIdMap"
+            :read-only="readOnly"
+            @select-panel="emit('selectAtomicSectionPanel', $event)"
+            @rename-panel="emit('renameAtomicSectionPanel', $event)"
+            @move-panel="emit('moveAtomicSectionPanel', $event)"
+            @remove-panel="emit('removeAtomicSectionPanel', $event)"
+            @select-content-block="emit('selectContentBlock', $event)"
+            @toggle-collapse="emit('toggleCollapse', $event)"
+            @open-atomic-section-item-word="emit('openAtomicSectionItemWord', $event)"
+            @move-atomic-section-item="emit('moveAtomicSectionItem', $event)"
+            @remove-atomic-section-item="emit('removeAtomicSectionItem', $event)"
+            @open-content-block-relation-word="emit('openContentBlockRelationWord', $event)"
+            @move-content-block-relation="emit('moveContentBlockRelation', $event)"
+            @remove-content-block-relation="emit('removeContentBlockRelation', $event)"
+            @request-insert="emit('requestInsert', $event)"
+          />
+          <div
+            v-if="!readOnly && index === (block.panels?.length ?? 0) - 1"
+            class="flex justify-center py-1"
+          >
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              class="h-6 px-2 text-xs text-muted-foreground"
+              :disabled="block.disabled || !block.atomicSectionId"
+              @click.stop="emitCreatePanel(undefined, panel)"
+            >
+              {{ t('components.atomicSectionPanel.create') }}
+            </Button>
+          </div>
+        </template>
         <AtomicSectionUnassignedArea
           v-if="block.atomicSectionId"
           :atomic-section-id="block.atomicSectionId"

@@ -15,9 +15,11 @@ export interface CreateContentBlockInsideAtomicSectionInput {
   title: string
   blockType: string
   difficulty: string
-  sortOrder: number
+  sortOrder?: number
   atomicSectionPanelId?: number | null
   teachingRole?: CmsV2AtomicSectionTeachingRole
+  beforeAtomicSectionItemId?: number | null
+  afterAtomicSectionItemId?: number | null
 }
 
 export function useAtomicSectionActions(options: AtomicSectionActionsOptions) {
@@ -49,6 +51,8 @@ export function useAtomicSectionActions(options: AtomicSectionActionsOptions) {
       note: null,
       atomicSectionPanelId: input.atomicSectionPanelId,
       teachingRole: input.teachingRole,
+      beforeAtomicSectionItemId: input.beforeAtomicSectionItemId,
+      afterAtomicSectionItemId: input.afterAtomicSectionItemId,
     })
 
     await options.refreshSection()
@@ -86,11 +90,15 @@ export function useAtomicSectionActions(options: AtomicSectionActionsOptions) {
     title: string,
     teachingRole: CmsV2AtomicSectionTeachingRole,
     difficulty: string,
+    beforeAtomicSectionPanelId?: number | null,
+    afterAtomicSectionPanelId?: number | null,
   ) {
     const created = await cmsV2Api.createAtomicSectionPanel(atomicSectionId, {
       title,
       teachingRole,
       difficulty,
+      beforeAtomicSectionPanelId,
+      afterAtomicSectionPanelId,
     })
     await options.refreshSection()
     return created

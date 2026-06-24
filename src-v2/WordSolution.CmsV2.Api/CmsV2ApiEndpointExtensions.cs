@@ -674,6 +674,7 @@ public static class CmsV2ApiEndpointExtensions
                     request.Title,
                     request.TeachingRole,
                     request.Difficulty,
+                    request.BeforeAtomicSectionPanelId,
                     request.AfterAtomicSectionPanelId),
                 cancellationToken);
 
@@ -747,7 +748,9 @@ public static class CmsV2ApiEndpointExtensions
                     request.TitleOverride,
                     request.Note,
                     request.AtomicSectionPanelId,
-                    request.TeachingRole),
+                    request.TeachingRole,
+                    request.BeforeAtomicSectionItemId,
+                    request.AfterAtomicSectionItemId),
                 cancellationToken);
 
             return Results.Ok(result);

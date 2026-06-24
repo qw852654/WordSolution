@@ -814,6 +814,8 @@ async function requestAtomicSectionPanelCreate(payload: AtomicSectionPanelCreate
     atomicSectionId: payload.atomicSectionId,
     atomicSectionTitle: payload.title,
     defaultTitle: payload.title || t('sectionPage.workspace.atomicSectionPanelActions.defaultPanelTitle'),
+    beforeAtomicSectionPanelId: payload.beforeAtomicSectionPanelId,
+    afterAtomicSectionPanelId: payload.afterAtomicSectionPanelId,
   }
 }
 
@@ -838,6 +840,8 @@ async function submitAtomicSectionPanelCreateOverlay(
       payload.title,
       payload.teachingRole,
       payload.difficulty,
+      payload.beforeAtomicSectionPanelId,
+      payload.afterAtomicSectionPanelId,
     )
     selectedStructureNodeId.value = `atomic-section-panel-${created.id}`
     workspaceScrollTargetNodeId.value = selectedStructureNodeId.value
@@ -1250,29 +1254,17 @@ async function submitAtomicSectionChildContentBlock(payload: InsertCreateSubmitP
     inputTitle: payload.title,
     atomicSectionTitle: payload.atomicSectionTitle ?? '',
   })
-  const insertPlan = getNestedInsertPlan(
-    payload,
-    getAtomicSectionChildLastSortOrder(payload.atomicSectionId!) + 10,
-  )
-  const created = await atomicSectionActions.createContentBlockInsideAtomicSection({
+  await atomicSectionActions.createContentBlockInsideAtomicSection({
     atomicSectionId: payload.atomicSectionId!,
     sectionId: payload.sectionId,
     title: contentBlockTitle,
     blockType: mapInsertContentBlockType(payload.contentBlockType),
     difficulty: mapInsertDifficulty(payload.difficulty),
-    sortOrder: insertPlan.sortOrder,
     atomicSectionPanelId: payload.atomicSectionPanelId,
     teachingRole: payload.atomicSectionTeachingRole,
+    beforeAtomicSectionItemId: payload.placement?.beforeItemId ?? null,
+    afterAtomicSectionItemId: payload.placement?.afterItemId ?? null,
   })
-
-  if (insertPlan.moveUpAfterCreate) {
-    await cmsV2Api.moveAtomicSectionItem(
-      payload.atomicSectionId!,
-      created.atomicSectionItem.id,
-      { direction: 'Up' },
-    )
-    await loadCurrentSectionPage()
-  }
 
   activeCreatePanel.value = null
   activeInsertPointId.value = undefined
@@ -1394,19 +1386,6 @@ function getAtomicSectionBlockById(atomicSectionId?: number) {
 
 function getAtomicSectionTitleById(atomicSectionId?: number) {
   return getAtomicSectionBlockById(atomicSectionId)?.title
-}
-
-function getAtomicSectionChildLastSortOrder(atomicSectionId: number) {
-  const atomicBlock = getAtomicSectionBlockById(atomicSectionId)
-
-  if (!atomicBlock) {
-    return 0
-  }
-
-  return atomicBlock.children.reduce(
-    (max, child) => Math.max(max, typeof child.sortOrder === 'number' ? child.sortOrder : 0),
-    0,
-  )
 }
 
 function findCompositeBlockInChildren(
