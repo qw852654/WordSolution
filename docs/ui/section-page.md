@@ -1721,3 +1721,53 @@ Phase 9 后置：
 - 标签管理页和真实工作台标签改色入口。
 - 主工作区评注数量轻提示。
 - 跨页面评注入口和复杂多对象绑定选择器。
+
+## 当前补充：SectionPage 直接导出 Word
+
+本节记录 SectionPage 一次性导出当前 Section 为 Word 的第一版规格。
+
+### 1. 产品定位
+
+- 该能力是当前 Section 的临时下载，不是 Handout / HandoutVersion / OutputForm 的替代入口。
+- 不创建 Handout、HandoutVersion、OutputForm 或 GeneratedFile。
+- 不保留生成历史、不提供 manifest、不提供删除生成记录。
+- 使用 CMS V2 默认 Word 模板。
+- 仅导出当前后端已确认的 Section 数据；不依据前端折叠、选中、筛选或未保存状态裁剪内容。
+
+### 2. 导出范围
+
+- 当前 Section 标题输出为 Word Heading 2。
+- 按 SectionItem.SortOrder / Id 读取当前 Section 顶层内容。
+- SectionItem.TargetType = ContentBlock 时，输出该 ContentBlock 当前或锁定版本，并继续展开 ContentBlockRelation children。
+- SectionItem.TargetType = AtomicSection 时，输出 AtomicSection 标题为 Heading 3，并整体展开内部 ContentBlock。
+- AtomicSection 内部按 panel SortOrder / Id、panel 内 item SortOrder / Id、最后 unassigned 的顺序输出。
+- AtomicSectionPanel 标题不输出；panel 只控制顺序。
+- 空 AtomicSection、空 panel 不输出占位文字。
+
+### 3. 输出样式
+
+- 不输出 TeachingTopic 标题或讲义标题。
+- 不输出生成时间。
+- 不做难度筛选、选中项导出、折叠状态导出。
+- 题目题干样式继续使用现有输出样式重绑定规则，按 AtomicSectionItem 的教学角色决定输出样式。
+- 默认模板缺少必需样式时生成失败并向前端返回错误。
+- 缺少有效 Stem 的题目沿用讲义生成的跳过策略，不插入 Word。
+
+### 4. 前端入口
+
+- 放在 SectionPage 顶部页面级工具栏或当前 Section 主操作区。
+- 使用 FileDown 图标和“导出 Word”文案。
+- 不放在 Inspector。
+- 点击后直接下载一次性 `.docx` 文件。
+- 生成中按钮显示 loading / disabled 状态。
+- 失败时使用 SectionPage 现有错误反馈，不伪造成功状态。
+- API 调用封装在 cmsV2Client / 页面 action 中；展示组件只 emit。
+
+### 5. 明确不做
+
+- 不创建讲义相关对象。
+- 不写 GeneratedFile。
+- 不提供生成历史、manifest、重命名、删除。
+- 不支持 PDF / WordAndPdf。
+- 不支持模板选择、变量替换、学生版 / 教师版过滤。
+- 不支持按难度或当前选中内容局部导出。

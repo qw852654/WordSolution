@@ -40,6 +40,8 @@ public sealed record CreateSectionRequest(
     SectionStatus Status = SectionStatus.Draft,
     int SortOrder = 0);
 
+public sealed record RenameSectionRequest(string Title);
+
 public sealed record CreateAtomicSectionRequest(
     int SectionId,
     string Title,
@@ -65,6 +67,8 @@ public sealed record CreateContentBlockRequest(
     Difficulty Difficulty = Difficulty.Unset,
     QuestionType? QuestionType = null,
     ContentBlockStatus Status = ContentBlockStatus.Draft);
+
+public sealed record RenameContentBlockRequest(string Title);
 
 public sealed record CreateQuestionImportSessionRequest(
     InsertQuestionContext Context,

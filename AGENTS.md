@@ -61,6 +61,18 @@
 
 如果任务说明和上述文档冲突，必须先停止并说明冲突，不要自行选择其中一个继续实现。
 
+### 2.1 命令执行与编码规则
+
+Codex 在本仓库通过终端执行命令时，必须优先使用 PowerShell 7 的 `pwsh`，避免 Windows PowerShell 5.1 读取 UTF-8 中文文件或中文路径输出时产生乱码。
+
+本规则适用于所有 Codex 线程，包括总控线程、子线程、fork 后的新线程、自动继续线程以及任何由 Codex 发起的命令执行上下文。
+
+- 执行需要 PowerShell 的命令时，优先使用 `pwsh -NoLogo -NoProfile -Command '...'`。
+- 读取中文 Markdown 或项目说明文件时，优先在 `pwsh` 中使用 `Get-Content -LiteralPath '...' -Raw`。
+- 如果只能使用 Windows PowerShell 5.1，读取中文文件时必须显式使用 `-Encoding UTF8`。
+- 查看 Git 中文路径时，使用 `git -c core.quotepath=false ...`，避免中文路径被转义后影响判断。
+- 如果命令输出出现 `鍐呭...`、`\345\...` 等编码异常，必须先更换读取方式或编码设置，不得把乱码内容当作真实项目内容继续分析。
+
 ## 3. 当前主线项目
 
 新增主线功能默认只能进入以下项目或目录：

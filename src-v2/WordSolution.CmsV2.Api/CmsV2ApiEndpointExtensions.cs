@@ -203,6 +203,25 @@ public static class CmsV2ApiEndpointExtensions
         group.MapGet("/content-blocks/{id:int}", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
             await OkOrNotFoundAsync(unitOfWork.ContentBlocks.GetByIdAsync(id, cancellationToken)));
 
+        group.MapPost("/content-blocks/{id:int}/title", async (
+            int id,
+            RenameContentBlockRequest request,
+            ICmsV2UnitOfWork unitOfWork,
+            CancellationToken cancellationToken) =>
+        {
+            var contentBlock = await unitOfWork.ContentBlocks.GetByIdAsync(id, cancellationToken);
+            if (contentBlock is null)
+            {
+                return NotFoundProblem($"ContentBlock {id} was not found.");
+            }
+
+            contentBlock.Rename(request.Title);
+            unitOfWork.ContentBlocks.Update(contentBlock);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+
+            return Results.Ok(contentBlock);
+        });
+
         group.MapPost("/content-blocks", async (
             CreateContentBlockRequest request,
             ContentBlockUseCases useCases,
@@ -634,6 +653,25 @@ public static class CmsV2ApiEndpointExtensions
 
         group.MapGet("/sections/{id:int}", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
             await OkOrNotFoundAsync(unitOfWork.Sections.GetByIdAsync(id, cancellationToken)));
+
+        group.MapPost("/sections/{id:int}/title", async (
+            int id,
+            RenameSectionRequest request,
+            ICmsV2UnitOfWork unitOfWork,
+            CancellationToken cancellationToken) =>
+        {
+            var section = await unitOfWork.Sections.GetByIdAsync(id, cancellationToken);
+            if (section is null)
+            {
+                return NotFoundProblem($"Section {id} was not found.");
+            }
+
+            section.Rename(request.Title);
+            unitOfWork.Sections.Update(section);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+
+            return Results.Ok(section);
+        });
 
         group.MapPost("/sections", async (
             CreateSectionRequest request,

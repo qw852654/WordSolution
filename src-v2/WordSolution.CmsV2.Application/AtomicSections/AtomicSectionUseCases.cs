@@ -480,17 +480,41 @@ public sealed class AtomicSectionUseCases
         AtomicSection atomicSection,
         CancellationToken cancellationToken)
     {
+        var panels = new List<AtomicSectionPanel>();
+
         foreach (var definition in DefaultPanelDefinitions)
         {
-            await _unitOfWork.AtomicSectionPanels.AddAsync(
-                new AtomicSectionPanel(
-                    atomicSection.Id,
-                    atomicSection.Title,
-                    definition.TeachingRole,
-                    atomicSection.Difficulty,
-                    definition.SortOrder),
-                cancellationToken);
+            var panel = new AtomicSectionPanel(
+                atomicSection.Id,
+                atomicSection.Title,
+                definition.TeachingRole,
+                atomicSection.Difficulty,
+                definition.SortOrder);
+            panels.Add(panel);
+            await _unitOfWork.AtomicSectionPanels.AddAsync(panel, cancellationToken);
         }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        var knowledgePanel = panels.Single(panel => panel.TeachingRole == AtomicSectionTeachingRole.Knowledge);
+        var knowledgeBlock = new ContentBlock(
+            atomicSection.SectionId,
+            atomicSection.Title,
+            ContentBlockType.KnowledgePoint,
+            difficulty: atomicSection.Difficulty);
+        await _unitOfWork.ContentBlocks.AddAsync(knowledgeBlock, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await _unitOfWork.AtomicSectionItems.AddAsync(
+            new AtomicSectionItem(
+                atomicSection.Id,
+                knowledgeBlock.Id,
+                ReferenceMode.FollowLatest,
+                lockedContentBlockVersionId: null,
+                sortOrder: 10,
+                atomicSectionPanelId: knowledgePanel.Id,
+                teachingRole: AtomicSectionTeachingRole.Knowledge),
+            cancellationToken);
     }
 
     private async Task<ContentBlock> GetContentBlockForCommandAsync(

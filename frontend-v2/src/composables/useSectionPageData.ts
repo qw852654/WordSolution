@@ -79,6 +79,10 @@ export async function loadSectionPageData(routeSectionId?: string): Promise<Sect
     cmsV2Api.getTeachingStructure(),
   ])
 
+  if (sections.length === 0) {
+    return buildEmptySectionPageData(teachingStructure)
+  }
+
   const section = await resolveSection(routeSectionId, sections)
   const [sectionItems, sectionVariants] = await Promise.all([
     cmsV2Api.listSectionItems(section.id),
@@ -148,6 +152,23 @@ export async function loadSectionPageData(routeSectionId?: string): Promise<Sect
     teachingTopicNodes: mapTeachingStructureNodesToTreeNodes(teachingStructure),
     selectedTeachingTopicId: createTeachingTopicNodeId(section.teachingTopicId),
     defaultSelectedNodeId: sectionChildren[0]?.id ?? rootNodeId,
+  }
+}
+
+function buildEmptySectionPageData(
+  teachingStructure: Awaited<ReturnType<typeof cmsV2Api.getTeachingStructure>>,
+): SectionPageDataModel {
+  return {
+    section: {
+      sectionId: 'empty',
+      title: '暂无 Section',
+      teachingTopicTitle: 'TeachingTopic',
+      status: '未创建',
+    },
+    treeNodes: [],
+    flowItems: [],
+    workspaceNodeMap: {},
+    teachingTopicNodes: mapTeachingStructureNodesToTreeNodes(teachingStructure),
   }
 }
 

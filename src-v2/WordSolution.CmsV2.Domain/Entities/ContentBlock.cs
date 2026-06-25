@@ -91,4 +91,12 @@ public sealed class ContentBlock
         Difficulty = difficulty;
         UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
     }
+
+    public void Rename(string title, DateTimeOffset? updatedTime = null)
+    {
+        DomainGuard.NotWhiteSpace(title, nameof(Title));
+
+        Title = title.Trim();
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+    }
 }

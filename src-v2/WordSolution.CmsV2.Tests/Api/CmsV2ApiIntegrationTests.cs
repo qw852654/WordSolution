@@ -824,14 +824,16 @@ public sealed class CmsV2ApiIntegrationTests
         var contentBlockAfterDelete = await client.GetAsync($"/api/cms-v2/content-blocks/{blockId}");
 
         Assert.Equal("Example", panel.GetProperty("teachingRole").GetString());
-        Assert.Single(items);
-        Assert.Equal(item.GetProperty("id").GetInt32(), items[0].GetProperty("id").GetInt32());
-        Assert.Equal(panelId, items[0].GetProperty("atomicSectionPanelId").GetInt32());
-        Assert.Equal("Example", items[0].GetProperty("teachingRole").GetString());
+        var exampleItem = Assert.Single(items, candidate => candidate.GetProperty("teachingRole").GetString() == "Example");
+        Assert.Equal(item.GetProperty("id").GetInt32(), exampleItem.GetProperty("id").GetInt32());
+        Assert.Equal(panelId, exampleItem.GetProperty("atomicSectionPanelId").GetInt32());
+        Assert.Equal("Example", exampleItem.GetProperty("teachingRole").GetString());
         Assert.Equal("Medium", updatedBlock.GetProperty("difficulty").GetString());
         Assert.Equal("Advanced", updatedAtomicSection.GetProperty("difficulty").GetString());
-        Assert.Single(itemsAfterDifficultyChange);
-        Assert.Equal(mediumPanelId, itemsAfterDifficultyChange[0].GetProperty("atomicSectionPanelId").GetInt32());
+        var exampleItemAfterDifficultyChange = Assert.Single(
+            itemsAfterDifficultyChange,
+            candidate => candidate.GetProperty("contentBlockId").GetInt32() == blockId);
+        Assert.Equal(mediumPanelId, exampleItemAfterDifficultyChange.GetProperty("atomicSectionPanelId").GetInt32());
         Assert.Equal(1, deleted.GetProperty("removedAtomicSectionItemCount").GetInt32());
         Assert.Equal(HttpStatusCode.OK, contentBlockAfterDelete.StatusCode);
     }
@@ -868,7 +870,7 @@ public sealed class CmsV2ApiIntegrationTests
     }
 
     [Fact]
-    public async Task AtomicSection_create_endpoint_creates_default_panels_without_default_items()
+    public async Task AtomicSection_create_endpoint_creates_default_panels_and_knowledge_item()
     {
         await using var factory = new CmsV2ApiFactory();
         var client = factory.CreateClient();
@@ -895,12 +897,22 @@ public sealed class CmsV2ApiIntegrationTests
             ?? [];
         var items = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/atomic-sections/{atomicSectionId}/items")
             ?? [];
+        var knowledgePanel = Assert.Single(panels, panel => panel.GetProperty("teachingRole").GetString() == "Knowledge");
+        var knowledgeItem = Assert.Single(items);
+        var knowledgeBlock = await client.GetFromJsonAsync<JsonElement>(
+            $"/api/cms-v2/content-blocks/{knowledgeItem.GetProperty("contentBlockId").GetInt32()}");
 
         Assert.Equal(["Knowledge", "Example", "Variant"], panels.Select(panel => panel.GetProperty("teachingRole").GetString()));
         Assert.All(panels, panel => Assert.Equal("Default panel AS", panel.GetProperty("title").GetString()));
         Assert.All(panels, panel => Assert.Equal("Advanced", panel.GetProperty("difficulty").GetString()));
         Assert.Equal([10, 20, 30], panels.Select(panel => panel.GetProperty("sortOrder").GetInt32()));
-        Assert.Empty(items);
+        Assert.Equal(knowledgePanel.GetProperty("id").GetInt32(), knowledgeItem.GetProperty("atomicSectionPanelId").GetInt32());
+        Assert.Equal("Knowledge", knowledgeItem.GetProperty("teachingRole").GetString());
+        Assert.Equal("FollowLatest", knowledgeItem.GetProperty("referenceMode").GetString());
+        Assert.Equal(10, knowledgeItem.GetProperty("sortOrder").GetInt32());
+        Assert.Equal("Default panel AS", knowledgeBlock.GetProperty("title").GetString());
+        Assert.Equal("KnowledgePoint", knowledgeBlock.GetProperty("blockType").GetString());
+        Assert.Equal("Advanced", knowledgeBlock.GetProperty("difficulty").GetString());
     }
 
     [Fact]
@@ -954,6 +966,62 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.Equal(section.GetProperty("id").GetInt32(), children[0].GetProperty("section").GetProperty("id").GetInt32());
         Assert.Equal(variant.GetProperty("id").GetInt32(), children[0].GetProperty("sectionVariants")[0].GetProperty("id").GetInt32());
         Assert.False(children[0].GetProperty("canDelete").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Section_title_endpoint_renames_bound_section_without_renaming_topic()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "Section title topic", sortOrder = 1 });
+        var topicId = topic.GetProperty("id").GetInt32();
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = topicId, title = "Original section", type = "NormalCourse", difficulty = "Medium", status = "Draft" });
+        var sectionId = section.GetProperty("id").GetInt32();
+
+        var renamed = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/sections/{sectionId}/title",
+            new { title = "Renamed section" });
+        var topicAfterRename = await client.GetFromJsonAsync<JsonElement>($"/api/cms-v2/teaching-topics/{topicId}");
+
+        Assert.Equal("Renamed section", renamed.GetProperty("title").GetString());
+        Assert.Equal("Section title topic", topicAfterRename.GetProperty("name").GetString());
+    }
+
+    [Fact]
+    public async Task ContentBlock_title_endpoint_renames_content_block()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "ContentBlock title topic", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "ContentBlock title section" });
+        var contentBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks",
+            new
+            {
+                sectionId = section.GetProperty("id").GetInt32(),
+                title = "Original block",
+                blockType = "Question",
+                difficulty = "Medium",
+                status = "Draft"
+            });
+        var contentBlockId = contentBlock.GetProperty("id").GetInt32();
+
+        var renamed = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/content-blocks/{contentBlockId}/title",
+            new { title = "Renamed block" });
+        var detail = await client.GetFromJsonAsync<JsonElement>($"/api/cms-v2/content-blocks/{contentBlockId}");
+
+        Assert.Equal("Renamed block", renamed.GetProperty("title").GetString());
+        Assert.Equal("Renamed block", detail.GetProperty("title").GetString());
     }
 
     [Fact]
@@ -1044,7 +1112,6 @@ public sealed class CmsV2ApiIntegrationTests
             ?? [];
 
         Assert.Equal("Renamed Atomic", renamedAtomic.GetProperty("title").GetString());
-        Assert.Single(atomicChildren);
         Assert.Contains(
             atomicChildren,
             item => item.GetProperty("contentBlockId").GetInt32() == contentBlockId);

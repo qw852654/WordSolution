@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { FileUp } from 'lucide-vue-next'
 import CompositeBlock from '@/components/business/CompositeBlock.vue'
 import ContentBlockDisplay from '@/components/business/ContentBlockDisplay.vue'
@@ -47,6 +48,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const childContentBlockActions: SectionItemViewAction[] = ['OpenWord', 'MoveUp', 'MoveDown', 'Remove']
+const canImportQuestions = computed(() => props.panel.teachingRole !== 'Knowledge')
 
 function createPanelPayload(): AtomicSectionPanelActionPayload {
   return {
@@ -141,7 +143,7 @@ function createPanelInsertPoint(
   >
     <template #actions>
       <Button
-        v-if="!readOnly"
+        v-if="!readOnly && canImportQuestions"
         type="button"
         size="sm"
         variant="ghost"

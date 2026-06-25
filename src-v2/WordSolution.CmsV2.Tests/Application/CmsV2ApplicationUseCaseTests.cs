@@ -384,7 +384,7 @@ public sealed class CmsV2ApplicationUseCaseTests
     }
 
     [Fact]
-    public async Task CreateAtomicSection_creates_default_panels_without_default_content_blocks()
+    public async Task CreateAtomicSection_creates_default_panels_and_knowledge_content_block()
     {
         await using var context = await CreateMigratedContextAsync();
         var unitOfWork = new EfCmsV2UnitOfWork(context);
@@ -409,8 +409,21 @@ public sealed class CmsV2ApplicationUseCaseTests
         Assert.Equal("AS Alpha", atomicSection.Title);
         Assert.Equal("AS note", atomicSection.Description);
         Assert.Equal(Difficulty.Advanced, atomicSection.Difficulty);
-        Assert.Empty(items);
-        Assert.Empty(contentBlocks);
+        var knowledgePanel = Assert.Single(panels, panel => panel.TeachingRole == AtomicSectionTeachingRole.Knowledge);
+        var knowledgeBlock = Assert.Single(contentBlocks);
+        var knowledgeItem = Assert.Single(items);
+
+        Assert.Equal("AS Alpha", knowledgeBlock.Title);
+        Assert.Equal(ContentBlockType.KnowledgePoint, knowledgeBlock.BlockType);
+        Assert.Equal(Difficulty.Advanced, knowledgeBlock.Difficulty);
+        Assert.Equal(sectionId, knowledgeBlock.SectionId);
+        Assert.Equal(atomicSection.Id, knowledgeItem.AtomicSectionId);
+        Assert.Equal(knowledgeBlock.Id, knowledgeItem.ContentBlockId);
+        Assert.Equal(knowledgePanel.Id, knowledgeItem.AtomicSectionPanelId);
+        Assert.Equal(AtomicSectionTeachingRole.Knowledge, knowledgeItem.TeachingRole);
+        Assert.Equal(ReferenceMode.FollowLatest, knowledgeItem.ReferenceMode);
+        Assert.Equal(10, knowledgeItem.SortOrder);
+        Assert.Null(knowledgeItem.LockedContentBlockVersionId);
         Assert.Empty(versions);
         Assert.Equal(
             [AtomicSectionTeachingRole.Knowledge, AtomicSectionTeachingRole.Example, AtomicSectionTeachingRole.Variant],

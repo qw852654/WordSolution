@@ -193,6 +193,13 @@ const difficultyMarkerClass = computed(() => getDifficultyMarkerClass(props.bloc
   margin-block: 0.5rem;
 }
 
+.content-block-display-preview :deep(img) {
+  display: inline-block;
+  max-width: 100%;
+  height: auto;
+  vertical-align: middle;
+}
+
 .content-block-display-preview :deep(ol),
 .content-block-display-preview :deep(ul) {
   margin-block: 0.5rem;
