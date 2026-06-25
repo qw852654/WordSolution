@@ -17,6 +17,7 @@ export interface ContentBlockCardModel {
   status: string
   version: string
   summary: string
+  tags?: TagModel[]
   disabled?: boolean
 }
 
@@ -28,6 +29,113 @@ export interface SectionVariantCardModel {
   status: string
   itemCount: number
   disabled?: boolean
+}
+
+export type TagStatus = 'Active' | 'Archived'
+
+export type TagBindingTargetType = 'ContentBlock' | 'AtomicSection' | 'Section'
+
+export type TagColorToken =
+  | 'tag-gray'
+  | 'tag-orange'
+  | 'tag-yellow'
+  | 'tag-green'
+  | 'tag-blue'
+  | 'tag-purple'
+  | 'tag-pink'
+  | 'tag-red'
+
+export interface TagModel {
+  id: number
+  name: string
+  color: TagColorToken
+  status: TagStatus
+  createdTime?: string
+  updatedTime?: string
+}
+
+export interface TagBindingModel {
+  id: number
+  tagId: number
+  targetType: TagBindingTargetType
+  targetId: number
+  tag: TagModel
+}
+
+export type TagPickerState = 'idle' | 'loading' | 'empty' | 'error'
+
+export type TeachingNoteTargetType =
+  | 'ContentBlock'
+  | 'Section'
+  | 'AtomicSection'
+  | 'AtomicSectionPanel'
+  | 'AtomicSectionItem'
+  | 'SectionItem'
+
+export type NoteType =
+  | 'General'
+  | 'ClassroomRecord'
+  | 'LearningEffect'
+  | 'TeachingReflection'
+  | 'RevisionSuggestion'
+  | 'QuestionReplacement'
+  | 'CommonMistake'
+
+export type TeachingNoteEffectLevel = 'Unknown' | 'Good' | 'Normal' | 'Weak' | 'Failed'
+
+export interface TeachingNoteBindingModel {
+  id?: number
+  teachingNoteId?: number
+  targetType: TeachingNoteTargetType
+  targetId: number
+  createdTime?: string
+}
+
+export interface TeachingNoteModel {
+  id: number
+  noteType: NoteType
+  content: string
+  effectLevel: TeachingNoteEffectLevel | null
+  occurredAt?: string | null
+  bindings: TeachingNoteBindingModel[]
+  createdTime: string
+  updatedTime: string
+}
+
+export type TeachingNoteListState = 'idle' | 'loading' | 'empty' | 'error'
+
+export interface TeachingNoteEditorValue {
+  noteType: NoteType
+  content: string
+  effectLevel: TeachingNoteEffectLevel | null
+  occurredAt?: string | null
+  bindings: TeachingNoteBindingModel[]
+}
+
+export interface TeachingNoteSearchQuery {
+  keyword?: string
+  noteType?: NoteType
+  effectLevel?: TeachingNoteEffectLevel
+  targetType?: TeachingNoteTargetType
+  targetId?: number
+  occurredFrom?: string
+  occurredTo?: string
+}
+
+export interface CreateTeachingNoteRequestModel {
+  noteType: NoteType
+  content: string
+  effectLevel?: TeachingNoteEffectLevel | null
+  occurredAt?: string | null
+  bindings: TeachingNoteBindingModel[]
+}
+
+export interface UpdateTeachingNoteRequestModel {
+  noteType?: NoteType
+  content?: string
+  effectLevel?: TeachingNoteEffectLevel | null
+  occurredAt?: string | null
+  bindings?: TeachingNoteBindingModel[]
 }
 
 export type SectionVariantCreateType =
@@ -127,6 +235,8 @@ export interface SectionTreeNodeModel {
   kind: SectionTreeNodeKind
   typeLabel: string
   sectionId?: number
+  sectionItemId?: number
+  contentBlockId?: number
   teachingTopicTitle?: string
   sectionVariantId?: number
   atomicSectionId?: number
@@ -301,6 +411,7 @@ export interface ContentBlockDisplayModel {
   partParseStatus?: ContentBlockPartParseStatus
   partParseMessage?: string | null
   parts?: ContentBlockDisplayPartModel[]
+  tags?: TagModel[]
   selected?: boolean
   disabled?: boolean
 }

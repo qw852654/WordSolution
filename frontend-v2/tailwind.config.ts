@@ -42,6 +42,46 @@ export default {
         'difficulty-medium': 'var(--difficulty-medium)',
         'difficulty-advanced': 'var(--difficulty-advanced)',
         'difficulty-top': 'var(--difficulty-top)',
+        'tag-gray': {
+          DEFAULT: 'var(--tag-gray)',
+          foreground: 'var(--tag-gray-foreground)',
+          border: 'var(--tag-gray-border)',
+        },
+        'tag-orange': {
+          DEFAULT: 'var(--tag-orange)',
+          foreground: 'var(--tag-orange-foreground)',
+          border: 'var(--tag-orange-border)',
+        },
+        'tag-yellow': {
+          DEFAULT: 'var(--tag-yellow)',
+          foreground: 'var(--tag-yellow-foreground)',
+          border: 'var(--tag-yellow-border)',
+        },
+        'tag-green': {
+          DEFAULT: 'var(--tag-green)',
+          foreground: 'var(--tag-green-foreground)',
+          border: 'var(--tag-green-border)',
+        },
+        'tag-blue': {
+          DEFAULT: 'var(--tag-blue)',
+          foreground: 'var(--tag-blue-foreground)',
+          border: 'var(--tag-blue-border)',
+        },
+        'tag-purple': {
+          DEFAULT: 'var(--tag-purple)',
+          foreground: 'var(--tag-purple-foreground)',
+          border: 'var(--tag-purple-border)',
+        },
+        'tag-pink': {
+          DEFAULT: 'var(--tag-pink)',
+          foreground: 'var(--tag-pink-foreground)',
+          border: 'var(--tag-pink-border)',
+        },
+        'tag-red': {
+          DEFAULT: 'var(--tag-red)',
+          foreground: 'var(--tag-red-foreground)',
+          border: 'var(--tag-red-border)',
+        },
         popover: {
           DEFAULT: 'var(--popover)',
           foreground: 'var(--popover-foreground)',

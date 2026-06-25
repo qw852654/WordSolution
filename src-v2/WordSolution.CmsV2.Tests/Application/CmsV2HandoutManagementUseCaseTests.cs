@@ -10,8 +10,10 @@ namespace WordSolution.CmsV2.Tests.Application;
 
 public sealed class CmsV2HandoutManagementUseCaseTests
 {
-    private const string DefaultOutputTemplateDocxPath =
+    private const string LegacyDefaultOutputTemplateDocxPath =
         "src-v2/WordSolution.CmsV2.Infrastructure/Documents/Templates/content-block-default.docx";
+    private const string DefaultOutputTemplateDocxPath =
+        "Documents/Templates/content-block-default.docx";
 
     [Fact]
     public async Task CreateHandoutAsync_rejects_duplicate_active_title_and_ignores_archived_title()
@@ -97,7 +99,7 @@ public sealed class CmsV2HandoutManagementUseCaseTests
         var unitOfWork = new EfCmsV2UnitOfWork(context);
         var handouts = new HandoutUseCases(unitOfWork);
         var handout = await handouts.CreateHandoutAsync(new CreateHandoutCommand("Output form handout"));
-        var template = new OutputTemplate("Shared template", DefaultOutputTemplateDocxPath);
+        var template = new OutputTemplate("Shared template", LegacyDefaultOutputTemplateDocxPath);
         await unitOfWork.OutputTemplates.AddAsync(template);
         await unitOfWork.SaveChangesAsync();
 
@@ -113,6 +115,26 @@ public sealed class CmsV2HandoutManagementUseCaseTests
         Assert.Equal(VisibilityMode.Classroom, outputForm.VisibilityMode);
         Assert.Equal(OutputFormStatus.Active, outputForm.Status);
         Assert.Equal(1, outputForm.SortOrder);
+    }
+
+    [Fact]
+    public async Task CreateHandoutVersionAsync_reuses_legacy_default_template_without_creating_duplicate()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var handouts = new HandoutUseCases(unitOfWork);
+        var handout = await handouts.CreateHandoutAsync(new CreateHandoutCommand("Legacy template handout"));
+        var legacyTemplate = new OutputTemplate("Legacy template", LegacyDefaultOutputTemplateDocxPath);
+        await unitOfWork.OutputTemplates.AddAsync(legacyTemplate);
+        await unitOfWork.SaveChangesAsync();
+
+        var version = await handouts.CreateHandoutVersionAsync(
+            new CreateHandoutVersionCommand(handout.Id, "Default output version"));
+
+        var templates = await unitOfWork.OutputTemplates.ListAsync();
+        var outputForm = Assert.Single(await unitOfWork.OutputForms.ListByHandoutVersionAsync(version.Id));
+        Assert.Single(templates);
+        Assert.Equal(legacyTemplate.Id, outputForm.OutputTemplateId);
     }
 
     [Fact]

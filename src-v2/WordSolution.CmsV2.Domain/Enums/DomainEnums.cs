@@ -226,32 +226,46 @@ public enum OutputFormStatus
     Archived = 2
 }
 
-public enum TeachingNoteTargetType
+public enum TagStatus
 {
-    TeachingTopic = 1,
-    Section = 2,
-    SectionVariant = 3,
-    SectionItem = 4,
-    AtomicSection = 5,
-    ContentBlock = 6,
-    HandoutVersion = 7
+    Active = 1,
+    Archived = 2
+}
+
+public enum TagBindingTargetType
+{
+    ContentBlock = 1,
+    AtomicSection = 2,
+    Section = 3
 }
 
 public enum TeachingNoteType
 {
-    TeachingReflection = 1,
-    RevisionSuggestion = 2,
-    CommonMistake = 3,
-    TeachingLogic = 4,
-    ExampleAdvice = 5,
+    General = 1,
+    ClassroomRecord = 2,
+    LearningEffect = 3,
+    TeachingReflection = 4,
+    RevisionSuggestion = 5,
     QuestionReplacement = 6,
-    General = 7
+    CommonMistake = 7
 }
 
-public enum TeachingNoteStatus
+public enum TeachingNoteEffectLevel
 {
-    Active = 1,
-    Resolved = 2,
-    Archived = 3
+    Unknown = 0,
+    Good = 1,
+    Normal = 2,
+    Weak = 3,
+    Failed = 4
+}
+
+public enum TeachingNoteBindingTargetType
+{
+    ContentBlock = 1,
+    Section = 2,
+    AtomicSection = 3,
+    AtomicSectionPanel = 4,
+    AtomicSectionItem = 5,
+    SectionItem = 6
 }
 

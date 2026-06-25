@@ -26,6 +26,14 @@ internal static class CmsV2EntityConfiguration
             .HasConversion<string>()
             .IsRequired();
     }
+
+    public static void ConfigureCreatedTime<TEntity>(EntityTypeBuilder<TEntity> builder)
+        where TEntity : class
+    {
+        builder.Property<DateTimeOffset>("CreatedTime")
+            .HasConversion<string>()
+            .IsRequired();
+    }
 }
 
 internal sealed class TeachingTopicConfiguration : IEntityTypeConfiguration<TeachingTopic>
@@ -540,21 +548,101 @@ internal sealed class GeneratedFileConfiguration : IEntityTypeConfiguration<Gene
     }
 }
 
+internal sealed class TagConfiguration : IEntityTypeConfiguration<Tag>
+{
+    public void Configure(EntityTypeBuilder<Tag> builder)
+    {
+        builder.ToTable("Tags");
+        CmsV2EntityConfiguration.ConfigurePrimaryKey(builder);
+
+        builder.Property(entity => entity.Name).HasMaxLength(CmsV2EntityConfiguration.TitleMaxLength).IsRequired();
+        builder.Property(entity => entity.NormalizedName).HasMaxLength(CmsV2EntityConfiguration.TitleMaxLength).IsRequired();
+        builder.Property(entity => entity.Color).HasMaxLength(64).IsRequired();
+        builder.Property(entity => entity.Status).HasConversion<int>().IsRequired();
+        CmsV2EntityConfiguration.ConfigureCreatedTime(builder);
+        CmsV2EntityConfiguration.ConfigureUpdatedTime(builder);
+
+        builder.HasIndex(entity => entity.NormalizedName).IsUnique();
+    }
+}
+
+internal sealed class TagBindingConfiguration : IEntityTypeConfiguration<TagBinding>
+{
+    public void Configure(EntityTypeBuilder<TagBinding> builder)
+    {
+        builder.ToTable(
+            "TagBindings",
+            table =>
+            {
+                table.HasCheckConstraint("CK_TagBindings_TargetType", "\"TargetType\" IN (1, 2, 3)");
+                table.HasCheckConstraint("CK_TagBindings_TargetId", "\"TargetId\" > 0");
+            });
+        CmsV2EntityConfiguration.ConfigurePrimaryKey(builder);
+
+        builder.Property(entity => entity.TagId).IsRequired();
+        builder.Property(entity => entity.TargetType).HasConversion<int>().IsRequired();
+        builder.Property(entity => entity.TargetId).IsRequired();
+        CmsV2EntityConfiguration.ConfigureCreatedTime(builder);
+        CmsV2EntityConfiguration.ConfigureUpdatedTime(builder);
+
+        builder.HasIndex(entity => new { entity.TagId, entity.TargetType, entity.TargetId }).IsUnique();
+        builder.HasIndex(entity => new { entity.TargetType, entity.TargetId });
+
+        builder.HasOne<Tag>()
+            .WithMany()
+            .HasForeignKey(entity => entity.TagId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
 internal sealed class TeachingNoteConfiguration : IEntityTypeConfiguration<TeachingNote>
 {
     public void Configure(EntityTypeBuilder<TeachingNote> builder)
     {
-        builder.ToTable("TeachingNotes");
+        builder.ToTable(
+            "TeachingNotes",
+            table =>
+            {
+                table.HasCheckConstraint("CK_TeachingNotes_NoteType", "\"NoteType\" IN (1, 2, 3, 4, 5, 6, 7)");
+                table.HasCheckConstraint("CK_TeachingNotes_EffectLevel", "\"EffectLevel\" IS NULL OR \"EffectLevel\" IN (0, 1, 2, 3, 4)");
+            });
         CmsV2EntityConfiguration.ConfigurePrimaryKey(builder);
 
-        builder.Property(entity => entity.TargetType).HasConversion<int>().IsRequired();
-        builder.Property(entity => entity.TargetId).IsRequired();
         builder.Property(entity => entity.NoteType).HasConversion<int>().IsRequired();
-        builder.Property(entity => entity.Title).HasMaxLength(CmsV2EntityConfiguration.TitleMaxLength).IsRequired();
         builder.Property(entity => entity.Content).IsRequired();
-        builder.Property(entity => entity.Status).HasConversion<int>().IsRequired();
+        builder.Property(entity => entity.EffectLevel).HasConversion<int?>();
+        builder.Property(entity => entity.OccurredAt);
+        CmsV2EntityConfiguration.ConfigureCreatedTime(builder);
         CmsV2EntityConfiguration.ConfigureUpdatedTime(builder);
 
+        builder.HasIndex(entity => entity.UpdatedTime);
+    }
+}
+
+internal sealed class TeachingNoteBindingConfiguration : IEntityTypeConfiguration<TeachingNoteBinding>
+{
+    public void Configure(EntityTypeBuilder<TeachingNoteBinding> builder)
+    {
+        builder.ToTable(
+            "TeachingNoteBindings",
+            table =>
+            {
+                table.HasCheckConstraint("CK_TeachingNoteBindings_TargetType", "\"TargetType\" IN (1, 2, 3, 4, 5, 6)");
+                table.HasCheckConstraint("CK_TeachingNoteBindings_TargetId", "\"TargetId\" > 0");
+            });
+        CmsV2EntityConfiguration.ConfigurePrimaryKey(builder);
+
+        builder.Property(entity => entity.TeachingNoteId).IsRequired();
+        builder.Property(entity => entity.TargetType).HasConversion<int>().IsRequired();
+        builder.Property(entity => entity.TargetId).IsRequired();
+        CmsV2EntityConfiguration.ConfigureCreatedTime(builder);
+
+        builder.HasIndex(entity => new { entity.TeachingNoteId, entity.TargetType, entity.TargetId }).IsUnique();
         builder.HasIndex(entity => new { entity.TargetType, entity.TargetId });
+
+        builder.HasOne<TeachingNote>()
+            .WithMany()
+            .HasForeignKey(entity => entity.TeachingNoteId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

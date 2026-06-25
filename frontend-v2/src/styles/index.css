@@ -76,6 +76,30 @@
     --difficulty-medium: oklch(0.58 0.17 255);
     --difficulty-advanced: oklch(0.68 0.17 70);
     --difficulty-top: oklch(0.58 0.22 25);
+    --tag-gray: var(--muted);
+    --tag-gray-foreground: var(--muted-foreground);
+    --tag-gray-border: var(--border);
+    --tag-orange: oklch(0.94 0.05 65);
+    --tag-orange-foreground: oklch(0.36 0.09 45);
+    --tag-orange-border: oklch(0.82 0.11 65);
+    --tag-yellow: oklch(0.96 0.06 95);
+    --tag-yellow-foreground: oklch(0.36 0.08 80);
+    --tag-yellow-border: oklch(0.84 0.12 95);
+    --tag-green: oklch(0.94 0.06 145);
+    --tag-green-foreground: oklch(0.34 0.09 145);
+    --tag-green-border: oklch(0.78 0.13 145);
+    --tag-blue: oklch(0.94 0.05 255);
+    --tag-blue-foreground: oklch(0.34 0.09 255);
+    --tag-blue-border: oklch(0.78 0.12 255);
+    --tag-purple: oklch(0.94 0.05 305);
+    --tag-purple-foreground: oklch(0.34 0.09 305);
+    --tag-purple-border: oklch(0.78 0.12 305);
+    --tag-pink: oklch(0.94 0.05 355);
+    --tag-pink-foreground: oklch(0.36 0.09 355);
+    --tag-pink-border: oklch(0.8 0.12 355);
+    --tag-red: oklch(0.94 0.05 25);
+    --tag-red-foreground: oklch(0.36 0.1 25);
+    --tag-red-border: oklch(0.8 0.13 25);
   }
 
   .dark {
@@ -124,6 +148,30 @@
     --difficulty-medium: oklch(0.72 0.15 255);
     --difficulty-advanced: oklch(0.78 0.15 70);
     --difficulty-top: oklch(0.72 0.18 25);
+    --tag-gray: var(--muted);
+    --tag-gray-foreground: var(--muted-foreground);
+    --tag-gray-border: var(--border);
+    --tag-orange: oklch(0.28 0.08 55);
+    --tag-orange-foreground: oklch(0.83 0.12 65);
+    --tag-orange-border: oklch(0.52 0.13 65);
+    --tag-yellow: oklch(0.28 0.07 95);
+    --tag-yellow-foreground: oklch(0.86 0.12 95);
+    --tag-yellow-border: oklch(0.52 0.12 95);
+    --tag-green: oklch(0.27 0.07 145);
+    --tag-green-foreground: oklch(0.82 0.13 145);
+    --tag-green-border: oklch(0.5 0.13 145);
+    --tag-blue: oklch(0.27 0.07 255);
+    --tag-blue-foreground: oklch(0.82 0.12 255);
+    --tag-blue-border: oklch(0.5 0.12 255);
+    --tag-purple: oklch(0.27 0.07 305);
+    --tag-purple-foreground: oklch(0.82 0.12 305);
+    --tag-purple-border: oklch(0.5 0.12 305);
+    --tag-pink: oklch(0.27 0.07 355);
+    --tag-pink-foreground: oklch(0.83 0.12 355);
+    --tag-pink-border: oklch(0.5 0.12 355);
+    --tag-red: oklch(0.27 0.08 25);
+    --tag-red-foreground: oklch(0.83 0.13 25);
+    --tag-red-border: oklch(0.52 0.13 25);
   }
 
   * {

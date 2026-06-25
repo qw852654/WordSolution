@@ -22,6 +22,11 @@ import type {
   SectionVariantSelectionCandidateModel,
   StructuredBlockChildModel,
   StructuredBlockModel,
+  TagModel,
+  TagPickerState,
+  TeachingNoteEditorValue,
+  TeachingNoteListState,
+  TeachingNoteModel,
   TeachingTopicTreeNodeModel,
 } from '@/types'
 
@@ -135,6 +140,154 @@ export const mockSectionVariants: SectionVariantCardModel[] = [
     itemCount: 6,
     disabled: true,
   },
+]
+
+export const mockTags: TagModel[] = [
+  {
+    id: 1,
+    name: '机械能守恒',
+    color: 'tag-blue',
+    status: 'Active',
+    createdTime: '2026-06-24T09:00:00+08:00',
+    updatedTime: '2026-06-24T09:00:00+08:00',
+  },
+  {
+    id: 2,
+    name: '圆轨道',
+    color: 'tag-green',
+    status: 'Active',
+    createdTime: '2026-06-24T09:05:00+08:00',
+    updatedTime: '2026-06-24T09:05:00+08:00',
+  },
+  {
+    id: 3,
+    name: '易错点',
+    color: 'tag-orange',
+    status: 'Active',
+    createdTime: '2026-06-24T09:10:00+08:00',
+    updatedTime: '2026-06-24T09:10:00+08:00',
+  },
+  {
+    id: 4,
+    name: '旧版竞赛拓展',
+    color: 'tag-purple',
+    status: 'Archived',
+    createdTime: '2026-06-24T09:15:00+08:00',
+    updatedTime: '2026-06-24T09:15:00+08:00',
+  },
+  {
+    id: 5,
+    name: '长标签名称用于验证布局稳定和截断显示',
+    color: 'tag-pink',
+    status: 'Active',
+    createdTime: '2026-06-24T09:20:00+08:00',
+    updatedTime: '2026-06-24T09:20:00+08:00',
+  },
+]
+
+export const mockSelectedTags: TagModel[] = [mockTags[0], mockTags[3]]
+
+export const mockTagPickerStates: TagPickerState[] = ['idle', 'loading', 'empty', 'error']
+
+export const mockTeachingNotes: TeachingNoteModel[] = [
+  {
+    id: 701,
+    noteType: 'RevisionSuggestion',
+    content:
+      '这道圆轨道例题作为第一次讲解有点跳，下次在前面补一个只含重力势能变化的过渡题。',
+    effectLevel: null,
+    occurredAt: '2026-06-24T09:30',
+    bindings: [
+      {
+        id: 9001,
+        teachingNoteId: 701,
+        targetType: 'ContentBlock',
+        targetId: 3001,
+        createdTime: '2026-06-24T09:32:00+08:00',
+      },
+    ],
+    createdTime: '2026-06-24T09:32:00+08:00',
+    updatedTime: '2026-06-24T10:12:00+08:00',
+  },
+  {
+    id: 702,
+    noteType: 'ClassroomRecord',
+    content:
+      '学生在最高点临界条件这里卡住，需要先把受力图和能量方程分开写。',
+    effectLevel: 'Weak',
+    occurredAt: '2026-06-23T15:20',
+    bindings: [
+      {
+        id: 9002,
+        teachingNoteId: 702,
+        targetType: 'AtomicSectionItem',
+        targetId: 9102,
+        createdTime: '2026-06-23T15:25:00+08:00',
+      },
+      {
+        id: 9003,
+        teachingNoteId: 702,
+        targetType: 'AtomicSectionPanel',
+        targetId: 502,
+        createdTime: '2026-06-23T15:25:00+08:00',
+      },
+      {
+        id: 9004,
+        teachingNoteId: 702,
+        targetType: 'SectionItem',
+        targetId: 1201,
+        createdTime: '2026-06-23T15:25:00+08:00',
+      },
+    ],
+    createdTime: '2026-06-23T15:25:00+08:00',
+    updatedTime: '2026-06-24T08:40:00+08:00',
+  },
+  {
+    id: 703,
+    noteType: 'TeachingReflection',
+    content:
+      '本节节奏整体可以，练习题数量略多。下次把最后一道压轴题放到课后。',
+    effectLevel: 'Good',
+    occurredAt: null,
+    bindings: [
+      {
+        id: 9005,
+        teachingNoteId: 703,
+        targetType: 'Section',
+        targetId: 1,
+        createdTime: '2026-06-22T20:10:00+08:00',
+      },
+      {
+        id: 9006,
+        teachingNoteId: 703,
+        targetType: 'AtomicSection',
+        targetId: 901,
+        createdTime: '2026-06-22T20:10:00+08:00',
+      },
+    ],
+    createdTime: '2026-06-22T20:10:00+08:00',
+    updatedTime: '2026-06-22T21:00:00+08:00',
+  },
+]
+
+export const mockTeachingNoteEditorValue: TeachingNoteEditorValue = {
+  noteType: 'General',
+  content: '',
+  effectLevel: null,
+  occurredAt: null,
+  bindings: [
+    {
+      targetType: 'ContentBlock',
+      targetId: 3001,
+    },
+  ],
+}
+
+export const mockTeachingNoteStates: TeachingNoteListState[] = [
+  'idle',
+  'loading',
+  'empty',
+  'error',
 ]
 
 export const mockSectionVariantCreateMetadata: SectionVariantCreateMetadata = {

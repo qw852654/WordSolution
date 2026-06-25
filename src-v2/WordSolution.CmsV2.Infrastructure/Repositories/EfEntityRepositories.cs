@@ -340,18 +340,170 @@ public sealed class EfGeneratedFileRepository(CmsV2DbContext context)
     }
 }
 
-public sealed class EfTeachingNoteRepository(CmsV2DbContext context)
-    : EfRepository<TeachingNote>(context), ITeachingNoteRepository
+public sealed class EfTagRepository(CmsV2DbContext context)
+    : EfRepository<Tag>(context), ITagRepository
 {
-    public Task<IReadOnlyList<TeachingNote>> ListByTargetAsync(
-        TeachingNoteTargetType targetType,
+    public async Task<Tag?> GetByNormalizedNameAsync(
+        string normalizedName,
+        CancellationToken cancellationToken = default)
+    {
+        var normalized = Tag.NormalizeName(normalizedName);
+
+        return await Set
+            .AsNoTracking()
+            .FirstOrDefaultAsync(tag => tag.NormalizedName == normalized, cancellationToken);
+    }
+
+    public Task<IReadOnlyList<Tag>> SearchActiveAsync(
+        string? keyword,
+        CancellationToken cancellationToken = default)
+    {
+        var query = Set
+            .AsNoTracking()
+            .Where(tag => tag.Status == TagStatus.Active);
+
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            var normalizedKeyword = Tag.NormalizeName(keyword);
+            query = query.Where(tag => tag.NormalizedName.Contains(normalizedKeyword));
+        }
+
+        return ToReadOnlyListAsync(
+            query
+                .OrderBy(tag => tag.NormalizedName)
+                .ThenBy(tag => tag.Id),
+            cancellationToken);
+    }
+}
+
+public sealed class EfTagBindingRepository(CmsV2DbContext context)
+    : EfRepository<TagBinding>(context), ITagBindingRepository
+{
+    public Task<IReadOnlyList<TagBinding>> ListByTargetAsync(
+        TagBindingTargetType targetType,
         int targetId,
         CancellationToken cancellationToken = default)
     {
         return ToReadOnlyListAsync(
             Set.AsNoTracking()
-                .Where(note => note.TargetType == targetType && note.TargetId == targetId)
-                .OrderBy(note => note.Id),
+                .Where(binding => binding.TargetType == targetType && binding.TargetId == targetId)
+                .OrderBy(binding => binding.Id),
+            cancellationToken);
+    }
+
+    public Task<IReadOnlyList<TagBinding>> ListByTagAsync(
+        int tagId,
+        CancellationToken cancellationToken = default)
+    {
+        return ToReadOnlyListAsync(
+            Set.AsNoTracking()
+                .Where(binding => binding.TagId == tagId)
+                .OrderBy(binding => binding.Id),
+            cancellationToken);
+    }
+}
+
+public sealed class EfTeachingNoteRepository(CmsV2DbContext context)
+    : EfRepository<TeachingNote>(context), ITeachingNoteRepository
+{
+    public override void Remove(TeachingNote entity)
+    {
+        ArgumentNullException.ThrowIfNull(entity);
+
+        if (entity.Id > 0)
+        {
+            Context.Set<TeachingNoteBinding>()
+                .RemoveRange(Context.Set<TeachingNoteBinding>().Where(binding => binding.TeachingNoteId == entity.Id));
+        }
+
+        base.Remove(entity);
+    }
+
+    public Task<IReadOnlyList<TeachingNote>> ListByTargetAsync(
+        TeachingNoteBindingTargetType targetType,
+        int targetId,
+        CancellationToken cancellationToken = default)
+    {
+        var query =
+            from note in Set.AsNoTracking()
+            join binding in Context.Set<TeachingNoteBinding>().AsNoTracking()
+                on note.Id equals binding.TeachingNoteId
+            where binding.TargetType == targetType && binding.TargetId == targetId
+            select note;
+
+        return ToReadOnlyListAsync(OrderByUpdatedTimeDescending(query), cancellationToken);
+    }
+
+    public Task<IReadOnlyList<TeachingNote>> SearchAsync(
+        string? keyword,
+        TeachingNoteType? noteType,
+        TeachingNoteEffectLevel? effectLevel,
+        DateTimeOffset? occurredFrom,
+        DateTimeOffset? occurredTo,
+        CancellationToken cancellationToken = default)
+    {
+        var query = Set.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            var trimmedKeyword = keyword.Trim();
+            query = query.Where(note => note.Content.Contains(trimmedKeyword));
+        }
+
+        if (noteType.HasValue)
+        {
+            query = query.Where(note => note.NoteType == noteType.Value);
+        }
+
+        if (effectLevel.HasValue)
+        {
+            query = query.Where(note => note.EffectLevel == effectLevel.Value);
+        }
+
+        if (occurredFrom.HasValue)
+        {
+            query = query.Where(note => note.OccurredAt.HasValue && note.OccurredAt.Value >= occurredFrom.Value);
+        }
+
+        if (occurredTo.HasValue)
+        {
+            query = query.Where(note => note.OccurredAt.HasValue && note.OccurredAt.Value <= occurredTo.Value);
+        }
+
+        return ToReadOnlyListAsync(OrderByUpdatedTimeDescending(query), cancellationToken);
+    }
+
+    private static IOrderedQueryable<TeachingNote> OrderByUpdatedTimeDescending(IQueryable<TeachingNote> query)
+    {
+        return query
+            .OrderByDescending(note => note.UpdatedTime)
+            .ThenByDescending(note => note.Id);
+    }
+}
+
+public sealed class EfTeachingNoteBindingRepository(CmsV2DbContext context)
+    : EfRepository<TeachingNoteBinding>(context), ITeachingNoteBindingRepository
+{
+    public Task<IReadOnlyList<TeachingNoteBinding>> ListByTargetAsync(
+        TeachingNoteBindingTargetType targetType,
+        int targetId,
+        CancellationToken cancellationToken = default)
+    {
+        return ToReadOnlyListAsync(
+            Set.AsNoTracking()
+                .Where(binding => binding.TargetType == targetType && binding.TargetId == targetId)
+                .OrderBy(binding => binding.Id),
+            cancellationToken);
+    }
+
+    public Task<IReadOnlyList<TeachingNoteBinding>> ListByTeachingNoteAsync(
+        int teachingNoteId,
+        CancellationToken cancellationToken = default)
+    {
+        return ToReadOnlyListAsync(
+            Set.AsNoTracking()
+                .Where(binding => binding.TeachingNoteId == teachingNoteId)
+                .OrderBy(binding => binding.Id),
             cancellationToken);
     }
 }

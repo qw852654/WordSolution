@@ -7,48 +7,64 @@ public sealed class TeachingNote
 {
     private TeachingNote()
     {
-        Title = string.Empty;
         Content = string.Empty;
     }
 
     public TeachingNote(
-        TeachingNoteTargetType targetType,
-        int targetId,
         TeachingNoteType noteType,
-        string title,
         string content,
-        TeachingNoteStatus status = TeachingNoteStatus.Active,
+        TeachingNoteEffectLevel? effectLevel = null,
+        DateTimeOffset? occurredAt = null,
+        DateTimeOffset? createdTime = null,
         DateTimeOffset? updatedTime = null)
     {
-        DomainGuard.ValidEnum(targetType, nameof(TargetType));
-        DomainGuard.Positive(targetId, nameof(TargetId));
         DomainGuard.ValidEnum(noteType, nameof(NoteType));
-        DomainGuard.NotWhiteSpace(title, nameof(Title));
         DomainGuard.NotWhiteSpace(content, nameof(Content));
-        DomainGuard.ValidEnum(status, nameof(Status));
+        if (effectLevel.HasValue)
+        {
+            DomainGuard.ValidEnum(effectLevel.Value, nameof(EffectLevel));
+        }
 
-        TargetType = targetType;
-        TargetId = targetId;
         NoteType = noteType;
-        Title = title.Trim();
         Content = content.Trim();
-        Status = status;
-        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+        EffectLevel = effectLevel;
+        OccurredAt = occurredAt;
+        CreatedTime = createdTime ?? DateTimeOffset.UtcNow;
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime ?? CreatedTime);
     }
 
     public int Id { get; private set; }
 
-    public TeachingNoteTargetType TargetType { get; private set; }
-
-    public int TargetId { get; private set; }
-
     public TeachingNoteType NoteType { get; private set; }
-
-    public string Title { get; private set; }
 
     public string Content { get; private set; }
 
-    public TeachingNoteStatus Status { get; private set; }
+    public TeachingNoteEffectLevel? EffectLevel { get; private set; }
+
+    public DateTimeOffset? OccurredAt { get; private set; }
+
+    public DateTimeOffset CreatedTime { get; private set; }
 
     public DateTimeOffset UpdatedTime { get; private set; }
+
+    public void UpdateDetails(
+        TeachingNoteType noteType,
+        string content,
+        TeachingNoteEffectLevel? effectLevel,
+        DateTimeOffset? occurredAt,
+        DateTimeOffset? updatedTime = null)
+    {
+        DomainGuard.ValidEnum(noteType, nameof(NoteType));
+        DomainGuard.NotWhiteSpace(content, nameof(Content));
+        if (effectLevel.HasValue)
+        {
+            DomainGuard.ValidEnum(effectLevel.Value, nameof(EffectLevel));
+        }
+
+        NoteType = noteType;
+        Content = content.Trim();
+        EffectLevel = effectLevel;
+        OccurredAt = occurredAt;
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+    }
 }

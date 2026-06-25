@@ -1,116 +1,99 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ArrowLeft } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
-import AtomicSectionBlock from '@/components/business/AtomicSectionBlock.vue'
-import AtomicSectionPanelCreateOverlay from '@/components/business/AtomicSectionPanelCreateOverlay.vue'
+import TeachingNoteBadge from '@/components/business/TeachingNoteBadge.vue'
+import TeachingNoteBindingSummary from '@/components/business/TeachingNoteBindingSummary.vue'
+import TeachingNoteDeleteConfirm from '@/components/business/TeachingNoteDeleteConfirm.vue'
+import TeachingNoteEditor from '@/components/business/TeachingNoteEditor.vue'
+import TeachingNoteList from '@/components/business/TeachingNoteList.vue'
 import PageHeader from '@/components/presentation/PageHeader.vue'
 import { Button } from '@/components/ui/button'
 import { usePageTitle } from '@/composables/usePageTitle'
-import { mockAtomicSectionPanelBlock } from '@/mocks'
-import type {
-  AtomicSectionItemActionPayload,
-  AtomicSectionItemMovePayload,
-  AtomicSectionPanelActionPayload,
-  AtomicSectionPanelCreateOverlayModel,
-  AtomicSectionPanelCreateSubmitPayload,
-  AtomicSectionPanelMovePayload,
-  ContentBlockRelationActionPayload,
-  ContentBlockRelationMovePayload,
-  InsertRequestModel,
-} from '@/types'
+import {
+  mockTeachingNoteEditorValue,
+  mockTeachingNotes,
+} from '@/mocks'
+import type { TeachingNoteEditorValue, TeachingNoteListState, TeachingNoteModel } from '@/types'
 
 const { t } = useI18n()
 usePageTitle('ComponentLab')
+
+const notes = ref<TeachingNoteModel[]>([...mockTeachingNotes])
+const editorValue = ref<TeachingNoteEditorValue>({ ...mockTeachingNoteEditorValue })
+const selectedNote = ref<TeachingNoteModel | null>(null)
+const deletingNote = ref<TeachingNoteModel | null>(mockTeachingNotes[1])
+const listState = ref<TeachingNoteListState>('idle')
+const disabled = ref(false)
+const saving = ref(false)
+const deleting = ref(false)
+const showError = ref(false)
 const feedback = ref('')
-const overlayOpen = ref(false)
-const overlayModel = ref<AtomicSectionPanelCreateOverlayModel>({
-  nodeId: 'lab-atomic-section',
-  atomicSectionId: 101,
-  atomicSectionTitle: t('lab.sections.atomicSectionPanelCreate.mockAtomicSectionTitle'),
-  defaultTitle: t('lab.sections.atomicSectionPanelCreate.mockAtomicSectionTitle'),
-})
 
-function openOverlay(disabled = false) {
-  overlayModel.value = {
-    nodeId: disabled ? 'lab-atomic-section-disabled' : 'lab-atomic-section',
-    atomicSectionId: disabled ? 102 : 101,
-    atomicSectionTitle: t('lab.sections.atomicSectionPanelCreate.mockAtomicSectionTitle'),
-    defaultTitle: t('lab.sections.atomicSectionPanelCreate.mockAtomicSectionTitle'),
-    disabled,
+const displayedNotes = computed(() => (listState.value === 'empty' ? [] : notes.value))
+const listError = computed(() => (showError.value ? t('lab.sections.teachingNotes.mockError') : ''))
+const editorError = computed(() =>
+  showError.value ? t('lab.sections.teachingNotes.mockEditorError') : '',
+)
+const deleteError = computed(() =>
+  showError.value ? t('lab.sections.teachingNotes.mockDeleteError') : '',
+)
+
+function recordFeedback(message: string, payload?: unknown) {
+  feedback.value = payload ? `${message}\n${JSON.stringify(payload, null, 2)}` : message
+}
+
+function startCreate() {
+  selectedNote.value = null
+  editorValue.value = { ...mockTeachingNoteEditorValue }
+  recordFeedback(t('teachingNote.events.create'))
+}
+
+function startEdit(note: TeachingNoteModel) {
+  selectedNote.value = note
+  editorValue.value = {
+    noteType: note.noteType,
+    content: note.content,
+    effectLevel: note.effectLevel,
+    occurredAt: note.occurredAt ?? null,
+    bindings: [...note.bindings],
   }
-  overlayOpen.value = true
+  recordFeedback(t('teachingNote.events.edit', { id: note.id }), note)
+}
+
+function requestDelete(note: TeachingNoteModel) {
+  deletingNote.value = note
+  recordFeedback(t('teachingNote.events.deleteRequested', { id: note.id }), note.bindings)
+}
+
+function submitEditor(value: TeachingNoteEditorValue) {
+  saving.value = true
+  recordFeedback(t('teachingNote.events.submit'), value)
+  window.setTimeout(() => {
+    saving.value = false
+  }, 300)
+}
+
+function confirmDelete(note: TeachingNoteModel) {
+  deleting.value = true
+  recordFeedback(t('teachingNote.events.deleteConfirmed', { id: note.id }), note.bindings)
+  window.setTimeout(() => {
+    deleting.value = false
+  }, 300)
+}
+
+function resetMockData() {
+  notes.value = [...mockTeachingNotes]
+  editorValue.value = { ...mockTeachingNoteEditorValue }
+  selectedNote.value = null
+  deletingNote.value = mockTeachingNotes[1]
+  listState.value = 'idle'
+  disabled.value = false
+  saving.value = false
+  deleting.value = false
+  showError.value = false
   feedback.value = ''
-}
-
-function cancelOverlay() {
-  overlayOpen.value = false
-  feedback.value = t('lab.sections.atomicSectionPanelCreate.cancelled')
-}
-
-function submitOverlay(payload: AtomicSectionPanelCreateSubmitPayload) {
-  overlayOpen.value = false
-  feedback.value = JSON.stringify(payload, null, 2)
-}
-
-function recordEvent(label: string, payload: unknown) {
-  feedback.value = `${label}\n${JSON.stringify(payload, null, 2)}`
-}
-
-function recordPanelEvent(
-  key: 'selectPanel' | 'renamePanel' | 'removePanel',
-  payload: AtomicSectionPanelActionPayload,
-) {
-  recordEvent(t(`lab.sections.atomicSectionPanel.events.${key}`, { value: payload.title }), payload)
-}
-
-function recordPanelMoveEvent(payload: AtomicSectionPanelMovePayload) {
-  recordEvent(
-    t('lab.sections.atomicSectionPanel.events.movePanel', {
-      value: payload.title,
-      direction: payload.direction,
-    }),
-    payload,
-  )
-}
-
-function recordAtomicSectionItemEvent(
-  key: 'wordEdit' | 'removeItem',
-  payload: AtomicSectionItemActionPayload,
-) {
-  recordEvent(t(`lab.sections.atomicSectionPanel.events.${key}`, { value: payload.title }), payload)
-}
-
-function recordAtomicSectionItemMoveEvent(payload: AtomicSectionItemMovePayload) {
-  recordEvent(
-    t('lab.sections.atomicSectionPanel.events.moveItem', {
-      value: payload.title,
-      direction: payload.direction,
-    }),
-    payload,
-  )
-}
-
-function recordContentBlockRelationEvent(
-  key: 'wordEdit' | 'removeItem',
-  payload: ContentBlockRelationActionPayload,
-) {
-  recordEvent(t(`lab.sections.atomicSectionPanel.events.${key}`, { value: payload.title }), payload)
-}
-
-function recordContentBlockRelationMoveEvent(payload: ContentBlockRelationMovePayload) {
-  recordEvent(
-    t('lab.sections.atomicSectionPanel.events.moveItem', {
-      value: payload.title,
-      direction: payload.direction,
-    }),
-    payload,
-  )
-}
-
-function recordInsertRequest(payload: InsertRequestModel) {
-  recordEvent(t('lab.sections.atomicSectionPanel.events.insertPoint', { value: payload.insertPointId }), payload)
 }
 </script>
 
@@ -118,13 +101,13 @@ function recordInsertRequest(payload: InsertRequestModel) {
   <main class="min-h-screen bg-background px-4 py-6 text-foreground sm:px-6 lg:px-8">
     <PageHeader
       :eyebrow="t('lab.eyebrow')"
-      :title="t('lab.sections.atomicSectionPanelCreate.title')"
-      :description="t('lab.sections.atomicSectionPanelCreate.description')"
+      :title="t('lab.sections.teachingNotes.title')"
+      :description="t('lab.sections.teachingNotes.description')"
     >
       <template #actions>
         <Button variant="outline" as-child>
           <RouterLink to="/">
-            <ArrowLeft class="size-4" />
+            <ArrowLeft class="size-4" aria-hidden="true" />
             {{ t('lab.backHome') }}
           </RouterLink>
         </Button>
@@ -132,65 +115,104 @@ function recordInsertRequest(payload: InsertRequestModel) {
     </PageHeader>
 
     <section class="mt-6 grid gap-4 rounded-lg border bg-card p-4 text-card-foreground">
-      <div class="grid gap-1">
-        <h2 class="text-base font-semibold">
-          {{ t('lab.sections.atomicSectionPanel.title') }}
-        </h2>
-        <p class="text-sm text-muted-foreground">
-          {{ t('lab.sections.atomicSectionPanel.description') }}
-        </p>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="grid gap-1">
+          <h2 class="text-base font-semibold">
+            {{ t('lab.sections.teachingNotes.summaryTitle') }}
+          </h2>
+          <p class="text-sm leading-6 text-muted-foreground">
+            {{ t('lab.sections.teachingNotes.summaryDescription') }}
+          </p>
+        </div>
+        <Button type="button" variant="outline" size="sm" @click="resetMockData">
+          {{ t('lab.sections.teachingNotes.reset') }}
+        </Button>
       </div>
 
-      <div class="rounded-md border bg-background p-4">
-        <AtomicSectionBlock
-          :block="mockAtomicSectionPanelBlock"
-          @select="recordEvent(t('lab.sections.atomicSectionPanel.events.selectAtomicSection', { value: mockAtomicSectionPanelBlock.title }), { id: $event })"
-          @toggle-collapse="recordEvent('toggleCollapse', { id: $event })"
-          @open-more="recordEvent('openMore', { id: $event })"
-          @select-content-block="recordEvent(t('lab.sections.atomicSectionPanel.events.selectContentBlock', { value: $event }), { id: $event })"
-          @create-atomic-section-panel="recordEvent(t('lab.sections.atomicSectionPanel.events.createPanel', { value: $event.title }), $event)"
-          @select-atomic-section-panel="recordPanelEvent('selectPanel', $event)"
-          @rename-atomic-section-panel="recordPanelEvent('renamePanel', $event)"
-          @move-atomic-section-panel="recordPanelMoveEvent"
-          @remove-atomic-section-panel="recordPanelEvent('removePanel', $event)"
-          @open-atomic-section-item-word="recordAtomicSectionItemEvent('wordEdit', $event)"
-          @move-atomic-section-item="recordAtomicSectionItemMoveEvent"
-          @remove-atomic-section-item="recordAtomicSectionItemEvent('removeItem', $event)"
-          @open-content-block-relation-word="recordContentBlockRelationEvent('wordEdit', $event)"
-          @move-content-block-relation="recordContentBlockRelationMoveEvent"
-          @remove-content-block-relation="recordContentBlockRelationEvent('removeItem', $event)"
-          @request-insert="recordInsertRequest"
-        />
+      <div class="flex flex-wrap items-center gap-2">
+        <TeachingNoteBadge :count="notes.length" />
+        <TeachingNoteBadge v-for="note in notes" :key="note.id" :note="note" />
+      </div>
+
+      <div class="grid gap-2">
+        <span class="text-xs font-medium text-muted-foreground">
+          {{ t('teachingNote.bindings') }}
+        </span>
+        <TeachingNoteBindingSummary :bindings="mockTeachingNotes[1].bindings" />
       </div>
     </section>
 
-    <section class="mt-6 grid gap-4 rounded-lg border bg-card p-4 text-card-foreground">
-      <div class="flex flex-wrap gap-2">
-        <Button type="button" @click="openOverlay(false)">
-          {{ t('lab.sections.atomicSectionPanelCreate.open') }}
-        </Button>
-        <Button type="button" variant="outline" @click="openOverlay(true)">
-          {{ t('lab.sections.atomicSectionPanelCreate.openDisabled') }}
-        </Button>
-      </div>
+    <section class="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(24rem,0.8fr)]">
+      <TeachingNoteList
+        :notes="displayedNotes"
+        :state="listState"
+        :disabled="disabled"
+        :deleting-note-id="deletingNote?.id ?? null"
+        :error="listError"
+        @create="startCreate"
+        @edit="startEdit"
+        @delete="requestDelete"
+      />
 
-      <div class="grid gap-3 rounded-md border bg-background p-4">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <h2 class="text-base font-semibold">
-              {{ t('lab.sections.atomicSectionPanelCreate.mockPageTitle') }}
-            </h2>
-            <p class="text-sm text-muted-foreground">
-              {{ t('lab.sections.atomicSectionPanelCreate.mockPageDescription') }}
-            </p>
-          </div>
-          <span class="rounded-md border px-2 py-1 text-xs text-muted-foreground">
-            {{ t('lab.sections.atomicSectionPanelCreate.sharedShellLabel') }}
-          </span>
-        </div>
-        <div class="min-h-40 rounded-md border border-dashed bg-muted/20 p-4 text-sm text-muted-foreground">
-          {{ t('lab.sections.atomicSectionPanelCreate.mockWorkspace') }}
-        </div>
+      <aside class="grid content-start gap-4">
+        <TeachingNoteEditor
+          :model-value="editorValue"
+          :mode="selectedNote ? 'edit' : 'create'"
+          :saving="saving"
+          :disabled="disabled"
+          :error="editorError"
+          @submit="submitEditor"
+          @cancel="recordFeedback(t('teachingNote.events.cancel'))"
+        />
+
+        <TeachingNoteDeleteConfirm
+          :note="deletingNote"
+          :deleting="deleting"
+          :disabled="disabled"
+          :error="deleteError"
+          @confirm="confirmDelete"
+          @cancel="recordFeedback(t('teachingNote.events.cancelDelete'))"
+        />
+      </aside>
+    </section>
+
+    <section class="mt-6 grid gap-4 rounded-lg border bg-card p-4 text-card-foreground">
+      <h2 class="text-base font-semibold">
+        {{ t('lab.sections.teachingNotes.stateTitle') }}
+      </h2>
+      <div class="flex flex-wrap gap-4">
+        <label class="flex items-center gap-2 text-sm">
+          <input v-model="listState" type="radio" value="idle" class="size-4 accent-primary" />
+          {{ t('teachingNote.state.idle') }}
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input v-model="listState" type="radio" value="loading" class="size-4 accent-primary" />
+          {{ t('teachingNote.state.loading') }}
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input v-model="listState" type="radio" value="empty" class="size-4 accent-primary" />
+          {{ t('teachingNote.state.empty') }}
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input v-model="listState" type="radio" value="error" class="size-4 accent-primary" />
+          {{ t('teachingNote.state.error') }}
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input v-model="disabled" type="checkbox" class="size-4 accent-primary" />
+          {{ t('lab.sections.teachingNotes.disabled') }}
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input v-model="saving" type="checkbox" class="size-4 accent-primary" />
+          {{ t('lab.sections.teachingNotes.saving') }}
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input v-model="deleting" type="checkbox" class="size-4 accent-primary" />
+          {{ t('lab.sections.teachingNotes.deleting') }}
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input v-model="showError" type="checkbox" class="size-4 accent-primary" />
+          {{ t('lab.sections.teachingNotes.showError') }}
+        </label>
       </div>
     </section>
 
@@ -199,18 +221,11 @@ function recordInsertRequest(payload: InsertRequestModel) {
       aria-live="polite"
     >
       <span class="font-medium text-foreground">
-        {{ t('lab.sections.atomicSectionPanelCreate.feedbackTitle') }}
+        {{ t('lab.sections.teachingNotes.feedbackTitle') }}
       </span>
       <span class="ml-2">
-        {{ feedback || t('lab.sections.atomicSectionPanelCreate.emptyFeedback') }}
+        {{ feedback || t('lab.sections.teachingNotes.emptyFeedback') }}
       </span>
     </aside>
-
-    <AtomicSectionPanelCreateOverlay
-      :model="overlayModel"
-      :open="overlayOpen"
-      @cancel="cancelOverlay"
-      @submit="submitOverlay"
-    />
   </main>
 </template>

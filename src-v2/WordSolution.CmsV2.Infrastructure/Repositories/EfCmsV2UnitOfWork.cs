@@ -29,7 +29,10 @@ public sealed class EfCmsV2UnitOfWork : ICmsV2UnitOfWork
         OutputTemplates = new EfOutputTemplateRepository(context);
         OutputForms = new EfOutputFormRepository(context);
         GeneratedFiles = new EfGeneratedFileRepository(context);
+        Tags = new EfTagRepository(context);
+        TagBindings = new EfTagBindingRepository(context);
         TeachingNotes = new EfTeachingNoteRepository(context);
+        TeachingNoteBindings = new EfTeachingNoteBindingRepository(context);
     }
 
     public ITeachingTopicRepository TeachingTopics { get; }
@@ -68,7 +71,13 @@ public sealed class EfCmsV2UnitOfWork : ICmsV2UnitOfWork
 
     public IGeneratedFileRepository GeneratedFiles { get; }
 
+    public ITagRepository Tags { get; }
+
+    public ITagBindingRepository TagBindings { get; }
+
     public ITeachingNoteRepository TeachingNotes { get; }
+
+    public ITeachingNoteBindingRepository TeachingNoteBindings { get; }
 
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

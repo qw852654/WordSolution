@@ -307,7 +307,7 @@ docs/ui/section-page.md
 
 当前已收口口径：
 
-- `Question` 缺 Stem 是失败，不是 warning。
+- 结构化解析阶段 `Question` 缺 Stem 是失败，不是 warning；讲义 Word 输出阶段缺 Stem 的题目块会作为 `MissingQuestionStem` 可跳过问题返回，生成时跳过该块。
 - Part 输出顺序固定为 `Stem / Answer / Analysis / Hint / Other`。
 - 非 `Question` 内容块默认 `NotApplicable`，不生成题目 Parts。
 - 输出 Word 样式重绑定严格 Stem-only，不使用 `Other` 兜底。

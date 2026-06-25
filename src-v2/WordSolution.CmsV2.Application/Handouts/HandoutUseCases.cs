@@ -1,4 +1,5 @@
 using WordSolution.CmsV2.Application.Common;
+using WordSolution.CmsV2.Domain.Documents;
 using WordSolution.CmsV2.Domain.Entities;
 using WordSolution.CmsV2.Domain.Enums;
 using WordSolution.CmsV2.Domain.Repositories;
@@ -8,8 +9,6 @@ namespace WordSolution.CmsV2.Application.Handouts;
 public sealed class HandoutUseCases
 {
     private const string DefaultOutputTemplateTitle = "默认 Word 模板";
-    private const string DefaultOutputTemplateDocxPath =
-        "src-v2/WordSolution.CmsV2.Infrastructure/Documents/Templates/content-block-default.docx";
     private const string DefaultOutputFormTitle = "课堂 Word";
 
     private readonly ICmsV2UnitOfWork _unitOfWork;
@@ -506,13 +505,9 @@ public sealed class HandoutUseCases
 
     private async Task<OutputTemplate> EnsureDefaultOutputTemplateAsync(CancellationToken cancellationToken)
     {
-        var defaultTemplatePath = NormalizeTemplatePath(DefaultOutputTemplateDocxPath);
         var template = (await _unitOfWork.OutputTemplates.ListAsync(cancellationToken))
             .Where(candidate => candidate.Status == OutputTemplateStatus.Active)
-            .Where(candidate => string.Equals(
-                NormalizeTemplatePath(candidate.TemplateDocxPath),
-                defaultTemplatePath,
-                StringComparison.OrdinalIgnoreCase))
+            .Where(candidate => OutputTemplatePaths.IsDefaultTemplatePath(candidate.TemplateDocxPath))
             .OrderBy(candidate => candidate.Id)
             .FirstOrDefault();
 
@@ -523,7 +518,7 @@ public sealed class HandoutUseCases
 
         template = new OutputTemplate(
             DefaultOutputTemplateTitle,
-            DefaultOutputTemplateDocxPath,
+            OutputTemplatePaths.RuntimeDefaultTemplateDocxPath,
             "CMS V2 默认 Word 输出模板");
         await _unitOfWork.OutputTemplates.AddAsync(template, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -636,11 +631,6 @@ public sealed class HandoutUseCases
     private static string NormalizeTitle(string title)
     {
         return string.IsNullOrWhiteSpace(title) ? string.Empty : title.Trim();
-    }
-
-    private static string NormalizeTemplatePath(string templateDocxPath)
-    {
-        return templateDocxPath.Trim().Replace('\\', '/');
     }
 
     private static IReadOnlyList<SectionVariantSelectionTreeTopicDto> BuildSectionVariantSelectionTree(

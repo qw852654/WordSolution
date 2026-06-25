@@ -38,7 +38,13 @@ public interface ICmsV2UnitOfWork
 
     IGeneratedFileRepository GeneratedFiles { get; }
 
+    ITagRepository Tags { get; }
+
+    ITagBindingRepository TagBindings { get; }
+
     ITeachingNoteRepository TeachingNotes { get; }
+
+    ITeachingNoteBindingRepository TeachingNoteBindings { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 

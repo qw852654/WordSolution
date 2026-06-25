@@ -25,8 +25,10 @@ import type {
   SectionWorkspaceFlowItemModel,
   AtomicSectionPanelModel,
   StructuredBlockChildModel,
+  TagModel,
   TeachingTopicTreeNodeModel,
 } from '@/types'
+import { mapTagBindingsToTags } from '@/utils/tagTargets'
 
 export interface SectionPageDataModel {
   section: SectionPageShellModel
@@ -41,6 +43,7 @@ export interface SectionPageDataModel {
 interface ResolvedContentBlock {
   block: CmsV2ContentBlockDto
   versions: CmsV2ContentBlockVersionDto[]
+  tags: TagModel[]
 }
 
 interface StructuredBlockChildContext {
@@ -191,7 +194,12 @@ async function resolveContentBlock(
   const request = Promise.all([
     cmsV2Api.getContentBlock(contentBlockId),
     cmsV2Api.listContentBlockVersions(contentBlockId),
-  ]).then(([block, versions]) => ({ block, versions }))
+    cmsV2Api.listTagBindings('ContentBlock', contentBlockId),
+  ]).then(([block, versions, tagBindings]) => ({
+    block,
+    versions,
+    tags: mapTagBindingsToTags(tagBindings),
+  }))
 
   context.blockCache.set(contentBlockId, request)
   return await request
@@ -337,6 +345,7 @@ async function buildSectionItemNode(
       id: nodeId,
       title: item.titleOverride || atomicSection.title,
       kind: 'AtomicSection',
+      sectionItemId: item.id,
       atomicSectionId: item.targetId,
       typeLabel: mapAtomicSectionType(atomicSection.type),
       difficulty: mapDifficulty(atomicSection.difficulty),
@@ -364,6 +373,8 @@ async function buildSectionItemNode(
     id: nodeId,
     title: item.titleOverride || resolvedBlock.block.title,
     kind: isComposite ? 'CompositeBlock' : 'ContentBlock',
+    sectionItemId: item.id,
+    contentBlockId: item.targetId,
     typeLabel: mapContentBlockType(resolvedBlock.block.blockType),
     difficulty: mapDifficulty(resolvedBlock.block.difficulty),
     difficultyValue: resolvedBlock.block.difficulty,
@@ -408,6 +419,7 @@ async function buildAtomicSectionItemNode(
     id: nodeId,
     title: item.titleOverride || resolvedBlock.block.title,
     kind: isComposite ? 'CompositeBlock' : 'ContentBlock',
+    contentBlockId: item.contentBlockId,
     atomicSectionId: item.atomicSectionId,
     atomicSectionPanelId: item.atomicSectionPanelId ?? undefined,
     atomicSectionItemId: item.id,
@@ -495,8 +507,10 @@ async function buildContentBlockRelationNode(
     id: nodeId,
     title: relation.titleOverride || resolvedBlock.block.title,
     kind: isComposite ? 'CompositeBlock' : 'ContentBlock',
+    contentBlockId: relation.childBlockId,
     typeLabel: mapContentBlockType(resolvedBlock.block.blockType),
     difficulty: mapDifficulty(resolvedBlock.block.difficulty),
+    difficultyValue: resolvedBlock.block.difficulty,
     status: relation.referenceMode,
     targetStatus: mapStatus(resolvedBlock.block.status),
     hasWordDocument: hasContentBlockWordDocument(resolvedBlock),
@@ -807,6 +821,7 @@ async function buildContentBlockDisplay(
       plainText: part.plainText,
       warningMessage: part.warningMessage,
     })),
+    tags: resolvedBlock.tags,
     disabled: resolvedBlock.block.status === 'Archived',
   }
 }

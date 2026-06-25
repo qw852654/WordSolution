@@ -421,3 +421,30 @@ TeachingTopic
 只有 `SectionVariant` 是真实写入目标。`TeachingTopic` 和 `Section` 只作为分组展示。
 
 `SectionVariantSelectionDialog` 与普通单选 Picker 不同，它允许批量追加 `SectionVariant`，并通过纯函数维护 checked / partial / existing locked 状态。
+
+## 5.5 标签与教学评注 UI 边界
+
+`Tag` 标签系统与 `TeachingNote` 教学评注系统的第一版前端入口以 Inspector 为主。
+
+标签系统：
+
+- 使用 `TagMultiSelect` 在 Inspector 中编辑。
+- 第一版只编辑 `ContentBlock / AtomicSection / Section` 标签。
+- 从 `SectionItem` 或 `AtomicSectionItem` 的 `ContentBlock` 展示处编辑标签时，实际保存目标是 `ContentBlock`。
+- 第一版不做标签管理页和改色入口。
+- 标签颜色使用 `Tag.Color` 保存的 theme token，不在业务组件中直接写死颜色。
+
+教学评注系统：
+
+- 使用 `TeachingNoteList / TeachingNoteEditor / TeachingNoteCard / TeachingNoteBindingSummary` 在 Inspector 中查看、创建、编辑和删除。
+- 第一版允许绑定 `ContentBlock / Section / AtomicSection / AtomicSectionPanel / AtomicSectionItem / SectionItem`。
+- 创建评注时默认绑定当前 Inspector 对象。
+- 主工作区最多显示“有 N 条评注”轻提示，不展开完整评注内容。
+- UI 不展示 `Title / Status / NextAction / SortOrder`。
+
+组件边界：
+
+- 业务组件只 emit 用户意图。
+- API 调用归页面或 action composable。
+- 不从组件直接调用 CMS V2 API。
+- 不对接 V1 API。

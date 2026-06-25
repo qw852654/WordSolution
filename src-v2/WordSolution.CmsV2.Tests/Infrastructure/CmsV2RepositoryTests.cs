@@ -49,7 +49,10 @@ public sealed class CmsV2RepositoryTests
         Assert.Empty(await unitOfWork.OutputTemplates.ListAsync());
         Assert.Empty(await unitOfWork.OutputForms.ListAsync());
         Assert.Empty(await unitOfWork.GeneratedFiles.ListAsync());
+        Assert.Empty(await unitOfWork.Tags.ListAsync());
+        Assert.Empty(await unitOfWork.TagBindings.ListAsync());
         Assert.Empty(await unitOfWork.TeachingNotes.ListAsync());
+        Assert.Empty(await unitOfWork.TeachingNoteBindings.ListAsync());
     }
 
     [Fact]
@@ -205,13 +208,32 @@ public sealed class CmsV2RepositoryTests
             DateTimeOffset.Parse("2026-06-09T12:00:00+08:00"));
         await unitOfWork.GeneratedFiles.AddAsync(generatedFile);
 
+        var tagA = new Tag("力学", "tag-blue");
+        var tagB = new Tag("Energy", "tag-green");
+        await unitOfWork.Tags.AddAsync(tagA);
+        await unitOfWork.Tags.AddAsync(tagB);
+        await unitOfWork.SaveChangesAsync();
+
+        var contentBlockBinding = new TagBinding(tagA.Id, TagBindingTargetType.ContentBlock, blockA.Id);
+        var atomicSectionBinding = new TagBinding(tagA.Id, TagBindingTargetType.AtomicSection, atomicSection.Id);
+        var sectionBinding = new TagBinding(tagB.Id, TagBindingTargetType.Section, sectionA.Id);
+        var secondContentBlockBinding = new TagBinding(tagB.Id, TagBindingTargetType.ContentBlock, blockA.Id);
+        await unitOfWork.TagBindings.AddAsync(contentBlockBinding);
+        await unitOfWork.TagBindings.AddAsync(atomicSectionBinding);
+        await unitOfWork.TagBindings.AddAsync(sectionBinding);
+        await unitOfWork.TagBindings.AddAsync(secondContentBlockBinding);
+        await unitOfWork.SaveChangesAsync();
+
         var note = new TeachingNote(
-            TeachingNoteTargetType.ContentBlock,
-            blockA.Id,
-            TeachingNoteType.TeachingLogic,
-            "讲解提醒",
-            "先讲守恒条件。");
+            TeachingNoteType.RevisionSuggestion,
+            "Add a conservation-law bridge before this block.",
+            effectLevel: null,
+            updatedTime: DateTimeOffset.Parse("2026-06-09T12:30:00+08:00"));
         await unitOfWork.TeachingNotes.AddAsync(note);
+        await unitOfWork.SaveChangesAsync();
+
+        var noteBinding = new TeachingNoteBinding(note.Id, TeachingNoteBindingTargetType.ContentBlock, blockA.Id);
+        await unitOfWork.TeachingNoteBindings.AddAsync(noteBinding);
         await unitOfWork.SaveChangesAsync();
 
         Assert.Equal(["动能定理", "机械能守恒"], (await unitOfWork.TeachingTopics.ListChildrenAsync(parentTopic.Id)).Select(x => x.Name));
@@ -238,7 +260,69 @@ public sealed class CmsV2RepositoryTests
         Assert.Equal([outputForm.Id], (await unitOfWork.OutputForms.ListByHandoutVersionAsync(handoutVersion.Id)).Select(x => x.Id));
         Assert.Equal([outputForm.Id], (await unitOfWork.OutputForms.ListByTemplateAsync(template.Id)).Select(x => x.Id));
         Assert.Equal([generatedFile.Id], (await unitOfWork.GeneratedFiles.ListByOutputFormAsync(outputForm.Id)).Select(x => x.Id));
-        Assert.Equal([note.Id], (await unitOfWork.TeachingNotes.ListByTargetAsync(TeachingNoteTargetType.ContentBlock, blockA.Id)).Select(x => x.Id));
+        Assert.Equal(tagB.Id, (await unitOfWork.Tags.GetByNormalizedNameAsync("energy"))?.Id);
+        Assert.Equal([tagB.Id, tagA.Id], (await unitOfWork.Tags.SearchActiveAsync("")).Select(x => x.Id));
+        Assert.Equal(
+            [contentBlockBinding.Id, secondContentBlockBinding.Id],
+            (await unitOfWork.TagBindings.ListByTargetAsync(TagBindingTargetType.ContentBlock, blockA.Id)).Select(x => x.Id));
+        Assert.Equal(
+            [contentBlockBinding.Id, atomicSectionBinding.Id],
+            (await unitOfWork.TagBindings.ListByTagAsync(tagA.Id)).Select(x => x.Id));
+        Assert.Equal([note.Id], (await unitOfWork.TeachingNotes.ListByTargetAsync(TeachingNoteBindingTargetType.ContentBlock, blockA.Id)).Select(x => x.Id));
+        Assert.Equal([noteBinding.Id], (await unitOfWork.TeachingNoteBindings.ListByTargetAsync(TeachingNoteBindingTargetType.ContentBlock, blockA.Id)).Select(x => x.Id));
+        Assert.Equal([noteBinding.Id], (await unitOfWork.TeachingNoteBindings.ListByTeachingNoteAsync(note.Id)).Select(x => x.Id));
+    }
+
+    [Fact]
+    public async Task Teaching_note_repositories_sort_by_updated_time_and_delete_bindings_with_note()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+
+        var olderNote = new TeachingNote(
+            TeachingNoteType.General,
+            "Older observation for the same target.",
+            effectLevel: null,
+            updatedTime: DateTimeOffset.Parse("2026-06-09T12:00:00+08:00"));
+        var newerNote = new TeachingNote(
+            TeachingNoteType.RevisionSuggestion,
+            "Add a transition because this item felt too difficult.",
+            TeachingNoteEffectLevel.Weak,
+            updatedTime: DateTimeOffset.Parse("2026-06-09T13:00:00+08:00"));
+
+        await unitOfWork.TeachingNotes.AddAsync(olderNote);
+        await unitOfWork.TeachingNotes.AddAsync(newerNote);
+        await unitOfWork.SaveChangesAsync();
+
+        var olderBinding = new TeachingNoteBinding(olderNote.Id, TeachingNoteBindingTargetType.SectionItem, 10);
+        var newerBinding = new TeachingNoteBinding(newerNote.Id, TeachingNoteBindingTargetType.SectionItem, 10);
+        var otherBinding = new TeachingNoteBinding(newerNote.Id, TeachingNoteBindingTargetType.AtomicSectionItem, 11);
+        await unitOfWork.TeachingNoteBindings.AddAsync(olderBinding);
+        await unitOfWork.TeachingNoteBindings.AddAsync(newerBinding);
+        await unitOfWork.TeachingNoteBindings.AddAsync(otherBinding);
+        await unitOfWork.SaveChangesAsync();
+
+        var targetNotes = await unitOfWork.TeachingNotes.ListByTargetAsync(
+            TeachingNoteBindingTargetType.SectionItem,
+            10);
+        var searchResults = await unitOfWork.TeachingNotes.SearchAsync(
+            keyword: "transition",
+            noteType: TeachingNoteType.RevisionSuggestion,
+            effectLevel: TeachingNoteEffectLevel.Weak,
+            occurredFrom: null,
+            occurredTo: null);
+
+        Assert.Equal([newerNote.Id, olderNote.Id], targetNotes.Select(note => note.Id));
+        Assert.Equal([newerNote.Id], searchResults.Select(note => note.Id));
+
+        unitOfWork.TeachingNotes.Remove(newerNote);
+        await unitOfWork.SaveChangesAsync();
+
+        Assert.Null(await unitOfWork.TeachingNotes.GetByIdAsync(newerNote.Id));
+        Assert.Empty(await unitOfWork.TeachingNoteBindings.ListByTeachingNoteAsync(newerNote.Id));
+        Assert.Equal([olderNote.Id], (await unitOfWork.TeachingNotes.ListByTargetAsync(
+            TeachingNoteBindingTargetType.SectionItem,
+            10)).Select(note => note.Id));
     }
 
     [Fact]
@@ -339,6 +423,38 @@ public sealed class CmsV2RepositoryTests
             AtomicSectionTeachingRole.Example,
             Difficulty.Basic,
             sortOrder: 2));
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => unitOfWork.SaveChangesAsync());
+    }
+
+    [Fact]
+    public async Task Tags_normalized_name_unique_constraint_blocks_case_insensitive_duplicates()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+
+        await unitOfWork.Tags.AddAsync(new Tag("Energy", "tag-blue"));
+        await unitOfWork.SaveChangesAsync();
+
+        await unitOfWork.Tags.AddAsync(new Tag(" energy ", "tag-green"));
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => unitOfWork.SaveChangesAsync());
+    }
+
+    [Fact]
+    public async Task Tag_binding_unique_constraint_blocks_duplicate_tag_target_binding()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+
+        var tag = new Tag("力学", "tag-blue");
+        await unitOfWork.Tags.AddAsync(tag);
+        await unitOfWork.SaveChangesAsync();
+
+        await unitOfWork.TagBindings.AddAsync(new TagBinding(tag.Id, TagBindingTargetType.ContentBlock, 1));
+        await unitOfWork.SaveChangesAsync();
+
+        await unitOfWork.TagBindings.AddAsync(new TagBinding(tag.Id, TagBindingTargetType.ContentBlock, 1));
 
         await Assert.ThrowsAsync<DbUpdateException>(() => unitOfWork.SaveChangesAsync());
     }

@@ -1,3 +1,3 @@
 export const componentLabScenarios = [
-  { id: 'sectionVariantCreatePanel', state: 'ready' },
+  { id: 'teachingNoteFoundation', state: 'ready' },
 ] as const

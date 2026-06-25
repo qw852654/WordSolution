@@ -46,7 +46,7 @@ public abstract class EfRepository<TEntity> : IRepository<TEntity>
         Set.Update(entity);
     }
 
-    public void Remove(TEntity entity)
+    public virtual void Remove(TEntity entity)
     {
         ArgumentNullException.ThrowIfNull(entity);
 

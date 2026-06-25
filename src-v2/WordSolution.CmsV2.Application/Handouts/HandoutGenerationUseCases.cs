@@ -11,22 +11,26 @@ namespace WordSolution.CmsV2.Application.Handouts;
 public sealed class HandoutGenerationUseCases
 {
     private const int MaxContentBlockExpandDepth = 10;
+    private const string MissingQuestionStemIssueCode = "MissingQuestionStem";
     private static readonly QuestionOutputStyleOptions QuestionOutputStyles = QuestionOutputStyleOptions.Default;
 
     private readonly ICmsV2UnitOfWork _unitOfWork;
     private readonly ICmsV2FileAssetPathProvider _pathProvider;
     private readonly IContentBlockFileStore _fileStore;
+    private readonly IOutputTemplatePathResolver _outputTemplatePathResolver;
     private readonly IHandoutDocumentGenerator _documentGenerator;
 
     public HandoutGenerationUseCases(
         ICmsV2UnitOfWork unitOfWork,
         ICmsV2FileAssetPathProvider pathProvider,
         IContentBlockFileStore fileStore,
+        IOutputTemplatePathResolver outputTemplatePathResolver,
         IHandoutDocumentGenerator documentGenerator)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _pathProvider = pathProvider ?? throw new ArgumentNullException(nameof(pathProvider));
         _fileStore = fileStore ?? throw new ArgumentNullException(nameof(fileStore));
+        _outputTemplatePathResolver = outputTemplatePathResolver ?? throw new ArgumentNullException(nameof(outputTemplatePathResolver));
         _documentGenerator = documentGenerator ?? throw new ArgumentNullException(nameof(documentGenerator));
     }
 
@@ -50,10 +54,15 @@ public sealed class HandoutGenerationUseCases
                     command.OutputFormId,
                     transactionCancellationToken);
                 var issues = await ValidateResolvedHandoutWordGenerationAsync(context, transactionCancellationToken);
-                if (issues.Count > 0)
+                var blockingIssues = GetBlockingIssues(issues);
+                if (blockingIssues.Count > 0)
                 {
-                    throw new CmsV2ApplicationException(CreateValidationFailureMessage(issues));
+                    throw new CmsV2ApplicationException(CreateValidationFailureMessage(blockingIssues));
                 }
+
+                var generationContent = RemoveSkippedContentBlocks(
+                    context.ResolvedContent,
+                    issues);
 
                 outputDocxPath = _pathProvider.GetGeneratedHandoutDocxPath(
                     command.BankRootDirectory,
@@ -64,8 +73,8 @@ public sealed class HandoutGenerationUseCases
 
                 await _documentGenerator.GenerateWordAsync(
                     context.HandoutVersion.Title,
-                    context.OutputTemplate.TemplateDocxPath,
-                    context.ResolvedContent.Elements,
+                    context.ResolvedTemplateDocxPath,
+                    generationContent.Elements,
                     outputDocxPath,
                     generatedTime,
                     transactionCancellationToken);
@@ -74,7 +83,7 @@ public sealed class HandoutGenerationUseCases
                     context.OutputForm.Id,
                     context.HandoutVersion.Id,
                     generatedTime,
-                    context.ResolvedContent.Sources);
+                    generationContent.Sources);
                 var generatedFile = new GeneratedFile(
                     context.OutputForm.Id,
                     outputDocxPath,
@@ -120,7 +129,7 @@ public sealed class HandoutGenerationUseCases
 
         var context = await ResolveHandoutWordGenerationContextAsync(command.OutputFormId, cancellationToken);
         var issues = await ValidateResolvedHandoutWordGenerationAsync(context, cancellationToken);
-        return new HandoutWordGenerationValidationResult(issues.Count == 0, issues);
+        return new HandoutWordGenerationValidationResult(GetBlockingIssues(issues).Count == 0, issues);
     }
 
     private async Task<ResolvedHandoutWordGenerationContext> ResolveHandoutWordGenerationContextAsync(
@@ -140,7 +149,8 @@ public sealed class HandoutGenerationUseCases
             outputForm.OutputTemplateId,
             cancellationToken);
 
-        if (!await _fileStore.ExistsAsync(outputTemplate.TemplateDocxPath, cancellationToken))
+        var resolvedTemplateDocxPath = _outputTemplatePathResolver.ResolveTemplateDocxPath(outputTemplate.TemplateDocxPath);
+        if (!await _fileStore.ExistsAsync(resolvedTemplateDocxPath, cancellationToken))
         {
             throw new CmsV2ApplicationException($"OutputTemplate file was not found: {outputTemplate.TemplateDocxPath}");
         }
@@ -153,6 +163,7 @@ public sealed class HandoutGenerationUseCases
             outputForm,
             handoutVersion,
             outputTemplate,
+            resolvedTemplateDocxPath,
             resolvedContent);
     }
 
@@ -161,7 +172,7 @@ public sealed class HandoutGenerationUseCases
         CancellationToken cancellationToken)
     {
         var issues = await _documentGenerator.ValidateWordGenerationAsync(
-            context.OutputTemplate.TemplateDocxPath,
+            context.ResolvedTemplateDocxPath,
             context.ResolvedContent.Elements,
             cancellationToken);
 
@@ -177,6 +188,48 @@ public sealed class HandoutGenerationUseCases
     private static string CreateValidationFailureMessage(IReadOnlyList<HandoutDocumentGenerationIssue> issues)
     {
         return string.Join(Environment.NewLine, issues.Select(issue => $"{issue.Code}: {issue.Message}"));
+    }
+
+    private static IReadOnlyList<HandoutDocumentGenerationIssue> GetBlockingIssues(
+        IReadOnlyList<HandoutDocumentGenerationIssue> issues)
+    {
+        return issues
+            .Where(issue => !IsSkippableMissingQuestionStemIssue(issue))
+            .ToArray();
+    }
+
+    private static bool IsSkippableMissingQuestionStemIssue(HandoutDocumentGenerationIssue issue)
+    {
+        return string.Equals(issue.Code, MissingQuestionStemIssueCode, StringComparison.Ordinal)
+            && issue.ContentBlockId.HasValue
+            && issue.ContentBlockVersionId.HasValue;
+    }
+
+    private static ResolvedHandoutContent RemoveSkippedContentBlocks(
+        ResolvedHandoutContent content,
+        IReadOnlyList<HandoutDocumentGenerationIssue> issues)
+    {
+        var skippedBlockVersions = issues
+            .Where(IsSkippableMissingQuestionStemIssue)
+            .Select(issue => (ContentBlockId: issue.ContentBlockId!.Value, ContentBlockVersionId: issue.ContentBlockVersionId!.Value))
+            .ToHashSet();
+        if (skippedBlockVersions.Count == 0)
+        {
+            return content;
+        }
+
+        var sources = content.Sources
+            .Where(source => !skippedBlockVersions.Contains((source.ContentBlockId, source.ContentBlockVersionId)))
+            .Select((source, index) => source with { Sequence = index + 1 })
+            .ToArray();
+        var elements = content.Elements
+            .Where(element => element.Kind != HandoutDocumentElementKind.ContentBlock
+                || !element.ContentBlockId.HasValue
+                || !element.ContentBlockVersionId.HasValue
+                || !skippedBlockVersions.Contains((element.ContentBlockId.Value, element.ContentBlockVersionId.Value)))
+            .ToArray();
+
+        return new ResolvedHandoutContent(sources, elements);
     }
 
     private async Task<ResolvedHandoutContent> ResolveHandoutContentAsync(
@@ -602,6 +655,7 @@ public sealed class HandoutGenerationUseCases
         OutputForm OutputForm,
         HandoutVersion HandoutVersion,
         OutputTemplate OutputTemplate,
+        string ResolvedTemplateDocxPath,
         ResolvedHandoutContent ResolvedContent);
 
     private sealed record ResolvedOutputStemStyle(

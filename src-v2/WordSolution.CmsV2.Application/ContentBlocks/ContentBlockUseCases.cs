@@ -14,6 +14,36 @@ public sealed class ContentBlockUseCases
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
+    public async Task<IReadOnlyList<ContentBlock>> ListContentBlocksAsync(
+        SearchContentBlocksCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var contentBlocks = await _unitOfWork.ContentBlocks.ListAsync(cancellationToken);
+        var tagIds = NormalizeTagIds(command.TagIds);
+        if (tagIds.Count == 0)
+        {
+            return contentBlocks;
+        }
+
+        HashSet<int>? matchingContentBlockIds = null;
+        foreach (var tagId in tagIds)
+        {
+            var boundContentBlockIds = (await _unitOfWork.TagBindings.ListByTagAsync(tagId, cancellationToken))
+                .Where(binding => binding.TargetType == TagBindingTargetType.ContentBlock)
+                .Select(binding => binding.TargetId)
+                .ToHashSet();
+
+            matchingContentBlockIds = matchingContentBlockIds is null
+                ? boundContentBlockIds
+                : matchingContentBlockIds.Intersect(boundContentBlockIds).ToHashSet();
+        }
+
+        matchingContentBlockIds ??= [];
+        return contentBlocks
+            .Where(block => matchingContentBlockIds.Contains(block.Id))
+            .ToList();
+    }
+
     public async Task<CreatedEntityResult> CreateContentBlockAsync(
         CreateContentBlockCommand command,
         CancellationToken cancellationToken = default)
@@ -168,6 +198,30 @@ public sealed class ContentBlockUseCases
         }, cancellationToken);
 
         return result!;
+    }
+
+    private static IReadOnlyList<int> NormalizeTagIds(IReadOnlyList<int>? tagIds)
+    {
+        if (tagIds is null)
+        {
+            return [];
+        }
+
+        var results = new List<int>();
+        foreach (var tagId in tagIds)
+        {
+            if (tagId <= 0)
+            {
+                throw new CmsV2ApplicationException("TagId must be greater than 0.");
+            }
+
+            if (!results.Contains(tagId))
+            {
+                results.Add(tagId);
+            }
+        }
+
+        return results;
     }
 
     private async Task SetCurrentContentBlockVersionCoreAsync(

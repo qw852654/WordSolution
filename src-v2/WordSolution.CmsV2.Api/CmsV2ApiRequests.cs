@@ -168,6 +168,26 @@ public sealed record ChangeAtomicSectionItemClassificationRequest(
     AtomicSectionTeachingRole TeachingRole,
     Difficulty Difficulty);
 
+public sealed record CreateTagRequest(string Name, string? Color = null);
+
+public sealed record UpdateTagRequest(string? Name = null, string? Color = null);
+
+public sealed record SetTargetTagsRequest(
+    TagBindingTargetType TargetType,
+    int TargetId,
+    IReadOnlyList<int>? TagIds = null);
+
+public sealed record TeachingNoteBindingRequest(
+    TeachingNoteBindingTargetType TargetType,
+    int TargetId);
+
+public sealed record CreateTeachingNoteRequest(
+    TeachingNoteType NoteType,
+    string Content,
+    TeachingNoteEffectLevel? EffectLevel = null,
+    DateTimeOffset? OccurredAt = null,
+    IReadOnlyList<TeachingNoteBindingRequest>? Bindings = null);
+
 public sealed record CreateSectionVariantRequest(
     int SectionId,
     string Title,
@@ -248,11 +268,3 @@ public sealed record CreateOutputFormRequest(
     int SortOrder = 0);
 
 public sealed record GenerateHandoutWordRequest(DateTimeOffset? GeneratedTime = null);
-
-public sealed record CreateTeachingNoteRequest(
-    TeachingNoteTargetType TargetType,
-    int TargetId,
-    TeachingNoteType NoteType,
-    string Title,
-    string Content,
-    TeachingNoteStatus Status = TeachingNoteStatus.Active);

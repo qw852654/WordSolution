@@ -23,6 +23,9 @@ namespace WordSolution.CmsV2.Tests.Application;
 
 public sealed class CmsV2HandoutGenerationUseCaseTests
 {
+    private const string LegacyDefaultOutputTemplateDocxPath =
+        "src-v2/WordSolution.CmsV2.Infrastructure/Documents/Templates/content-block-default.docx";
+
     [Fact]
     public async Task GenerateHandoutWord_generates_file_generated_record_and_manifest_for_direct_content_block()
     {
@@ -67,6 +70,40 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
         Assert.Equal(block.Version.Id, source.GetProperty("contentBlockVersionId").GetInt32());
         Assert.Equal(1, source.GetProperty("versionNumber").GetInt32());
         Assert.Equal(block.Version.DocxPath, source.GetProperty("docxPath").GetString());
+    }
+
+    [Fact]
+    public async Task GenerateHandoutWord_resolves_legacy_default_template_path_from_runtime_output_directory()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        var generatedTime = new DateTimeOffset(2026, 6, 24, 0, 0, 0, TimeSpan.Zero);
+        var setup = await CreateOutputFormAsync(
+            unitOfWork,
+            bankRootDirectory,
+            templateDocxPath: LegacyDefaultOutputTemplateDocxPath);
+        await CreateRuntimeDefaultOutputTemplateAsync("Runtime default template");
+        var block = await CreateContentBlockWithVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "默认模板路径兼容",
+            "旧默认模板路径可生成正文",
+            versionNumber: 1,
+            isCurrent: true);
+        await unitOfWork.HandoutVersionItems.AddAsync(new HandoutVersionItem(
+            setup.HandoutVersion.Id,
+            HandoutVersionItemTargetType.ContentBlock,
+            block.ContentBlock.Id,
+            sortOrder: 1));
+        await unitOfWork.SaveChangesAsync();
+
+        var result = await CreateUseCases(unitOfWork).GenerateHandoutWordAsync(
+            new GenerateHandoutWordCommand(bankRootDirectory, setup.OutputForm.Id, generatedTime));
+        var outputText = ReadDocxText(result.FilePath);
+
+        Assert.True(File.Exists(result.FilePath));
+        Assert.Contains("旧默认模板路径可生成正文", outputText);
     }
 
     [Fact]
@@ -548,7 +585,7 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
     }
 
     [Fact]
-    public async Task ValidateHandoutWordGeneration_reports_missing_question_stem_and_generate_does_not_write_generated_record()
+    public async Task GenerateHandoutWord_skips_question_without_effective_stem_and_keeps_generation_valid()
     {
         await using var context = await CreateMigratedContextAsync();
         var unitOfWork = new EfCmsV2UnitOfWork(context);
@@ -559,7 +596,12 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
             "例题",
             "变式",
             "练习题");
-        var block = await CreateQuestionContentBlockWithOnlyOtherVersionAsync(
+        var validBlock = await CreateQuestionContentBlockWithStyledVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Valid question",
+            "Valid stem");
+        var skippedBlock = await CreateQuestionContentBlockWithOnlyOtherVersionAsync(
             unitOfWork,
             bankRootDirectory,
             "Only other question",
@@ -567,27 +609,39 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
         await unitOfWork.HandoutVersionItems.AddAsync(new HandoutVersionItem(
             setup.HandoutVersion.Id,
             HandoutVersionItemTargetType.ContentBlock,
-            block.ContentBlock.Id,
+            validBlock.ContentBlock.Id,
             sortOrder: 1));
+        await unitOfWork.HandoutVersionItems.AddAsync(new HandoutVersionItem(
+            setup.HandoutVersion.Id,
+            HandoutVersionItemTargetType.ContentBlock,
+            skippedBlock.ContentBlock.Id,
+            sortOrder: 2));
         await unitOfWork.SaveChangesAsync();
         var useCases = CreateUseCases(unitOfWork);
 
         var validation = await useCases.ValidateHandoutWordGenerationAsync(
             new ValidateHandoutWordGenerationCommand(bankRootDirectory, setup.OutputForm.Id));
-        var exception = await Assert.ThrowsAsync<CmsV2ApplicationException>(
-            () => useCases.GenerateHandoutWordAsync(
-                new GenerateHandoutWordCommand(bankRootDirectory, setup.OutputForm.Id)));
+        var result = await useCases.GenerateHandoutWordAsync(
+            new GenerateHandoutWordCommand(bankRootDirectory, setup.OutputForm.Id));
+        var outputText = ReadDocxText(result.FilePath);
+        using var manifest = JsonDocument.Parse(result.VersionManifestJson);
+        var generatedFiles = await unitOfWork.GeneratedFiles.ListByOutputFormAsync(setup.OutputForm.Id);
+        var source = Assert.Single(manifest.RootElement.GetProperty("sources").EnumerateArray());
 
         var issue = Assert.Single(validation.Issues);
-        Assert.False(validation.IsValid);
+        Assert.True(validation.IsValid);
         Assert.Equal("MissingQuestionStem", issue.Code);
         Assert.Equal(setup.OutputForm.Id, issue.OutputFormId);
-        Assert.Equal(block.ContentBlock.Id, issue.ContentBlockId);
-        Assert.Equal(block.Version.Id, issue.ContentBlockVersionId);
+        Assert.Equal(skippedBlock.ContentBlock.Id, issue.ContentBlockId);
+        Assert.Equal(skippedBlock.Version.Id, issue.ContentBlockVersionId);
         Assert.Equal("练习题", issue.RequiredStyleName);
         Assert.Equal("Practice", issue.OccurrenceRole);
-        Assert.Contains("Stem", exception.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Empty(await unitOfWork.GeneratedFiles.ListByOutputFormAsync(setup.OutputForm.Id));
+        Assert.Contains("Valid stem", outputText);
+        Assert.DoesNotContain("Unknown style content", outputText);
+        Assert.Single(generatedFiles);
+        Assert.Equal(validBlock.ContentBlock.Id, source.GetProperty("contentBlockId").GetInt32());
+        Assert.Equal(validBlock.Version.Id, source.GetProperty("contentBlockVersionId").GetInt32());
+        Assert.Equal(1, source.GetProperty("sequence").GetInt32());
     }
 
     [Fact]
@@ -836,16 +890,23 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
             unitOfWork,
             new CmsV2FileAssetPathProvider(),
             new LocalContentBlockFileStore(),
+            new OutputTemplatePathResolver(
+                AppContext.BaseDirectory,
+                Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"))),
             new AsposeHandoutDocumentGenerator());
     }
 
     private static async Task<OutputSetup> CreateOutputFormAsync(
         EfCmsV2UnitOfWork unitOfWork,
         string bankRootDirectory,
-        OutputFormat outputFormat = OutputFormat.Word)
+        OutputFormat outputFormat = OutputFormat.Word,
+        string? templateDocxPath = null)
     {
-        var templatePath = Path.Combine(bankRootDirectory, "templates", "default.docx");
-        await CreateMinimalDocxAsync(templatePath, "模板正文");
+        var templatePath = templateDocxPath ?? Path.Combine(bankRootDirectory, "templates", "default.docx");
+        if (templateDocxPath is null)
+        {
+            await CreateMinimalDocxAsync(templatePath, "模板正文");
+        }
         var handout = new Handout("机械能讲义");
         await unitOfWork.Handouts.AddAsync(handout);
         await unitOfWork.SaveChangesAsync();
@@ -865,6 +926,21 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
         await unitOfWork.SaveChangesAsync();
 
         return new OutputSetup(handout, handoutVersion, template, outputForm);
+    }
+
+    private static async Task CreateRuntimeDefaultOutputTemplateAsync(string text)
+    {
+        var runtimeTemplatePath = Path.Combine(
+            AppContext.BaseDirectory,
+            "Documents",
+            "Templates",
+            "content-block-default.docx");
+        if (File.Exists(runtimeTemplatePath))
+        {
+            return;
+        }
+
+        await CreateMinimalDocxAsync(runtimeTemplatePath, text);
     }
 
     private static async Task<ContentBlockVersionSetup> CreateContentBlockWithTwoVersionsAsync(

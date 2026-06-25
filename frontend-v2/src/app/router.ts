@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import ComponentLabPage from '@/pages/ComponentLabPage.vue'
+import ContentBlocksPage from '@/pages/ContentBlocksPage.vue'
 import HandoutManagementPage from '@/pages/HandoutManagementPage.vue'
 import HandoutPage from '@/pages/HandoutPage.vue'
 import HomePage from '@/pages/HomePage.vue'
@@ -61,14 +62,7 @@ const router = createRouter({
     {
       path: '/content-blocks',
       name: 'content-blocks',
-      component: PlaceholderPage,
-      props: {
-        eyebrowKey: 'routes.contentBlocks.eyebrow',
-        titleKey: 'routes.contentBlocks.title',
-        descriptionKey: 'routes.contentBlocks.description',
-        emptyTitleKey: 'routes.contentBlocks.emptyTitle',
-        emptyDescriptionKey: 'routes.contentBlocks.emptyDescription',
-      },
+      component: ContentBlocksPage,
     },
     {
       path: '/content-blocks/:contentBlockId',

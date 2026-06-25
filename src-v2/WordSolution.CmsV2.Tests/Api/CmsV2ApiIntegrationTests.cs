@@ -14,6 +14,7 @@ using WordSolution.CmsV2.Application.ContentBlocks;
 using WordSolution.CmsV2.Application.Handouts;
 using WordSolution.CmsV2.Application.SectionVariants;
 using WordSolution.CmsV2.Application.Sections;
+using WordSolution.CmsV2.Application.Tags;
 using WordSolution.CmsV2.Application.TeachingStructure;
 using WordSolution.CmsV2.Domain.Documents;
 using WordSolution.CmsV2.Domain.Enums;
@@ -44,6 +45,7 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ICmsV2UnitOfWork>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ICmsV2FileAssetPathProvider>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IContentBlockFileStore>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IOutputTemplatePathResolver>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IContentBlockDocumentProcessor>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IContentBlockEditSessionStore>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IContentBlockEditSessionFileStore>());
@@ -60,6 +62,8 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<TeachingStructureUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<HandoutUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<HandoutGenerationUseCases>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<TagUseCases>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<TagBindingUseCases>());
         Assert.Contains(
             factory.Services.GetServices<IHostedService>(),
             service => service.GetType().Name == "ContentBlockEditSessionBackgroundService");
@@ -171,6 +175,223 @@ public sealed class CmsV2ApiIntegrationTests
             && version.GetProperty("partParseStatus").GetString() == "Parsed");
         Assert.Equal(["Stem", "Answer", "Analysis"], parts.Select(part => part.GetProperty("partType").GetString()));
         Assert.Contains("data-question-part=\"Stem\"", html);
+    }
+
+    [Fact]
+    public async Task Tag_endpoints_manage_tags_bindings_and_content_block_and_filter()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "标签主题", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "标签 Section" });
+        var sectionId = section.GetProperty("id").GetInt32();
+        var bothBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks",
+            new { sectionId, title = "双标签题", blockType = "Question" });
+        var singleBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks",
+            new { sectionId, title = "单标签题", blockType = "Question" });
+        var bothBlockId = bothBlock.GetProperty("id").GetInt32();
+        var singleBlockId = singleBlock.GetProperty("id").GetInt32();
+
+        var mechanics = await PostJsonAsync(client, "/api/cms-v2/tags", new { name = "  力学  ", color = "tag-purple" });
+        var mechanicsDuplicate = await PostJsonAsync(client, "/api/cms-v2/tags", new { name = "力学" });
+        var energy = await PostJsonAsync(client, "/api/cms-v2/tags", new { name = "机械能守恒" });
+        var mechanicsId = mechanics.GetProperty("id").GetInt32();
+        var energyId = energy.GetProperty("id").GetInt32();
+        var invalidCreateColor = await client.PostAsJsonAsync(
+            "/api/cms-v2/tags",
+            new { name = "InvalidCreateColor", color = "tag-cyan" });
+
+        await PutJsonAsync(
+            client,
+            "/api/cms-v2/tag-bindings",
+            new { targetType = "ContentBlock", targetId = bothBlockId, tagIds = new[] { mechanicsId, energyId, energyId } });
+        await PutJsonAsync(
+            client,
+            "/api/cms-v2/tag-bindings",
+            new { targetType = "ContentBlock", targetId = singleBlockId, tagIds = new[] { mechanicsId } });
+        await PutJsonAsync(
+            client,
+            "/api/cms-v2/tag-bindings",
+            new { targetType = "Section", targetId = sectionId, tagIds = new[] { mechanicsId } });
+
+        var targetBindings = await client.GetFromJsonAsync<JsonElement[]>(
+            $"/api/cms-v2/tag-bindings?targetType=ContentBlock&targetId={bothBlockId}")
+            ?? [];
+        var filtered = await client.GetFromJsonAsync<JsonElement[]>(
+            $"/api/cms-v2/content-blocks?tagIds={mechanicsId}&tagIds={energyId}")
+            ?? [];
+        var searched = await client.GetFromJsonAsync<JsonElement[]>("/api/cms-v2/tags?keyword=力")
+            ?? [];
+
+        Assert.Equal(mechanicsId, mechanicsDuplicate.GetProperty("id").GetInt32());
+        Assert.Equal("力学", mechanics.GetProperty("name").GetString());
+        Assert.Equal("tag-purple", mechanics.GetProperty("color").GetString());
+        Assert.Equal("tag-gray", energy.GetProperty("color").GetString());
+        Assert.Equal(HttpStatusCode.BadRequest, invalidCreateColor.StatusCode);
+        Assert.Equal([mechanicsId, energyId], targetBindings.Select(binding => binding.GetProperty("tagId").GetInt32()));
+        Assert.Equal([bothBlockId], filtered.Select(block => block.GetProperty("id").GetInt32()));
+        Assert.Equal([mechanicsId], searched.Select(tag => tag.GetProperty("id").GetInt32()));
+
+        await PostJsonAsync(client, $"/api/cms-v2/tags/{energyId}/archive", new { });
+
+        var archivedSearch = await client.GetFromJsonAsync<JsonElement[]>("/api/cms-v2/tags?keyword=机械能")
+            ?? [];
+        var archivedBindingResponse = await client.PutAsJsonAsync(
+            "/api/cms-v2/tag-bindings",
+            new { targetType = "ContentBlock", targetId = singleBlockId, tagIds = new[] { energyId } });
+        var missingTargetResponse = await client.PutAsJsonAsync(
+            "/api/cms-v2/tag-bindings",
+            new { targetType = "AtomicSection", targetId = 999_999, tagIds = new[] { mechanicsId } });
+
+        Assert.Empty(archivedSearch);
+        Assert.Equal(HttpStatusCode.BadRequest, archivedBindingResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, missingTargetResponse.StatusCode);
+
+        var restored = await PostJsonAsync(client, $"/api/cms-v2/tags/{energyId}/restore", new { });
+        var renamed = await PatchJsonAsync(client, $"/api/cms-v2/tags/{energyId}", new { name = "能量守恒", color = "tag-red" });
+        var invalidPatchColor = await client.PatchAsJsonAsync(
+            $"/api/cms-v2/tags/{energyId}",
+            new { color = "tag-cyan" });
+        var sectionBindings = await client.GetFromJsonAsync<JsonElement[]>(
+            $"/api/cms-v2/tag-bindings?targetType=Section&targetId={sectionId}")
+            ?? [];
+
+        Assert.Equal("Active", restored.GetProperty("status").GetString());
+        Assert.Equal("能量守恒", renamed.GetProperty("name").GetString());
+        Assert.Equal("tag-red", renamed.GetProperty("color").GetString());
+        Assert.Equal(HttpStatusCode.BadRequest, invalidPatchColor.StatusCode);
+        Assert.Equal([mechanicsId], sectionBindings.Select(binding => binding.GetProperty("tagId").GetInt32()));
+    }
+
+    [Fact]
+    public async Task Teaching_note_endpoints_manage_notes_search_and_bindings_without_legacy_fields()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "Teaching note topic", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "Teaching note section" });
+        var sectionId = section.GetProperty("id").GetInt32();
+        var block = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks",
+            new { sectionId, title = "Teaching note block", blockType = "Question" });
+        var blockId = block.GetProperty("id").GetInt32();
+        var atomicSection = await PostJsonAsync(
+            client,
+            "/api/cms-v2/atomic-sections",
+            new { sectionId, title = "Teaching note atomic section" });
+        var atomicSectionId = atomicSection.GetProperty("id").GetInt32();
+        var panel = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/atomic-sections/{atomicSectionId}/panels",
+            new { title = "Example panel", teachingRole = "Example", difficulty = "Medium" });
+        var panelId = panel.GetProperty("id").GetInt32();
+        var atomicItem = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/atomic-sections/{atomicSectionId}/items",
+            new
+            {
+                contentBlockId = blockId,
+                referenceMode = "FollowLatest",
+                atomicSectionPanelId = panelId,
+                teachingRole = "Example"
+            });
+        var atomicItemId = atomicItem.GetProperty("id").GetInt32();
+        var sectionItem = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/sections/{sectionId}/items",
+            new
+            {
+                targetType = "ContentBlock",
+                targetId = blockId,
+                referenceMode = "FollowLatest",
+                sortOrder = 0
+            });
+        var sectionItemId = sectionItem.GetProperty("id").GetInt32();
+
+        var created = await PostJsonAsync(
+            client,
+            "/api/cms-v2/teaching-notes",
+            new
+            {
+                noteType = "ClassroomRecord",
+                content = "  pacing was too fast  ",
+                effectLevel = (string?)null,
+                occurredAt = "2026-06-01T08:00:00Z",
+                bindings = new[]
+                {
+                    new { targetType = "ContentBlock", targetId = blockId },
+                    new { targetType = "Section", targetId = sectionId },
+                    new { targetType = "AtomicSection", targetId = atomicSectionId },
+                    new { targetType = "AtomicSectionPanel", targetId = panelId },
+                    new { targetType = "AtomicSectionItem", targetId = atomicItemId },
+                    new { targetType = "SectionItem", targetId = sectionItemId }
+                }
+            });
+        var noteId = created.GetProperty("id").GetInt32();
+        AssertTeachingNoteHasNoLegacyFields(created);
+        Assert.Equal("pacing was too fast", created.GetProperty("content").GetString());
+        Assert.Equal(JsonValueKind.Null, created.GetProperty("effectLevel").ValueKind);
+        Assert.Equal(6, created.GetProperty("bindings").GetArrayLength());
+
+        var byId = await client.GetFromJsonAsync<JsonElement>($"/api/cms-v2/teaching-notes/{noteId}");
+        var byBinding = await client.GetFromJsonAsync<JsonElement[]>(
+                $"/api/cms-v2/teaching-note-bindings?targetType=AtomicSectionItem&targetId={atomicItemId}")
+            ?? [];
+        var search = await client.GetFromJsonAsync<JsonElement[]>(
+                "/api/cms-v2/teaching-notes?keyword=pacing&targetType=ContentBlock")
+            ?? [];
+
+        Assert.Equal(noteId, byId.GetProperty("id").GetInt32());
+        Assert.Equal([noteId], byBinding.Select(note => note.GetProperty("id").GetInt32()));
+        Assert.Equal([noteId], search.Select(note => note.GetProperty("id").GetInt32()));
+
+        var updated = await PatchJsonAsync(
+            client,
+            $"/api/cms-v2/teaching-notes/{noteId}",
+            new
+            {
+                noteType = "RevisionSuggestion",
+                content = "add one warmup problem next time",
+                effectLevel = "Weak",
+                occurredAt = (string?)null,
+                bindings = new[]
+                {
+                    new { targetType = "SectionItem", targetId = sectionItemId }
+                }
+            });
+        var noLongerOnContentBlock = await client.GetFromJsonAsync<JsonElement[]>(
+                $"/api/cms-v2/teaching-note-bindings?targetType=ContentBlock&targetId={blockId}")
+            ?? [];
+        var filteredByEffect = await client.GetFromJsonAsync<JsonElement[]>(
+                "/api/cms-v2/teaching-notes?effectLevel=Weak&targetType=SectionItem")
+            ?? [];
+
+        Assert.Equal("RevisionSuggestion", updated.GetProperty("noteType").GetString());
+        Assert.Equal("Weak", updated.GetProperty("effectLevel").GetString());
+        Assert.Single(updated.GetProperty("bindings").EnumerateArray());
+        Assert.Empty(noLongerOnContentBlock);
+        Assert.Equal([noteId], filteredByEffect.Select(note => note.GetProperty("id").GetInt32()));
+
+        var deleteResponse = await client.DeleteAsync($"/api/cms-v2/teaching-notes/{noteId}");
+        var deletedGetResponse = await client.GetAsync($"/api/cms-v2/teaching-notes/{noteId}");
+        var deletedBindingQuery = await client.GetFromJsonAsync<JsonElement[]>(
+                $"/api/cms-v2/teaching-note-bindings?targetType=SectionItem&targetId={sectionItemId}")
+            ?? [];
+
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, deletedGetResponse.StatusCode);
+        Assert.Empty(deletedBindingQuery);
     }
 
     [Fact]
@@ -1079,6 +1300,33 @@ public sealed class CmsV2ApiIntegrationTests
     }
 
     [Fact]
+    public async Task Output_template_validate_endpoint_accepts_legacy_default_template_path_from_runtime_output_directory()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var runtimeTemplatePath = Path.Combine(
+            AppContext.BaseDirectory,
+            "Documents",
+            "Templates",
+            "content-block-default.docx");
+        if (!File.Exists(runtimeTemplatePath))
+        {
+            await CreateMinimalDocxAsync(runtimeTemplatePath, "Runtime default template");
+        }
+
+        var valid = await PostJsonAsync(
+            client,
+            "/api/cms-v2/output-templates/validate",
+            new
+            {
+                templateDocxPath = "src-v2/WordSolution.CmsV2.Infrastructure/Documents/Templates/content-block-default.docx"
+            });
+
+        Assert.True(valid.GetProperty("valid").GetBoolean());
+        Assert.Contains("ready", valid.GetProperty("message").GetString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task SectionVariant_selection_preview_endpoint_returns_default_candidates()
     {
         await using var factory = new CmsV2ApiFactory();
@@ -1557,11 +1805,27 @@ public sealed class CmsV2ApiIntegrationTests
         return await ReadSuccessJsonAsync(response);
     }
 
+    private static async Task<JsonElement> PutJsonAsync(HttpClient client, string uri, object value)
+    {
+        var response = await client.PutAsJsonAsync(uri, value);
+        return await ReadSuccessJsonAsync(response);
+    }
+
     private static async Task<JsonElement> ReadSuccessJsonAsync(HttpResponseMessage response)
     {
         var body = await response.Content.ReadAsStringAsync();
         Assert.True(response.IsSuccessStatusCode, body);
         return JsonDocument.Parse(body).RootElement.Clone();
+    }
+
+    private static void AssertTeachingNoteHasNoLegacyFields(JsonElement note)
+    {
+        Assert.False(note.TryGetProperty("title", out _));
+        Assert.False(note.TryGetProperty("status", out _));
+        Assert.False(note.TryGetProperty("nextAction", out _));
+        Assert.False(note.TryGetProperty("sortOrder", out _));
+        Assert.False(note.TryGetProperty("targetType", out _));
+        Assert.False(note.TryGetProperty("targetId", out _));
     }
 
     private static async Task CreateMinimalDocxAsync(string docxPath, string text)

@@ -5,6 +5,8 @@ using WordSolution.CmsV2.Application.ContentBlocks;
 using WordSolution.CmsV2.Application.Handouts;
 using WordSolution.CmsV2.Application.SectionVariants;
 using WordSolution.CmsV2.Application.Sections;
+using WordSolution.CmsV2.Application.Tags;
+using WordSolution.CmsV2.Application.TeachingNotes;
 using WordSolution.CmsV2.Application.TeachingStructure;
 using WordSolution.CmsV2.Domain.Documents;
 using WordSolution.CmsV2.Domain.Repositories;
@@ -37,6 +39,7 @@ public static class CmsV2ApiServiceCollectionExtensions
         services.AddScoped<ICmsV2UnitOfWork, EfCmsV2UnitOfWork>();
         services.AddSingleton<ICmsV2FileAssetPathProvider, CmsV2FileAssetPathProvider>();
         services.AddSingleton<IContentBlockFileStore, LocalContentBlockFileStore>();
+        services.AddSingleton<IOutputTemplatePathResolver, OutputTemplatePathResolver>();
         services.AddSingleton<IContentBlockDocumentProcessor, AsposeContentBlockDocumentProcessor>();
         services.AddSingleton<IQuestionImportDocumentProcessor, AsposeQuestionImportDocumentProcessor>();
         services.AddSingleton<IQuestionImportSessionLauncher, LocalQuestionImportSessionLauncher>();
@@ -58,6 +61,9 @@ public static class CmsV2ApiServiceCollectionExtensions
         services.AddScoped<TeachingStructureUseCases>();
         services.AddScoped<HandoutUseCases>();
         services.AddScoped<HandoutGenerationUseCases>();
+        services.AddScoped<TagUseCases>();
+        services.AddScoped<TagBindingUseCases>();
+        services.AddScoped<TeachingNoteUseCases>();
         services.AddHostedService<ContentBlockEditSessionBackgroundService>();
 
         return services;

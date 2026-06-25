@@ -2341,3 +2341,360 @@ Phase 4 已将 `QuestionImportDialog` 改为“临时 Word 会话 + 状态轮询
 - 正文编辑器。
 - 逐题 TeachingRole / Difficulty 修改。
 - 自行创建 `SectionItem`、`AtomicSectionItem` 或 `ContentBlockRelation`。
+
+## 当前补充：标签与教学评注组件规则
+
+本节记录 `Tag` 标签系统与 `TeachingNote` 教学评注系统的第一版 UI 组件边界。正式后端规格见：
+
+```text
+docs/cms-v2/backend/标签系统与教学评注系统开发文档.md
+```
+
+### TagMultiSelect
+
+`TagMultiSelect` 是业务组件，用于展示和编辑某个目标对象的标签。
+
+职责：
+
+- 展示当前对象已有标签。
+- 输入关键词搜索 Active 标签。
+- 选择已有标签。
+- 无完全匹配时提供新建标签意图。
+- 新建后由页面或 action composable 把返回标签加入已选列表。
+- 移除当前目标对象上的标签。
+- 防止同一目标对象重复选择同一标签。
+- 对 Archived 标签做弱化显示。
+
+输入建议：
+
+```ts
+type TagMultiSelectProps = {
+  targetType: 'ContentBlock' | 'AtomicSection' | 'Section'
+  targetId: number
+  modelValue: TagDto[]
+  disabled?: boolean
+  searchResults?: TagDto[]
+  loading?: boolean
+}
+```
+
+事件建议：
+
+```ts
+type TagMultiSelectEmits = {
+  'search': [keyword: string]
+  'create-tag': [name: string]
+  'update:modelValue': [tags: TagDto[]]
+  'save': [tagIds: number[]]
+}
+```
+
+边界：
+
+- 组件只 emit 用户意图，不直接调用 CMS V2 API。
+- API 调用归页面或 `useTagActions` 等 action composable。
+- `PUT /api/cms-v2/tag-bindings` 表示替换单个目标对象的标签列表，不影响这些 Tag 与其他对象的绑定。
+- 从 `SectionItem` 或 `AtomicSectionItem` 的 `ContentBlock` 展示处编辑标签时，实际保存目标必须是 `ContentBlock`。
+- 第一版不做标签改色入口。
+- 第一版不做标签管理页。
+
+视觉规则：
+
+- 标签颜色使用 `Tag.Color` 中保存的 theme token。
+- 第一版建议 token 为 `tag-gray / tag-orange / tag-yellow / tag-green / tag-blue / tag-purple / tag-pink / tag-red`。
+- 如果当前主题缺少 tag token，先补 token，不得在组件中直接写死颜色值。
+- Archived 标签弱化显示也必须走 token 或统一状态样式，不得散落一次性颜色。
+
+### TagBadge
+
+`TagBadge` 是标签展示基础业务组件，用于在 Inspector、选择器、卡片摘要和筛选结果中统一展示单个标签。
+
+职责：
+
+- 展示标签名称。
+- 根据 `Tag.Color` 使用固定 theme token 显示颜色。
+- 支持 selected / disabled 状态。
+- 对 Archived 标签做弱化显示，并提供“已归档”提示。
+- 在可移除场景中发出 `remove(tagId)` 事件。
+
+边界：
+
+- 不调用 CMS V2 API。
+- 不判断标签是否可绑定。
+- 不自行归档、恢复或改名。
+- 不直接写死颜色值。
+
+### TagColorSelect
+
+`TagColorSelect` 是标签颜色 token 选择控件，用于标签创建、编辑或 ComponentLab 验收。
+
+职责：
+
+- 展示固定颜色 token：`tag-gray / tag-orange / tag-yellow / tag-green / tag-blue / tag-purple / tag-pink / tag-red`。
+- 通过 `update:modelValue` 输出选择的 token。
+- 使用 theme token 渲染色块和选中状态。
+
+边界：
+
+- 不保存标签。
+- 不调用 CMS V2 API。
+- 不允许输入任意 hex / rgb / oklch 颜色。
+
+### 当前实现记录：标签前端基础组件
+
+本轮 Phase 3 实现范围仅包括：
+
+- `TagBadge`
+- `TagMultiSelect`
+- `TagColorSelect`
+- `ComponentLab` 中的标签基础组件验收场景
+
+本轮不做：
+
+- `SectionInspector` 正式接入。
+- 标签管理页。
+- `ContentBlockCard / ContentBlockDisplay` 真实业务标签展示接入。
+- TeachingNote 前端组件。
+
+### 当前实现记录：标签系统前端真实接入
+
+本轮 Phase 4 已将标签系统接入真实 V2 前端页面：
+
+- `SectionInspector` 使用 `TagMultiSelect` 编辑 `Section / AtomicSection / ContentBlock` 标签。
+- `SectionPage` 持有标签加载、搜索、新建和保存状态，并通过 `useTagActions` 调用 CMS V2 API。
+- 从 `SectionItem` 或 `AtomicSectionItem` 中选中的 `ContentBlock / CompositeBlock` 编辑标签时，实际保存目标是底层 `ContentBlock`。
+- `ContentBlockDisplay` 和 `ContentBlockCard` 只接收并展示少量 `tags`，不直接调用 API。
+- `/content-blocks` 作为第一版 ContentBlock 多标签 AND 筛选入口，调用 `GET /api/cms-v2/content-blocks?tagIds=...`。
+
+边界：
+
+- 不做标签管理页。
+- 不做标签改色入口。
+- 不把标签绑定到 `SectionItem / AtomicSectionItem / AtomicSectionPanel`。
+- 不从业务展示组件直接调用 CMS V2 API。
+
+### TeachingNoteList
+
+`TeachingNoteList` 是业务组件，用于显示当前 Inspector 对象绑定的教学评注列表。
+
+职责：
+
+- 展示当前对象评注列表。
+- 展示 loading / empty / error 状态。
+- 按 `UpdatedTime` 倒序展示。
+- 触发创建、编辑、删除意图。
+- 对多绑定评注显示关联摘要入口。
+
+边界：
+
+- 不直接调用 API。
+- 不维护跨对象全局评注状态。
+- 不在主工作区展开完整评注正文。
+
+### TeachingNoteBadge
+
+`TeachingNoteBadge` 是评注轻提示组件，用于在列表、卡片摘要或后续主工作区轻提示中显示评注数量或单条评注类型。
+
+职责：
+
+- 展示评注数量。
+- 展示单条评注的 `NoteType`。
+- 当 `EffectLevel` 有值时使用统一状态样式弱表达效果等级。
+- `EffectLevel = null` 时显示为未记录，不展示 `Unknown`。
+
+边界：
+
+- 不调用 API。
+- 不展开评注正文。
+- 不显示旧任务流字段。
+
+### TeachingNoteEditor
+
+`TeachingNoteEditor` 是业务表单组件，用于创建或编辑评注。
+
+字段：
+
+```text
+NoteType
+EffectLevel，可选
+OccurredAt，可选
+Content
+```
+
+禁止字段：
+
+```text
+Title
+Status
+NextAction
+SortOrder
+```
+
+边界：
+
+- 创建时默认绑定当前 Inspector 对象。
+- 第一版 UI 未选择 `EffectLevel` 时传 `null`，不展示 `Unknown` 选项。
+- API 和数据模型支持多绑定；第一版创建表单不要求提供复杂多对象选择器。
+- 组件只 emit submit / cancel，不直接调用 API。
+
+### TeachingNoteCard
+
+`TeachingNoteCard` 展示单条评注。
+
+必须展示：
+
+- `NoteType`。
+- `EffectLevel`，可选。
+- `OccurredAt`，可选。
+- `Content`。
+- 关联对象摘要。
+- `UpdatedTime`。
+- 编辑按钮。
+- 删除按钮。
+
+禁止展示：
+
+- 标题。
+- 状态流程。
+- 下一步行动字段。
+- 手动排序字段。
+
+### TeachingNoteBindingSummary
+
+`TeachingNoteBindingSummary` 展示一条评注还关联了哪些对象。
+
+职责：
+
+- 以简短摘要展示绑定目标。
+- 多绑定评注删除前，为确认提示提供关联数量和对象摘要。
+- 不负责修改绑定。
+
+### TeachingNoteDeleteConfirm
+
+`TeachingNoteDeleteConfirm` 是删除二次确认组件。
+
+职责：
+
+- 展示删除后不可恢复的提示。
+- 展示当前评注的绑定对象摘要。
+- 多绑定评注提示删除后会从所有关联对象移除。
+- 暴露 confirm / cancel 事件。
+
+边界：
+
+- 不调用删除 API。
+- 不自行刷新列表。
+- 不把删除动作做成任务状态流。
+
+### Inspector 接入规则
+
+第一版标签和教学评注入口都以 Inspector 为主。
+
+- `SectionInspector` 可展示并编辑 `Section / AtomicSection / ContentBlock` 标签。
+- `SectionInspector` 可展示当前选中对象的教学评注。
+- `TeachingNote` 第一版允许绑定 `ContentBlock / Section / AtomicSection / AtomicSectionPanel / AtomicSectionItem / SectionItem`。
+- 主界面最多显示“有 N 条评注”轻提示，不展开完整内容。
+- 删除教学评注必须二次确认；多绑定评注需要提示会从所有关联对象移除。
+
+页面级 action 负责：
+
+- 搜索标签。
+- 创建标签。
+- 替换目标对象标签列表。
+- 加载当前对象评注。
+- 创建评注。
+- 更新评注。
+- 删除评注。
+
+组件不得：
+
+- 直接 `fetch`。
+- 散落 `/api/cms-v2` URL。
+- 调用 V1 API。
+- 把 `TeachingNote` 做成任务、待办或状态流程。
+
+### 当前实现记录：教学评注前端基础组件
+
+本轮 Phase 7 实现范围仅包括：
+
+- `TeachingNoteBadge`
+- `TeachingNoteBindingTargetView`
+- `TeachingNoteBindingSummary`
+- `TeachingNoteCard`
+- `TeachingNoteList`
+- `TeachingNoteEditor`
+- `TeachingNoteDeleteConfirm`
+- `ComponentLab` 中的教学评注基础组件验收场景
+
+本轮不做：
+
+- `SectionInspector` 正式接入。
+- `SectionPage / AtomicSectionPanel / ContentBlockDisplay` 真实评注加载。
+- 全局教学评注搜索页。
+- 创建评注时的复杂多对象选择器。
+- Phase 8 真实业务入口接入。
+
+### 当前实现记录：教学评注 Inspector 真实接入
+
+本轮 Phase 8 已将教学评注基础组件接入 `SectionPage -> SectionInspector`：
+
+- `SectionPage` 负责根据当前选中节点解析 TeachingNote 绑定目标、加载列表、创建、编辑和删除评注。
+- `SectionInspector` 组合 `TeachingNoteList`、`TeachingNoteEditor` 和 `TeachingNoteDeleteConfirm`，组件仍然只 emit 用户意图，不直接调用 CMS V2 API。
+- 创建评注默认绑定当前 Inspector 对象；编辑时保留该评注已有 bindings。
+- 删除评注使用二次确认；删除成功后重新读取当前目标对象评注列表。
+- `EffectLevel` 未选择时保持 `null`，UI 不展示 `Unknown` 作为第一版可选项。
+- UI 不展示旧任务流字段 `Title / Status / NextAction / SortOrder`。
+
+当前目标映射：
+
+```text
+Section -> Section
+AtomicSection -> AtomicSection
+AtomicSectionPanel -> AtomicSectionPanel
+AtomicSectionItem occurrence -> AtomicSectionItem
+SectionItem occurrence -> SectionItem
+ContentBlock body / relation -> ContentBlock
+```
+
+注意：TeachingNote 与 Tag 的 occurrence 规则不同。标签从 `SectionItem / AtomicSectionItem` 的 ContentBlock 展示处编辑时保存到底层 `ContentBlock`；教学评注在 occurrence 入口绑定 occurrence 自身。
+
+Phase 8 不做：
+
+- 全局教学评注搜索页。
+- 跨模块搜索、筛选和统计联调。
+
+### 当前实现记录：Phase 9 搜索筛选与跨模块联调
+
+本轮 Phase 9 已补齐标签筛选与教学评注筛选在真实工作台入口中的一致性：
+
+- `/content-blocks` 继续作为 ContentBlock 多标签 AND 筛选入口，前端通过 `tagIds` 重复查询参数调用 CMS V2 后端。
+- `useTagActions.searchTags` 对普通候选再做 `Active` 过滤，Archived 标签不作为新选择候选；已有 Archived 绑定仍由 `TagBadge` 弱化显示。
+- `SectionInspector` 在教学评注区域提供当前对象范围内的 keyword 与 EffectLevel 筛选控件；组件只 emit 筛选意图，不直接调用 API。
+- `SectionPage` 持有评注筛选状态，并通过 `useTeachingNoteActions.searchTeachingNotes` 调用 `GET /api/cms-v2/teaching-notes`，传入当前 `targetType + targetId`、keyword 和 effectLevel。
+- 切换 Inspector 选中对象时重置评注筛选，避免不同对象之间残留筛选条件。
+- 删除 TeachingNote 后使用当前筛选条件重新读取列表，确保空状态与列表状态来自服务端结果。
+
+边界保持不变：
+
+- 标签绑定只允许 `ContentBlock / AtomicSection / Section`；从 `SectionItem / AtomicSectionItem` 的内容展示入口编辑标签时仍保存到底层 `ContentBlock`。
+- TeachingNote 绑定允许 `ContentBlock / Section / AtomicSection / AtomicSectionPanel / AtomicSectionItem / SectionItem`；occurrence 入口绑定 occurrence 自身。
+- 第一版 UI 不展示 `Unknown` 作为 EffectLevel 筛选选项；未选择效果仍保持 `null` 语义。
+- 本轮不做完整全局 TeachingNote 搜索页，不做跨模块统计和最终验收清单。
+- 创建评注时选择多个关联对象的复杂选择器。
+
+### 当前实现记录：Phase 10 测试与文档收口
+
+本轮 Phase 10 只做验证与文档收口，不新增 UI 功能：
+
+- 标签和教学评注组件分层保持不变：业务组件只 emit，API 调用继续放在页面或 action composable。
+- `ComponentLab` 继续作为标签基础组件与教学评注基础组件的 Mock 验收入口。
+- `SectionPage -> SectionInspector` 继续作为真实工作台入口，覆盖标签编辑、当前对象评注 CRUD，以及当前对象评注 keyword / EffectLevel 筛选。
+- `/content-blocks` 继续作为 ContentBlock 多标签 AND 筛选入口。
+- Phase 10 人工验收清单见 `docs/cms-v2/backend/标签系统与教学评注系统开发文档.md`。
+
+仍后置：
+
+- 完整全局 TeachingNote 搜索页。
+- 标签管理页和真实工作台改色入口。
+- 主工作区评注数量轻提示。
+- 跨页面评注入口和复杂多对象绑定选择器。

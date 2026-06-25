@@ -360,14 +360,20 @@ type SectionVariantDto = {
 ```ts
 type TeachingNoteDto = {
   id: number
-  targetType: "TeachingTopic" | "Section" | "SectionVariant" | "SectionItem" | "AtomicSection" | "ContentBlock" | "HandoutVersion"
-  targetId: number
-  noteType: "TeachingReflection" | "RevisionSuggestion" | "CommonMistake" | "TeachingLogic" | "ExampleAdvice" | "QuestionReplacement" | "General"
-  title: string
+  noteType: "General" | "ClassroomRecord" | "LearningEffect" | "TeachingReflection" | "RevisionSuggestion" | "QuestionReplacement" | "CommonMistake"
   content: string
-  status: "Active" | "Resolved" | "Archived"
+  effectLevel?: "Good" | "Normal" | "Weak" | "Failed" | "Unknown" | null
+  occurredAt?: string | null
+  bindings: Array<{
+    targetType: "ContentBlock" | "Section" | "AtomicSection" | "AtomicSectionPanel" | "AtomicSectionItem" | "SectionItem"
+    targetId: number
+  }>
+  createdTime: string
+  updatedTime: string
 }
 ```
+
+`TeachingNote` 新模型不包含 `Title / Status / NextAction / SortOrder`，本表也不保存 `TargetType / TargetId`；目标关系由 `bindings` 表达。
 
 ### 7.2 ViewModel 草案
 
@@ -582,6 +588,8 @@ type InsertContextVm = {
 | 添加子块关系 | `POST` | `/api/cms-v2/content-blocks/{id}/relations/children` | `AddContentBlockRelationRequest` | relation dto | 否 | 是 |
 | TeachingNote 列表 | `GET` | `/api/cms-v2/teaching-notes?targetType=&targetId=` | 无 | `TeachingNoteDto[]` | 否 | 是 |
 | 创建 TeachingNote | `POST` | `/api/cms-v2/teaching-notes` | `CreateTeachingNoteRequest` | `TeachingNoteDto` | 否 | 是 |
+
+TeachingNote 查询中的 `targetType / targetId` 是 `TeachingNoteBinding` 的目标筛选条件，不表示 `TeachingNote` 本表保存这两个字段。
 
 当前 API 缺口：
 

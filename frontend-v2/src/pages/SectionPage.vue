@@ -28,9 +28,13 @@ import { useAtomicSectionActions } from '@/composables/useAtomicSectionActions'
 import { useContentBlockActions } from '@/composables/useContentBlockActions'
 import { useContentBlockRelationActions } from '@/composables/useContentBlockRelationActions'
 import { useSectionItemActions } from '@/composables/useSectionItemActions'
+import { useTagActions } from '@/composables/useTagActions'
+import { useTeachingNoteActions } from '@/composables/useTeachingNoteActions'
 import { loadSectionPageData, type SectionPageDataModel } from '@/composables/useSectionPageData'
 import { usePageTitle } from '@/composables/usePageTitle'
 import { resolveAtomicSectionChildContentBlockTitle } from '@/utils/sectionInsertDefaults'
+import { mapTagBindingsToTags, resolveTagBindingTargetFromSectionNode } from '@/utils/tagTargets'
+import { resolveTeachingNoteTargetFromSectionNode } from '@/utils/teachingNoteTargets'
 import { createTeachingTopicNodeId, findTeachingTopicTreeNodePath } from '@/utils/teachingStructureTree'
 import type {
   InsertCreateContentBlockType,
@@ -62,6 +66,11 @@ import type {
   SectionWorkspaceFlowItemModel,
   StructuredBlockChildModel,
   StructuredBlockModel,
+  TagModel,
+  TeachingNoteEditorValue,
+  TeachingNoteEffectLevel,
+  TeachingNoteListState,
+  TeachingNoteModel,
   TeachingTopicTreeContextMenuActionPayload,
   TeachingTopicTreeContextMenuModel,
   TeachingTopicTreeContextMenuPayload,
@@ -121,6 +130,23 @@ const questionImportCandidatesLoadedSessionId = ref<string>()
 const questionImportBusy = ref(false)
 const questionImportError = ref('')
 const questionImportFeedback = ref('')
+const selectedTargetTags = ref<TagModel[]>([])
+const tagSearchResults = ref<TagModel[]>([])
+const tagLoading = ref(false)
+const tagSaving = ref(false)
+const tagError = ref('')
+const selectedTargetTeachingNotes = ref<TeachingNoteModel[]>([])
+const teachingNoteState = ref<TeachingNoteListState>('idle')
+const teachingNoteError = ref('')
+const teachingNoteKeyword = ref('')
+const teachingNoteEffectLevel = ref<TeachingNoteEffectLevel | ''>('')
+const teachingNoteEditorValue = ref<TeachingNoteEditorValue | null>(null)
+const teachingNoteEditorMode = ref<'create' | 'edit'>('create')
+const editingTeachingNoteId = ref<number | null>(null)
+const teachingNoteSaving = ref(false)
+const teachingNoteDeletingId = ref<number | null>(null)
+const teachingNoteDeleteTarget = ref<TeachingNoteModel | null>(null)
+const teachingNoteDeleteError = ref('')
 
 function resolveSectionItemRemoveError(error: unknown, fallback: string) {
   const message = error instanceof Error ? error.message : ''
@@ -268,6 +294,12 @@ const selectedStructureNode = computed(() =>
     ? findSectionTreeNode(sectionTreeNodes.value, selectedStructureNodeId.value)
     : undefined,
 )
+const selectedTagTarget = computed(() =>
+  resolveTagBindingTargetFromSectionNode(selectedStructureNode.value),
+)
+const selectedTeachingNoteTarget = computed(() =>
+  resolveTeachingNoteTargetFromSectionNode(selectedStructureNode.value),
+)
 const selectedSectionVariantNode = computed(() =>
   selectedStructureNode.value?.kind === 'SectionVariant' ? selectedStructureNode.value : undefined,
 )
@@ -409,6 +441,295 @@ const contentBlockActions = useContentBlockActions({
 const contentBlockRelationActions = useContentBlockRelationActions({
   refreshSection: loadCurrentSectionPage,
 })
+
+const tagActions = useTagActions()
+const teachingNoteActions = useTeachingNoteActions()
+
+let tagSearchSequence = 0
+let teachingNoteLoadSequence = 0
+
+function clearTagState() {
+  selectedTargetTags.value = []
+  tagSearchResults.value = []
+  tagError.value = ''
+}
+
+async function loadSelectedTargetTags() {
+  const target = selectedTagTarget.value
+
+  if (!target) {
+    clearTagState()
+    return
+  }
+
+  tagLoading.value = true
+  tagError.value = ''
+
+  try {
+    selectedTargetTags.value = mapTagBindingsToTags(await tagActions.loadTargetTags(target))
+  } catch (error) {
+    selectedTargetTags.value = []
+    tagError.value = error instanceof Error ? error.message : t('tag.loadFailed')
+  } finally {
+    tagLoading.value = false
+  }
+}
+
+async function searchInspectorTags(keyword: string) {
+  const searchId = ++tagSearchSequence
+  tagLoading.value = true
+  tagError.value = ''
+
+  try {
+    const results = await tagActions.searchTags(keyword)
+    if (searchId === tagSearchSequence) {
+      tagSearchResults.value = results
+    }
+  } catch (error) {
+    if (searchId === tagSearchSequence) {
+      tagSearchResults.value = []
+      tagError.value = error instanceof Error ? error.message : t('tag.searchFailed')
+    }
+  } finally {
+    if (searchId === tagSearchSequence) {
+      tagLoading.value = false
+    }
+  }
+}
+
+async function createInspectorTag(name: string) {
+  tagError.value = ''
+
+  try {
+    const createdTag = await tagActions.createTag(name)
+    if (!selectedTargetTags.value.some((tag) => tag.id === createdTag.id)) {
+      selectedTargetTags.value = [...selectedTargetTags.value, createdTag]
+    }
+    if (!tagSearchResults.value.some((tag) => tag.id === createdTag.id)) {
+      tagSearchResults.value = [createdTag, ...tagSearchResults.value]
+    }
+  } catch (error) {
+    tagError.value = error instanceof Error ? error.message : t('tag.createFailed')
+  }
+}
+
+function updateInspectorTags(tags: TagModel[]) {
+  selectedTargetTags.value = tags
+}
+
+async function saveInspectorTags(tagIds: number[]) {
+  const target = selectedTagTarget.value
+
+  if (!target) {
+    return
+  }
+
+  tagSaving.value = true
+  tagError.value = ''
+
+  try {
+    selectedTargetTags.value = mapTagBindingsToTags(
+      await tagActions.replaceTargetTags({
+        targetType: target.targetType,
+        targetId: target.targetId,
+        tagIds,
+      }),
+    )
+    insertFeedback.value = t('tag.saveSucceeded')
+    await loadCurrentSectionPage()
+  } catch (error) {
+    tagError.value = error instanceof Error ? error.message : t('tag.saveFailed')
+  } finally {
+    tagSaving.value = false
+  }
+}
+
+function clearTeachingNoteState() {
+  selectedTargetTeachingNotes.value = []
+  teachingNoteState.value = 'idle'
+  teachingNoteError.value = ''
+  teachingNoteKeyword.value = ''
+  teachingNoteEffectLevel.value = ''
+  teachingNoteEditorValue.value = null
+  editingTeachingNoteId.value = null
+  teachingNoteDeleteTarget.value = null
+  teachingNoteDeleteError.value = ''
+}
+
+function resetTeachingNoteEditor() {
+  teachingNoteEditorValue.value = null
+  editingTeachingNoteId.value = null
+  teachingNoteEditorMode.value = 'create'
+  teachingNoteError.value = ''
+}
+
+async function loadSelectedTargetTeachingNotes() {
+  const target = selectedTeachingNoteTarget.value
+  const loadId = ++teachingNoteLoadSequence
+
+  if (!target) {
+    clearTeachingNoteState()
+    return
+  }
+
+  teachingNoteState.value = 'loading'
+  teachingNoteError.value = ''
+
+  try {
+    const keyword = teachingNoteKeyword.value.trim()
+    const notes = await teachingNoteActions.searchTeachingNotes({
+      keyword: keyword || undefined,
+      effectLevel: teachingNoteEffectLevel.value || undefined,
+      targetType: target.targetType,
+      targetId: target.targetId,
+    })
+    if (loadId !== teachingNoteLoadSequence) {
+      return
+    }
+
+    selectedTargetTeachingNotes.value = notes
+    teachingNoteState.value = notes.length ? 'idle' : 'empty'
+  } catch (error) {
+    if (loadId !== teachingNoteLoadSequence) {
+      return
+    }
+
+    selectedTargetTeachingNotes.value = []
+    teachingNoteState.value = 'error'
+    teachingNoteError.value =
+      error instanceof Error ? error.message : t('teachingNote.loadFailed')
+  }
+}
+
+function searchInspectorTeachingNotes(keyword: string) {
+  teachingNoteKeyword.value = keyword
+  void loadSelectedTargetTeachingNotes()
+}
+
+function filterInspectorTeachingNoteEffectLevel(effectLevel: TeachingNoteEffectLevel | '') {
+  teachingNoteEffectLevel.value = effectLevel
+  void loadSelectedTargetTeachingNotes()
+}
+
+function startCreateInspectorTeachingNote() {
+  const target = selectedTeachingNoteTarget.value
+
+  if (!target) {
+    teachingNoteError.value = t('teachingNote.targetUnavailable')
+    return
+  }
+
+  teachingNoteDeleteTarget.value = null
+  teachingNoteDeleteError.value = ''
+  teachingNoteEditorMode.value = 'create'
+  editingTeachingNoteId.value = null
+  teachingNoteError.value = ''
+  teachingNoteEditorValue.value = {
+    noteType: 'General',
+    content: '',
+    effectLevel: null,
+    occurredAt: null,
+    bindings: [
+      {
+        targetType: target.targetType,
+        targetId: target.targetId,
+      },
+    ],
+  }
+}
+
+function startEditInspectorTeachingNote(note: TeachingNoteModel) {
+  teachingNoteDeleteTarget.value = null
+  teachingNoteDeleteError.value = ''
+  teachingNoteEditorMode.value = 'edit'
+  editingTeachingNoteId.value = note.id
+  teachingNoteError.value = ''
+  teachingNoteEditorValue.value = {
+    noteType: note.noteType,
+    content: note.content,
+    effectLevel: note.effectLevel,
+    occurredAt: note.occurredAt ?? null,
+    bindings: note.bindings.map((binding) => ({
+      targetType: binding.targetType,
+      targetId: binding.targetId,
+    })),
+  }
+}
+
+async function submitInspectorTeachingNote(value: TeachingNoteEditorValue) {
+  if (teachingNoteSaving.value) {
+    return
+  }
+
+  teachingNoteSaving.value = true
+  teachingNoteError.value = ''
+
+  try {
+    if (teachingNoteEditorMode.value === 'edit' && editingTeachingNoteId.value) {
+      await teachingNoteActions.updateTeachingNote(editingTeachingNoteId.value, {
+        noteType: value.noteType,
+        content: value.content,
+        effectLevel: value.effectLevel,
+        occurredAt: value.occurredAt ?? null,
+        bindings: value.bindings,
+      })
+      insertFeedback.value = t('teachingNote.updateSucceeded')
+    } else {
+      await teachingNoteActions.createTeachingNote({
+        noteType: value.noteType,
+        content: value.content,
+        effectLevel: value.effectLevel,
+        occurredAt: value.occurredAt ?? null,
+        bindings: value.bindings,
+      })
+      insertFeedback.value = t('teachingNote.createSucceeded')
+    }
+
+    resetTeachingNoteEditor()
+    await loadSelectedTargetTeachingNotes()
+  } catch (error) {
+    teachingNoteError.value =
+      error instanceof Error
+        ? error.message
+        : teachingNoteEditorMode.value === 'edit'
+          ? t('teachingNote.updateFailed')
+          : t('teachingNote.createFailed')
+  } finally {
+    teachingNoteSaving.value = false
+  }
+}
+
+function requestDeleteInspectorTeachingNote(note: TeachingNoteModel) {
+  resetTeachingNoteEditor()
+  teachingNoteDeleteTarget.value = note
+  teachingNoteDeleteError.value = ''
+}
+
+function cancelDeleteInspectorTeachingNote() {
+  teachingNoteDeleteTarget.value = null
+  teachingNoteDeleteError.value = ''
+}
+
+async function confirmDeleteInspectorTeachingNote(note: TeachingNoteModel) {
+  if (teachingNoteDeletingId.value) {
+    return
+  }
+
+  teachingNoteDeletingId.value = note.id
+  teachingNoteDeleteError.value = ''
+
+  try {
+    await teachingNoteActions.deleteTeachingNote(note.id)
+    teachingNoteDeleteTarget.value = null
+    insertFeedback.value = t('teachingNote.deleteSucceeded')
+    await loadSelectedTargetTeachingNotes()
+  } catch (error) {
+    teachingNoteDeleteError.value =
+      error instanceof Error ? error.message : t('teachingNote.deleteFailed')
+  } finally {
+    teachingNoteDeletingId.value = null
+  }
+}
 
 function startTeachingTopicDrawerTimer() {
   stopTeachingTopicDrawerTimer()
@@ -2848,6 +3169,28 @@ watch(sectionId, () => {
   questionImportFeedback.value = ''
   void loadCurrentSectionPage()
 })
+
+watch(
+  () => [selectedTagTarget.value?.targetType, selectedTagTarget.value?.targetId] as const,
+  () => {
+    void loadSelectedTargetTags()
+  },
+  { immediate: true },
+)
+
+watch(
+  () => [selectedTeachingNoteTarget.value?.targetType, selectedTeachingNoteTarget.value?.targetId] as const,
+  () => {
+    teachingNoteKeyword.value = ''
+    teachingNoteEffectLevel.value = ''
+    teachingNoteEditorValue.value = null
+    editingTeachingNoteId.value = null
+    teachingNoteDeleteTarget.value = null
+    teachingNoteDeleteError.value = ''
+    void loadSelectedTargetTeachingNotes()
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -2938,9 +3281,44 @@ watch(sectionId, () => {
           :deleting-content-block-cascade="isDeletingContentBlockCascade"
           :updating-atomic-section-item-classification="isUpdatingAtomicSectionItemClassification"
           :updating-node-difficulty="isUpdatingNodeDifficulty"
+          :tag-target-type="selectedTagTarget?.targetType"
+          :tag-target-id="selectedTagTarget?.targetId"
+          :tag-target-source="selectedTagTarget?.source"
+          :tags="selectedTargetTags"
+          :tag-search-results="tagSearchResults"
+          :tag-loading="tagLoading"
+          :tag-saving="tagSaving"
+          :tag-error="tagError"
+          :teaching-note-target-type="selectedTeachingNoteTarget?.targetType"
+          :teaching-note-target-id="selectedTeachingNoteTarget?.targetId"
+          :teaching-note-target-source="selectedTeachingNoteTarget?.source"
+          :teaching-note-keyword="teachingNoteKeyword"
+          :teaching-note-effect-level="teachingNoteEffectLevel"
+          :teaching-notes="selectedTargetTeachingNotes"
+          :teaching-note-state="teachingNoteState"
+          :teaching-note-error="teachingNoteError"
+          :teaching-note-editor-value="teachingNoteEditorValue"
+          :teaching-note-editor-mode="teachingNoteEditorMode"
+          :teaching-note-saving="teachingNoteSaving"
+          :teaching-note-deleting-id="teachingNoteDeletingId"
+          :teaching-note-delete-target="teachingNoteDeleteTarget"
+          :teaching-note-delete-error="teachingNoteDeleteError"
           @delete-content-block-cascade="requestDeleteContentBlockCascade"
           @change-atomic-section-item-classification="requestAtomicSectionItemClassificationChange"
           @change-node-difficulty="requestNodeDifficultyChange"
+          @search-tags="searchInspectorTags"
+          @create-tag="createInspectorTag"
+          @update-tags="updateInspectorTags"
+          @save-tags="saveInspectorTags"
+          @create-teaching-note="startCreateInspectorTeachingNote"
+          @edit-teaching-note="startEditInspectorTeachingNote"
+          @submit-teaching-note="submitInspectorTeachingNote"
+          @cancel-teaching-note="resetTeachingNoteEditor"
+          @search-teaching-notes="searchInspectorTeachingNotes"
+          @filter-teaching-note-effect-level="filterInspectorTeachingNoteEffectLevel"
+          @request-delete-teaching-note="requestDeleteInspectorTeachingNote"
+          @confirm-delete-teaching-note="confirmDeleteInspectorTeachingNote"
+          @cancel-delete-teaching-note="cancelDeleteInspectorTeachingNote"
         />
       </aside>
     </section>

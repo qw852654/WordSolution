@@ -119,6 +119,127 @@ export interface CmsV2ContentBlockDto {
   updatedTime: string
 }
 
+export type CmsV2TagStatus = 'Active' | 'Archived'
+
+export type CmsV2TagBindingTargetType = 'ContentBlock' | 'AtomicSection' | 'Section'
+
+export type CmsV2TagColorToken =
+  | 'tag-gray'
+  | 'tag-orange'
+  | 'tag-yellow'
+  | 'tag-green'
+  | 'tag-blue'
+  | 'tag-purple'
+  | 'tag-pink'
+  | 'tag-red'
+
+export interface CmsV2TagDto {
+  id: number
+  name: string
+  normalizedName?: string
+  color: CmsV2TagColorToken
+  status: CmsV2TagStatus
+  createdTime: string
+  updatedTime: string
+}
+
+export interface CmsV2TagBindingDto {
+  id: number
+  tagId: number
+  targetType: CmsV2TagBindingTargetType
+  targetId: number
+  tag: CmsV2TagDto
+}
+
+export interface CmsV2CreateTagRequest {
+  name: string
+  color?: CmsV2TagColorToken
+}
+
+export interface CmsV2UpdateTagRequest {
+  name?: string
+  color?: CmsV2TagColorToken
+}
+
+export interface CmsV2SetTargetTagsRequest {
+  targetType: CmsV2TagBindingTargetType
+  targetId: number
+  tagIds: number[]
+}
+
+export interface CmsV2ListContentBlocksQuery {
+  tagIds?: number[]
+}
+
+export type CmsV2TeachingNoteTargetType =
+  | 'ContentBlock'
+  | 'Section'
+  | 'AtomicSection'
+  | 'AtomicSectionPanel'
+  | 'AtomicSectionItem'
+  | 'SectionItem'
+
+export type CmsV2NoteType =
+  | 'General'
+  | 'ClassroomRecord'
+  | 'LearningEffect'
+  | 'TeachingReflection'
+  | 'RevisionSuggestion'
+  | 'QuestionReplacement'
+  | 'CommonMistake'
+
+export type CmsV2TeachingNoteEffectLevel = 'Unknown' | 'Good' | 'Normal' | 'Weak' | 'Failed'
+
+export interface CmsV2TeachingNoteBindingDto {
+  id: number
+  teachingNoteId: number
+  targetType: CmsV2TeachingNoteTargetType
+  targetId: number
+  createdTime: string
+}
+
+export interface CmsV2TeachingNoteDto {
+  id: number
+  noteType: CmsV2NoteType
+  content: string
+  effectLevel: CmsV2TeachingNoteEffectLevel | null
+  occurredAt?: string | null
+  bindings: CmsV2TeachingNoteBindingDto[]
+  createdTime: string
+  updatedTime: string
+}
+
+export interface CmsV2TeachingNoteBindingRequest {
+  targetType: CmsV2TeachingNoteTargetType
+  targetId: number
+}
+
+export interface CmsV2SearchTeachingNotesQuery {
+  keyword?: string
+  noteType?: CmsV2NoteType
+  effectLevel?: CmsV2TeachingNoteEffectLevel
+  targetType?: CmsV2TeachingNoteTargetType
+  targetId?: number
+  occurredFrom?: string
+  occurredTo?: string
+}
+
+export interface CmsV2CreateTeachingNoteRequest {
+  noteType: CmsV2NoteType
+  content: string
+  effectLevel?: CmsV2TeachingNoteEffectLevel | null
+  occurredAt?: string | null
+  bindings: CmsV2TeachingNoteBindingRequest[]
+}
+
+export interface CmsV2UpdateTeachingNoteRequest {
+  noteType?: CmsV2NoteType
+  content?: string
+  effectLevel?: CmsV2TeachingNoteEffectLevel | null
+  occurredAt?: string | null
+  bindings?: CmsV2TeachingNoteBindingRequest[]
+}
+
 export interface CmsV2ContentBlockVersionDto {
   id: number
   contentBlockId: number
@@ -708,6 +829,16 @@ export async function cmsV2PatchNoContent(path: string, value: unknown): Promise
   }
 }
 
+export async function cmsV2PatchJson<T>(path: string, value: unknown): Promise<T> {
+  return await cmsV2FetchJson<T>(path, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(value),
+  })
+}
+
 export async function cmsV2PutJson<T>(path: string, value: unknown): Promise<T> {
   return await cmsV2FetchJson<T>(path, {
     method: 'PUT',
@@ -750,6 +881,26 @@ function withQuery(path: string, query: Record<string, string | number | undefin
 
   for (const [key, value] of Object.entries(query)) {
     if (value !== undefined) {
+      params.set(key, String(value))
+    }
+  }
+
+  const queryString = params.toString()
+  return queryString ? `${path}?${queryString}` : path
+}
+
+function withRepeatedQuery(
+  path: string,
+  query: Record<string, string | number | readonly (string | number)[] | undefined>,
+) {
+  const params = new URLSearchParams()
+
+  for (const [key, value] of Object.entries(query)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        params.append(key, String(item))
+      }
+    } else if (value !== undefined) {
       params.set(key, String(value))
     }
   }
@@ -888,9 +1039,55 @@ export const cmsV2Api = {
       `/atomic-sections/${atomicSectionId}/items/${atomicSectionItemId}/classification`,
       request,
     ),
+  listTags: (keyword?: string) =>
+    cmsV2FetchJson<CmsV2TagDto[]>(withQuery('/tags', { keyword })),
+  createTag: (request: CmsV2CreateTagRequest) =>
+    cmsV2PostJson<CmsV2TagDto>('/tags', request),
+  updateTag: (tagId: number, request: CmsV2UpdateTagRequest) =>
+    cmsV2PatchJson<CmsV2TagDto>(`/tags/${tagId}`, request),
+  archiveTag: (tagId: number) =>
+    cmsV2PostJson<CmsV2TagDto>(`/tags/${tagId}/archive`, {}),
+  restoreTag: (tagId: number) =>
+    cmsV2PostJson<CmsV2TagDto>(`/tags/${tagId}/restore`, {}),
+  listTagBindings: (targetType: CmsV2TagBindingTargetType, targetId: number) =>
+    cmsV2FetchJson<CmsV2TagBindingDto[]>(
+      withQuery('/tag-bindings', { targetType, targetId }),
+    ),
+  replaceTagBindings: (request: CmsV2SetTargetTagsRequest) =>
+    cmsV2PutJson<CmsV2TagBindingDto[]>('/tag-bindings', request),
+  getTeachingNote: (teachingNoteId: number) =>
+    cmsV2FetchJson<CmsV2TeachingNoteDto>(`/teaching-notes/${teachingNoteId}`),
+  listTeachingNotes: (query: CmsV2SearchTeachingNotesQuery = {}) =>
+    cmsV2FetchJson<CmsV2TeachingNoteDto[]>(
+      withQuery('/teaching-notes', {
+        keyword: query.keyword,
+        noteType: query.noteType,
+        effectLevel: query.effectLevel,
+        targetType: query.targetType,
+        targetId: query.targetId,
+        occurredFrom: query.occurredFrom,
+        occurredTo: query.occurredTo,
+      }),
+    ),
+  listTeachingNotesByBinding: (
+    targetType: CmsV2TeachingNoteTargetType,
+    targetId: number,
+  ) =>
+    cmsV2FetchJson<CmsV2TeachingNoteDto[]>(
+      withQuery('/teaching-note-bindings', { targetType, targetId }),
+    ),
+  createTeachingNote: (request: CmsV2CreateTeachingNoteRequest) =>
+    cmsV2PostJson<CmsV2TeachingNoteDto>('/teaching-notes', request),
+  updateTeachingNote: (teachingNoteId: number, request: CmsV2UpdateTeachingNoteRequest) =>
+    cmsV2PatchJson<CmsV2TeachingNoteDto>(`/teaching-notes/${teachingNoteId}`, request),
+  deleteTeachingNote: (teachingNoteId: number) =>
+    cmsV2Delete(`/teaching-notes/${teachingNoteId}`),
   getContentBlock: (contentBlockId: number) =>
     cmsV2FetchJson<CmsV2ContentBlockDto>(`/content-blocks/${contentBlockId}`),
-  listContentBlocks: () => cmsV2FetchJson<CmsV2ContentBlockDto[]>('/content-blocks'),
+  listContentBlocks: (query: CmsV2ListContentBlocksQuery = {}) =>
+    cmsV2FetchJson<CmsV2ContentBlockDto[]>(
+      withRepeatedQuery('/content-blocks', { tagIds: query.tagIds }),
+    ),
   createContentBlock: (request: CmsV2CreateContentBlockRequest) =>
     cmsV2PostJson<CmsV2CreatedEntityResultDto>('/content-blocks', request),
   changeContentBlockDifficulty: (

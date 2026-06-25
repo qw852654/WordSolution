@@ -38,6 +38,9 @@ public sealed record ChangeContentBlockDifficultyCommand(
     int ContentBlockId,
     Difficulty Difficulty);
 
+public sealed record SearchContentBlocksCommand(
+    IReadOnlyList<int>? TagIds = null);
+
 public sealed record AddContentBlockRelationCommand(
     int ParentBlockId,
     int ChildBlockId,

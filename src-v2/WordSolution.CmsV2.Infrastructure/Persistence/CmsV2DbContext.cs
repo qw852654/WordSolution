@@ -41,7 +41,13 @@ public sealed class CmsV2DbContext(DbContextOptions<CmsV2DbContext> options) : D
 
     public DbSet<GeneratedFile> GeneratedFiles => Set<GeneratedFile>();
 
+    public DbSet<Tag> Tags => Set<Tag>();
+
+    public DbSet<TagBinding> TagBindings => Set<TagBinding>();
+
     public DbSet<TeachingNote> TeachingNotes => Set<TeachingNote>();
+
+    public DbSet<TeachingNoteBinding> TeachingNoteBindings => Set<TeachingNoteBinding>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

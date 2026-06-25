@@ -1444,3 +1444,273 @@ AtomicSectionPanel
 - 输出预检：后端已提供 `validate-word-generation`，`SectionPage` 只负责展示预检或生成错误，不在前端计算样式问题。
 - 插入上下文：Section 顶层、AtomicSection 和 AtomicSectionPanel 内部导入必须共用 `QuestionImportContext`，不能各写一套导入面板。
 - 页面级刷新：正式批量导入成功后，`SectionPage` 负责刷新 Section 数据，并定位首个新增题目；组件本身不得保存成功状态或伪造插入结果。
+
+## 当前补充：标签与教学评注 Inspector 入口
+
+本节记录 `SectionPage` 接入标签系统与教学评注系统的第一版页面规则。正式后端规格见：
+
+```text
+docs/cms-v2/backend/标签系统与教学评注系统开发文档.md
+```
+
+### 1. 标签入口
+
+第一版标签编辑入口以右侧 `SectionInspector` 为主。
+
+允许编辑标签的目标：
+
+```text
+ContentBlock
+AtomicSection
+Section
+```
+
+不允许直接编辑标签的目标：
+
+```text
+SectionItem
+AtomicSectionItem
+AtomicSectionPanel
+ContentBlockVersion
+HandoutVersion
+HandoutVersionItem
+OutputForm
+GeneratedFile
+```
+
+Occurrence 入口规则：
+
+- 当用户从 `SectionItem` 中展示的 `ContentBlock` 入口编辑标签时，实际保存目标是 `ContentBlock`。
+- 当用户从 `AtomicSectionItem` 中展示的 `ContentBlock` 入口编辑标签时，实际保存目标是 `ContentBlock`。
+- 页面状态中必须明确区分“当前 UI 入口来自 occurrence”和“实际保存目标是 ContentBlock”。
+
+标签不自动继承：
+
+- 给 `Section` 打标签，不自动给下属 `ContentBlock` 打标签。
+- 给 `AtomicSection` 打标签，不自动给内部题目打标签。
+- `SectionPage` 不做父子自动复制，也不做隐式写库。
+
+### 2. 标签组件装配
+
+`SectionInspector` 使用 `TagMultiSelect` 展示和编辑标签。
+
+页面级职责：
+
+- 加载当前对象标签。
+- 搜索 Active 标签。
+- 创建标签。
+- 调用 `PUT /api/cms-v2/tag-bindings` 替换当前目标对象标签列表。
+- 保存成功后使用后端返回结果或重新读取结果刷新 UI。
+
+组件职责：
+
+- `TagMultiSelect` 展示、搜索输入、选择、新建意图、移除意图。
+- `TagMultiSelect` 只 emit，不直接调用 API。
+- Archived 标签已有绑定继续显示，但弱化。
+
+视觉要求：
+
+- 标签颜色使用 `Tag.Color` 保存的 theme token。
+- 不在业务组件中直接写死颜色值。
+- 第一版不提供标签改色入口。
+- `SectionTree` 不铺开显示所有标签；未来如需要，只显示“有标签”轻提示。
+
+### 3. 教学评注入口
+
+教学评注第一版主要放在右侧 `SectionInspector`。
+
+第一版允许绑定：
+
+```text
+ContentBlock
+Section
+AtomicSection
+AtomicSectionPanel
+AtomicSectionItem
+SectionItem
+```
+
+`TeachingNote` 与 `Tag` 的关键差异：
+
+- 标签第一版不绑定 occurrence。
+- 教学评注可以绑定 occurrence，例如 `SectionItem` 和 `AtomicSectionItem`。
+- 标签用于检索和筛选。
+- 教学评注用于记录教学观察、课堂经验和复盘想法。
+
+Inspector 行为：
+
+- 选中对象后，Inspector 加载该对象关联的教学评注。
+- 创建评注时默认只绑定当前 Inspector 对象。
+- API 和数据模型支持多绑定，但第一版创建 UI 不要求复杂多对象选择器。
+- 主工作区最多显示“有 N 条评注”轻提示，不展开完整评注内容。
+
+### 4. 教学评注组件装配
+
+`SectionInspector` 使用：
+
+```text
+TeachingNoteList
+TeachingNoteEditor
+TeachingNoteCard
+TeachingNoteBindingSummary
+```
+
+字段显示：
+
+```text
+NoteType
+EffectLevel，可选
+OccurredAt，可选
+Content
+关联对象摘要
+UpdatedTime
+```
+
+禁止显示：
+
+```text
+Title
+Status
+NextAction
+SortOrder
+```
+
+页面级职责：
+
+- 按当前目标对象加载评注。
+- 创建评注。
+- 更新评注。
+- 删除评注。
+- 删除后刷新当前目标对象评注列表。
+
+组件职责：
+
+- 展示列表、卡片、编辑表单和绑定摘要。
+- 触发 create / edit / delete 意图。
+- 不直接调用 API。
+- 不把评注做成任务、待办或状态流程。
+
+删除规则：
+
+- 删除评注采用物理删除。
+- 前端必须二次确认。
+- 如果评注绑定多个对象，确认文案必须提示删除后会从所有关联对象移除。
+
+### 5. 后置能力
+
+第一版后置：
+
+- 标签管理页。
+- 标签改色入口。
+- 完整全局评注搜索页。
+- 创建评注时关联更多对象的复杂选择器。
+
+这些能力不得阻塞 Inspector 中的标签编辑和教学评注基础工作流。
+
+### 6. 当前实现记录：标签系统 Phase 4 接入
+
+当前 `SectionPage` 已接入标签系统第一版前端工作流：
+
+- 右侧 `SectionInspector` 根据当前选中节点解析标签保存目标。
+- `Section / AtomicSection / ContentBlock / CompositeBlock` 可以显示并编辑标签。
+- `AtomicSectionPanel / AtomicSectionUnassigned / SectionVariant` 不提供标签编辑入口。
+- 选中来自 `SectionItem` 的 `ContentBlock / CompositeBlock` 时，保存目标解析为底层 `ContentBlock`。
+- 选中来自 `AtomicSectionItem` 的 `ContentBlock / CompositeBlock` 时，保存目标同样解析为底层 `ContentBlock`。
+- `SectionPage` 负责读取已有绑定、搜索 Active 标签、新建标签和替换目标标签列表。
+- `TagMultiSelect` 仍然只 emit 用户意图，不直接调用 API。
+- 保存成功后重新读取当前 `Section` 数据，使用服务端确认后的标签展示结果。
+
+`/content-blocks` 已作为 ContentBlock 多标签 AND 筛选入口：
+
+- 搜索并选择多个 Active 标签作为筛选条件。
+- 每次筛选调用 `GET /api/cms-v2/content-blocks?tagIds=1&tagIds=2`。
+- 多标签语义由后端按 AND 处理。
+
+当前仍不做：
+
+- 标签管理页。
+- 标签改色入口。
+- 标签树 / 标签分类。
+- TeachingNote 真实 Inspector 接入。
+
+### 7. 当前实现记录：教学评注前端基础组件
+
+当前 Phase 7 已完成教学评注前端基础组件和 `ComponentLab` Mock 验收入口：
+
+- `TeachingNoteBadge`
+- `TeachingNoteBindingTargetView`
+- `TeachingNoteBindingSummary`
+- `TeachingNoteCard`
+- `TeachingNoteList`
+- `TeachingNoteEditor`
+- `TeachingNoteDeleteConfirm`
+
+边界：
+
+- 本轮不在 `SectionInspector` 中真实加载、创建、编辑或删除评注。
+- 本轮不在 `SectionPage` 或 `AtomicSectionPanel` 中接入评注数量轻提示。
+- 本轮不做全局教学评注搜索页。
+- Phase 8 再把这些基础组件接入真实 Inspector 和页面级 action。
+
+### 8. 当前实现记录：教学评注 Phase 8 Inspector 接入
+
+当前 Phase 8 已完成 `SectionPage -> SectionInspector` 的教学评注真实入口：
+
+- 选中 Inspector 对象后，页面按当前对象的 TeachingNote target 加载评注列表。
+- 支持在 Inspector 中创建、编辑、删除和查看评注。
+- 创建评注默认绑定当前 Inspector 对象。
+- 编辑评注时保留该评注已有 bindings。
+- 删除评注后重新读取当前对象评注列表，不做 optimistic update。
+- 加载、保存、删除失败均保持当前已确认数据，并在 Inspector 内显示错误。
+
+目标对象映射：
+
+```text
+Section -> Section
+AtomicSection -> AtomicSection
+AtomicSectionPanel -> AtomicSectionPanel
+AtomicSectionItem occurrence -> AtomicSectionItem
+SectionItem occurrence -> SectionItem
+ContentBlock body / relation -> ContentBlock
+```
+
+其中 `SectionItem` 与 `AtomicSectionItem` 作为出现位置保存评注，不套用标签系统“保存到底层 ContentBlock”的规则。
+
+Phase 9 后置：
+
+- 全局教学评注搜索和筛选联调。
+
+### 9. 当前实现记录：Phase 9 搜索筛选与跨模块联调
+
+当前 Phase 9 已完成真实工作台中的最小稳定联调入口：
+
+- 标签筛选入口仍为 `/content-blocks`，用户选择多个 Active 标签后，前端调用 `GET /api/cms-v2/content-blocks?tagIds=1&tagIds=2`；后端按 AND 语义返回必须同时包含所有标签的 ContentBlock。
+- 标签候选来源继续只面向 Active 标签；前端 action 层额外过滤 Archived 标签，避免归档标签被新选。
+- 已有 Archived 标签绑定可在 Inspector、卡片或筛选结果中通过 `TagBadge` 弱化显示。
+- 教学评注筛选入口放在右侧 `SectionInspector` 的当前对象评注区域，覆盖 keyword 与 EffectLevel；targetType / targetId 由当前选中对象解析并随查询一起提交。
+- `SectionPage` 通过统一查询端点 `GET /api/cms-v2/teaching-notes` 加载当前对象评注，保持后端默认 `UpdatedTime desc` 排序。
+- 删除 TeachingNote 后，页面使用当前对象和当前筛选条件重新读取评注列表，空状态来自服务端结果。
+
+两套绑定边界在页面层分开解析：
+
+- 标签 target 解析使用 `resolveTagBindingTargetFromSectionNode`，只产生 `ContentBlock / AtomicSection / Section`。
+- 教学评注 target 解析使用 `resolveTeachingNoteTargetFromSectionNode`，可产生 `ContentBlock / Section / AtomicSection / AtomicSectionPanel / AtomicSectionItem / SectionItem`。
+- 选中 `SectionItem` 或 `AtomicSectionItem` 中展示的内容时，标签保存到底层 `ContentBlock`，教学评注绑定 occurrence 自身。
+
+### 10. 当前实现记录：Phase 10 测试与文档收口
+
+当前 Phase 10 已将标签系统与教学评注系统的真实入口、绑定边界、筛选入口和人工验收点收口到正式文档：
+
+- `SectionPage -> SectionInspector` 仍是第一版真实工作台入口。
+- 标签入口覆盖 `Section / AtomicSection / ContentBlock`；从 `SectionItem / AtomicSectionItem` 内容展示处编辑标签时保存到底层 `ContentBlock`。
+- 教学评注入口覆盖 `ContentBlock / Section / AtomicSection / AtomicSectionPanel / AtomicSectionItem / SectionItem`；occurrence 入口保存到 occurrence 自身。
+- 当前对象教学评注筛选覆盖 keyword 与 EffectLevel；`targetType / targetId` 由当前选中对象解析。
+- 删除 TeachingNote 后按当前对象和当前筛选条件重新读取列表。
+- 完整人工验收清单见 `docs/cms-v2/backend/标签系统与教学评注系统开发文档.md`。
+
+仍后置：
+
+- 完整全局 TeachingNote 搜索页。
+- 标签管理页和真实工作台标签改色入口。
+- 主工作区评注数量轻提示。
+- 跨页面评注入口和复杂多对象绑定选择器。

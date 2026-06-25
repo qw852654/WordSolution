@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.Options;
 using WordSolution.CmsV2.Application.Common;
 using WordSolution.CmsV2.Application.AtomicSections;
@@ -5,6 +6,8 @@ using WordSolution.CmsV2.Application.ContentBlocks;
 using WordSolution.CmsV2.Application.Handouts;
 using WordSolution.CmsV2.Application.SectionVariants;
 using WordSolution.CmsV2.Application.Sections;
+using WordSolution.CmsV2.Application.Tags;
+using WordSolution.CmsV2.Application.TeachingNotes;
 using WordSolution.CmsV2.Application.TeachingStructure;
 using WordSolution.CmsV2.Domain.Documents;
 using WordSolution.CmsV2.Domain.Entities;
@@ -54,9 +57,11 @@ public static class CmsV2ApiEndpointExtensions
             outputFormat = EnumNames<OutputFormat>(),
             visibilityMode = EnumNames<VisibilityMode>(),
             outputFormStatus = EnumNames<OutputFormStatus>(),
-            teachingNoteTargetType = EnumNames<TeachingNoteTargetType>(),
+            tagStatus = EnumNames<TagStatus>(),
+            tagBindingTargetType = EnumNames<TagBindingTargetType>(),
             teachingNoteType = EnumNames<TeachingNoteType>(),
-            teachingNoteStatus = EnumNames<TeachingNoteStatus>()
+            teachingNoteEffectLevel = EnumNames<TeachingNoteEffectLevel>(),
+            teachingNoteBindingTargetType = EnumNames<TeachingNoteBindingTargetType>()
         }));
 
         MapTeachingStructure(group);
@@ -64,10 +69,11 @@ public static class CmsV2ApiEndpointExtensions
         MapContentBlocks(group);
         MapSections(group);
         MapAtomicSections(group);
+        MapTags(group);
+        MapTeachingNotes(group);
         MapSectionVariants(group);
         MapHandouts(group);
         MapOutputs(group);
-        MapTeachingNotes(group);
 
         return app;
     }
@@ -184,8 +190,13 @@ public static class CmsV2ApiEndpointExtensions
 
     private static void MapContentBlocks(RouteGroupBuilder group)
     {
-        group.MapGet("/content-blocks", async (ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
-            Results.Ok(await unitOfWork.ContentBlocks.ListAsync(cancellationToken)));
+        group.MapGet("/content-blocks", async (
+            int[]? tagIds,
+            ContentBlockUseCases useCases,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await useCases.ListContentBlocksAsync(
+                new SearchContentBlocksCommand(tagIds),
+                cancellationToken)));
 
         group.MapGet("/content-blocks/{id:int}", async (int id, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
             await OkOrNotFoundAsync(unitOfWork.ContentBlocks.GetByIdAsync(id, cancellationToken)));
@@ -936,6 +947,171 @@ public static class CmsV2ApiEndpointExtensions
         });
     }
 
+    private static void MapTags(RouteGroupBuilder group)
+    {
+        group.MapGet("/tags", async (
+            string? keyword,
+            TagUseCases useCases,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await useCases.SearchTagsAsync(keyword, cancellationToken)));
+
+        group.MapPost("/tags", async (
+            CreateTagRequest request,
+            TagUseCases useCases,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await useCases.CreateTagAsync(
+                new CreateTagCommand(request.Name, request.Color),
+                cancellationToken)));
+
+        group.MapPatch("/tags/{id:int}", async (
+            int id,
+            UpdateTagRequest request,
+            TagUseCases useCases,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await useCases.UpdateTagAsync(
+                new UpdateTagCommand(id, request.Name, request.Color),
+                cancellationToken)));
+
+        group.MapPost("/tags/{id:int}/archive", async (
+            int id,
+            TagUseCases useCases,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await useCases.ArchiveTagAsync(
+                new ArchiveTagCommand(id),
+                cancellationToken)));
+
+        group.MapPost("/tags/{id:int}/restore", async (
+            int id,
+            TagUseCases useCases,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await useCases.RestoreTagAsync(
+                new RestoreTagCommand(id),
+                cancellationToken)));
+
+        group.MapGet("/tag-bindings", async (
+            TagBindingTargetType targetType,
+            int targetId,
+            TagBindingUseCases useCases,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await useCases.GetTargetTagsAsync(
+                new GetTargetTagsCommand(targetType, targetId),
+                cancellationToken)));
+
+        group.MapPut("/tag-bindings", async (
+            SetTargetTagsRequest request,
+            TagBindingUseCases useCases,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await useCases.SetTargetTagsAsync(
+                new SetTargetTagsCommand(request.TargetType, request.TargetId, request.TagIds),
+                cancellationToken)));
+    }
+
+    private static void MapTeachingNotes(RouteGroupBuilder group)
+    {
+        group.MapGet("/teaching-notes/{id:int}", async (
+            int id,
+            TeachingNoteUseCases useCases,
+            ICmsV2UnitOfWork unitOfWork,
+            CancellationToken cancellationToken) =>
+        {
+            if (await unitOfWork.TeachingNotes.GetByIdAsync(id, cancellationToken) is null)
+            {
+                return NotFoundProblem($"TeachingNote {id} was not found.");
+            }
+
+            return Results.Ok(await useCases.GetTeachingNoteAsync(id, cancellationToken));
+        });
+
+        group.MapGet("/teaching-notes", async (
+            string? keyword,
+            TeachingNoteType? noteType,
+            TeachingNoteEffectLevel? effectLevel,
+            TeachingNoteBindingTargetType? targetType,
+            int? targetId,
+            DateTimeOffset? occurredFrom,
+            DateTimeOffset? occurredTo,
+            TeachingNoteUseCases useCases,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await useCases.ListTeachingNotesAsync(
+                new SearchTeachingNotesCommand(
+                    keyword,
+                    noteType,
+                    effectLevel,
+                    targetType,
+                    targetId,
+                    occurredFrom,
+                    occurredTo),
+                cancellationToken)));
+
+        group.MapGet("/teaching-note-bindings", async (
+            TeachingNoteBindingTargetType targetType,
+            int targetId,
+            TeachingNoteUseCases useCases,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await useCases.ListTeachingNotesAsync(
+                new SearchTeachingNotesCommand(TargetType: targetType, TargetId: targetId),
+                cancellationToken)));
+
+        group.MapPost("/teaching-notes", async (
+            CreateTeachingNoteRequest request,
+            TeachingNoteUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.CreateTeachingNoteAsync(
+                new CreateTeachingNoteCommand(
+                    request.NoteType,
+                    request.Content,
+                    request.EffectLevel,
+                    request.OccurredAt,
+                    ToBindingCommands(request.Bindings)),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
+        group.MapPatch("/teaching-notes/{id:int}", async (
+            int id,
+            JsonElement request,
+            TeachingNoteUseCases useCases,
+            ICmsV2UnitOfWork unitOfWork,
+            CancellationToken cancellationToken) =>
+        {
+            if (await unitOfWork.TeachingNotes.GetByIdAsync(id, cancellationToken) is null)
+            {
+                return NotFoundProblem($"TeachingNote {id} was not found.");
+            }
+
+            var current = await useCases.GetTeachingNoteAsync(id, cancellationToken);
+            var result = await useCases.UpdateTeachingNoteAsync(
+                new UpdateTeachingNoteCommand(
+                    id,
+                    ReadEnumProperty(request, "noteType", current.NoteType),
+                    ReadStringProperty(request, "content", current.Content),
+                    ReadNullableEnumProperty(request, "effectLevel", current.EffectLevel),
+                    ReadNullableDateTimeOffsetProperty(request, "occurredAt", current.OccurredAt),
+                    ReadBindingsProperty(request, "bindings", current.Bindings)),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
+        group.MapDelete("/teaching-notes/{id:int}", async (
+            int id,
+            TeachingNoteUseCases useCases,
+            ICmsV2UnitOfWork unitOfWork,
+            CancellationToken cancellationToken) =>
+        {
+            if (await unitOfWork.TeachingNotes.GetByIdAsync(id, cancellationToken) is null)
+            {
+                return NotFoundProblem($"TeachingNote {id} was not found.");
+            }
+
+            await useCases.DeleteTeachingNoteAsync(new DeleteTeachingNoteCommand(id), cancellationToken);
+
+            return Results.NoContent();
+        });
+    }
+
     private static void MapSectionVariants(RouteGroupBuilder group)
     {
         group.MapGet("/section-variants", async (int? sectionId, ICmsV2UnitOfWork unitOfWork, CancellationToken cancellationToken) =>
@@ -1209,7 +1385,9 @@ public static class CmsV2ApiEndpointExtensions
             return Results.Ok(template);
         });
 
-        group.MapPost("/output-templates/validate", (ValidateOutputTemplateRequest request) =>
+        group.MapPost("/output-templates/validate", (
+            ValidateOutputTemplateRequest request,
+            IOutputTemplatePathResolver outputTemplatePathResolver) =>
         {
             var templateDocxPath = request.TemplateDocxPath.Trim();
             if (string.IsNullOrWhiteSpace(templateDocxPath))
@@ -1222,7 +1400,8 @@ public static class CmsV2ApiEndpointExtensions
                 return Results.Ok(new ValidateOutputTemplateResponse(false, "OutputTemplate path must point to a .docx file."));
             }
 
-            if (!File.Exists(templateDocxPath))
+            var resolvedTemplateDocxPath = outputTemplatePathResolver.ResolveTemplateDocxPath(templateDocxPath);
+            if (!File.Exists(resolvedTemplateDocxPath))
             {
                 return Results.Ok(new ValidateOutputTemplateResponse(false, $"OutputTemplate file was not found: {templateDocxPath}"));
             }
@@ -1364,41 +1543,6 @@ public static class CmsV2ApiEndpointExtensions
         });
     }
 
-    private static void MapTeachingNotes(RouteGroupBuilder group)
-    {
-        group.MapGet("/teaching-notes", async (
-            TeachingNoteTargetType? targetType,
-            int? targetId,
-            ICmsV2UnitOfWork unitOfWork,
-            CancellationToken cancellationToken) =>
-        {
-            if (targetType.HasValue && targetId.HasValue)
-            {
-                return Results.Ok(await unitOfWork.TeachingNotes.ListByTargetAsync(targetType.Value, targetId.Value, cancellationToken));
-            }
-
-            return Results.Ok(await unitOfWork.TeachingNotes.ListAsync(cancellationToken));
-        });
-
-        group.MapPost("/teaching-notes", async (
-            CreateTeachingNoteRequest request,
-            ICmsV2UnitOfWork unitOfWork,
-            CancellationToken cancellationToken) =>
-        {
-            var note = new TeachingNote(
-                request.TargetType,
-                request.TargetId,
-                request.NoteType,
-                request.Title,
-                request.Content,
-                request.Status);
-            await unitOfWork.TeachingNotes.AddAsync(note, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
-
-            return Results.Ok(note);
-        });
-    }
-
     private static async Task<IResult> DownloadContentBlockVersionAsync(
         ContentBlock block,
         ContentBlockVersion? version,
@@ -1463,6 +1607,134 @@ public static class CmsV2ApiEndpointExtensions
             result.CurrentVersionNumber,
             result.Status.ToString(),
             result.Message);
+    }
+
+    private static IReadOnlyList<TeachingNoteBindingCommand>? ToBindingCommands(
+        IReadOnlyList<TeachingNoteBindingRequest>? bindings)
+    {
+        return bindings?
+            .Select(binding => new TeachingNoteBindingCommand(binding.TargetType, binding.TargetId))
+            .ToArray();
+    }
+
+    private static string ReadStringProperty(JsonElement request, string propertyName, string currentValue)
+    {
+        if (!request.TryGetProperty(propertyName, out var property))
+        {
+            return currentValue;
+        }
+
+        return property.ValueKind == JsonValueKind.Null
+            ? string.Empty
+            : property.GetString() ?? string.Empty;
+    }
+
+    private static TEnum ReadEnumProperty<TEnum>(JsonElement request, string propertyName, TEnum currentValue)
+        where TEnum : struct, Enum
+    {
+        if (!request.TryGetProperty(propertyName, out var property) || property.ValueKind == JsonValueKind.Null)
+        {
+            return currentValue;
+        }
+
+        return property.ValueKind switch
+        {
+            JsonValueKind.String when Enum.TryParse<TEnum>(property.GetString(), ignoreCase: true, out var parsed) => parsed,
+            JsonValueKind.Number when property.TryGetInt32(out var value) && Enum.IsDefined(typeof(TEnum), value) => (TEnum)Enum.ToObject(typeof(TEnum), value),
+            _ => throw new CmsV2ApplicationException($"{propertyName} is invalid.")
+        };
+    }
+
+    private static TEnum? ReadNullableEnumProperty<TEnum>(JsonElement request, string propertyName, TEnum? currentValue)
+        where TEnum : struct, Enum
+    {
+        if (!request.TryGetProperty(propertyName, out var property))
+        {
+            return currentValue;
+        }
+
+        if (property.ValueKind == JsonValueKind.Null)
+        {
+            return null;
+        }
+
+        return ReadEnumValue<TEnum>(property, propertyName);
+    }
+
+    private static DateTimeOffset? ReadNullableDateTimeOffsetProperty(
+        JsonElement request,
+        string propertyName,
+        DateTimeOffset? currentValue)
+    {
+        if (!request.TryGetProperty(propertyName, out var property))
+        {
+            return currentValue;
+        }
+
+        if (property.ValueKind == JsonValueKind.Null)
+        {
+            return null;
+        }
+
+        return property.ValueKind == JsonValueKind.String
+            && DateTimeOffset.TryParse(property.GetString(), out var parsed)
+                ? parsed
+                : throw new CmsV2ApplicationException($"{propertyName} is invalid.");
+    }
+
+    private static IReadOnlyList<TeachingNoteBindingCommand> ReadBindingsProperty(
+        JsonElement request,
+        string propertyName,
+        IReadOnlyList<TeachingNoteBindingDto> currentBindings)
+    {
+        if (!request.TryGetProperty(propertyName, out var property))
+        {
+            return currentBindings
+                .Select(binding => new TeachingNoteBindingCommand(binding.TargetType, binding.TargetId))
+                .ToArray();
+        }
+
+        if (property.ValueKind != JsonValueKind.Array)
+        {
+            throw new CmsV2ApplicationException($"{propertyName} must be an array.");
+        }
+
+        var bindings = new List<TeachingNoteBindingCommand>();
+        foreach (var item in property.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object)
+            {
+                throw new CmsV2ApplicationException("Teaching note binding must be an object.");
+            }
+
+            if (!item.TryGetProperty("targetType", out var targetTypeProperty))
+            {
+                throw new CmsV2ApplicationException("Teaching note binding targetType is required.");
+            }
+
+            if (!item.TryGetProperty("targetId", out var targetIdProperty)
+                || !targetIdProperty.TryGetInt32(out var targetId))
+            {
+                throw new CmsV2ApplicationException("Teaching note binding targetId is required.");
+            }
+
+            bindings.Add(new TeachingNoteBindingCommand(
+                ReadEnumValue<TeachingNoteBindingTargetType>(targetTypeProperty, "targetType"),
+                targetId));
+        }
+
+        return bindings;
+    }
+
+    private static TEnum ReadEnumValue<TEnum>(JsonElement property, string propertyName)
+        where TEnum : struct, Enum
+    {
+        return property.ValueKind switch
+        {
+            JsonValueKind.String when Enum.TryParse<TEnum>(property.GetString(), ignoreCase: true, out var parsed) => parsed,
+            JsonValueKind.Number when property.TryGetInt32(out var value) && Enum.IsDefined(typeof(TEnum), value) => (TEnum)Enum.ToObject(typeof(TEnum), value),
+            _ => throw new CmsV2ApplicationException($"{propertyName} is invalid.")
+        };
     }
 
     private static async Task<IResult> OkOrNotFoundAsync<T>(Task<T?> entityTask)

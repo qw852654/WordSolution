@@ -4,6 +4,7 @@ import { FileText, MoreHorizontal, RefreshCw } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import { getDifficultyMarkerClass } from '@/components/business/difficultyTone'
+import TagBadge from '@/components/business/TagBadge.vue'
 import type { ContentBlockDisplayModel } from '@/types'
 
 const props = defineProps<{
@@ -51,6 +52,8 @@ const visibleQuestionParts = computed(() =>
     }))
     .filter((part) => part.html || part.warningMessage),
 )
+const visibleTags = computed(() => props.block.tags?.slice(0, 3) ?? [])
+const hiddenTagCount = computed(() => Math.max((props.block.tags?.length ?? 0) - visibleTags.value.length, 0))
 const previewStateLabel = computed(() =>
   t(`components.contentBlockDisplay.previewState.${props.block.htmlPreviewState}`),
 )
@@ -72,6 +75,18 @@ const difficultyMarkerClass = computed(() => getDifficultyMarkerClass(props.bloc
     />
 
     <div class="min-w-0">
+      <div v-if="visibleTags.length" class="mb-2 flex min-w-0 flex-wrap items-center gap-1">
+        <TagBadge
+          v-for="tag in visibleTags"
+          :key="tag.id"
+          :tag="tag"
+          disabled
+        />
+        <span v-if="hiddenTagCount" class="text-xs text-muted-foreground">
+          {{ t('tag.moreCount', { count: hiddenTagCount }) }}
+        </span>
+      </div>
+
       <div
         v-if="!readOnly && hasReadyPreview"
         class="absolute right-0 top-0 flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"

@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { PackageOpen, Trash2 } from 'lucide-vue-next'
+import { PackageOpen, Search, Trash2 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import EmptyState from '@/components/presentation/EmptyState.vue'
 import StatusPill from '@/components/presentation/StatusPill.vue'
 import WeakScrollArea from '@/components/presentation/WeakScrollArea.vue'
+import TagMultiSelect from '@/components/business/TagMultiSelect.vue'
+import TeachingNoteDeleteConfirm from '@/components/business/TeachingNoteDeleteConfirm.vue'
+import TeachingNoteEditor from '@/components/business/TeachingNoteEditor.vue'
+import TeachingNoteList from '@/components/business/TeachingNoteList.vue'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -17,6 +21,13 @@ import type {
   SectionDifficultyEditableNodeKind,
   SectionPageShellModel,
   SectionTreeNodeModel,
+  TagBindingTargetType,
+  TagModel,
+  TeachingNoteEditorValue,
+  TeachingNoteEffectLevel,
+  TeachingNoteListState,
+  TeachingNoteModel,
+  TeachingNoteTargetType,
 } from '@/types'
 
 const props = defineProps<{
@@ -26,6 +37,28 @@ const props = defineProps<{
   deletingContentBlockCascade?: boolean
   updatingAtomicSectionItemClassification?: boolean
   updatingNodeDifficulty?: boolean
+  tagTargetType?: TagBindingTargetType
+  tagTargetId?: number
+  tags?: TagModel[]
+  tagSearchResults?: TagModel[]
+  tagLoading?: boolean
+  tagSaving?: boolean
+  tagError?: string
+  tagTargetSource?: 'Direct' | 'OccurrenceContentBlock'
+  teachingNoteTargetType?: TeachingNoteTargetType
+  teachingNoteTargetId?: number
+  teachingNoteTargetSource?: string
+  teachingNoteKeyword?: string
+  teachingNoteEffectLevel?: TeachingNoteEffectLevel | ''
+  teachingNotes?: TeachingNoteModel[]
+  teachingNoteState?: TeachingNoteListState
+  teachingNoteError?: string
+  teachingNoteEditorValue?: TeachingNoteEditorValue | null
+  teachingNoteEditorMode?: 'create' | 'edit'
+  teachingNoteSaving?: boolean
+  teachingNoteDeletingId?: number | null
+  teachingNoteDeleteTarget?: TeachingNoteModel | null
+  teachingNoteDeleteError?: string
 }>()
 
 const emit = defineEmits<{
@@ -37,6 +70,19 @@ const emit = defineEmits<{
     difficulty: string
   }]
   changeNodeDifficulty: [payload: SectionDifficultyChangePayload]
+  searchTags: [keyword: string]
+  createTag: [name: string]
+  updateTags: [tags: TagModel[]]
+  saveTags: [tagIds: number[]]
+  createTeachingNote: []
+  editTeachingNote: [note: TeachingNoteModel]
+  submitTeachingNote: [value: TeachingNoteEditorValue]
+  cancelTeachingNote: []
+  searchTeachingNotes: [keyword: string]
+  filterTeachingNoteEffectLevel: [effectLevel: TeachingNoteEffectLevel | '']
+  requestDeleteTeachingNote: [note: TeachingNoteModel]
+  confirmDeleteTeachingNote: [note: TeachingNoteModel]
+  cancelDeleteTeachingNote: []
 }>()
 
 const { t } = useI18n()
@@ -49,6 +95,12 @@ const atomicSectionTeachingRoleOptions: AtomicSectionTeachingRole[] = [
   'Homework',
 ]
 const difficultyOptions = ['Unset', 'Basic', 'Medium', 'Advanced', 'Top']
+const teachingNoteEffectFilterOptions: TeachingNoteEffectLevel[] = [
+  'Good',
+  'Normal',
+  'Weak',
+  'Failed',
+]
 
 const displayTitle = computed(() => {
   if (!props.node) {
@@ -92,6 +144,21 @@ const editableDifficultyKind = computed<SectionDifficultyEditableNodeKind | unde
   return undefined
 })
 const showNodeDifficultyEditor = computed(() => Boolean(editableDifficultyKind.value))
+const showTagEditor = computed(() => Boolean(props.tagTargetType && props.tagTargetId))
+const showTeachingNoteEditor = computed(() =>
+  Boolean(props.teachingNoteTargetType && props.teachingNoteTargetId),
+)
+const teachingNoteBusy = computed(() =>
+  Boolean(props.teachingNoteSaving || props.teachingNoteDeletingId),
+)
+
+function updateTeachingNoteKeyword(value: string) {
+  emit('searchTeachingNotes', value)
+}
+
+function updateTeachingNoteEffectLevel(value: string) {
+  emit('filterTeachingNoteEffectLevel', value as TeachingNoteEffectLevel | '')
+}
 
 function changeAtomicSectionItemClassification(
   next: Partial<{
@@ -256,7 +323,7 @@ const detailRows = computed(() => {
       </div>
     </CardHeader>
 
-    <WeakScrollArea class="space-y-2 px-4 pb-4">
+    <WeakScrollArea class="flex-1 space-y-2 px-4 pb-4">
       <dl class="grid gap-2 text-sm">
         <div
           v-for="row in detailRows"
@@ -267,7 +334,112 @@ const detailRows = computed(() => {
           <dd class="truncate font-medium">{{ row.value }}</dd>
         </div>
       </dl>
+
+      <div v-if="showTeachingNoteEditor && teachingNoteTargetType && teachingNoteTargetId" class="grid gap-3 border-t pt-3">
+        <p class="text-xs text-muted-foreground">
+          {{
+            t('teachingNote.currentTarget', {
+              type: t(`teachingNote.targetType.${teachingNoteTargetType}`),
+              id: teachingNoteTargetId,
+            })
+          }}
+        </p>
+        <div class="grid gap-2 rounded-md border bg-muted/20 p-2">
+          <div class="min-w-0">
+            <p class="text-xs font-medium">
+              {{ t('teachingNote.filter.title') }}
+            </p>
+            <p class="text-xs text-muted-foreground">
+              {{ t('teachingNote.filter.description') }}
+            </p>
+          </div>
+          <label class="grid gap-1 text-xs text-muted-foreground">
+            <span>{{ t('teachingNote.filter.keywordLabel') }}</span>
+            <span class="flex items-center gap-2 rounded-md border bg-background px-2 focus-within:ring-2 focus-within:ring-ring">
+              <Search class="size-4 text-muted-foreground" aria-hidden="true" />
+              <input
+                :value="teachingNoteKeyword ?? ''"
+                class="h-9 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+                :placeholder="t('teachingNote.filter.keywordPlaceholder')"
+                :disabled="teachingNoteBusy"
+                @input="updateTeachingNoteKeyword(($event.target as HTMLInputElement).value)"
+              />
+            </span>
+          </label>
+          <label class="grid gap-1 text-xs text-muted-foreground">
+            <span>{{ t('teachingNote.filter.effectLabel') }}</span>
+            <select
+              class="h-9 rounded-md border bg-background px-2 text-sm text-foreground disabled:cursor-not-allowed"
+              :value="teachingNoteEffectLevel ?? ''"
+              :disabled="teachingNoteBusy"
+              @change="updateTeachingNoteEffectLevel(($event.target as HTMLSelectElement).value)"
+            >
+              <option value="">
+                {{ t('teachingNote.filter.effectAll') }}
+              </option>
+              <option
+                v-for="effectLevel in teachingNoteEffectFilterOptions"
+                :key="effectLevel"
+                :value="effectLevel"
+              >
+                {{ t(`teachingNote.effectLevel.${effectLevel}`) }}
+              </option>
+            </select>
+          </label>
+        </div>
+        <TeachingNoteEditor
+          v-if="teachingNoteEditorValue"
+          :model-value="teachingNoteEditorValue"
+          :mode="teachingNoteEditorMode ?? 'create'"
+          :saving="teachingNoteSaving"
+          :disabled="Boolean(teachingNoteDeletingId)"
+          :error="teachingNoteError"
+          @submit="emit('submitTeachingNote', $event)"
+          @cancel="emit('cancelTeachingNote')"
+        />
+        <TeachingNoteDeleteConfirm
+          v-if="teachingNoteDeleteTarget"
+          :note="teachingNoteDeleteTarget"
+          :deleting="teachingNoteDeletingId === teachingNoteDeleteTarget.id"
+          :disabled="teachingNoteSaving"
+          :error="teachingNoteDeleteError"
+          @confirm="emit('confirmDeleteTeachingNote', $event)"
+          @cancel="emit('cancelDeleteTeachingNote')"
+        />
+        <TeachingNoteList
+          :notes="teachingNotes ?? []"
+          :state="teachingNoteState ?? 'idle'"
+          :disabled="teachingNoteBusy"
+          :deleting-note-id="teachingNoteDeletingId"
+          :error="teachingNoteError"
+          @create="emit('createTeachingNote')"
+          @edit="emit('editTeachingNote', $event)"
+          @delete="emit('requestDeleteTeachingNote', $event)"
+        />
+      </div>
     </WeakScrollArea>
+
+    <div v-if="showTagEditor && tagTargetType && tagTargetId" class="border-t px-4 py-3">
+      <TagMultiSelect
+        :target-type="tagTargetType"
+        :target-id="tagTargetId"
+        :model-value="tags ?? []"
+        :search-results="tagSearchResults ?? []"
+        :loading="tagLoading"
+        :error="tagError"
+        :disabled="tagSaving"
+        @search="emit('searchTags', $event)"
+        @create-tag="emit('createTag', $event)"
+        @update:model-value="emit('updateTags', $event)"
+        @save="emit('saveTags', $event)"
+      />
+      <p
+        v-if="tagTargetSource === 'OccurrenceContentBlock'"
+        class="mt-2 text-xs text-muted-foreground"
+      >
+        {{ t('components.sectionInspector.tagOccurrenceContentBlockHint') }}
+      </p>
+    </div>
 
     <div v-if="showNodeDifficultyEditor" class="border-t px-4 py-3">
       <div class="grid gap-2">

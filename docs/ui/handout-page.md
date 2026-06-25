@@ -560,11 +560,13 @@ Inspector 只显示当前选中节点上下文，不做跨页面全局信息面�
 
 这里的“共用”只指共用同一份默认 `OutputTemplate` DOCX 文件，不表示所有 `HandoutVersion` 共用同一个 `OutputForm` 记录。
 
-默认 `OutputTemplate` 路径固定为：
+新建默认 `OutputTemplate.TemplateDocxPath` 使用运行时相对路径：
 
 ```text
-src-v2/WordSolution.CmsV2.Infrastructure/Documents/Templates/content-block-default.docx
+Documents/Templates/content-block-default.docx
 ```
+
+后端在校验和生成时会解析为 API 输出目录下的实际模板文件。历史数据库中已经存在的旧默认路径 `src-v2/WordSolution.CmsV2.Infrastructure/Documents/Templates/content-block-default.docx` 仍视为同一份默认模板，不要求用户清库。
 
 ## 19. GeneratedFile
 

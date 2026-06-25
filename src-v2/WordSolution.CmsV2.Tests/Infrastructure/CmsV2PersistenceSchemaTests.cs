@@ -26,7 +26,10 @@ public sealed class CmsV2PersistenceSchemaTests
         "OutputTemplates",
         "OutputForms",
         "GeneratedFiles",
-        "TeachingNotes"
+        "Tags",
+        "TagBindings",
+        "TeachingNotes",
+        "TeachingNoteBindings"
     ];
 
     [Fact]
@@ -75,7 +78,10 @@ public sealed class CmsV2PersistenceSchemaTests
         {
             var columns = await ReadTableColumnsAsync(context, tableName);
             Assert.Contains("Id", columns);
-            Assert.DoesNotContain("CreatedTime", columns);
+            if (tableName is not "Tags" and not "TagBindings" and not "TeachingNotes" and not "TeachingNoteBindings")
+            {
+                Assert.DoesNotContain("CreatedTime", columns);
+            }
         }
 
         var generatedFileColumns = await ReadTableColumnsAsync(context, "GeneratedFiles");
@@ -106,6 +112,42 @@ public sealed class CmsV2PersistenceSchemaTests
         var atomicSectionItemColumns = await ReadTableColumnsAsync(context, "AtomicSectionItems");
         Assert.Contains("AtomicSectionPanelId", atomicSectionItemColumns);
         Assert.Contains("TeachingRole", atomicSectionItemColumns);
+
+        var tagColumns = await ReadTableColumnsAsync(context, "Tags");
+        Assert.Contains("Name", tagColumns);
+        Assert.Contains("NormalizedName", tagColumns);
+        Assert.Contains("Color", tagColumns);
+        Assert.Contains("Status", tagColumns);
+        Assert.Contains("CreatedTime", tagColumns);
+        Assert.Contains("UpdatedTime", tagColumns);
+
+        var tagBindingColumns = await ReadTableColumnsAsync(context, "TagBindings");
+        Assert.Contains("TagId", tagBindingColumns);
+        Assert.Contains("TargetType", tagBindingColumns);
+        Assert.Contains("TargetId", tagBindingColumns);
+        Assert.Contains("CreatedTime", tagBindingColumns);
+        Assert.Contains("UpdatedTime", tagBindingColumns);
+
+        var teachingNoteColumns = await ReadTableColumnsAsync(context, "TeachingNotes");
+        Assert.Contains("NoteType", teachingNoteColumns);
+        Assert.Contains("Content", teachingNoteColumns);
+        Assert.Contains("EffectLevel", teachingNoteColumns);
+        Assert.Contains("OccurredAt", teachingNoteColumns);
+        Assert.Contains("CreatedTime", teachingNoteColumns);
+        Assert.Contains("UpdatedTime", teachingNoteColumns);
+        Assert.DoesNotContain("Title", teachingNoteColumns);
+        Assert.DoesNotContain("Status", teachingNoteColumns);
+        Assert.DoesNotContain("NextAction", teachingNoteColumns);
+        Assert.DoesNotContain("SortOrder", teachingNoteColumns);
+        Assert.DoesNotContain("TargetType", teachingNoteColumns);
+        Assert.DoesNotContain("TargetId", teachingNoteColumns);
+
+        var teachingNoteBindingColumns = await ReadTableColumnsAsync(context, "TeachingNoteBindings");
+        Assert.Contains("TeachingNoteId", teachingNoteBindingColumns);
+        Assert.Contains("TargetType", teachingNoteBindingColumns);
+        Assert.Contains("TargetId", teachingNoteBindingColumns);
+        Assert.Contains("CreatedTime", teachingNoteBindingColumns);
+        Assert.DoesNotContain("UpdatedTime", teachingNoteBindingColumns);
     }
 
     [Fact]
@@ -167,6 +209,46 @@ public sealed class CmsV2PersistenceSchemaTests
             atomicSectionItemForeignKeys,
             foreignKey => foreignKey.Table == "AtomicSectionPanels"
                 && foreignKey.From == "AtomicSectionPanelId"
+                && foreignKey.OnDelete == "RESTRICT");
+
+        var tagIndexes = await ReadIndexesAsync(context, "Tags");
+        Assert.Contains(
+            tagIndexes,
+            index => index.IsUnique && index.Columns.SequenceEqual(["NormalizedName"]));
+
+        var tagBindingIndexes = await ReadIndexesAsync(context, "TagBindings");
+        Assert.Contains(
+            tagBindingIndexes,
+            index => index.IsUnique && index.Columns.SequenceEqual(["TagId", "TargetType", "TargetId"]));
+        Assert.Contains(
+            tagBindingIndexes,
+            index => index.Columns.SequenceEqual(["TargetType", "TargetId"]));
+
+        var tagBindingForeignKeys = await ReadForeignKeysAsync(context, "TagBindings");
+        Assert.Contains(
+            tagBindingForeignKeys,
+            foreignKey => foreignKey.Table == "Tags"
+                && foreignKey.From == "TagId"
+                && foreignKey.OnDelete == "RESTRICT");
+
+        var teachingNoteIndexes = await ReadIndexesAsync(context, "TeachingNotes");
+        Assert.Contains(
+            teachingNoteIndexes,
+            index => index.Columns.SequenceEqual(["UpdatedTime"]));
+
+        var teachingNoteBindingIndexes = await ReadIndexesAsync(context, "TeachingNoteBindings");
+        Assert.Contains(
+            teachingNoteBindingIndexes,
+            index => index.IsUnique && index.Columns.SequenceEqual(["TeachingNoteId", "TargetType", "TargetId"]));
+        Assert.Contains(
+            teachingNoteBindingIndexes,
+            index => index.Columns.SequenceEqual(["TargetType", "TargetId"]));
+
+        var teachingNoteBindingForeignKeys = await ReadForeignKeysAsync(context, "TeachingNoteBindings");
+        Assert.Contains(
+            teachingNoteBindingForeignKeys,
+            foreignKey => foreignKey.Table == "TeachingNotes"
+                && foreignKey.From == "TeachingNoteId"
                 && foreignKey.OnDelete == "RESTRICT");
 
         var sectionItemForeignKeys = await ReadForeignKeysAsync(context, "SectionItems");

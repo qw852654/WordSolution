@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import TagBadge from '@/components/business/TagBadge.vue'
 import type { ContentBlockCardModel } from '@/types'
 
 const props = defineProps<{
@@ -36,6 +37,17 @@ const { t } = useI18n()
         <div class="min-w-0 space-y-1">
           <CardTitle class="truncate text-base">{{ block.title }}</CardTitle>
           <p class="text-sm text-muted-foreground">{{ block.summary }}</p>
+          <div v-if="block.tags?.length" class="flex min-w-0 flex-wrap items-center gap-1 pt-1">
+            <TagBadge
+              v-for="tag in block.tags.slice(0, 3)"
+              :key="tag.id"
+              :tag="tag"
+              disabled
+            />
+            <span v-if="block.tags.length > 3" class="text-xs text-muted-foreground">
+              {{ t('tag.moreCount', { count: block.tags.length - 3 }) }}
+            </span>
+          </div>
         </div>
         <StatusPill
           :label="block.status"

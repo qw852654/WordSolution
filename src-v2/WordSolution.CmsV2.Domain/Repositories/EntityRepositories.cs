@@ -142,10 +142,53 @@ public interface IGeneratedFileRepository : IRepository<GeneratedFile>
         CancellationToken cancellationToken = default);
 }
 
+public interface ITagRepository : IRepository<Tag>
+{
+    Task<Tag?> GetByNormalizedNameAsync(
+        string normalizedName,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Tag>> SearchActiveAsync(
+        string? keyword,
+        CancellationToken cancellationToken = default);
+}
+
+public interface ITagBindingRepository : IRepository<TagBinding>
+{
+    Task<IReadOnlyList<TagBinding>> ListByTargetAsync(
+        TagBindingTargetType targetType,
+        int targetId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<TagBinding>> ListByTagAsync(
+        int tagId,
+        CancellationToken cancellationToken = default);
+}
+
 public interface ITeachingNoteRepository : IRepository<TeachingNote>
 {
     Task<IReadOnlyList<TeachingNote>> ListByTargetAsync(
-        TeachingNoteTargetType targetType,
+        TeachingNoteBindingTargetType targetType,
         int targetId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<TeachingNote>> SearchAsync(
+        string? keyword,
+        TeachingNoteType? noteType,
+        TeachingNoteEffectLevel? effectLevel,
+        DateTimeOffset? occurredFrom,
+        DateTimeOffset? occurredTo,
+        CancellationToken cancellationToken = default);
+}
+
+public interface ITeachingNoteBindingRepository : IRepository<TeachingNoteBinding>
+{
+    Task<IReadOnlyList<TeachingNoteBinding>> ListByTargetAsync(
+        TeachingNoteBindingTargetType targetType,
+        int targetId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<TeachingNoteBinding>> ListByTeachingNoteAsync(
+        int teachingNoteId,
         CancellationToken cancellationToken = default);
 }
