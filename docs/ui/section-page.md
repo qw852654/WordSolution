@@ -1238,6 +1238,10 @@ AtomicSectionBlock
 - `AtomicSectionPanelBlock` 表示知识点、例题、变式题、练习题、课后练习等教学板块。
 - `AtomicSectionUnassignedArea` 表示尚未归入任何 panel 的内容。
 - 空 panel 也必须显示，便于用户知道结构已经存在但内容还没补齐。
+- 新建 `AtomicSection` 时，后端自动创建 `Knowledge / Example / Variant` 三个空 panel。
+- 默认 panel 继承 `AtomicSection` 的标题和难度，不创建默认 `ContentBlock`。
+- 多个顶层块升级为 `AtomicSection` 时也创建这三个默认 panel；已有转换而来的 item 仍保持 `AtomicSectionPanelId = null`，显示在未归组区域。
+- `AtomicSectionBlock` 可根据派生状态显示轻量“待完善”标记；只有存在 panel 且至少一个 panel 为空时才标记，旧 AS 没有 panel 时不误标。
 
 ### 2. Panel 展示规则
 
@@ -1275,7 +1279,8 @@ composite block child list
 
 目标上下文：
 
-- panel 前 / panel 间 / panel 后：用于新增 panel。
+- panel 前 / panel 间 / panel 后：用于新增 panel，只暴露 `CreateAtomicSectionPanel`。
+- 无 panel 时的空状态插入点：用于新增第一个 panel，只暴露 `CreateAtomicSectionPanel`。
 - panel 内首位 / 中间 / 末尾：用于新增或插入 `AtomicSectionItem`。
 - 未归组首位 / 中间 / 末尾：用于新增未归组 `AtomicSectionItem`。
 
@@ -1305,9 +1310,11 @@ AtomicSection
 
 右侧 `SectionInspector` 需要支持：
 
+- `AtomicSection`：显示并允许调整 `Draft / Active / Archived` 状态，保存由 `SectionPage` 调用后端接口并在成功后刷新当前 Section。
 - `AtomicSectionPanel`：标题、教学职责、难度、子项数量、排序位置。
 - `AtomicSectionUnassignedArea`：未归组 item 数量。
 - `AtomicSectionItem`：教学职责、来源内容块难度、所在 panel。
+- 完善状态：对 `AtomicSection` 显示派生的完整 / 待完善提示；不在 `SectionTree` 额外显示标记。
 
 `ContentBlock` Inspector 不显示“所属 AS / 所属 panel”这类全局归属字段，因为 `ContentBlock` 是可复用资产。
 
@@ -1338,7 +1345,7 @@ AtomicSection
 
 ### 9. 当前明确不做
 
-- 不自动创建知识点、例题组、练习题组。
+- 不自动创建知识点、例题组、练习题组等默认 `ContentBlock`。
 - 不在 `AtomicSection` 创建时生成默认 `ContentBlock`。
 - 不在前端伪造 panel 数据。
 - 不做 panel 标题进入 Word 输出。

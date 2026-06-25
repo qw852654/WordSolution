@@ -229,6 +229,8 @@ export type SectionTreeNodeKind =
   | 'CompositeBlock'
   | 'ContentBlock'
 
+export type AtomicSectionStatusValue = 'Draft' | 'Active' | 'Archived'
+
 export interface SectionTreeNodeModel {
   id: string
   title: string
@@ -247,6 +249,8 @@ export interface SectionTreeNodeModel {
   difficultyValue?: string
   status?: string
   targetStatus?: string
+  targetStatusValue?: AtomicSectionStatusValue
+  hasEmptyPanel?: boolean
   hasWordDocument?: boolean
   previewState?: HtmlPreviewState
   itemCount?: number
@@ -547,6 +551,7 @@ export interface StructuredBlockModel {
   children: StructuredBlockChildModel[]
   panels?: AtomicSectionPanelModel[]
   unassignedChildren?: StructuredBlockChildModel[]
+  hasEmptyPanel?: boolean
   expanded?: boolean
   selected?: boolean
   disabled?: boolean
@@ -610,9 +615,13 @@ export interface InsertPointModel {
   disabled?: boolean
 }
 
-export type InsertActionType = 'CreateContentBlock' | 'CreateAtomicSection' | 'SearchExistingBlock'
+export type InsertActionType =
+  | 'CreateContentBlock'
+  | 'CreateAtomicSection'
+  | 'CreateAtomicSectionPanel'
+  | 'SearchExistingBlock'
 
-export type InsertParentType = 'Section' | 'AtomicSection' | 'CompositeBlock'
+export type InsertParentType = 'Section' | 'AtomicSection' | 'AtomicSectionPanelList' | 'CompositeBlock'
 
 export interface InsertPointPlacementModel {
   parentType: InsertParentType

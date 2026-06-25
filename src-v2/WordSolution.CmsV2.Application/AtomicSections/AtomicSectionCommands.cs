@@ -94,3 +94,7 @@ public sealed record RenameAtomicSectionCommand(
 public sealed record ChangeAtomicSectionDifficultyCommand(
     int AtomicSectionId,
     Difficulty Difficulty);
+
+public sealed record ChangeAtomicSectionStatusCommand(
+    int AtomicSectionId,
+    AtomicSectionStatus Status);

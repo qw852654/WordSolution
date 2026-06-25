@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import type {
+  AtomicSectionStatusValue,
   AtomicSectionTeachingRole,
   SectionDifficultyChangePayload,
   SectionDifficultyEditableNodeKind,
@@ -37,6 +38,7 @@ const props = defineProps<{
   deletingContentBlockCascade?: boolean
   updatingAtomicSectionItemClassification?: boolean
   updatingNodeDifficulty?: boolean
+  updatingAtomicSectionStatus?: boolean
   tagTargetType?: TagBindingTargetType
   tagTargetId?: number
   tags?: TagModel[]
@@ -70,6 +72,10 @@ const emit = defineEmits<{
     difficulty: string
   }]
   changeNodeDifficulty: [payload: SectionDifficultyChangePayload]
+  changeAtomicSectionStatus: [payload: {
+    atomicSectionId: number
+    status: AtomicSectionStatusValue
+  }]
   searchTags: [keyword: string]
   createTag: [name: string]
   updateTags: [tags: TagModel[]]
@@ -95,6 +101,7 @@ const atomicSectionTeachingRoleOptions: AtomicSectionTeachingRole[] = [
   'Homework',
 ]
 const difficultyOptions = ['Unset', 'Basic', 'Medium', 'Advanced', 'Top']
+const atomicSectionStatusOptions: AtomicSectionStatusValue[] = ['Draft', 'Active', 'Archived']
 const teachingNoteEffectFilterOptions: TeachingNoteEffectLevel[] = [
   'Good',
   'Normal',
@@ -144,6 +151,18 @@ const editableDifficultyKind = computed<SectionDifficultyEditableNodeKind | unde
   return undefined
 })
 const showNodeDifficultyEditor = computed(() => Boolean(editableDifficultyKind.value))
+const showAtomicSectionStatusEditor = computed(() =>
+  props.node?.kind === 'AtomicSection' && typeof props.node.atomicSectionId === 'number',
+)
+const atomicSectionCompletenessLabel = computed(() => {
+  if (props.node?.kind !== 'AtomicSection') {
+    return ''
+  }
+
+  return props.node.hasEmptyPanel
+    ? t('components.sectionInspector.incomplete')
+    : t('components.sectionInspector.complete')
+})
 const showTagEditor = computed(() => Boolean(props.tagTargetType && props.tagTargetId))
 const showTeachingNoteEditor = computed(() =>
   Boolean(props.teachingNoteTargetType && props.teachingNoteTargetId),
@@ -201,6 +220,22 @@ function changeNodeDifficulty(difficulty: string) {
   })
 }
 
+function changeAtomicSectionStatus(status: AtomicSectionStatusValue) {
+  const node = props.node
+  if (
+    node?.kind !== 'AtomicSection' ||
+    typeof node.atomicSectionId !== 'number' ||
+    status === node.targetStatusValue
+  ) {
+    return
+  }
+
+  emit('changeAtomicSectionStatus', {
+    atomicSectionId: node.atomicSectionId,
+    status,
+  })
+}
+
 const detailRows = computed(() => {
   const node = props.node
   if (!node) {
@@ -251,7 +286,6 @@ const detailRows = computed(() => {
     return [
       row('name', t('components.sectionInspector.name'), node.title),
       row('difficulty', t('components.sectionInspector.difficulty'), node.difficulty),
-      row('status', t('components.sectionInspector.status'), node.targetStatus ?? node.status),
       row('childCount', t('components.sectionInspector.childCount'), node.itemCount ?? 0),
     ]
   }
@@ -313,7 +347,7 @@ const detailRows = computed(() => {
   </EmptyState>
 
   <Card v-else class="flex h-full min-h-0 flex-col overflow-hidden border">
-    <CardHeader class="gap-2 px-4 py-3">
+    <CardHeader class="shrink-0 gap-2 px-3 py-2">
       <div class="flex min-w-0 items-start justify-between gap-3">
         <div class="min-w-0 space-y-1">
           <p class="text-xs text-muted-foreground">{{ t('components.sectionInspector.currentSelection') }}</p>
@@ -323,19 +357,38 @@ const detailRows = computed(() => {
       </div>
     </CardHeader>
 
-    <WeakScrollArea class="flex-1 space-y-2 px-4 pb-4">
-      <dl class="grid gap-2 text-sm">
+    <WeakScrollArea class="flex-1 space-y-2 px-3 pb-3">
+      <dl class="grid gap-1.5 text-xs">
         <div
           v-for="row in detailRows"
           :key="row.id"
-          class="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2"
+          class="grid grid-cols-[72px_minmax(0,1fr)] items-center gap-2"
         >
-          <dt class="text-xs text-muted-foreground">{{ row.label }}</dt>
+          <dt class="text-muted-foreground">{{ row.label }}</dt>
           <dd class="truncate font-medium">{{ row.value }}</dd>
         </div>
       </dl>
 
-      <div v-if="showTeachingNoteEditor && teachingNoteTargetType && teachingNoteTargetId" class="grid gap-3 border-t pt-3">
+      <div v-if="node.kind === 'AtomicSection'" class="flex items-center justify-between gap-2 text-xs">
+        <span class="text-muted-foreground">{{ t('components.sectionInspector.completeness') }}</span>
+        <span class="font-medium">{{ atomicSectionCompletenessLabel }}</span>
+      </div>
+
+      <label v-if="showAtomicSectionStatusEditor" class="grid gap-1 text-xs text-muted-foreground">
+        <span>{{ t('components.sectionInspector.status') }}</span>
+        <select
+          class="h-8 rounded-md border bg-background px-2 text-sm text-foreground"
+          :value="node.targetStatusValue ?? 'Draft'"
+          :disabled="updatingAtomicSectionStatus"
+          @change="changeAtomicSectionStatus(($event.target as HTMLSelectElement).value as AtomicSectionStatusValue)"
+        >
+          <option v-for="status in atomicSectionStatusOptions" :key="status" :value="status">
+            {{ t(`common.status.${status}`) }}
+          </option>
+        </select>
+      </label>
+
+      <div v-if="showTeachingNoteEditor && teachingNoteTargetType && teachingNoteTargetId" class="grid gap-2 border-t pt-2">
         <p class="text-xs text-muted-foreground">
           {{
             t('teachingNote.currentTarget', {
@@ -344,7 +397,7 @@ const detailRows = computed(() => {
             })
           }}
         </p>
-        <div class="grid gap-2 rounded-md border bg-muted/20 p-2">
+        <div class="grid gap-2 rounded-md border bg-muted/20 p-2 text-xs">
           <div class="min-w-0">
             <p class="text-xs font-medium">
               {{ t('teachingNote.filter.title') }}
@@ -419,7 +472,7 @@ const detailRows = computed(() => {
       </div>
     </WeakScrollArea>
 
-    <div v-if="showTagEditor && tagTargetType && tagTargetId" class="border-t px-4 py-3">
+    <div v-if="showTagEditor && tagTargetType && tagTargetId" class="border-t px-3 py-2">
       <TagMultiSelect
         :target-type="tagTargetType"
         :target-id="tagTargetId"
@@ -441,7 +494,7 @@ const detailRows = computed(() => {
       </p>
     </div>
 
-    <div v-if="showNodeDifficultyEditor" class="border-t px-4 py-3">
+    <div v-if="showNodeDifficultyEditor" class="border-t px-3 py-2">
       <div class="grid gap-2">
         <p class="text-xs font-medium">
           {{ t('components.sectionInspector.nodeDifficulty') }}
@@ -473,7 +526,7 @@ const detailRows = computed(() => {
       </div>
     </div>
 
-    <div v-if="showAtomicSectionItemClassification" class="border-t px-4 py-3">
+    <div v-if="showAtomicSectionItemClassification" class="border-t px-3 py-2">
       <div class="grid gap-2">
         <p class="text-xs font-medium">
           {{ t('components.sectionInspector.atomicSectionItemClassification') }}
@@ -523,7 +576,7 @@ const detailRows = computed(() => {
       </div>
     </div>
 
-    <div v-if="showContentBlockCascadeDelete" class="border-t px-4 py-3">
+    <div v-if="showContentBlockCascadeDelete" class="border-t px-3 py-2">
       <div class="grid gap-2">
         <p class="text-xs font-medium text-destructive">
           {{ t('components.sectionInspector.dangerZone') }}

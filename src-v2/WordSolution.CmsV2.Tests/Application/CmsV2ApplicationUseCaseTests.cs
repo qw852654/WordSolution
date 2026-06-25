@@ -384,7 +384,7 @@ public sealed class CmsV2ApplicationUseCaseTests
     }
 
     [Fact]
-    public async Task CreateAtomicSection_creates_empty_atomic_section_without_default_child_blocks()
+    public async Task CreateAtomicSection_creates_default_panels_without_default_content_blocks()
     {
         await using var context = await CreateMigratedContextAsync();
         var unitOfWork = new EfCmsV2UnitOfWork(context);
@@ -400,6 +400,7 @@ public sealed class CmsV2ApplicationUseCaseTests
                 Difficulty.Advanced,
                 AtomicSectionStatus.Draft));
 
+        var panels = await unitOfWork.AtomicSectionPanels.ListByAtomicSectionAsync(atomicSection.Id);
         var items = await unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(atomicSection.Id);
         var contentBlocks = await unitOfWork.ContentBlocks.ListAsync();
         var versions = await unitOfWork.ContentBlockVersions.ListAsync();
@@ -411,6 +412,28 @@ public sealed class CmsV2ApplicationUseCaseTests
         Assert.Empty(items);
         Assert.Empty(contentBlocks);
         Assert.Empty(versions);
+        Assert.Equal(
+            [AtomicSectionTeachingRole.Knowledge, AtomicSectionTeachingRole.Example, AtomicSectionTeachingRole.Variant],
+            panels.Select(panel => panel.TeachingRole));
+        Assert.All(panels, panel => Assert.Equal("AS Alpha", panel.Title));
+        Assert.All(panels, panel => Assert.Equal(Difficulty.Advanced, panel.Difficulty));
+        Assert.Equal([10, 20, 30], panels.Select(panel => panel.SortOrder));
+    }
+
+    [Fact]
+    public async Task ChangeAtomicSectionStatus_updates_status()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var atomicSections = new AtomicSectionUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var atomicSection = await atomicSections.CreateAtomicSectionAsync(
+            new CreateAtomicSectionCommand(sectionId, "Status AS"));
+
+        var updated = await atomicSections.ChangeAtomicSectionStatusAsync(
+            new ChangeAtomicSectionStatusCommand(atomicSection.Id, AtomicSectionStatus.Active));
+
+        Assert.Equal(AtomicSectionStatus.Active, updated.Status);
     }
 
     [Fact]
@@ -559,6 +582,47 @@ public sealed class CmsV2ApplicationUseCaseTests
         Assert.Equal(atomicItems.Select(item => item.Id), result.AtomicSectionItemIds);
         Assert.NotNull(await unitOfWork.ContentBlocks.GetByIdAsync(secondBlock.Id));
         Assert.NotNull(await unitOfWork.ContentBlocks.GetByIdAsync(thirdBlock.Id));
+    }
+
+    [Fact]
+    public async Task WrapSectionItemsAsAtomicSection_creates_default_panels_without_assigning_existing_items()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var contentBlocks = new ContentBlockUseCases(unitOfWork);
+        var sectionUseCases = new SectionUseCases(unitOfWork);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+
+        var firstBlock = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "first", ContentBlockType.Question, "wrap-first/v1.docx"));
+        var secondBlock = await contentBlocks.CreateContentBlockWithInitialVersionAsync(
+            new CreateContentBlockWithInitialVersionCommand(sectionId, "second", ContentBlockType.Question, "wrap-second/v1.docx"));
+
+        var firstItem = new SectionItem(sectionId, SectionItemTargetType.ContentBlock, firstBlock.Id, ReferenceMode.FollowLatest, null, 10);
+        var secondItem = new SectionItem(sectionId, SectionItemTargetType.ContentBlock, secondBlock.Id, ReferenceMode.FollowLatest, null, 20);
+        await unitOfWork.SectionItems.AddAsync(firstItem);
+        await unitOfWork.SectionItems.AddAsync(secondItem);
+        await unitOfWork.SaveChangesAsync();
+
+        var result = await sectionUseCases.WrapSectionItemsAsAtomicSectionAsync(
+            new WrapSectionItemsAsAtomicSectionCommand(
+                sectionId,
+                [firstItem.Id, secondItem.Id],
+                "Wrapped AS",
+                null,
+                AtomicSectionType.Custom,
+                Difficulty.Medium,
+                AtomicSectionStatus.Draft));
+
+        var panels = await unitOfWork.AtomicSectionPanels.ListByAtomicSectionAsync(result.AtomicSectionId);
+        var atomicItems = await unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(result.AtomicSectionId);
+
+        Assert.Equal(
+            [AtomicSectionTeachingRole.Knowledge, AtomicSectionTeachingRole.Example, AtomicSectionTeachingRole.Variant],
+            panels.Select(panel => panel.TeachingRole));
+        Assert.All(panels, panel => Assert.Equal("Wrapped AS", panel.Title));
+        Assert.All(panels, panel => Assert.Equal(Difficulty.Medium, panel.Difficulty));
+        Assert.All(atomicItems, item => Assert.Null(item.AtomicSectionPanelId));
     }
 
     [Fact]

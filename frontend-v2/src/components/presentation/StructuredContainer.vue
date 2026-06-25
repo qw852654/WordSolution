@@ -50,6 +50,9 @@ function emitTitleSelect(event: MouseEvent | KeyboardEvent) {
         :difficulty-marker-class="difficultyMarkerClass"
         :difficulty-marker-label="difficultyMarkerLabel"
       >
+        <template #meta-extra>
+          <slot name="meta-extra" />
+        </template>
         <template #actions>
           <slot name="actions" />
         </template>

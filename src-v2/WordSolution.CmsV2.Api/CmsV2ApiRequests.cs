@@ -150,6 +150,8 @@ public sealed record RenameAtomicSectionRequest(string Title);
 
 public sealed record ChangeAtomicSectionDifficultyRequest(Difficulty Difficulty);
 
+public sealed record ChangeAtomicSectionStatusRequest(AtomicSectionStatus Status);
+
 public sealed record CreateAtomicSectionPanelRequest(
     string Title,
     AtomicSectionTeachingRole TeachingRole,

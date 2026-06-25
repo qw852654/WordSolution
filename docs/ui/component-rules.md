@@ -2110,9 +2110,15 @@ Rules:
 
 - these components only render panel / unassigned document flow and emit user intents;
 - CMS V2 API calls stay in `SectionPage` and `useAtomicSectionActions`;
+- `InsertPoint` may be used as a contextual operation slot, not only as a content-item insertion slot;
+- `AtomicSectionBlock` must expose panel-list `InsertPoint` positions before the first panel, between panels, after the last panel, and in the empty-panel-list state;
+- panel-list `InsertPoint` context exposes only `CreateAtomicSectionPanel`;
+- `AtomicSectionBlock` header must not keep a permanent create-panel button; panel creation belongs to the document-flow insertion positions;
+- `AtomicSectionBlock` may show a lightweight incomplete marker when the page model derives that at least one existing panel is empty;
 - panel insertion context must include `atomicSectionPanelId` and `teachingRole`;
 - unassigned insertion context must use `atomicSectionPanelId = null` and `teachingRole = Unclassified`;
 - `SectionInspector` may expose `AtomicSectionItem` teaching role and difficulty controls when the selected `ContentBlock` / `CompositeBlock` is an occurrence inside an `AtomicSection`; the inspector emits the intent, while `SectionPage` and `useAtomicSectionActions` call the real classification API;
+- the compacted `SectionInspector` must keep Tags and TeachingNotes in place; compaction only reduces spacing and hides irrelevant controls;
 - `ComponentLab` should show only the current AtomicSection panel verification scenario for this round.
 ## 当前补充约定：CreateOverlayShell
 

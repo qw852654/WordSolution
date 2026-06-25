@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Microsoft.Extensions.Options;
 using WordSolution.CmsV2.Application.Common;
 using WordSolution.CmsV2.Application.AtomicSections;
 using WordSolution.CmsV2.Application.ContentBlocks;
@@ -24,10 +23,13 @@ public static class CmsV2ApiEndpointExtensions
     {
         var group = app.MapGroup("/api/cms-v2");
 
-        group.MapGet("/health", (IOptions<CmsV2ApiOptions> options) => Results.Ok(new
+        group.MapGet("/health", (CmsV2CurrentBank currentBank) => Results.Ok(new
         {
             status = "ok",
-            bankRootDirectory = options.Value.BankRootDirectory
+            bankKey = currentBank.BankKey,
+            bankDisplayName = currentBank.DisplayName,
+            bankKind = currentBank.Kind,
+            bankRootDirectory = currentBank.RootDirectory
         }));
 
         group.MapGet("/meta/enums", () => Results.Ok(new
@@ -223,12 +225,12 @@ public static class CmsV2ApiEndpointExtensions
         group.MapPost("/content-blocks/blank-document", async (
             CreateContentBlockWithBlankDocumentRequest request,
             ContentBlockDocumentUseCases useCases,
-            IOptions<CmsV2ApiOptions> options,
+            CmsV2CurrentBank currentBank,
             CancellationToken cancellationToken) =>
         {
             var result = await useCases.CreateContentBlockWithBlankDocumentAsync(
                 new CreateContentBlockWithBlankDocumentCommand(
-                    options.Value.BankRootDirectory,
+                    currentBank.RootDirectory,
                     request.SectionId,
                     request.Title,
                     request.BlockType,
@@ -245,7 +247,7 @@ public static class CmsV2ApiEndpointExtensions
             int id,
             HttpRequest request,
             ContentBlockDocumentUseCases useCases,
-            IOptions<CmsV2ApiOptions> options,
+            CmsV2CurrentBank currentBank,
             CancellationToken cancellationToken) =>
         {
             var form = await request.ReadFormAsync(cancellationToken);
@@ -259,7 +261,7 @@ public static class CmsV2ApiEndpointExtensions
             await using var stream = file.OpenReadStream();
             var result = await useCases.ImportContentBlockDocxVersionAsync(
                 new ImportContentBlockDocxVersionCommand(
-                    options.Value.BankRootDirectory,
+                    currentBank.RootDirectory,
                     id,
                     stream,
                     setAsCurrent),
@@ -273,7 +275,7 @@ public static class CmsV2ApiEndpointExtensions
             CreateContentBlockEditSessionRequest request,
             ContentBlockEditSessionUseCases useCases,
             ICmsV2UnitOfWork unitOfWork,
-            IOptions<CmsV2ApiOptions> options,
+            CmsV2CurrentBank currentBank,
             CancellationToken cancellationToken) =>
         {
             if (await unitOfWork.ContentBlocks.GetByIdAsync(id, cancellationToken) is null)
@@ -283,7 +285,7 @@ public static class CmsV2ApiEndpointExtensions
 
             var session = await useCases.CreateAsync(
                 new CreateContentBlockEditSessionCommand(
-                    options.Value.BankRootDirectory,
+                    currentBank.RootDirectory,
                     id,
                     request.OpenWord),
                 cancellationToken);
@@ -294,11 +296,11 @@ public static class CmsV2ApiEndpointExtensions
         group.MapPost("/content-blocks/{id:int}/delete-cascade", async (
             int id,
             ContentBlockDeletionUseCases useCases,
-            IOptions<CmsV2ApiOptions> options,
+            CmsV2CurrentBank currentBank,
             CancellationToken cancellationToken) =>
         {
             var result = await useCases.DeleteContentBlockCascadeAsync(
-                new DeleteContentBlockCascadeCommand(options.Value.BankRootDirectory, id),
+                new DeleteContentBlockCascadeCommand(currentBank.RootDirectory, id),
                 cancellationToken);
 
             return Results.Ok(result);
@@ -307,12 +309,12 @@ public static class CmsV2ApiEndpointExtensions
         group.MapPost("/question-import-sessions", async (
             CreateQuestionImportSessionRequest request,
             QuestionImportUseCases useCases,
-            IOptions<CmsV2ApiOptions> options,
+            CmsV2CurrentBank currentBank,
             CancellationToken cancellationToken) =>
         {
             var result = await useCases.CreateSessionAsync(
                 new CreateQuestionImportSessionCommand(
-                    options.Value.BankRootDirectory,
+                    currentBank.RootDirectory,
                     request.Context,
                     request.OpenWord),
                 cancellationToken);
@@ -323,11 +325,11 @@ public static class CmsV2ApiEndpointExtensions
         group.MapGet("/question-import-sessions/{sessionId}", async (
             string sessionId,
             QuestionImportUseCases useCases,
-            IOptions<CmsV2ApiOptions> options,
+            CmsV2CurrentBank currentBank,
             CancellationToken cancellationToken) =>
         {
             var result = await useCases.GetSessionAsync(
-                new GetQuestionImportSessionCommand(options.Value.BankRootDirectory, sessionId),
+                new GetQuestionImportSessionCommand(currentBank.RootDirectory, sessionId),
                 cancellationToken);
 
             return Results.Ok(result);
@@ -336,11 +338,11 @@ public static class CmsV2ApiEndpointExtensions
         group.MapGet("/question-import-sessions/{sessionId}/candidates", async (
             string sessionId,
             QuestionImportUseCases useCases,
-            IOptions<CmsV2ApiOptions> options,
+            CmsV2CurrentBank currentBank,
             CancellationToken cancellationToken) =>
         {
             var result = await useCases.GetCandidatesAsync(
-                new GetQuestionImportSessionCommand(options.Value.BankRootDirectory, sessionId),
+                new GetQuestionImportSessionCommand(currentBank.RootDirectory, sessionId),
                 cancellationToken);
 
             return Results.Ok(result);
@@ -350,12 +352,12 @@ public static class CmsV2ApiEndpointExtensions
             string sessionId,
             ConfirmQuestionImportRequest request,
             QuestionImportUseCases useCases,
-            IOptions<CmsV2ApiOptions> options,
+            CmsV2CurrentBank currentBank,
             CancellationToken cancellationToken) =>
         {
             var result = await useCases.ConfirmAsync(
                 new ConfirmQuestionImportCommand(
-                    options.Value.BankRootDirectory,
+                    currentBank.RootDirectory,
                     sessionId,
                     request.Candidates),
                 cancellationToken);
@@ -366,11 +368,11 @@ public static class CmsV2ApiEndpointExtensions
         group.MapPost("/question-import-sessions/{sessionId}/cancel", async (
             string sessionId,
             QuestionImportUseCases useCases,
-            IOptions<CmsV2ApiOptions> options,
+            CmsV2CurrentBank currentBank,
             CancellationToken cancellationToken) =>
         {
             var result = await useCases.CancelSessionAsync(
-                new CancelQuestionImportSessionCommand(options.Value.BankRootDirectory, sessionId),
+                new CancelQuestionImportSessionCommand(currentBank.RootDirectory, sessionId),
                 cancellationToken);
 
             return Results.Ok(result);
@@ -379,11 +381,11 @@ public static class CmsV2ApiEndpointExtensions
         group.MapPost("/question-import-sessions/{sessionId}/reopen", async (
             string sessionId,
             QuestionImportUseCases useCases,
-            IOptions<CmsV2ApiOptions> options,
+            CmsV2CurrentBank currentBank,
             CancellationToken cancellationToken) =>
         {
             var result = await useCases.ReopenSessionAsync(
-                new ReopenQuestionImportSessionCommand(options.Value.BankRootDirectory, sessionId),
+                new ReopenQuestionImportSessionCommand(currentBank.RootDirectory, sessionId),
                 cancellationToken);
 
             return Results.Ok(result);
@@ -568,11 +570,11 @@ public static class CmsV2ApiEndpointExtensions
         group.MapGet("/content-block-edit-sessions/{sessionId}", async (
             string sessionId,
             ContentBlockEditSessionUseCases useCases,
-            IOptions<CmsV2ApiOptions> options,
+            CmsV2CurrentBank currentBank,
             CancellationToken cancellationToken) =>
         {
             var session = await useCases.GetAsync(
-                new GetContentBlockEditSessionCommand(options.Value.BankRootDirectory, sessionId),
+                new GetContentBlockEditSessionCommand(currentBank.RootDirectory, sessionId),
                 cancellationToken);
 
             return session is null
@@ -583,11 +585,11 @@ public static class CmsV2ApiEndpointExtensions
         group.MapPost("/content-block-edit-sessions/{sessionId}/sync", async (
             string sessionId,
             ContentBlockEditSessionUseCases useCases,
-            IOptions<CmsV2ApiOptions> options,
+            CmsV2CurrentBank currentBank,
             CancellationToken cancellationToken) =>
         {
             var session = await useCases.GetAsync(
-                new GetContentBlockEditSessionCommand(options.Value.BankRootDirectory, sessionId),
+                new GetContentBlockEditSessionCommand(currentBank.RootDirectory, sessionId),
                 cancellationToken);
             if (session is null)
             {
@@ -595,7 +597,7 @@ public static class CmsV2ApiEndpointExtensions
             }
 
             var result = await useCases.SyncAsync(
-                new SyncContentBlockEditSessionCommand(options.Value.BankRootDirectory, sessionId),
+                new SyncContentBlockEditSessionCommand(currentBank.RootDirectory, sessionId),
                 cancellationToken);
 
             return Results.Ok(ToSyncContentBlockEditSessionResponse(result));
@@ -604,11 +606,11 @@ public static class CmsV2ApiEndpointExtensions
         group.MapPost("/content-block-edit-sessions/{sessionId}/cancel", async (
             string sessionId,
             ContentBlockEditSessionUseCases useCases,
-            IOptions<CmsV2ApiOptions> options,
+            CmsV2CurrentBank currentBank,
             CancellationToken cancellationToken) =>
         {
             var session = await useCases.GetAsync(
-                new GetContentBlockEditSessionCommand(options.Value.BankRootDirectory, sessionId),
+                new GetContentBlockEditSessionCommand(currentBank.RootDirectory, sessionId),
                 cancellationToken);
             if (session is null)
             {
@@ -616,7 +618,7 @@ public static class CmsV2ApiEndpointExtensions
             }
 
             var cancelled = await useCases.CancelAsync(
-                new CancelContentBlockEditSessionCommand(options.Value.BankRootDirectory, sessionId),
+                new CancelContentBlockEditSessionCommand(currentBank.RootDirectory, sessionId),
                 cancellationToken);
 
             return Results.Ok(ToContentBlockEditSessionResponse(cancelled));
@@ -791,6 +793,19 @@ public static class CmsV2ApiEndpointExtensions
         {
             var result = await useCases.ChangeAtomicSectionDifficultyAsync(
                 new ChangeAtomicSectionDifficultyCommand(id, request.Difficulty),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
+        group.MapPost("/atomic-sections/{id:int}/status", async (
+            int id,
+            ChangeAtomicSectionStatusRequest request,
+            AtomicSectionUseCases useCases,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.ChangeAtomicSectionStatusAsync(
+                new ChangeAtomicSectionStatusCommand(id, request.Status),
                 cancellationToken);
 
             return Results.Ok(result);
@@ -1465,11 +1480,11 @@ public static class CmsV2ApiEndpointExtensions
             int id,
             GenerateHandoutWordRequest request,
             HandoutGenerationUseCases useCases,
-            IOptions<CmsV2ApiOptions> options,
+            CmsV2CurrentBank currentBank,
             CancellationToken cancellationToken) =>
         {
             var result = await useCases.GenerateHandoutWordAsync(
-                new GenerateHandoutWordCommand(options.Value.BankRootDirectory, id, request.GeneratedTime),
+                new GenerateHandoutWordCommand(currentBank.RootDirectory, id, request.GeneratedTime),
                 cancellationToken);
 
             return Results.Ok(result);
@@ -1478,11 +1493,11 @@ public static class CmsV2ApiEndpointExtensions
         group.MapPost("/output-forms/{id:int}/validate-word-generation", async (
             int id,
             HandoutGenerationUseCases useCases,
-            IOptions<CmsV2ApiOptions> options,
+            CmsV2CurrentBank currentBank,
             CancellationToken cancellationToken) =>
         {
             var result = await useCases.ValidateHandoutWordGenerationAsync(
-                new ValidateHandoutWordGenerationCommand(options.Value.BankRootDirectory, id),
+                new ValidateHandoutWordGenerationCommand(currentBank.RootDirectory, id),
                 cancellationToken);
 
             return Results.Ok(result);

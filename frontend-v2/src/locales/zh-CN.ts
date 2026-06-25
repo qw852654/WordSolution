@@ -8,11 +8,24 @@ const zhCN = {
       Advanced: '提高',
       Top: '压轴',
     },
+    status: {
+      Draft: '草稿',
+      Active: '启用',
+      Archived: '已归档',
+    },
   },
   shell: {
     subtitle: '本地教学内容管理工作台',
     stage: '阶段 3',
     primaryNavigation: '主导航',
+    bank: {
+      loading: '题库读取中',
+      unavailable: '题库状态不可用',
+      kind: {
+        test: '测试',
+        production: '正式',
+      },
+    },
   },
   navigation: {
     topics: '教学主题',
@@ -225,6 +238,7 @@ const zhCN = {
       collapse: '折叠',
       expand: '展开',
       more: '更多',
+      incomplete: '待完善',
       emptyTitle: '暂无子内容',
       atomicEmptyDescription: '暂无子 ContentBlock',
       compositeEmptyDescription: '暂无子 ContentBlock',
@@ -246,6 +260,7 @@ const zhCN = {
       insert: '插入',
       createContentBlock: '新建 ContentBlock',
       createAtomicSection: '新建 AtomicSection',
+      createAtomicSectionPanel: '新建板块',
       searchExistingBlock: '插入已有块',
       contentBlock: 'ContentBlock',
       atomicSection: 'AtomicSection',
@@ -300,6 +315,9 @@ const zhCN = {
         '选中 SectionItem 或 AtomicSection 后，这里会显示右侧检查信息。',
       currentSelection: '当前选中',
       status: '状态',
+      completeness: '完善状态',
+      incomplete: '待完善',
+      complete: '已完善',
       position: '结构位置',
       referenceMode: '引用模式',
       lockedVersion: '锁定版本',
@@ -1201,6 +1219,9 @@ const zhCN = {
       difficultyActions: {
         targetMissing: '没有找到可更新难度的目标，请刷新后重试。',
         operationFailed: '难度更新失败，请稍后重试。',
+      },
+      statusActions: {
+        operationFailed: '状态更新失败，请稍后重试。',
       },
       contentBlockActions: {
         wordEditPending: 'ContentBlock Word 编辑 API 尚未接入',

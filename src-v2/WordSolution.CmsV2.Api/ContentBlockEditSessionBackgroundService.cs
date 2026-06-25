@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Options;
 using WordSolution.CmsV2.Application.ContentBlocks;
 
 namespace WordSolution.CmsV2.Api;
@@ -9,16 +8,16 @@ public sealed class ContentBlockEditSessionBackgroundService : BackgroundService
     private static readonly TimeSpan MinimumSessionAge = TimeSpan.FromSeconds(10);
 
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IOptions<CmsV2ApiOptions> _options;
+    private readonly CmsV2CurrentBank _currentBank;
     private readonly ILogger<ContentBlockEditSessionBackgroundService> _logger;
 
     public ContentBlockEditSessionBackgroundService(
         IServiceScopeFactory scopeFactory,
-        IOptions<CmsV2ApiOptions> options,
+        CmsV2CurrentBank currentBank,
         ILogger<ContentBlockEditSessionBackgroundService> logger)
     {
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
-        _options = options ?? throw new ArgumentNullException(nameof(options));
+        _currentBank = currentBank ?? throw new ArgumentNullException(nameof(currentBank));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -52,7 +51,7 @@ public sealed class ContentBlockEditSessionBackgroundService : BackgroundService
             var useCases = scope.ServiceProvider.GetRequiredService<ContentBlockEditSessionUseCases>();
             await useCases.SyncActiveSessionsAsync(
                 new SyncActiveContentBlockEditSessionsCommand(
-                    _options.Value.BankRootDirectory,
+                    _currentBank.RootDirectory,
                     MinimumSessionAge),
                 cancellationToken);
         }

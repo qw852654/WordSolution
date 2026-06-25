@@ -25,15 +25,20 @@ public static class CmsV2ApiServiceCollectionExtensions
         {
             if (string.IsNullOrWhiteSpace(options.BankRootDirectory))
             {
-                options.BankRootDirectory = new CmsV2ApiOptions().BankRootDirectory;
+                options.BankRootDirectory = CmsV2ApiOptions.DefaultBankRootDirectory;
             }
+        });
+        services.AddSingleton(serviceProvider =>
+        {
+            var options = serviceProvider.GetRequiredService<IOptions<CmsV2ApiOptions>>().Value;
+            return CmsV2CurrentBankResolver.Resolve(options);
         });
 
         services.AddDbContext<CmsV2DbContext>((serviceProvider, options) =>
         {
-            var apiOptions = serviceProvider.GetRequiredService<IOptions<CmsV2ApiOptions>>().Value;
-            Directory.CreateDirectory(apiOptions.BankRootDirectory);
-            options.UseSqlite($"Data Source={CmsV2DatabasePaths.GetDatabasePath(apiOptions.BankRootDirectory)}");
+            var currentBank = serviceProvider.GetRequiredService<CmsV2CurrentBank>();
+            Directory.CreateDirectory(currentBank.RootDirectory);
+            options.UseSqlite($"Data Source={CmsV2DatabasePaths.GetDatabasePath(currentBank.RootDirectory)}");
         });
 
         services.AddScoped<ICmsV2UnitOfWork, EfCmsV2UnitOfWork>();
@@ -72,8 +77,8 @@ public static class CmsV2ApiServiceCollectionExtensions
     public static async Task InitializeCmsV2DatabaseAsync(this WebApplication app)
     {
         await using var scope = app.Services.CreateAsyncScope();
-        var options = scope.ServiceProvider.GetRequiredService<IOptions<CmsV2ApiOptions>>().Value;
-        Directory.CreateDirectory(options.BankRootDirectory);
+        var currentBank = scope.ServiceProvider.GetRequiredService<CmsV2CurrentBank>();
+        Directory.CreateDirectory(currentBank.RootDirectory);
 
         var context = scope.ServiceProvider.GetRequiredService<CmsV2DbContext>();
         await context.Database.MigrateAsync();

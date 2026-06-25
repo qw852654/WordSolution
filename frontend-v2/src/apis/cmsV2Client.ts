@@ -1,4 +1,14 @@
+import type { AtomicSectionStatusValue } from '@/types'
+
 export const CMS_V2_API_BASE = '/api/cms-v2'
+
+export interface CmsV2HealthDto {
+  status: string
+  bankKey: string
+  bankDisplayName: string
+  bankKind: 'Test' | 'Production' | string
+  bankRootDirectory: string
+}
 
 export interface CmsV2TeachingTopicDto {
   id: number
@@ -88,9 +98,11 @@ export interface CmsV2AtomicSectionDto {
   description?: string | null
   type: string
   difficulty: string
-  status: string
+  status: CmsV2AtomicSectionStatus
   updatedTime: string
 }
+
+export type CmsV2AtomicSectionStatus = AtomicSectionStatusValue
 
 export interface CmsV2AtomicSectionItemDto {
   id: number
@@ -739,6 +751,10 @@ export interface CmsV2ChangeDifficultyRequest {
   difficulty: CmsV2Difficulty
 }
 
+export interface CmsV2ChangeAtomicSectionStatusRequest {
+  status: CmsV2AtomicSectionStatus
+}
+
 export interface CmsV2AddContentBlockRelationRequest {
   childBlockId: number
   referenceMode: 'FollowLatest' | 'LockedVersion'
@@ -910,6 +926,7 @@ function withRepeatedQuery(
 }
 
 export const cmsV2Api = {
+  getHealth: () => cmsV2FetchJson<CmsV2HealthDto>('/health'),
   getTeachingStructure: () =>
     cmsV2FetchJson<CmsV2TeachingStructureNodeDto[]>('/teaching-structure'),
   listTeachingTopics: () => cmsV2FetchJson<CmsV2TeachingTopicDto[]>('/teaching-topics'),
@@ -1011,6 +1028,14 @@ export const cmsV2Api = {
   ) =>
     cmsV2PostJson<CmsV2AtomicSectionDto>(
       `/atomic-sections/${atomicSectionId}/difficulty`,
+      request,
+    ),
+  changeAtomicSectionStatus: (
+    atomicSectionId: number,
+    request: CmsV2ChangeAtomicSectionStatusRequest,
+  ) =>
+    cmsV2PostJson<CmsV2AtomicSectionDto>(
+      `/atomic-sections/${atomicSectionId}/status`,
       request,
     ),
   listAtomicSectionItems: (atomicSectionId: number) =>

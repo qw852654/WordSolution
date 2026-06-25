@@ -36,6 +36,9 @@ public sealed class CmsV2ApiIntegrationTests
 
         using var scope = factory.Services.CreateScope();
         Assert.Equal("ok", health.GetProperty("status").GetString());
+        Assert.Equal("TEST", health.GetProperty("bankKey").GetString());
+        Assert.Equal("测试题库", health.GetProperty("bankDisplayName").GetString());
+        Assert.Equal("Test", health.GetProperty("bankKind").GetString());
         Assert.Equal(factory.BankRootDirectory, health.GetProperty("bankRootDirectory").GetString());
         Assert.True(File.Exists(Path.Combine(factory.BankRootDirectory, "cms-v2.db")));
         Assert.False(File.Exists(Path.Combine(factory.BankRootDirectory, "question-bank.db")));
@@ -67,6 +70,22 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.Contains(
             factory.Services.GetServices<IHostedService>(),
             service => service.GetType().Name == "ContentBlockEditSessionBackgroundService");
+    }
+
+    [Fact]
+    public async Task Api_health_supports_legacy_bank_root_directory_configuration()
+    {
+        await using var factory = new CmsV2ApiFactory(useLegacyConfiguration: true);
+        var client = factory.CreateClient();
+
+        var health = await client.GetFromJsonAsync<JsonElement>("/api/cms-v2/health");
+
+        Assert.Equal("ok", health.GetProperty("status").GetString());
+        Assert.Equal("LEGACY", health.GetProperty("bankKey").GetString());
+        Assert.Equal("当前题库", health.GetProperty("bankDisplayName").GetString());
+        Assert.Equal("Test", health.GetProperty("bankKind").GetString());
+        Assert.Equal(factory.BankRootDirectory, health.GetProperty("bankRootDirectory").GetString());
+        Assert.True(File.Exists(Path.Combine(factory.BankRootDirectory, "cms-v2.db")));
     }
 
     [Fact]
@@ -740,7 +759,7 @@ public sealed class CmsV2ApiIntegrationTests
                 sectionId,
                 title = "Panel AS",
                 type = "Custom",
-                difficulty = "Basic",
+                difficulty = "Top",
                 status = "Draft"
             });
         var atomicSectionId = atomicSection.GetProperty("id").GetInt32();
@@ -815,6 +834,73 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.Equal(mediumPanelId, itemsAfterDifficultyChange[0].GetProperty("atomicSectionPanelId").GetInt32());
         Assert.Equal(1, deleted.GetProperty("removedAtomicSectionItemCount").GetInt32());
         Assert.Equal(HttpStatusCode.OK, contentBlockAfterDelete.StatusCode);
+    }
+
+    [Fact]
+    public async Task AtomicSection_status_endpoint_updates_status()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "Atomic status topic", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "Atomic status section" });
+        var sectionId = section.GetProperty("id").GetInt32();
+        var atomic = await PostJsonAsync(
+            client,
+            "/api/cms-v2/atomic-sections",
+            new
+            {
+                sectionId,
+                title = "Status AS",
+                type = "Custom",
+                difficulty = "Basic",
+                status = "Draft"
+            });
+
+        var response = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/atomic-sections/{atomic.GetProperty("id").GetInt32()}/status",
+            new { status = "Active" });
+
+        Assert.Equal("Active", response.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task AtomicSection_create_endpoint_creates_default_panels_without_default_items()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "Atomic default panels topic", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "Atomic default panels section" });
+        var sectionId = section.GetProperty("id").GetInt32();
+        var atomic = await PostJsonAsync(
+            client,
+            "/api/cms-v2/atomic-sections",
+            new
+            {
+                sectionId,
+                title = "Default panel AS",
+                type = "Custom",
+                difficulty = "Advanced",
+                status = "Draft"
+            });
+        var atomicSectionId = atomic.GetProperty("id").GetInt32();
+
+        var panels = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/atomic-sections/{atomicSectionId}/panels")
+            ?? [];
+        var items = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/atomic-sections/{atomicSectionId}/items")
+            ?? [];
+
+        Assert.Equal(["Knowledge", "Example", "Variant"], panels.Select(panel => panel.GetProperty("teachingRole").GetString()));
+        Assert.All(panels, panel => Assert.Equal("Default panel AS", panel.GetProperty("title").GetString()));
+        Assert.All(panels, panel => Assert.Equal("Advanced", panel.GetProperty("difficulty").GetString()));
+        Assert.Equal([10, 20, 30], panels.Select(panel => panel.GetProperty("sortOrder").GetInt32()));
+        Assert.Empty(items);
     }
 
     [Fact]
@@ -1937,6 +2023,13 @@ public sealed class CmsV2ApiIntegrationTests
 
     private sealed class CmsV2ApiFactory : WebApplicationFactory<Program>
     {
+        private readonly bool _useLegacyConfiguration;
+
+        public CmsV2ApiFactory(bool useLegacyConfiguration = false)
+        {
+            _useLegacyConfiguration = useLegacyConfiguration;
+        }
+
         public string BankRootDirectory { get; } = Path.Combine(
             Path.GetTempPath(),
             "cms-v2-api-tests",
@@ -1946,11 +2039,39 @@ public sealed class CmsV2ApiIntegrationTests
         {
             builder.ConfigureAppConfiguration((_, configuration) =>
             {
-                configuration.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["CmsV2:BankRootDirectory"] = BankRootDirectory
-                });
+                configuration.Sources.Clear();
+                configuration.AddInMemoryCollection(_useLegacyConfiguration
+                    ? CreateLegacyConfiguration()
+                    : CreateThreeBankConfiguration());
             });
+        }
+
+        private Dictionary<string, string?> CreateLegacyConfiguration()
+        {
+            return new Dictionary<string, string?>
+            {
+                ["CmsV2:BankRootDirectory"] = BankRootDirectory
+            };
+        }
+
+        private Dictionary<string, string?> CreateThreeBankConfiguration()
+        {
+            return new Dictionary<string, string?>
+            {
+                ["CmsV2:ActiveBankKey"] = "test",
+                ["CmsV2:Banks:0:Key"] = "TEST",
+                ["CmsV2:Banks:0:DisplayName"] = "测试题库",
+                ["CmsV2:Banks:0:Kind"] = "Test",
+                ["CmsV2:Banks:0:RootDirectory"] = BankRootDirectory,
+                ["CmsV2:Banks:1:Key"] = "GZ",
+                ["CmsV2:Banks:1:DisplayName"] = "高中题库",
+                ["CmsV2:Banks:1:Kind"] = "Production",
+                ["CmsV2:Banks:1:RootDirectory"] = Path.Combine(Path.GetDirectoryName(BankRootDirectory)!, "gz-bank"),
+                ["CmsV2:Banks:2:Key"] = "CZ",
+                ["CmsV2:Banks:2:DisplayName"] = "初中题库",
+                ["CmsV2:Banks:2:Kind"] = "Production",
+                ["CmsV2:Banks:2:RootDirectory"] = Path.Combine(Path.GetDirectoryName(BankRootDirectory)!, "cz-bank")
+            };
         }
     }
 }

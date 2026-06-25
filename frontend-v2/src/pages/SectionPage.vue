@@ -15,6 +15,7 @@ import SectionTopToolbar from '@/components/containers/SectionTopToolbar.vue'
 import SectionWorkspace from '@/components/containers/SectionWorkspace.vue'
 import {
   cmsV2Api,
+  type CmsV2AtomicSectionStatus,
   type CmsV2Difficulty,
   type CmsV2InsertQuestionContext,
   type CmsV2QuestionImportCandidateDto,
@@ -120,6 +121,7 @@ const isCreatingAtomicSectionPanel = ref(false)
 const isDeletingContentBlockCascade = ref(false)
 const isUpdatingAtomicSectionItemClassification = ref(false)
 const isUpdatingNodeDifficulty = ref(false)
+const isUpdatingAtomicSectionStatus = ref(false)
 const atomicSectionPanelCreateError = ref('')
 const questionImportOpen = ref(false)
 const activeQuestionImportContext = ref<QuestionImportContext | null>(null)
@@ -1705,6 +1707,32 @@ async function requestNodeDifficultyChange(payload: SectionDifficultyChangePaylo
   }
 }
 
+async function requestAtomicSectionStatusChange(payload: {
+  atomicSectionId: number
+  status: CmsV2AtomicSectionStatus
+}) {
+  if (isUpdatingAtomicSectionStatus.value) {
+    return
+  }
+
+  isUpdatingAtomicSectionStatus.value = true
+  sectionPageError.value = ''
+
+  try {
+    const previousSelectedNodeId = selectedStructureNodeId.value
+    await cmsV2Api.changeAtomicSectionStatus(payload.atomicSectionId, {
+      status: payload.status,
+    })
+    await loadCurrentSectionPage()
+    selectedStructureNodeId.value = previousSelectedNodeId
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error ? error.message : t('sectionPage.workspace.statusActions.operationFailed')
+  } finally {
+    isUpdatingAtomicSectionStatus.value = false
+  }
+}
+
 async function requestAtomicSectionItemOpenWord(payload: AtomicSectionItemActionPayload) {
   try {
     await contentBlockActions.startContentBlockWordEdit(payload.contentBlockId)
@@ -3281,6 +3309,7 @@ watch(
           :deleting-content-block-cascade="isDeletingContentBlockCascade"
           :updating-atomic-section-item-classification="isUpdatingAtomicSectionItemClassification"
           :updating-node-difficulty="isUpdatingNodeDifficulty"
+          :updating-atomic-section-status="isUpdatingAtomicSectionStatus"
           :tag-target-type="selectedTagTarget?.targetType"
           :tag-target-id="selectedTagTarget?.targetId"
           :tag-target-source="selectedTagTarget?.source"
@@ -3306,6 +3335,7 @@ watch(
           @delete-content-block-cascade="requestDeleteContentBlockCascade"
           @change-atomic-section-item-classification="requestAtomicSectionItemClassificationChange"
           @change-node-difficulty="requestNodeDifficultyChange"
+          @change-atomic-section-status="requestAtomicSectionStatusChange"
           @search-tags="searchInspectorTags"
           @create-tag="createInspectorTag"
           @update-tags="updateInspectorTags"

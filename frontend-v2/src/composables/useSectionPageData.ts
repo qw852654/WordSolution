@@ -333,6 +333,7 @@ async function buildSectionItemNode(
         childNodes.filter((child) => child.atomicSectionPanelId === panel.id),
       ),
     )
+    const hasEmptyPanel = panelNodes.some((panel) => (panel.children?.length ?? 0) === 0)
     const unassignedNodes = childNodes.filter((child) => !child.atomicSectionPanelId)
     const children = [
       ...panelNodes,
@@ -352,6 +353,8 @@ async function buildSectionItemNode(
       difficultyValue: atomicSection.difficulty,
       status: mapStatus(item.status),
       targetStatus: mapStatus(atomicSection.status),
+      targetStatusValue: atomicSection.status,
+      hasEmptyPanel,
       itemCount: childNodes.length,
       expanded: true,
       disabled: item.status === 'Archived' || atomicSection.status === 'Archived',
@@ -543,6 +546,7 @@ async function buildSectionFlowItem(
       ),
     )
     const panels = buildAtomicSectionPanelModels(atomicPanels, children)
+    const hasEmptyPanel = panels.some((panel) => panel.children.length === 0)
     const unassignedChildren = children.filter((child) => !child.atomicSectionPanelId)
 
     return {
@@ -564,6 +568,7 @@ async function buildSectionFlowItem(
         children,
         panels,
         unassignedChildren,
+        hasEmptyPanel,
         disabled: item.status === 'Archived' || atomicSection.status === 'Archived',
       },
     }

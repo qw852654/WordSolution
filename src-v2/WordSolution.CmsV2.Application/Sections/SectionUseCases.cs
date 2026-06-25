@@ -9,6 +9,13 @@ public sealed class SectionUseCases
 {
     private readonly ICmsV2UnitOfWork _unitOfWork;
 
+    private static IReadOnlyList<(AtomicSectionTeachingRole TeachingRole, int SortOrder)> DefaultPanelDefinitions { get; } =
+    [
+        (AtomicSectionTeachingRole.Knowledge, 10),
+        (AtomicSectionTeachingRole.Example, 20),
+        (AtomicSectionTeachingRole.Variant, 30),
+    ];
+
     public SectionUseCases(ICmsV2UnitOfWork unitOfWork)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
@@ -209,6 +216,8 @@ public sealed class SectionUseCases
                 command.Status);
             await _unitOfWork.AtomicSections.AddAsync(atomicSection, transactionCancellationToken);
             await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+            await CreateDefaultPanelsForAtomicSectionAsync(atomicSection, transactionCancellationToken);
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
 
             var atomicSectionItems = new List<AtomicSectionItem>();
             for (var index = 0; index < selectedItems.Count; index++)
@@ -367,6 +376,23 @@ public sealed class SectionUseCases
         }
 
         return item;
+    }
+
+    private async Task CreateDefaultPanelsForAtomicSectionAsync(
+        AtomicSection atomicSection,
+        CancellationToken cancellationToken)
+    {
+        foreach (var definition in DefaultPanelDefinitions)
+        {
+            await _unitOfWork.AtomicSectionPanels.AddAsync(
+                new AtomicSectionPanel(
+                    atomicSection.Id,
+                    atomicSection.Title,
+                    definition.TeachingRole,
+                    atomicSection.Difficulty,
+                    definition.SortOrder),
+                cancellationToken);
+        }
     }
 
     private sealed record SectionVariantReplacementPlan(

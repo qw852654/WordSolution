@@ -8,11 +8,24 @@ const en = {
       Advanced: 'Advanced',
       Top: 'Top',
     },
+    status: {
+      Draft: 'Draft',
+      Active: 'Active',
+      Archived: 'Archived',
+    },
   },
   shell: {
     subtitle: 'Local teaching content management workspace',
     stage: 'Stage 3',
     primaryNavigation: 'Primary navigation',
+    bank: {
+      loading: 'Loading bank',
+      unavailable: 'Bank status unavailable',
+      kind: {
+        test: 'Test',
+        production: 'Production',
+      },
+    },
   },
   navigation: {
     topics: 'Topics',
@@ -237,6 +250,7 @@ const en = {
       collapse: 'Collapse',
       expand: 'Expand',
       more: 'More',
+      incomplete: 'Incomplete',
       emptyTitle: 'No child content',
       atomicEmptyDescription: 'No child ContentBlock',
       compositeEmptyDescription: 'No child ContentBlock',
@@ -258,6 +272,7 @@ const en = {
       insert: 'Insert',
       createContentBlock: 'Create ContentBlock',
       createAtomicSection: 'Create AtomicSection',
+      createAtomicSectionPanel: 'Create panel',
       searchExistingBlock: 'Insert existing block',
       contentBlock: 'ContentBlock',
       atomicSection: 'AtomicSection',
@@ -305,6 +320,9 @@ const en = {
       selectedItemCount: 'Selected items',
       selectedItemCountValue: '{count} items',
       status: 'Status',
+      completeness: 'Completeness',
+      incomplete: 'Incomplete',
+      complete: 'Complete',
       itemCount: 'Child items',
       questionCount: 'Questions',
       variantItemCount: 'Selected SectionItems',
@@ -1225,6 +1243,9 @@ const en = {
       difficultyActions: {
         targetMissing: 'Could not find the target whose difficulty should be updated. Refresh and try again.',
         operationFailed: 'Difficulty update failed. Please try again.',
+      },
+      statusActions: {
+        operationFailed: 'Status update failed. Please try again.',
       },
       contentBlockActions: {
         wordEditPending: 'ContentBlock Word editing API is not connected yet',

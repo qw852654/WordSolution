@@ -59,7 +59,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const isExpanded = computed(() => props.block.expanded !== false)
 const hasPanelLayout = computed(
-  () => Boolean(props.block.panels?.length) || Boolean(props.block.unassignedChildren),
+  () => Array.isArray(props.block.panels) || Boolean(props.block.unassignedChildren),
 )
 const difficultyMarkerClass = computed(() => getDifficultyMarkerClass(props.block.difficulty))
 const difficultyMarkerLabel = computed(
@@ -94,11 +94,6 @@ function emitCreatePanel(beforePanel?: AtomicSectionPanelModel, afterPanel?: Ato
   if (payload) {
     emit('createAtomicSectionPanel', payload)
   }
-}
-
-function getLastPanel() {
-  const panels = props.block.panels ?? []
-  return panels.length ? panels[panels.length - 1] : undefined
 }
 
 function createAtomicSectionItemActionPayload(
@@ -165,6 +160,51 @@ function createAtomicSectionInsertPoint(
       : undefined,
   }
 }
+
+function createAtomicSectionPanelInsertPoint(
+  beforePanel?: AtomicSectionPanelModel,
+  afterPanel?: AtomicSectionPanelModel,
+): InsertPointModel {
+  const parentId = props.block.atomicSectionId
+  const suffix = `${afterPanel?.panelId ?? 'start'}-${beforePanel?.panelId ?? 'end'}`
+
+  return {
+    id: `atomic-section-${props.block.id}-panel-insert-${suffix}`,
+    label: t('components.insertPoint.createAtomicSectionPanel'),
+    allowedActions: ['CreateAtomicSectionPanel'],
+    disabled: props.block.disabled || !parentId,
+    placement: parentId
+      ? {
+          parentType: 'AtomicSectionPanelList',
+          parentId,
+          beforeItemId: beforePanel?.panelId,
+          afterItemId: afterPanel?.panelId,
+          beforeSortOrder: beforePanel?.sortOrder,
+          afterSortOrder: afterPanel?.sortOrder,
+        }
+      : undefined,
+  }
+}
+
+function handlePanelInsert(request: InsertRequestModel) {
+  const placement = request.placement
+  if (
+    request.actionType !== 'CreateAtomicSectionPanel'
+    || placement?.parentType !== 'AtomicSectionPanelList'
+  ) {
+    emit('requestInsert', request)
+    return
+  }
+
+  const beforePanel = (props.block.panels ?? []).find(
+    (panel) => panel.panelId === placement.beforeItemId,
+  )
+  const afterPanel = (props.block.panels ?? []).find(
+    (panel) => panel.panelId === placement.afterItemId,
+  )
+
+  emitCreatePanel(beforePanel, afterPanel)
+}
 </script>
 
 <template>
@@ -177,6 +217,15 @@ function createAtomicSectionInsertPoint(
     :disabled="block.disabled"
     @select-title="$emit('select', props.block.id)"
   >
+    <template #meta-extra>
+      <span
+        v-if="block.hasEmptyPanel"
+        class="rounded-sm border px-1.5 py-0.5 text-[11px] leading-none text-muted-foreground"
+      >
+        {{ t('components.structuredBlock.incomplete') }}
+      </span>
+    </template>
+
     <template #actions>
       <Button
         type="button"
@@ -187,16 +236,6 @@ function createAtomicSectionInsertPoint(
         @click.stop="$emit('toggleCollapse', block.id)"
       >
         {{ isExpanded ? t('components.structuredBlock.collapse') : t('components.structuredBlock.expand') }}
-      </Button>
-      <Button
-        v-if="!readOnly"
-        type="button"
-        size="sm"
-        variant="ghost"
-        :disabled="block.disabled || !block.atomicSectionId"
-        @click.stop="emitCreatePanel(undefined, getLastPanel())"
-      >
-        {{ t('components.atomicSectionPanel.create') }}
       </Button>
       <Button
         v-if="!readOnly"
@@ -216,18 +255,11 @@ function createAtomicSectionInsertPoint(
       <p class="text-sm leading-6 text-muted-foreground">{{ block.summary }}</p>
       <div v-if="hasPanelLayout" class="space-y-1">
         <template v-for="(panel, index) in block.panels" :key="panel.id">
-          <div v-if="!readOnly" class="flex justify-center py-1">
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              class="h-6 px-2 text-xs text-muted-foreground"
-              :disabled="block.disabled || !block.atomicSectionId"
-              @click.stop="emitCreatePanel(panel)"
-            >
-              {{ t('components.atomicSectionPanel.create') }}
-            </Button>
-          </div>
+          <InsertPoint
+            v-if="!readOnly"
+            :point="createAtomicSectionPanelInsertPoint(panel, block.panels?.[index - 1])"
+            @request-action="handlePanelInsert"
+          />
           <AtomicSectionPanelBlock
             :panel="panel"
             :node-id-map="nodeIdMap"
@@ -249,20 +281,19 @@ function createAtomicSectionInsertPoint(
           />
           <div
             v-if="!readOnly && index === (block.panels?.length ?? 0) - 1"
-            class="flex justify-center py-1"
+            class="space-y-1"
           >
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              class="h-6 px-2 text-xs text-muted-foreground"
-              :disabled="block.disabled || !block.atomicSectionId"
-              @click.stop="emitCreatePanel(undefined, panel)"
-            >
-              {{ t('components.atomicSectionPanel.create') }}
-            </Button>
+            <InsertPoint
+              :point="createAtomicSectionPanelInsertPoint(undefined, panel)"
+              @request-action="handlePanelInsert"
+            />
           </div>
         </template>
+        <InsertPoint
+          v-if="!readOnly && !(block.panels?.length)"
+          :point="createAtomicSectionPanelInsertPoint()"
+          @request-action="handlePanelInsert"
+        />
         <AtomicSectionUnassignedArea
           v-if="block.atomicSectionId"
           :atomic-section-id="block.atomicSectionId"

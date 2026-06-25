@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Layers, Plus, Search } from 'lucide-vue-next'
+import { Layers, PanelTop, Plus, Search } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import type { InsertActionType, InsertPointModel, InsertRequestModel } from '@/types'
@@ -78,6 +78,19 @@ function emitAction(actionType: InsertActionType) {
         >
           <Layers class="size-3.5" />
           {{ t('components.insertPoint.createAtomicSection') }}
+        </Button>
+        <Button
+          v-if="isActionAllowed('CreateAtomicSectionPanel')"
+          type="button"
+          size="sm"
+          variant="outline"
+          class="h-6 px-2 text-xs"
+          :aria-label="t('components.insertPoint.createAtomicSectionPanel')"
+          :disabled="point.disabled"
+          @click="emitAction('CreateAtomicSectionPanel')"
+        >
+          <PanelTop class="size-3.5" />
+          {{ t('components.insertPoint.createAtomicSectionPanel') }}
         </Button>
         <Button
           v-if="isActionAllowed('SearchExistingBlock')"

@@ -65,4 +65,12 @@ public sealed class AtomicSection
         Difficulty = difficulty;
         UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
     }
+
+    public void ChangeStatus(AtomicSectionStatus status, DateTimeOffset? updatedTime = null)
+    {
+        DomainGuard.ValidEnum(status, nameof(Status));
+
+        Status = status;
+        UpdatedTime = DomainGuard.UpdatedNow(updatedTime);
+    }
 }

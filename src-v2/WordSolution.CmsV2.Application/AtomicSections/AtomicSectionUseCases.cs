@@ -9,6 +9,13 @@ public sealed class AtomicSectionUseCases
 {
     private readonly ICmsV2UnitOfWork _unitOfWork;
 
+    private static IReadOnlyList<(AtomicSectionTeachingRole TeachingRole, int SortOrder)> DefaultPanelDefinitions { get; } =
+    [
+        (AtomicSectionTeachingRole.Knowledge, 10),
+        (AtomicSectionTeachingRole.Example, 20),
+        (AtomicSectionTeachingRole.Variant, 30),
+    ];
+
     public AtomicSectionUseCases(ICmsV2UnitOfWork unitOfWork)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
@@ -35,6 +42,8 @@ public sealed class AtomicSectionUseCases
                 command.Difficulty,
                 command.Status);
             await _unitOfWork.AtomicSections.AddAsync(atomicSection, transactionCancellationToken);
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+            await CreateDefaultPanelsForAtomicSectionAsync(atomicSection, transactionCancellationToken);
             await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
             result = atomicSection;
         }, cancellationToken);
@@ -345,6 +354,27 @@ public sealed class AtomicSectionUseCases
         return result!;
     }
 
+    public async Task<AtomicSection> ChangeAtomicSectionStatusAsync(
+        ChangeAtomicSectionStatusCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        AtomicSection? result = null;
+
+        await _unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+        {
+            var atomicSection = await GetAtomicSectionForCommandAsync(
+                command.AtomicSectionId,
+                transactionCancellationToken);
+
+            atomicSection.ChangeStatus(command.Status);
+            _unitOfWork.AtomicSections.Update(atomicSection);
+            await _unitOfWork.SaveChangesAsync(transactionCancellationToken);
+            result = atomicSection;
+        }, cancellationToken);
+
+        return result!;
+    }
+
     public async Task MoveAtomicSectionItemAsync(
         MoveAtomicSectionItemCommand command,
         CancellationToken cancellationToken = default)
@@ -444,6 +474,23 @@ public sealed class AtomicSectionUseCases
         }
 
         return atomicSection;
+    }
+
+    private async Task CreateDefaultPanelsForAtomicSectionAsync(
+        AtomicSection atomicSection,
+        CancellationToken cancellationToken)
+    {
+        foreach (var definition in DefaultPanelDefinitions)
+        {
+            await _unitOfWork.AtomicSectionPanels.AddAsync(
+                new AtomicSectionPanel(
+                    atomicSection.Id,
+                    atomicSection.Title,
+                    definition.TeachingRole,
+                    atomicSection.Difficulty,
+                    definition.SortOrder),
+                cancellationToken);
+        }
     }
 
     private async Task<ContentBlock> GetContentBlockForCommandAsync(

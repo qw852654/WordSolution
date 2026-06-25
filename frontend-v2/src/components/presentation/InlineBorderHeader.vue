@@ -20,6 +20,7 @@ defineProps<{
       />
       <span class="truncate text-sm font-medium">{{ title }}</span>
       <span v-if="meta" class="shrink-0 text-xs text-muted-foreground">{{ meta }}</span>
+      <slot name="meta-extra" />
     </div>
     <div class="relative ml-auto flex shrink-0 items-center gap-1 bg-background pl-2">
       <slot name="actions" />
