@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { GitBranch, Layers, Plus, Search, Trash2 } from 'lucide-vue-next'
+import { GitBranch, Layers, Pencil, Plus, Search, Trash2 } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import type {
@@ -93,7 +93,11 @@ const actions = computed<
   ]
 
   return node?.kind === 'Section'
-    ? [{ type: 'CreateSectionVariant', icon: GitBranch, disabled }, ...baseActions]
+    ? [
+        { type: 'CreateSectionVariant', icon: GitBranch, disabled },
+        { type: 'RenameSection', icon: Pencil, disabled },
+        ...baseActions,
+      ]
     : baseActions
 })
 

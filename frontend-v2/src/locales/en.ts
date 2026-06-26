@@ -398,6 +398,7 @@ const en = {
       rootRemoveDisabled: 'The Section root cannot be removed.',
       actions: {
         CreateSectionVariant: 'Create SectionVariant',
+        RenameSection: 'Rename Section',
         CreateContentBlock: 'Create ContentBlock',
         CreateAtomicSection: 'Create AtomicSection',
         SearchExistingBlock: 'Insert existing block',
@@ -1223,6 +1224,10 @@ const en = {
         removeTargetMissing:
           'Could not find the SectionItem for this node. Refresh the page and try again.',
         operationFailed: 'SectionItem removal failed. Please try again.',
+      },
+      sectionActions: {
+        renamePrompt: 'Rename Section',
+        operationFailed: 'Section rename failed. Please try again.',
       },
       atomicSectionActions: {
         insertChildPosition: 'Inside AtomicSection: {title}',

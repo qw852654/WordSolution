@@ -65,6 +65,26 @@ export function findTeachingTopicTreeNodePath(
   return []
 }
 
+export function findTeachingTopicTreeNodeByTopicId(
+  nodes: TeachingTopicTreeNodeModel[],
+  topicId: number,
+): TeachingTopicTreeNodeModel | undefined {
+  for (const node of nodes) {
+    if (node.teachingTopicId === topicId) {
+      return node
+    }
+
+    const childMatch = node.children
+      ? findTeachingTopicTreeNodeByTopicId(node.children, topicId)
+      : undefined
+    if (childMatch) {
+      return childMatch
+    }
+  }
+
+  return undefined
+}
+
 export function findTeachingStructureTopicTitle(
   nodes: CmsV2TeachingStructureNodeDto[],
   teachingTopicId: number,

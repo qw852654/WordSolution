@@ -268,6 +268,7 @@ export interface SectionTreeContextMenuPayload {
 
 export type SectionTreeContextActionType =
   | 'CreateSectionVariant'
+  | 'RenameSection'
   | 'CreateContentBlock'
   | 'CreateAtomicSection'
   | 'SearchExistingBlock'

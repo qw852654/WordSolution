@@ -642,6 +642,10 @@ export interface CmsV2RenameTeachingTopicRequest {
   description?: string | null
 }
 
+export interface CmsV2RenameSectionRequest {
+  title: string
+}
+
 export interface CmsV2CreateSectionForTeachingTopicRequest {
   title?: string | null
   description?: string | null
@@ -1037,6 +1041,8 @@ export const cmsV2Api = {
   listSections: (teachingTopicId?: number) =>
     cmsV2FetchJson<CmsV2SectionDto[]>(withQuery('/sections', { teachingTopicId })),
   getSection: (sectionId: number) => cmsV2FetchJson<CmsV2SectionDto>(`/sections/${sectionId}`),
+  renameSection: (sectionId: number, request: CmsV2RenameSectionRequest) =>
+    cmsV2PostJson<CmsV2SectionDto>(`/sections/${sectionId}/title`, request),
   downloadSectionWord: (sectionId: number) =>
     cmsV2PostDownload(`/sections/${sectionId}/generate-word`, `section-${sectionId}.docx`),
   listSectionItems: (sectionId: number) =>

@@ -11,11 +11,7 @@ import type {
   CmsV2SectionItemDto,
   CmsV2SectionVariantDto,
 } from '@/apis/cmsV2Client'
-import {
-  createTeachingTopicNodeId,
-  findTeachingStructureTopicTitle,
-  mapTeachingStructureNodesToTreeNodes,
-} from '@/utils/teachingStructureTree'
+import { mapTeachingStructureNodesToTreeNodes } from '@/utils/teachingStructureTree'
 import type {
   ContentBlockDisplayModel,
   HtmlPreviewState,
@@ -35,8 +31,7 @@ export interface SectionPageDataModel {
   treeNodes: SectionTreeNodeModel[]
   flowItems: SectionWorkspaceFlowItemModel[]
   workspaceNodeMap: Record<string, string>
-  teachingTopicNodes: TeachingTopicTreeNodeModel[]
-  selectedTeachingTopicId?: string
+  teachingTopicId?: number
   defaultSelectedNodeId?: string
 }
 
@@ -74,13 +69,10 @@ function isCompositeContentBlockType(blockType?: string | null) {
 }
 
 export async function loadSectionPageData(routeSectionId?: string): Promise<SectionPageDataModel> {
-  const [sections, teachingStructure] = await Promise.all([
-    cmsV2Api.listSections(),
-    cmsV2Api.getTeachingStructure(),
-  ])
+  const sections = await cmsV2Api.listSections()
 
   if (sections.length === 0) {
-    return buildEmptySectionPageData(teachingStructure)
+    return buildEmptySectionPageData()
   }
 
   const section = await resolveSection(routeSectionId, sections)
@@ -118,9 +110,6 @@ export async function loadSectionPageData(routeSectionId?: string): Promise<Sect
   )
 
   const rootNodeId = createSectionNodeId(section.id)
-  const teachingTopicTitle =
-    findTeachingStructureTopicTitle(teachingStructure, section.teachingTopicId) ??
-    'TeachingTopic'
   const treeNodes: SectionTreeNodeModel[] = [
     {
       id: rootNodeId,
@@ -128,7 +117,7 @@ export async function loadSectionPageData(routeSectionId?: string): Promise<Sect
       kind: 'Section',
       typeLabel: 'Section',
       sectionId: section.id,
-      teachingTopicTitle,
+      teachingTopicTitle: 'TeachingTopic',
       difficulty: mapDifficulty(section.difficulty),
       status: mapStatus(section.status),
       itemCount: sectionChildren.length,
@@ -143,21 +132,22 @@ export async function loadSectionPageData(routeSectionId?: string): Promise<Sect
     section: {
       sectionId: String(section.id),
       title: section.title,
-      teachingTopicTitle,
+      teachingTopicTitle: 'TeachingTopic',
       status: mapStatus(section.status),
     },
     treeNodes,
     flowItems,
     workspaceNodeMap,
-    teachingTopicNodes: mapTeachingStructureNodesToTreeNodes(teachingStructure),
-    selectedTeachingTopicId: createTeachingTopicNodeId(section.teachingTopicId),
+    teachingTopicId: section.teachingTopicId,
     defaultSelectedNodeId: sectionChildren[0]?.id ?? rootNodeId,
   }
 }
 
-function buildEmptySectionPageData(
-  teachingStructure: Awaited<ReturnType<typeof cmsV2Api.getTeachingStructure>>,
-): SectionPageDataModel {
+export async function loadTeachingTopicTreeNodes(): Promise<TeachingTopicTreeNodeModel[]> {
+  return mapTeachingStructureNodesToTreeNodes(await cmsV2Api.getTeachingStructure())
+}
+
+function buildEmptySectionPageData(): SectionPageDataModel {
   return {
     section: {
       sectionId: 'empty',
@@ -168,7 +158,6 @@ function buildEmptySectionPageData(
     treeNodes: [],
     flowItems: [],
     workspaceNodeMap: {},
-    teachingTopicNodes: mapTeachingStructureNodesToTreeNodes(teachingStructure),
   }
 }
 

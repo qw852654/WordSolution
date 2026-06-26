@@ -388,6 +388,7 @@ const zhCN = {
       rootRemoveDisabled: 'Section 根节点不能移除',
       actions: {
         CreateSectionVariant: '新建 SectionVariant',
+        RenameSection: '重命名 Section',
         CreateContentBlock: '新建 ContentBlock',
         CreateAtomicSection: '新建 AtomicSection',
         SearchExistingBlock: '插入已有块',
@@ -1199,6 +1200,10 @@ const zhCN = {
           '确认从当前 Section 移除这个 SectionItem 引用？不会删除源内容。SectionItem：{title}',
         removeTargetMissing: '没有找到这个节点对应的 SectionItem，无法移除。请刷新后重试。',
         operationFailed: 'SectionItem 移除失败，请稍后重试。',
+      },
+      sectionActions: {
+        renamePrompt: '重命名 Section',
+        operationFailed: 'Section 重命名失败，请稍后重试。',
       },
       atomicSectionActions: {
         insertChildPosition: 'AtomicSection 内部：{title}',

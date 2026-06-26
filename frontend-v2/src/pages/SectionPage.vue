@@ -31,12 +31,20 @@ import { useContentBlockRelationActions } from '@/composables/useContentBlockRel
 import { useSectionItemActions } from '@/composables/useSectionItemActions'
 import { useTagActions } from '@/composables/useTagActions'
 import { useTeachingNoteActions } from '@/composables/useTeachingNoteActions'
-import { loadSectionPageData, type SectionPageDataModel } from '@/composables/useSectionPageData'
+import {
+  loadSectionPageData,
+  loadTeachingTopicTreeNodes,
+  type SectionPageDataModel,
+} from '@/composables/useSectionPageData'
 import { usePageTitle } from '@/composables/usePageTitle'
 import { resolveAtomicSectionChildContentBlockTitle } from '@/utils/sectionInsertDefaults'
 import { mapTagBindingsToTags, resolveTagBindingTargetFromSectionNode } from '@/utils/tagTargets'
 import { resolveTeachingNoteTargetFromSectionNode } from '@/utils/teachingNoteTargets'
-import { createTeachingTopicNodeId, findTeachingTopicTreeNodePath } from '@/utils/teachingStructureTree'
+import {
+  createTeachingTopicNodeId,
+  findTeachingTopicTreeNodeByTopicId,
+  findTeachingTopicTreeNodePath,
+} from '@/utils/teachingStructureTree'
 import type {
   InsertCreateContentBlockType,
   InsertCreateDifficulty,
@@ -113,6 +121,7 @@ const workspaceScrollRequestKey = ref(0)
 const collapsedWorkspaceNodeIds = ref(new Set<string>())
 const teachingTopicDrawerOpen = ref(false)
 const selectedTeachingTopicId = ref<string>()
+const teachingTopicTreeNodes = ref<TeachingTopicTreeNodeModel[]>([])
 const teachingTopicDisplayRootNodeId = ref<string | null>(null)
 const isLoadingSectionPage = ref(false)
 const sectionPageError = ref('')
@@ -168,6 +177,7 @@ let teachingTopicDrawerTimer: number | undefined
 let questionImportPollTimer: number | undefined
 let questionImportPollInFlight = false
 let sectionPageLoadSequence = 0
+let teachingTopicTreeLoadSequence = 0
 const QUESTION_IMPORT_POLL_INTERVAL_MS = 2000
 
 interface AtomicSectionWorkspaceActionPayload {
@@ -199,7 +209,17 @@ const sectionId = computed(() => {
 
 const sectionShell = computed<SectionPageShellModel>(() => {
   if (sectionPageData.value) {
-    return sectionPageData.value.section
+    const teachingTopicTitle = sectionPageData.value.teachingTopicId
+      ? findTeachingTopicTreeNodeByTopicId(
+          teachingTopicTreeNodes.value,
+          sectionPageData.value.teachingTopicId,
+        )?.title ?? sectionPageData.value.section.teachingTopicTitle
+      : sectionPageData.value.section.teachingTopicTitle
+
+    return {
+      ...sectionPageData.value.section,
+      teachingTopicTitle,
+    }
   }
 
   return {
@@ -220,7 +240,6 @@ const sectionTreeNodes = computed(() => sectionPageData.value?.treeNodes ?? [])
 const sectionWorkspaceFlowItems = computed(() => sectionPageData.value?.flowItems ?? [])
 const workspaceNodeMap = computed(() => sectionPageData.value?.workspaceNodeMap ?? {})
 const collapsedWorkspaceNodeIdList = computed(() => Array.from(collapsedWorkspaceNodeIds.value))
-const teachingTopicTreeNodes = computed(() => sectionPageData.value?.teachingTopicNodes ?? [])
 const teachingTopicDisplayRootPath = computed(() =>
   teachingTopicDisplayRootNodeId.value
     ? findTeachingTopicTreeNodePath(teachingTopicTreeNodes.value, teachingTopicDisplayRootNodeId.value)
@@ -381,14 +400,9 @@ async function loadCurrentSectionPage() {
     }
 
     sectionPageData.value = data
-    selectedTeachingTopicId.value = data.selectedTeachingTopicId
-    if (
-      teachingTopicDisplayRootNodeId.value &&
-      !findTeachingTopicTreeNodePath(data.teachingTopicNodes, teachingTopicDisplayRootNodeId.value)
-        .length
-    ) {
-      teachingTopicDisplayRootNodeId.value = null
-    }
+    selectedTeachingTopicId.value = data.teachingTopicId
+      ? createTeachingTopicNodeId(data.teachingTopicId)
+      : undefined
 
     if (
       !selectedStructureNodeId.value ||
@@ -409,7 +423,6 @@ async function loadCurrentSectionPage() {
 
     sectionPageData.value = null
     selectedStructureNodeId.value = undefined
-    selectedTeachingTopicId.value = undefined
     clearSectionVariantView()
     sectionPageError.value =
       error instanceof Error ? error.message : t('sectionPage.api.loadError')
@@ -417,6 +430,41 @@ async function loadCurrentSectionPage() {
     if (loadId === sectionPageLoadSequence) {
       isLoadingSectionPage.value = false
     }
+  }
+}
+
+async function loadTeachingTopicTree() {
+  const loadId = ++teachingTopicTreeLoadSequence
+
+  try {
+    const nodes = await loadTeachingTopicTreeNodes()
+
+    if (loadId !== teachingTopicTreeLoadSequence) {
+      return
+    }
+
+    teachingTopicTreeNodes.value = nodes
+
+    if (
+      teachingTopicDisplayRootNodeId.value &&
+      !findTeachingTopicTreeNodePath(nodes, teachingTopicDisplayRootNodeId.value).length
+    ) {
+      teachingTopicDisplayRootNodeId.value = null
+    }
+
+    if (
+      selectedTeachingTopicId.value &&
+      !findTeachingTopicTreeNodePath(nodes, selectedTeachingTopicId.value).length
+    ) {
+      selectedTeachingTopicId.value = undefined
+    }
+  } catch (error) {
+    if (loadId !== teachingTopicTreeLoadSequence) {
+      return
+    }
+
+    sectionPageError.value =
+      error instanceof Error ? error.message : t('sectionPage.teachingTopicDrawer.actionFailed')
   }
 }
 
@@ -2578,6 +2626,7 @@ async function deleteSectionVariantNode(node: SectionTreeNodeModel) {
       title: node.title || 'SectionVariant',
     })
     await loadCurrentSectionPage()
+    await loadTeachingTopicTree()
   } catch (error) {
     sectionPageError.value = resolveSectionVariantDeleteError(error)
   }
@@ -2949,6 +2998,7 @@ async function confirmSectionVariantSelection() {
   }
 
   await loadCurrentSectionPage()
+  await loadTeachingTopicTree()
 }
 
 function openSectionTreeContextMenu(payload: SectionTreeContextMenuPayload) {
@@ -2976,6 +3026,32 @@ async function handleSectionTreeContextMenuAction(payload: SectionTreeContextMen
   if (payload.actionType === 'CreateSectionVariant') {
     if (contextNode.kind === 'Section') {
       openSectionVariantCreatePanel()
+    }
+    return
+  }
+
+  if (payload.actionType === 'RenameSection') {
+    if (contextNode.kind !== 'Section' || typeof contextNode.sectionId !== 'number') {
+      return
+    }
+
+    const nextTitle = window.prompt(
+      t('sectionPage.workspace.sectionActions.renamePrompt'),
+      contextNode.title,
+    )
+
+    if (nextTitle === null || nextTitle.trim() === '' || nextTitle.trim() === contextNode.title) {
+      return
+    }
+
+    try {
+      await cmsV2Api.renameSection(contextNode.sectionId, { title: nextTitle.trim() })
+      selectedStructureNodeId.value = contextNode.id
+      await loadCurrentSectionPage()
+      await loadTeachingTopicTree()
+    } catch (error) {
+      sectionPageError.value =
+        error instanceof Error ? error.message : t('sectionPage.workspace.sectionActions.operationFailed')
     }
     return
   }
@@ -3073,6 +3149,7 @@ async function handleTeachingTopicTreeContextMenuAction(
         name,
         status: 'Active',
       })
+      await loadTeachingTopicTree()
       await loadCurrentSectionPage()
       selectedTeachingTopicId.value = createTeachingTopicNodeId(createdTopic.id)
       return
@@ -3092,6 +3169,7 @@ async function handleTeachingTopicTreeContextMenuAction(
         name,
         status: 'Active',
       })
+      await loadTeachingTopicTree()
       await loadCurrentSectionPage()
       selectedTeachingTopicId.value = createTeachingTopicNodeId(createdTopic.id)
       return
@@ -3106,6 +3184,7 @@ async function handleTeachingTopicTreeContextMenuAction(
         title: contextNode.title,
         status: 'Draft',
       })
+      await loadTeachingTopicTree()
       await loadCurrentSectionPage()
       selectedTeachingTopicId.value = contextNode.id
       return
@@ -3124,6 +3203,7 @@ async function handleTeachingTopicTreeContextMenuAction(
       await cmsV2Api.renameTeachingTopic(contextNode.teachingTopicId, {
         name,
       })
+      await loadTeachingTopicTree()
       await loadCurrentSectionPage()
       selectedTeachingTopicId.value = contextNode.id
       return
@@ -3144,6 +3224,7 @@ async function handleTeachingTopicTreeContextMenuAction(
       }
 
       await cmsV2Api.deleteTeachingTopic(contextNode.teachingTopicId)
+      await loadTeachingTopicTree()
       await loadCurrentSectionPage()
     }
   } catch (error) {
@@ -3204,6 +3285,7 @@ function handleDocumentKeydown(event: KeyboardEvent) {
 
 onMounted(() => {
   document.addEventListener('keydown', handleDocumentKeydown)
+  void loadTeachingTopicTree()
   void loadCurrentSectionPage()
 })
 
