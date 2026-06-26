@@ -1771,3 +1771,10 @@ Phase 9 后置：
 - 不支持 PDF / WordAndPdf。
 - 不支持模板选择、变量替换、学生版 / 教师版过滤。
 - 不支持按难度或当前选中内容局部导出。
+
+### 6. 当前实现状态
+
+- `cmsV2Client.downloadSectionWord(sectionId)` 调用 `POST /api/cms-v2/sections/{sectionId}/generate-word`，读取 `Content-Disposition` 文件名，并通过浏览器 Blob 下载一次性 `.docx` 文件。
+- 入口已放在当前 Section 主操作区，由 `SectionWorkspace` 显示 FileDown 图标和“导出 Word”按钮；组件只 emit `requestSectionWordExport`，由 `SectionPage` 负责 API 调用、loading / disabled 状态和错误反馈。
+- 该入口不放入 Inspector，不提供模板选择、PDF、生成历史、manifest、重命名或删除能力。
+- Phase 4 浏览器 smoke 验证以页面可打开、按钮可见、点击链路无前端错误为准；Codex 内嵌浏览器当前不稳定暴露 Blob 下载落盘事件，因此下载文件响应以直连 API 的 `.docx` content type 与文件名作为补充证据。

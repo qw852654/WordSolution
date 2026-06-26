@@ -116,6 +116,7 @@ const selectedTeachingTopicId = ref<string>()
 const teachingTopicDisplayRootNodeId = ref<string | null>(null)
 const isLoadingSectionPage = ref(false)
 const sectionPageError = ref('')
+const isExportingSectionWord = ref(false)
 const isSubmittingInsertCreate = ref(false)
 const isCreatingAtomicSectionPanel = ref(false)
 const isDeletingContentBlockCascade = ref(false)
@@ -786,6 +787,31 @@ function getCurrentNumericSectionId() {
   const currentSectionId = Number(sectionShell.value.sectionId)
 
   return Number.isInteger(currentSectionId) && currentSectionId > 0 ? currentSectionId : undefined
+}
+
+async function requestSectionWordExport() {
+  const currentSectionId = getCurrentNumericSectionId()
+
+  if (isExportingSectionWord.value) {
+    return
+  }
+
+  if (!currentSectionId) {
+    sectionPageError.value = t('sectionPage.workspace.wordExport.missingSection')
+    return
+  }
+
+  isExportingSectionWord.value = true
+  sectionPageError.value = ''
+
+  try {
+    await cmsV2Api.downloadSectionWord(currentSectionId)
+  } catch (error) {
+    sectionPageError.value =
+      error instanceof Error ? error.message : t('sectionPage.workspace.wordExport.failed')
+  } finally {
+    isExportingSectionWord.value = false
+  }
 }
 
 function createSectionTopLevelQuestionImportContext(): QuestionImportContext {
@@ -3265,8 +3291,10 @@ watch(
         :empty-title="sectionVariantViewMode ? t('sectionPage.sectionVariantView.emptyTitle') : ''"
         :empty-description="sectionVariantViewMode ? t('sectionPage.sectionVariantView.emptyDescription') : ''"
         :collapsed-workspace-node-ids="collapsedWorkspaceNodeIdList"
+        :word-exporting="isExportingSectionWord"
         @select-node="selectWorkspaceNode"
         @toggle-workspace-node-collapse="toggleWorkspaceNodeCollapse"
+        @request-section-word-export="requestSectionWordExport"
         @request-insert="requestInsert"
         @enter-wrap-selection-mode="enterWrapSelectionMode"
         @cancel-wrap-selection-mode="cancelWrapSelectionMode"

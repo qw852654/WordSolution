@@ -1304,6 +1304,55 @@ public sealed class CmsV2ApiIntegrationTests
     }
 
     [Fact]
+    public async Task Section_generate_word_endpoint_returns_docx_download_without_generated_file_record()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        await EnsureRuntimeDefaultTemplateAsync();
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "API Section Topic", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "API Section Word", type = "NormalCourse", difficulty = "Medium", status = "Draft" });
+        var sectionId = section.GetProperty("id").GetInt32();
+        var importedBlock = await CreateImportedContentBlockAsync(
+            client,
+            factory.BankRootDirectory,
+            sectionId,
+            "API exported block",
+            "API exported content");
+        await PostJsonAsync(
+            client,
+            $"/api/cms-v2/sections/{sectionId}/items",
+            new
+            {
+                targetType = "ContentBlock",
+                targetId = importedBlock.ContentBlockId,
+                referenceMode = "FollowLatest",
+                sortOrder = 1
+            });
+
+        var response = await client.PostAsync(
+            $"/api/cms-v2/sections/{sectionId}/generate-word",
+            content: null);
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        var contentDisposition = response.Content.Headers.ContentDisposition?.ToString() ?? string.Empty;
+        using var scope = factory.Services.CreateScope();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<ICmsV2UnitOfWork>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            response.Content.Headers.ContentType?.MediaType);
+        Assert.NotEmpty(bytes);
+        Assert.Contains("API Section Word", contentDisposition);
+        Assert.Contains(".docx", contentDisposition, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("API Section Word", ReadDocxText(bytes));
+        Assert.Contains("API exported content", ReadDocxText(bytes));
+        Assert.Empty(await unitOfWork.GeneratedFiles.ListAsync());
+    }
+
+    [Fact]
     public async Task Output_form_validate_word_generation_endpoint_returns_structured_issues_without_generating_file()
     {
         await using var factory = new CmsV2ApiFactory();
@@ -1944,6 +1993,28 @@ public sealed class CmsV2ApiIntegrationTests
         var imported = await ReadSuccessJsonAsync(importedResponse);
 
         return new ImportedContentBlock(contentBlockId, imported.GetProperty("contentBlockVersionId").GetInt32());
+    }
+
+    private static async Task EnsureRuntimeDefaultTemplateAsync()
+    {
+        var runtimeTemplatePath = Path.Combine(
+            AppContext.BaseDirectory,
+            "Documents",
+            "Templates",
+            "content-block-default.docx");
+        if (File.Exists(runtimeTemplatePath))
+        {
+            return;
+        }
+
+        await CreateMinimalDocxAsync(runtimeTemplatePath, "Runtime default template");
+    }
+
+    private static string ReadDocxText(byte[] bytes)
+    {
+        using var stream = new MemoryStream(bytes);
+        var document = new Document(stream);
+        return document.ToString(SaveFormat.Text);
     }
 
     private static async Task<JsonElement> PostJsonAsync(HttpClient client, string uri, object value)

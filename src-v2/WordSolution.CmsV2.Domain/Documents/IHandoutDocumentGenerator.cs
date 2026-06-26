@@ -14,6 +14,20 @@ public sealed record HandoutDocumentGenerationIssue(
     string? RequiredStyleName = null,
     string? OccurrenceRole = null);
 
+public sealed record HandoutDocumentGenerationOptions(
+    bool IncludeDocumentTitle = true,
+    bool IncludeGeneratedTime = true,
+    bool IncludeEmptyContentPlaceholder = true)
+{
+    public static HandoutDocumentGenerationOptions Default { get; } = new();
+
+    public static HandoutDocumentGenerationOptions WithoutDocumentChrome { get; } =
+        new(
+            IncludeDocumentTitle: false,
+            IncludeGeneratedTime: false,
+            IncludeEmptyContentPlaceholder: false);
+}
+
 public sealed class HandoutDocumentGenerationException : Exception
 {
     public HandoutDocumentGenerationException(string message)
@@ -93,5 +107,14 @@ public interface IHandoutDocumentGenerator
         IReadOnlyList<HandoutDocumentElement> elements,
         string outputDocxPath,
         DateTimeOffset generatedTime,
+        CancellationToken cancellationToken = default);
+
+    Task GenerateWordAsync(
+        string handoutTitle,
+        string templateDocxPath,
+        IReadOnlyList<HandoutDocumentElement> elements,
+        string outputDocxPath,
+        DateTimeOffset generatedTime,
+        HandoutDocumentGenerationOptions options,
         CancellationToken cancellationToken = default);
 }

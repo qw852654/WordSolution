@@ -43,6 +43,7 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
             elements,
             outputDocxPath,
             generatedTime,
+            HandoutDocumentGenerationOptions.Default,
             cancellationToken);
     }
 
@@ -54,10 +55,30 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
         DateTimeOffset generatedTime,
         CancellationToken cancellationToken = default)
     {
+        return GenerateWordAsync(
+            handoutTitle,
+            templateDocxPath,
+            elements,
+            outputDocxPath,
+            generatedTime,
+            HandoutDocumentGenerationOptions.Default,
+            cancellationToken);
+    }
+
+    public Task GenerateWordAsync(
+        string handoutTitle,
+        string templateDocxPath,
+        IReadOnlyList<HandoutDocumentElement> elements,
+        string outputDocxPath,
+        DateTimeOffset generatedTime,
+        HandoutDocumentGenerationOptions options,
+        CancellationToken cancellationToken = default)
+    {
         ValidateText(handoutTitle, nameof(handoutTitle));
         ValidatePath(templateDocxPath, nameof(templateDocxPath));
         ArgumentNullException.ThrowIfNull(elements);
         ValidatePath(outputDocxPath, nameof(outputDocxPath));
+        ArgumentNullException.ThrowIfNull(options);
 
         return Task.Run(() =>
         {
@@ -70,17 +91,26 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
             var builder = new DocumentBuilder(outputDocument);
 
             builder.MoveToDocumentEnd();
-            builder.InsertBreak(BreakType.ParagraphBreak);
-            builder.Font.Name = "Microsoft YaHei";
-            builder.Font.Size = 16;
-            builder.Font.Bold = true;
-            builder.Writeln(handoutTitle.Trim());
-            builder.Font.Bold = false;
-            builder.Font.Size = 10;
-            builder.Writeln($"Generated: {generatedTime:yyyy-MM-dd HH:mm}");
+            if (options.IncludeDocumentTitle)
+            {
+                builder.InsertBreak(BreakType.ParagraphBreak);
+                builder.Font.Name = "Microsoft YaHei";
+                builder.Font.Size = 16;
+                builder.Font.Bold = true;
+                builder.Writeln(handoutTitle.Trim());
+            }
+
+            if (options.IncludeGeneratedTime)
+            {
+                builder.Font.Name = "Microsoft YaHei";
+                builder.Font.Bold = false;
+                builder.Font.Size = 10;
+                builder.Writeln($"Generated: {generatedTime:yyyy-MM-dd HH:mm}");
+            }
+
             builder.Font.Size = 11;
 
-            if (elements.Count == 0)
+            if (elements.Count == 0 && options.IncludeEmptyContentPlaceholder)
             {
                 builder.Writeln("No content.");
             }

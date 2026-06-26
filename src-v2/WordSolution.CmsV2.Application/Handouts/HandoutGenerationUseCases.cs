@@ -11,6 +11,7 @@ namespace WordSolution.CmsV2.Application.Handouts;
 public sealed class HandoutGenerationUseCases
 {
     private const int MaxContentBlockExpandDepth = 10;
+    private const string WordDocxContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     private const string MissingQuestionStemIssueCode = "MissingQuestionStem";
     private static readonly QuestionOutputStyleOptions QuestionOutputStyles = QuestionOutputStyleOptions.Default;
 
@@ -115,6 +116,76 @@ public sealed class HandoutGenerationUseCases
         {
             await CleanupOutputFileAsync(outputDocxPath);
             throw new CmsV2ApplicationException("Handout generation failed.", exception);
+        }
+    }
+
+    public async Task<GeneratedSectionWordResult> GenerateSectionWordAsync(
+        GenerateSectionWordCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(command.BankRootDirectory))
+        {
+            throw new CmsV2ApplicationException("BankRootDirectory cannot be empty.");
+        }
+
+        var outputDocxPath = CreateTemporarySectionDocxPath();
+
+        try
+        {
+            var section = await _unitOfWork.Sections.GetByIdAsync(command.SectionId, cancellationToken)
+                ?? throw new CmsV2ApplicationException($"Section {command.SectionId} was not found.");
+            var resolvedTemplateDocxPath = _outputTemplatePathResolver.ResolveTemplateDocxPath(
+                OutputTemplatePaths.RuntimeDefaultTemplateDocxPath);
+            if (!await _fileStore.ExistsAsync(resolvedTemplateDocxPath, cancellationToken))
+            {
+                throw new CmsV2ApplicationException(
+                    $"OutputTemplate file was not found: {OutputTemplatePaths.RuntimeDefaultTemplateDocxPath}");
+            }
+
+            var resolvedContent = await ResolveSectionWordContentAsync(section, cancellationToken);
+            var issues = await _documentGenerator.ValidateWordGenerationAsync(
+                resolvedTemplateDocxPath,
+                resolvedContent.Elements,
+                cancellationToken);
+            var blockingIssues = GetBlockingIssues(issues);
+            if (blockingIssues.Count > 0)
+            {
+                throw new CmsV2ApplicationException(CreateValidationFailureMessage(blockingIssues));
+            }
+
+            var generationContent = RemoveSkippedContentBlocks(resolvedContent, issues);
+            await _documentGenerator.GenerateWordAsync(
+                section.Title,
+                resolvedTemplateDocxPath,
+                generationContent.Elements,
+                outputDocxPath,
+                DateTimeOffset.UtcNow,
+                HandoutDocumentGenerationOptions.WithoutDocumentChrome,
+                cancellationToken);
+            var fileBytes = await _fileStore.ReadContentBlockDocxAsync(outputDocxPath, cancellationToken)
+                ?? throw new CmsV2ApplicationException("Section Word file was not generated.");
+
+            return new GeneratedSectionWordResult(
+                CreateSectionWordFileName(section.Title),
+                WordDocxContentType,
+                fileBytes,
+                issues);
+        }
+        catch (CmsV2ApplicationException)
+        {
+            throw;
+        }
+        catch (HandoutDocumentGenerationException exception)
+        {
+            throw new CmsV2ApplicationException(exception.Message, exception);
+        }
+        catch (Exception exception)
+        {
+            throw new CmsV2ApplicationException("Section Word generation failed.", exception);
+        }
+        finally
+        {
+            await CleanupOutputFileAsync(outputDocxPath);
         }
     }
 
@@ -275,6 +346,30 @@ public sealed class HandoutGenerationUseCases
             {
                 throw new CmsV2ApplicationException("HandoutVersionItem target only allows SectionVariant, AtomicSection or ContentBlock.");
             }
+        }
+
+        return new ResolvedHandoutContent(sources, elements);
+    }
+
+    private async Task<ResolvedHandoutContent> ResolveSectionWordContentAsync(
+        Section section,
+        CancellationToken cancellationToken)
+    {
+        var sources = new List<ResolvedHandoutSource>();
+        var elements = new List<HandoutDocumentElement>
+        {
+            HandoutDocumentElement.Heading(section.Title, headingLevel: 2)
+        };
+        var sectionItems = await _unitOfWork.SectionItems.ListBySectionAsync(
+            section.Id,
+            cancellationToken);
+
+        foreach (var sectionItem in sectionItems
+            .Where(item => item.ParentItemId is null)
+            .OrderBy(item => item.SortOrder)
+            .ThenBy(item => item.Id))
+        {
+            await ResolveSectionItemAsync(sectionItem, sources, elements, cancellationToken);
         }
 
         return new ResolvedHandoutContent(sources, elements);
@@ -609,6 +704,34 @@ public sealed class HandoutGenerationUseCases
         {
             // Best-effort cleanup only; preserve the original generation failure.
         }
+    }
+
+    private static string CreateTemporarySectionDocxPath()
+    {
+        return Path.Combine(
+            Path.GetTempPath(),
+            "cms-v2-section-word",
+            Guid.NewGuid().ToString("N"),
+            "section.docx");
+    }
+
+    private static string CreateSectionWordFileName(string sectionTitle)
+    {
+        return $"{SanitizeFileName(sectionTitle, fallback: "section")}.docx";
+    }
+
+    private static string SanitizeFileName(string fileName, string fallback)
+    {
+        var invalidCharacters = Path.GetInvalidFileNameChars().ToHashSet();
+        var sanitized = new string(fileName
+            .Trim()
+            .Select(character => invalidCharacters.Contains(character) ? '_' : character)
+            .ToArray())
+            .Trim();
+
+        return string.IsNullOrWhiteSpace(sanitized)
+            ? fallback
+            : sanitized;
     }
 
     private static string CreateVersionManifestJson(

@@ -764,6 +764,12 @@ export interface CmsV2AddContentBlockRelationRequest {
   note?: string | null
 }
 
+export interface CmsV2DownloadedFileResult {
+  filename: string
+  contentType: string
+  size: number
+}
+
 export function createCmsV2Url(path = ''): string {
   if (!path) {
     return CMS_V2_API_BASE
@@ -892,6 +898,73 @@ export async function cmsV2PostForm<T>(path: string, formData: FormData): Promis
   })
 }
 
+function decodeContentDispositionValue(value: string): string {
+  const trimmed = value.trim().replace(/^"(.*)"$/, '$1')
+  const encodedValue = trimmed.includes("''")
+    ? trimmed.slice(trimmed.indexOf("''") + 2)
+    : trimmed
+
+  try {
+    return decodeURIComponent(encodedValue)
+  } catch {
+    return encodedValue
+  }
+}
+
+function getFileNameFromContentDisposition(contentDisposition: string | null): string | undefined {
+  if (!contentDisposition) {
+    return undefined
+  }
+
+  const encodedFileName = contentDisposition.match(/filename\*\s*=\s*([^;]+)/i)?.[1]
+  if (encodedFileName) {
+    return decodeContentDispositionValue(encodedFileName)
+  }
+
+  const fileName = contentDisposition.match(/filename\s*=\s*("[^"]+"|[^;]+)/i)?.[1]
+  return fileName ? decodeContentDispositionValue(fileName) : undefined
+}
+
+function triggerBrowserDownload(blob: Blob, filename: string) {
+  const objectUrl = window.URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = objectUrl
+  anchor.download = filename
+  anchor.style.display = 'none'
+
+  document.body.append(anchor)
+  anchor.click()
+  anchor.remove()
+  window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 0)
+}
+
+export async function cmsV2PostDownload(
+  path: string,
+  fallbackFilename: string,
+): Promise<CmsV2DownloadedFileResult> {
+  const response = await cmsV2Fetch(path, {
+    method: 'POST',
+  })
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response))
+  }
+
+  const blob = await response.blob()
+  const filename =
+    getFileNameFromContentDisposition(response.headers.get('content-disposition')) ||
+    fallbackFilename
+  const contentType = blob.type || response.headers.get('content-type') || ''
+
+  triggerBrowserDownload(blob, filename)
+
+  return {
+    filename,
+    contentType,
+    size: blob.size,
+  }
+}
+
 function withQuery(path: string, query: Record<string, string | number | undefined>) {
   const params = new URLSearchParams()
 
@@ -964,6 +1037,8 @@ export const cmsV2Api = {
   listSections: (teachingTopicId?: number) =>
     cmsV2FetchJson<CmsV2SectionDto[]>(withQuery('/sections', { teachingTopicId })),
   getSection: (sectionId: number) => cmsV2FetchJson<CmsV2SectionDto>(`/sections/${sectionId}`),
+  downloadSectionWord: (sectionId: number) =>
+    cmsV2PostDownload(`/sections/${sectionId}/generate-word`, `section-${sectionId}.docx`),
   listSectionItems: (sectionId: number) =>
     cmsV2FetchJson<CmsV2SectionItemDto[]>(`/sections/${sectionId}/items`),
   addSectionItem: (sectionId: number, request: CmsV2AddSectionItemRequest) =>

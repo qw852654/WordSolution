@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { FileUp } from 'lucide-vue-next'
+import { FileDown, FileUp } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import AtomicSectionBlock from '@/components/business/AtomicSectionBlock.vue'
 import CompositeBlock from '@/components/business/CompositeBlock.vue'
@@ -62,6 +62,7 @@ const props = withDefaults(
     emptyDescription?: string
     collapsedWorkspaceNodeIds?: string[]
     teachingNoteMode?: boolean
+    wordExporting?: boolean
   }>(),
   {
     contentBlocks: () => [],
@@ -83,6 +84,7 @@ const props = withDefaults(
     emptyDescription: '',
     collapsedWorkspaceNodeIds: () => [],
     teachingNoteMode: false,
+    wordExporting: false,
   },
 )
 
@@ -98,6 +100,7 @@ const emit = defineEmits<{
   clearVariantSelection: []
   cancelVariantSelection: []
   confirmVariantSelection: []
+  requestSectionWordExport: []
   requestQuestionImport: []
   requestAtomicChildContentBlock: [request: AtomicSectionWorkspaceActionPayload]
   requestAtomicMove: [request: AtomicSectionWorkspaceMovePayload]
@@ -647,6 +650,19 @@ watch(
         >
           {{ readOnlyLabel }}
         </span>
+        <Button
+          v-if="!activeWorkspaceSelectionMode"
+          type="button"
+          size="sm"
+          variant="outline"
+          class="h-7 px-2 text-xs"
+          :disabled="wordExporting"
+          :aria-busy="wordExporting"
+          @click="emit('requestSectionWordExport')"
+        >
+          <FileDown class="size-3.5" aria-hidden="true" />
+          {{ t('sectionPage.workspace.exportWord') }}
+        </Button>
         <Button
           v-if="!readOnlyMode && !activeWorkspaceSelectionMode"
           type="button"

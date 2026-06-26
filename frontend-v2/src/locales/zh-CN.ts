@@ -1143,7 +1143,12 @@ const zhCN = {
       teachingNoteColumnLabel: 'TeachingNoteColumn 预留区',
       teachingNoteColumnDescription:
         '后续 Teaching Note Mode 会在这里显示与内容块并排的教学备注；它不是右侧 Inspector。',
+      exportWord: '导出 Word',
       questionImport: '导入多题 Word',
+      wordExport: {
+        missingSection: '当前没有可导出的 Section。',
+        failed: '导出 Word 失败，请稍后重试。',
+      },
       emptyTitle: '插入第一个块',
       emptyDescription:
         '当前 Section 还没有内容，可以先新建 ContentBlock、新建 AtomicSection，或插入已有块。',

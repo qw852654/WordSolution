@@ -6,6 +6,7 @@ using System.Xml.Linq;
 using Microsoft.EntityFrameworkCore;
 using WordSolution.CmsV2.Application.Common;
 using WordSolution.CmsV2.Application.Handouts;
+using WordSolution.CmsV2.Domain.Documents;
 using WordSolution.CmsV2.Domain.Entities;
 using WordSolution.CmsV2.Domain.Enums;
 using WordSolution.CmsV2.Infrastructure.Documents;
@@ -60,6 +61,8 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
         Assert.Single(generatedFiles);
         Assert.Equal(generatedFiles.Single().Id, result.GeneratedFileId);
         Assert.Equal(result.FilePath, generatedFiles.Single().FilePath);
+        Assert.Contains("基础班", outputText);
+        Assert.Contains("Generated: 2026-06-09 00:00", outputText);
         Assert.Contains("合外力做功等于动能变化", outputText);
         Assert.Equal(1, manifest.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Equal(setup.OutputForm.Id, manifest.RootElement.GetProperty("outputFormId").GetInt32());
@@ -70,6 +73,250 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
         Assert.Equal(block.Version.Id, source.GetProperty("contentBlockVersionId").GetInt32());
         Assert.Equal(1, source.GetProperty("versionNumber").GetInt32());
         Assert.Equal(block.Version.DocxPath, source.GetProperty("docxPath").GetString());
+    }
+
+    [Fact]
+    public async Task SectionWord_generates_section_docx_without_handout_chrome_and_preserves_output_order()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        await CreateRuntimeDefaultOutputTemplateAsync("Section default template");
+        var versionedBlock = await CreateContentBlockWithTwoVersionsAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Locked block",
+            oldText: "Locked old content",
+            currentText: "Current content should not export");
+        var childBlock = await CreateContentBlockWithVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Relation child",
+            "Relation child content",
+            versionNumber: 1,
+            isCurrent: true);
+        await unitOfWork.ContentBlockRelations.AddAsync(new ContentBlockRelation(
+            versionedBlock.ContentBlock.Id,
+            childBlock.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 1));
+        var earlyPanelBlock = await CreateContentBlockWithVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Early panel",
+            "Early panel content",
+            versionNumber: 1,
+            isCurrent: true);
+        var latePanelBlock = await CreateContentBlockWithVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Late panel",
+            "Late panel content",
+            versionNumber: 1,
+            isCurrent: true);
+        var unassignedBlock = await CreateContentBlockWithVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Unassigned",
+            "Unassigned content",
+            versionNumber: 1,
+            isCurrent: true);
+        var tieSecondBlock = await CreateContentBlockWithVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Tie second",
+            "Tie second content",
+            versionNumber: 1,
+            isCurrent: true);
+        var topic = new TeachingTopic("Section Word Topic");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+        var section = new Section(topic.Id, "Section Word 导出");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+        var atomicSection = new AtomicSection(section.Id, "Atomic Word Title");
+        var emptyAtomicSection = new AtomicSection(section.Id, "Empty Atomic Word Title");
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.AtomicSections.AddAsync(emptyAtomicSection);
+        await unitOfWork.SaveChangesAsync();
+        var emptyPanel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "Empty Panel Title",
+            AtomicSectionTeachingRole.Knowledge,
+            Difficulty.Basic,
+            sortOrder: 5);
+        var earlyPanel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "Early Panel Title",
+            AtomicSectionTeachingRole.Example,
+            Difficulty.Basic,
+            sortOrder: 10);
+        var latePanel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "Late Panel Title",
+            AtomicSectionTeachingRole.Practice,
+            Difficulty.Basic,
+            sortOrder: 20);
+        await unitOfWork.AtomicSectionPanels.AddAsync(emptyPanel);
+        await unitOfWork.AtomicSectionPanels.AddAsync(earlyPanel);
+        await unitOfWork.AtomicSectionPanels.AddAsync(latePanel);
+        await unitOfWork.SaveChangesAsync();
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            latePanelBlock.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10,
+            atomicSectionPanelId: latePanel.Id));
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            earlyPanelBlock.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10,
+            atomicSectionPanelId: earlyPanel.Id));
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            unassignedBlock.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10));
+        await unitOfWork.SectionItems.AddAsync(new SectionItem(
+            section.Id,
+            SectionItemTargetType.AtomicSection,
+            atomicSection.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10));
+        await unitOfWork.SaveChangesAsync();
+        await unitOfWork.SectionItems.AddAsync(new SectionItem(
+            section.Id,
+            SectionItemTargetType.ContentBlock,
+            versionedBlock.ContentBlock.Id,
+            ReferenceMode.LockedVersion,
+            versionedBlock.OldVersion.Id,
+            sortOrder: 20));
+        await unitOfWork.SectionItems.AddAsync(new SectionItem(
+            section.Id,
+            SectionItemTargetType.ContentBlock,
+            tieSecondBlock.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 20));
+        await unitOfWork.SectionItems.AddAsync(new SectionItem(
+            section.Id,
+            SectionItemTargetType.AtomicSection,
+            emptyAtomicSection.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 30));
+        await unitOfWork.SaveChangesAsync();
+
+        var result = await CreateUseCases(unitOfWork).GenerateSectionWordAsync(
+            new GenerateSectionWordCommand(bankRootDirectory, section.Id));
+        var outputDocxPath = Path.Combine(bankRootDirectory, "section-word-output.docx");
+        await File.WriteAllBytesAsync(outputDocxPath, result.FileBytes);
+        var outputText = ReadDocxText(outputDocxPath);
+
+        Assert.Equal("application/vnd.openxmlformats-officedocument.wordprocessingml.document", result.ContentType);
+        Assert.EndsWith(".docx", result.FileName, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Section Word 导出", result.FileName);
+        Assert.Contains("Section Word 导出", outputText);
+        Assert.DoesNotContain("Section Word Topic", outputText);
+        Assert.DoesNotContain("Generated:", outputText);
+        Assert.DoesNotContain("No content.", outputText);
+        Assert.DoesNotContain("Current content should not export", outputText);
+        Assert.DoesNotContain("Empty Panel Title", outputText);
+        Assert.DoesNotContain("Early Panel Title", outputText);
+        Assert.DoesNotContain("Late Panel Title", outputText);
+        AssertTextOrder(
+            outputText,
+            "Atomic Word Title",
+            "Early panel content",
+            "Late panel content",
+            "Unassigned content",
+            "Locked old content",
+            "Relation child content",
+            "Tie second content",
+            "Empty Atomic Word Title");
+        AssertHeadingUsesTemplateStyleWithoutDirectRunFormatting(outputDocxPath, "Section Word 导出", "Heading2");
+        AssertHeadingUsesTemplateStyleWithoutDirectRunFormatting(outputDocxPath, "Atomic Word Title", "Heading3");
+        Assert.Empty(await unitOfWork.GeneratedFiles.ListAsync());
+    }
+
+    [Fact]
+    public async Task SectionWord_skips_question_without_effective_stem_and_rebinds_atomic_section_role_style()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        CreateTemplateWithQuestionOutputStyles(GetRuntimeDefaultOutputTemplatePath(), "例题", "变式", "练习题");
+        var validQuestion = await CreateQuestionContentBlockWithStyledVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Valid question",
+            "Valid section stem");
+        var missingStemQuestion = await CreateQuestionContentBlockWithOnlyOtherVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Missing stem question",
+            "Missing stem content");
+        var topic = new TeachingTopic("Question topic");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+        var section = new Section(topic.Id, "Question section");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+        var atomicSection = new AtomicSection(section.Id, "Question AtomicSection");
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+        var examplePanel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "Example panel title",
+            AtomicSectionTeachingRole.Example,
+            Difficulty.Basic,
+            sortOrder: 10);
+        await unitOfWork.AtomicSectionPanels.AddAsync(examplePanel);
+        await unitOfWork.SaveChangesAsync();
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            validQuestion.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10,
+            atomicSectionPanelId: examplePanel.Id));
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            missingStemQuestion.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 20,
+            atomicSectionPanelId: examplePanel.Id));
+        await unitOfWork.SectionItems.AddAsync(new SectionItem(
+            section.Id,
+            SectionItemTargetType.AtomicSection,
+            atomicSection.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10));
+        await unitOfWork.SaveChangesAsync();
+
+        var result = await CreateUseCases(unitOfWork).GenerateSectionWordAsync(
+            new GenerateSectionWordCommand(bankRootDirectory, section.Id));
+        var outputDocxPath = Path.Combine(bankRootDirectory, "section-word-question-output.docx");
+        await File.WriteAllBytesAsync(outputDocxPath, result.FileBytes);
+        var outputText = ReadDocxText(outputDocxPath);
+        var issue = Assert.Single(result.Issues, issue => issue.Code == "MissingQuestionStem");
+
+        Assert.Equal(missingStemQuestion.ContentBlock.Id, issue.ContentBlockId);
+        Assert.Equal(missingStemQuestion.Version.Id, issue.ContentBlockVersionId);
+        Assert.Equal("例题", issue.RequiredStyleName);
+        Assert.Equal(nameof(AtomicSectionTeachingRole.Example), issue.OccurrenceRole);
+        Assert.Contains("Valid section stem", outputText);
+        Assert.DoesNotContain("Missing stem content", outputText);
+        AssertParagraphUsesStyleName(outputDocxPath, "Valid section stem", "例题");
+        Assert.Empty(await unitOfWork.GeneratedFiles.ListAsync());
     }
 
     [Fact]
@@ -930,17 +1177,18 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
 
     private static async Task CreateRuntimeDefaultOutputTemplateAsync(string text)
     {
-        var runtimeTemplatePath = Path.Combine(
-            AppContext.BaseDirectory,
-            "Documents",
-            "Templates",
-            "content-block-default.docx");
+        var runtimeTemplatePath = GetRuntimeDefaultOutputTemplatePath();
         if (File.Exists(runtimeTemplatePath))
         {
             return;
         }
 
         await CreateMinimalDocxAsync(runtimeTemplatePath, text);
+    }
+
+    private static string GetRuntimeDefaultOutputTemplatePath()
+    {
+        return Path.GetFullPath(OutputTemplatePaths.RuntimeDefaultTemplateDocxPath, AppContext.BaseDirectory);
     }
 
     private static async Task<ContentBlockVersionSetup> CreateContentBlockWithTwoVersionsAsync(
@@ -1211,6 +1459,20 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
                 StringComparison.Ordinal));
 
         Assert.Equal(expectedStyleName, paragraph.ParagraphFormat.StyleName);
+    }
+
+    private static void AssertTextOrder(string text, params string[] orderedValues)
+    {
+        var previousIndex = -1;
+        foreach (var value in orderedValues)
+        {
+            var currentIndex = text.IndexOf(value, StringComparison.Ordinal);
+            Assert.True(currentIndex >= 0, $"Expected text to contain '{value}'.");
+            Assert.True(
+                currentIndex > previousIndex,
+                $"Expected '{value}' to appear after the previous ordered text.");
+            previousIndex = currentIndex;
+        }
     }
 
     private static void CreateTemplateWithQuestionOutputStyles(string docxPath, params string[] styleNames)

@@ -9,6 +9,10 @@ public sealed record ValidateHandoutWordGenerationCommand(
     string BankRootDirectory,
     int OutputFormId);
 
+public sealed record GenerateSectionWordCommand(
+    string BankRootDirectory,
+    int SectionId);
+
 public sealed record GeneratedHandoutFileResult(
     int GeneratedFileId,
     int OutputFormId,
@@ -18,4 +22,10 @@ public sealed record GeneratedHandoutFileResult(
 
 public sealed record HandoutWordGenerationValidationResult(
     bool IsValid,
+    IReadOnlyList<WordSolution.CmsV2.Domain.Documents.HandoutDocumentGenerationIssue> Issues);
+
+public sealed record GeneratedSectionWordResult(
+    string FileName,
+    string ContentType,
+    byte[] FileBytes,
     IReadOnlyList<WordSolution.CmsV2.Domain.Documents.HandoutDocumentGenerationIssue> Issues);

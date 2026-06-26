@@ -1163,7 +1163,12 @@ const en = {
       teachingNoteColumnLabel: 'TeachingNoteColumn reserved area',
       teachingNoteColumnDescription:
         'Teaching Note Mode will show contextual notes beside content later. This is not the right-side Inspector.',
+      exportWord: 'Export Word',
       questionImport: 'Import Word questions',
+      wordExport: {
+        missingSection: 'No Section is available to export.',
+        failed: 'Failed to export Word. Please try again later.',
+      },
       emptyTitle: 'Insert the first block',
       emptyDescription:
         'This Section has no content yet. Create a ContentBlock, create an AtomicSection, or insert an existing block.',
