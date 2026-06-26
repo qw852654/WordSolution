@@ -99,6 +99,7 @@ const atomicSectionTeachingRoleOptions: AtomicSectionTeachingRole[] = [
   'Variant',
   'Practice',
   'Homework',
+  'PreClassQuiz',
 ]
 const difficultyOptions = ['Unset', 'Basic', 'Medium', 'Advanced', 'Top']
 const atomicSectionStatusOptions: AtomicSectionStatusValue[] = ['Draft', 'Active', 'Archived']

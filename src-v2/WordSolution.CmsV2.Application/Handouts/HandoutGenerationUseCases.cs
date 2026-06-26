@@ -12,7 +12,6 @@ public sealed class HandoutGenerationUseCases
 {
     private const int MaxContentBlockExpandDepth = 10;
     private const string WordDocxContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-    private const string MissingQuestionStemIssueCode = "MissingQuestionStem";
     private static readonly QuestionOutputStyleOptions QuestionOutputStyles = QuestionOutputStyleOptions.Default;
 
     private readonly ICmsV2UnitOfWork _unitOfWork;
@@ -132,31 +131,18 @@ public sealed class HandoutGenerationUseCases
 
         try
         {
-            var section = await _unitOfWork.Sections.GetByIdAsync(command.SectionId, cancellationToken)
-                ?? throw new CmsV2ApplicationException($"Section {command.SectionId} was not found.");
-            var resolvedTemplateDocxPath = _outputTemplatePathResolver.ResolveTemplateDocxPath(
-                OutputTemplatePaths.RuntimeDefaultTemplateDocxPath);
-            if (!await _fileStore.ExistsAsync(resolvedTemplateDocxPath, cancellationToken))
-            {
-                throw new CmsV2ApplicationException(
-                    $"OutputTemplate file was not found: {OutputTemplatePaths.RuntimeDefaultTemplateDocxPath}");
-            }
-
-            var resolvedContent = await ResolveSectionWordContentAsync(section, cancellationToken);
-            var issues = await _documentGenerator.ValidateWordGenerationAsync(
-                resolvedTemplateDocxPath,
-                resolvedContent.Elements,
-                cancellationToken);
+            var context = await ResolveSectionWordGenerationContextAsync(command.SectionId, cancellationToken);
+            var issues = await ValidateResolvedSectionWordGenerationAsync(context, cancellationToken);
             var blockingIssues = GetBlockingIssues(issues);
             if (blockingIssues.Count > 0)
             {
                 throw new CmsV2ApplicationException(CreateValidationFailureMessage(blockingIssues));
             }
 
-            var generationContent = RemoveSkippedContentBlocks(resolvedContent, issues);
+            var generationContent = RemoveSkippedContentBlocks(context.ResolvedContent, issues);
             await _documentGenerator.GenerateWordAsync(
-                section.Title,
-                resolvedTemplateDocxPath,
+                context.Section.Title,
+                context.ResolvedTemplateDocxPath,
                 generationContent.Elements,
                 outputDocxPath,
                 DateTimeOffset.UtcNow,
@@ -166,7 +152,7 @@ public sealed class HandoutGenerationUseCases
                 ?? throw new CmsV2ApplicationException("Section Word file was not generated.");
 
             return new GeneratedSectionWordResult(
-                CreateSectionWordFileName(section.Title),
+                CreateSectionWordFileName(context.Section.Title),
                 WordDocxContentType,
                 fileBytes,
                 issues);
@@ -187,6 +173,21 @@ public sealed class HandoutGenerationUseCases
         {
             await CleanupOutputFileAsync(outputDocxPath);
         }
+    }
+
+    public async Task<HandoutWordGenerationValidationResult> ValidateSectionWordGenerationAsync(
+        ValidateSectionWordGenerationCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(command.BankRootDirectory))
+        {
+            throw new CmsV2ApplicationException("BankRootDirectory cannot be empty.");
+        }
+
+        var context = await ResolveSectionWordGenerationContextAsync(command.SectionId, cancellationToken);
+        var issues = await ValidateResolvedSectionWordGenerationAsync(context, cancellationToken);
+
+        return new HandoutWordGenerationValidationResult(GetBlockingIssues(issues).Count == 0, issues);
     }
 
     public async Task<HandoutWordGenerationValidationResult> ValidateHandoutWordGenerationAsync(
@@ -238,21 +239,64 @@ public sealed class HandoutGenerationUseCases
             resolvedContent);
     }
 
+    private async Task<ResolvedSectionWordGenerationContext> ResolveSectionWordGenerationContextAsync(
+        int sectionId,
+        CancellationToken cancellationToken)
+    {
+        var section = await _unitOfWork.Sections.GetByIdAsync(sectionId, cancellationToken)
+            ?? throw new CmsV2ApplicationException($"Section {sectionId} was not found.");
+        var resolvedTemplateDocxPath = _outputTemplatePathResolver.ResolveTemplateDocxPath(
+            OutputTemplatePaths.RuntimeDefaultTemplateDocxPath);
+        if (!await _fileStore.ExistsAsync(resolvedTemplateDocxPath, cancellationToken))
+        {
+            throw new CmsV2ApplicationException(
+                $"OutputTemplate file was not found: {OutputTemplatePaths.RuntimeDefaultTemplateDocxPath}");
+        }
+
+        var resolvedContent = await ResolveSectionWordContentAsync(section, cancellationToken);
+
+        return new ResolvedSectionWordGenerationContext(
+            section,
+            resolvedTemplateDocxPath,
+            resolvedContent);
+    }
+
     private async Task<IReadOnlyList<HandoutDocumentGenerationIssue>> ValidateResolvedHandoutWordGenerationAsync(
         ResolvedHandoutWordGenerationContext context,
         CancellationToken cancellationToken)
     {
-        var issues = await _documentGenerator.ValidateWordGenerationAsync(
+        var validationContent = RemoveSkippedContentBlocks(
+            context.ResolvedContent,
+            context.ResolvedContent.Issues);
+        var documentIssues = await _documentGenerator.ValidateWordGenerationAsync(
             context.ResolvedTemplateDocxPath,
-            context.ResolvedContent.Elements,
+            validationContent.Elements,
             cancellationToken);
 
-        return issues
+        return context.ResolvedContent.Issues
+            .Concat(documentIssues)
             .Select(issue => issue with
             {
                 OutputFormId = issue.OutputFormId ?? context.OutputForm.Id,
                 OutputTemplateId = issue.OutputTemplateId ?? context.OutputTemplate.Id
             })
+            .ToArray();
+    }
+
+    private async Task<IReadOnlyList<HandoutDocumentGenerationIssue>> ValidateResolvedSectionWordGenerationAsync(
+        ResolvedSectionWordGenerationContext context,
+        CancellationToken cancellationToken)
+    {
+        var validationContent = RemoveSkippedContentBlocks(
+            context.ResolvedContent,
+            context.ResolvedContent.Issues);
+        var documentIssues = await _documentGenerator.ValidateWordGenerationAsync(
+            context.ResolvedTemplateDocxPath,
+            validationContent.Elements,
+            cancellationToken);
+
+        return context.ResolvedContent.Issues
+            .Concat(documentIssues)
             .ToArray();
     }
 
@@ -265,15 +309,8 @@ public sealed class HandoutGenerationUseCases
         IReadOnlyList<HandoutDocumentGenerationIssue> issues)
     {
         return issues
-            .Where(issue => !IsSkippableMissingQuestionStemIssue(issue))
+            .Where(issue => issue.Severity == HandoutDocumentGenerationIssueSeverity.Blocking)
             .ToArray();
-    }
-
-    private static bool IsSkippableMissingQuestionStemIssue(HandoutDocumentGenerationIssue issue)
-    {
-        return string.Equals(issue.Code, MissingQuestionStemIssueCode, StringComparison.Ordinal)
-            && issue.ContentBlockId.HasValue
-            && issue.ContentBlockVersionId.HasValue;
     }
 
     private static ResolvedHandoutContent RemoveSkippedContentBlocks(
@@ -281,10 +318,18 @@ public sealed class HandoutGenerationUseCases
         IReadOnlyList<HandoutDocumentGenerationIssue> issues)
     {
         var skippedBlockVersions = issues
-            .Where(IsSkippableMissingQuestionStemIssue)
+            .Where(issue => issue.Severity == HandoutDocumentGenerationIssueSeverity.WarningSkip
+                && issue.ContentBlockId.HasValue
+                && issue.ContentBlockVersionId.HasValue)
             .Select(issue => (ContentBlockId: issue.ContentBlockId!.Value, ContentBlockVersionId: issue.ContentBlockVersionId!.Value))
             .ToHashSet();
-        if (skippedBlockVersions.Count == 0)
+        var skippedContentBlocks = issues
+            .Where(issue => issue.Severity == HandoutDocumentGenerationIssueSeverity.WarningSkip
+                && issue.ContentBlockId.HasValue
+                && !issue.ContentBlockVersionId.HasValue)
+            .Select(issue => issue.ContentBlockId!.Value)
+            .ToHashSet();
+        if (skippedBlockVersions.Count == 0 && skippedContentBlocks.Count == 0)
         {
             return content;
         }
@@ -293,14 +338,73 @@ public sealed class HandoutGenerationUseCases
             .Where(source => !skippedBlockVersions.Contains((source.ContentBlockId, source.ContentBlockVersionId)))
             .Select((source, index) => source with { Sequence = index + 1 })
             .ToArray();
+        var keepElements = content.Elements
+            .Select(element => !IsSkippedContentBlock(element, skippedContentBlocks, skippedBlockVersions))
+            .ToArray();
+        RemoveAtomicSectionHeadingsMadeEmptyByWarningSkips(content.Elements, keepElements);
         var elements = content.Elements
-            .Where(element => element.Kind != HandoutDocumentElementKind.ContentBlock
-                || !element.ContentBlockId.HasValue
-                || !element.ContentBlockVersionId.HasValue
-                || !skippedBlockVersions.Contains((element.ContentBlockId.Value, element.ContentBlockVersionId.Value)))
+            .Where((_, index) => keepElements[index])
             .ToArray();
 
-        return new ResolvedHandoutContent(sources, elements);
+        return new ResolvedHandoutContent(sources, elements, content.Issues);
+    }
+
+    private static bool IsSkippedContentBlock(
+        HandoutDocumentElement element,
+        HashSet<int> skippedContentBlocks,
+        HashSet<(int ContentBlockId, int ContentBlockVersionId)> skippedBlockVersions)
+    {
+        if (element.Kind != HandoutDocumentElementKind.ContentBlock || !element.ContentBlockId.HasValue)
+        {
+            return false;
+        }
+
+        return (!element.ContentBlockVersionId.HasValue && skippedContentBlocks.Contains(element.ContentBlockId.Value))
+            || (element.ContentBlockVersionId.HasValue
+                && skippedBlockVersions.Contains((element.ContentBlockId.Value, element.ContentBlockVersionId.Value)));
+    }
+
+    private static void RemoveAtomicSectionHeadingsMadeEmptyByWarningSkips(
+        IReadOnlyList<HandoutDocumentElement> elements,
+        bool[] keepElements)
+    {
+        for (var index = 0; index < elements.Count; index++)
+        {
+            var element = elements[index];
+            if (element.Kind != HandoutDocumentElementKind.Heading || element.HeadingLevel != 3)
+            {
+                continue;
+            }
+
+            var hasSkippedContent = false;
+            var hasRemainingContent = false;
+            for (var cursor = index + 1; cursor < elements.Count; cursor++)
+            {
+                var nextElement = elements[cursor];
+                if (nextElement.Kind == HandoutDocumentElementKind.Heading && nextElement.HeadingLevel <= 3)
+                {
+                    break;
+                }
+
+                if (nextElement.Kind != HandoutDocumentElementKind.ContentBlock)
+                {
+                    continue;
+                }
+
+                if (keepElements[cursor])
+                {
+                    hasRemainingContent = true;
+                    break;
+                }
+
+                hasSkippedContent = true;
+            }
+
+            if (hasSkippedContent && !hasRemainingContent)
+            {
+                keepElements[index] = false;
+            }
+        }
     }
 
     private async Task<ResolvedHandoutContent> ResolveHandoutContentAsync(
@@ -312,6 +416,7 @@ public sealed class HandoutGenerationUseCases
             cancellationToken);
         var sources = new List<ResolvedHandoutSource>();
         var elements = new List<HandoutDocumentElement>();
+        var issues = new List<HandoutDocumentGenerationIssue>();
 
         foreach (var item in handoutItems)
         {
@@ -325,13 +430,14 @@ public sealed class HandoutGenerationUseCases
                     requestedOccurrenceRole: null,
                     sources,
                     elements,
+                    issues,
                     new HashSet<int>(),
                     depth: 1,
                     cancellationToken);
             }
             else if (item.TargetType == HandoutVersionItemTargetType.SectionVariant)
             {
-                await ResolveSectionVariantAsync(item.TargetId, sources, elements, cancellationToken);
+                await ResolveSectionVariantAsync(item.TargetId, sources, elements, issues, cancellationToken);
             }
             else if (item.TargetType == HandoutVersionItemTargetType.AtomicSection)
             {
@@ -340,6 +446,7 @@ public sealed class HandoutGenerationUseCases
                     item.TitleOverride,
                     sources,
                     elements,
+                    issues,
                     cancellationToken);
             }
             else
@@ -348,7 +455,7 @@ public sealed class HandoutGenerationUseCases
             }
         }
 
-        return new ResolvedHandoutContent(sources, elements);
+        return new ResolvedHandoutContent(sources, elements, issues);
     }
 
     private async Task<ResolvedHandoutContent> ResolveSectionWordContentAsync(
@@ -360,6 +467,7 @@ public sealed class HandoutGenerationUseCases
         {
             HandoutDocumentElement.Heading(section.Title, headingLevel: 2)
         };
+        var issues = new List<HandoutDocumentGenerationIssue>();
         var sectionItems = await _unitOfWork.SectionItems.ListBySectionAsync(
             section.Id,
             cancellationToken);
@@ -369,16 +477,17 @@ public sealed class HandoutGenerationUseCases
             .OrderBy(item => item.SortOrder)
             .ThenBy(item => item.Id))
         {
-            await ResolveSectionItemAsync(sectionItem, sources, elements, cancellationToken);
+            await ResolveSectionItemAsync(sectionItem, sources, elements, issues, cancellationToken);
         }
 
-        return new ResolvedHandoutContent(sources, elements);
+        return new ResolvedHandoutContent(sources, elements, issues);
     }
 
     private async Task ResolveSectionVariantAsync(
         int sectionVariantId,
         List<ResolvedHandoutSource> sources,
         List<HandoutDocumentElement> elements,
+        List<HandoutDocumentGenerationIssue> issues,
         CancellationToken cancellationToken)
     {
         var variant = await _unitOfWork.SectionVariants.GetByIdAsync(sectionVariantId, cancellationToken);
@@ -409,7 +518,7 @@ public sealed class HandoutGenerationUseCases
                 throw new CmsV2ApplicationException($"SectionItem {variantItem.SectionItemId} was not found.");
             }
 
-            await ResolveSectionItemAsync(sectionItem, sources, elements, cancellationToken);
+            await ResolveSectionItemAsync(sectionItem, sources, elements, issues, cancellationToken);
         }
     }
 
@@ -417,6 +526,7 @@ public sealed class HandoutGenerationUseCases
         SectionItem sectionItem,
         List<ResolvedHandoutSource> sources,
         List<HandoutDocumentElement> elements,
+        List<HandoutDocumentGenerationIssue> issues,
         CancellationToken cancellationToken)
     {
         if (sectionItem.TargetType == SectionItemTargetType.ContentBlock)
@@ -433,6 +543,7 @@ public sealed class HandoutGenerationUseCases
                 requestedOccurrenceRole: null,
                 sources,
                 elements,
+                issues,
                 new HashSet<int>(),
                 depth: 1,
                 cancellationToken);
@@ -450,6 +561,7 @@ public sealed class HandoutGenerationUseCases
             sectionItem.TitleOverride,
             sources,
             elements,
+            issues,
             cancellationToken);
     }
 
@@ -458,6 +570,7 @@ public sealed class HandoutGenerationUseCases
         string? titleOverride,
         List<ResolvedHandoutSource> sources,
         List<HandoutDocumentElement> elements,
+        List<HandoutDocumentGenerationIssue> issues,
         CancellationToken cancellationToken)
     {
         var atomicSection = await _unitOfWork.AtomicSections.GetByIdAsync(atomicSectionId, cancellationToken)
@@ -480,6 +593,10 @@ public sealed class HandoutGenerationUseCases
                 ? atomicItem.LockedContentBlockVersionId
                 : null;
             var outputStemStyleName = QuestionOutputStyles.ResolveForTeachingRole(teachingRole);
+            if (teachingRole == AtomicSectionTeachingRole.PreClassQuiz && outputStemStyleName is null)
+            {
+                continue;
+            }
 
             await ResolveContentBlockTreeAsync(
                 atomicItem.ContentBlockId,
@@ -489,6 +606,7 @@ public sealed class HandoutGenerationUseCases
                 teachingRole.ToString(),
                 sources,
                 elements,
+                issues,
                 new HashSet<int>(),
                 depth: 1,
                 cancellationToken);
@@ -529,6 +647,7 @@ public sealed class HandoutGenerationUseCases
         string? requestedOccurrenceRole,
         List<ResolvedHandoutSource> sources,
         List<HandoutDocumentElement> elements,
+        List<HandoutDocumentGenerationIssue> issues,
         HashSet<int> currentPath,
         int depth,
         CancellationToken cancellationToken)
@@ -545,22 +664,25 @@ public sealed class HandoutGenerationUseCases
 
         try
         {
-            var source = await ResolveContentBlockSourceAsync(
+            var reference = await ResolveContentBlockReferenceAsync(
                 contentBlockId,
                 lockedContentBlockVersionId,
                 titleOverride,
                 requestedOutputStemStyleName,
                 requestedOccurrenceRole,
                 sources.Count + 1,
+                issues,
                 cancellationToken);
-            sources.Add(source);
-            elements.Add(HandoutDocumentElement.ContentBlock(
-                source.Title,
-                source.DocxPath,
-                source.OutputStemStyleName,
-                source.ContentBlockId,
-                source.ContentBlockVersionId,
-                source.OccurrenceRole));
+            if (reference.Source is not null)
+            {
+                sources.Add(reference.Source);
+            }
+
+            elements.Add(reference.Element);
+            if (!reference.ShouldExpandChildren)
+            {
+                return;
+            }
 
             var childRelations = await _unitOfWork.ContentBlockRelations.ListChildrenAsync(
                 contentBlockId,
@@ -580,6 +702,7 @@ public sealed class HandoutGenerationUseCases
                     nameof(AtomicSectionTeachingRole.Practice),
                     sources,
                     elements,
+                    issues,
                     currentPath,
                     depth + 1,
                     cancellationToken);
@@ -591,17 +714,23 @@ public sealed class HandoutGenerationUseCases
         }
     }
 
-    private async Task<ResolvedHandoutSource> ResolveContentBlockSourceAsync(
+    private async Task<ResolvedContentBlockReference> ResolveContentBlockReferenceAsync(
         int contentBlockId,
         int? lockedContentBlockVersionId,
         string? titleOverride,
         string? requestedOutputStemStyleName,
         string? requestedOccurrenceRole,
         int sequence,
+        List<HandoutDocumentGenerationIssue> issues,
         CancellationToken cancellationToken)
     {
         var contentBlock = await _unitOfWork.ContentBlocks.GetByIdAsync(contentBlockId, cancellationToken)
             ?? throw new CmsV2ApplicationException($"ContentBlock {contentBlockId} was not found.");
+        var title = string.IsNullOrWhiteSpace(titleOverride) ? contentBlock.Title : titleOverride.Trim();
+        var outputStemStyle = ResolveOutputStemStyle(
+            contentBlock.BlockType,
+            requestedOutputStemStyleName,
+            requestedOccurrenceRole);
         ContentBlockVersion? version;
 
         if (lockedContentBlockVersionId.HasValue)
@@ -626,29 +755,60 @@ public sealed class HandoutGenerationUseCases
                 cancellationToken);
             if (version is null)
             {
-                throw new CmsV2ApplicationException($"ContentBlock {contentBlockId} does not have a current version.");
+                issues.Add(new HandoutDocumentGenerationIssue(
+                    "MissingContentBlockCurrentVersion",
+                    $"ContentBlock {contentBlockId} does not have a current version.",
+                    Severity: HandoutDocumentGenerationIssueSeverity.WarningSkip,
+                    ContentBlockId: contentBlock.Id,
+                    RequiredStyleName: outputStemStyle.StyleName,
+                    OccurrenceRole: outputStemStyle.OccurrenceRole));
+
+                return new ResolvedContentBlockReference(
+                    Source: null,
+                    HandoutDocumentElement.ContentBlock(
+                        title,
+                        string.Empty,
+                        outputStemStyle.StyleName,
+                        contentBlock.Id,
+                        null,
+                        outputStemStyle.OccurrenceRole),
+                    ShouldExpandChildren: false);
             }
         }
 
-        if (!await _fileStore.ExistsAsync(version.DocxPath, cancellationToken))
-        {
-            throw new CmsV2ApplicationException($"ContentBlockVersion DOCX file was not found: {version.DocxPath}");
-        }
-
-        var outputStemStyle = ResolveOutputStemStyle(
-            contentBlock.BlockType,
-            requestedOutputStemStyleName,
-            requestedOccurrenceRole);
-
-        return new ResolvedHandoutSource(
+        var source = new ResolvedHandoutSource(
             sequence,
             contentBlock.Id,
             version.Id,
             version.VersionNumber,
-            string.IsNullOrWhiteSpace(titleOverride) ? contentBlock.Title : titleOverride.Trim(),
+            title,
             version.DocxPath,
             outputStemStyle.StyleName,
             outputStemStyle.OccurrenceRole);
+        var element = HandoutDocumentElement.ContentBlock(
+            source.Title,
+            source.DocxPath,
+            source.OutputStemStyleName,
+            source.ContentBlockId,
+            source.ContentBlockVersionId,
+            source.OccurrenceRole);
+
+        if (string.IsNullOrWhiteSpace(version.DocxPath)
+            || !await _fileStore.ExistsAsync(version.DocxPath, cancellationToken))
+        {
+            issues.Add(new HandoutDocumentGenerationIssue(
+                "MissingContentBlockDocx",
+                $"ContentBlockVersion DOCX file was not found: {version.DocxPath}",
+                Severity: HandoutDocumentGenerationIssueSeverity.WarningSkip,
+                ContentBlockId: contentBlock.Id,
+                ContentBlockVersionId: version.Id,
+                RequiredStyleName: outputStemStyle.StyleName,
+                OccurrenceRole: outputStemStyle.OccurrenceRole));
+
+            return new ResolvedContentBlockReference(source, element, ShouldExpandChildren: false);
+        }
+
+        return new ResolvedContentBlockReference(source, element, ShouldExpandChildren: true);
     }
 
     private static ResolvedOutputStemStyle ResolveOutputStemStyle(
@@ -772,12 +932,23 @@ public sealed class HandoutGenerationUseCases
 
     private sealed record ResolvedHandoutContent(
         IReadOnlyList<ResolvedHandoutSource> Sources,
-        IReadOnlyList<HandoutDocumentElement> Elements);
+        IReadOnlyList<HandoutDocumentElement> Elements,
+        IReadOnlyList<HandoutDocumentGenerationIssue> Issues);
+
+    private sealed record ResolvedContentBlockReference(
+        ResolvedHandoutSource? Source,
+        HandoutDocumentElement Element,
+        bool ShouldExpandChildren);
 
     private sealed record ResolvedHandoutWordGenerationContext(
         OutputForm OutputForm,
         HandoutVersion HandoutVersion,
         OutputTemplate OutputTemplate,
+        string ResolvedTemplateDocxPath,
+        ResolvedHandoutContent ResolvedContent);
+
+    private sealed record ResolvedSectionWordGenerationContext(
+        Section Section,
         string ResolvedTemplateDocxPath,
         ResolvedHandoutContent ResolvedContent);
 

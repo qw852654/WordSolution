@@ -133,7 +133,7 @@ function createPanelInsertPoint(
 <template>
   <StructuredContainer
     :title="panel.title"
-    :meta="`${panel.teachingRole} · ${panel.difficulty}`"
+    :meta="`${t('components.atomicSectionTeachingRole.' + panel.teachingRole)} · ${panel.difficulty}`"
     :data-workspace-node-id="nodeIdMap?.[panel.id] ?? panel.id"
     :difficulty-marker-class="getDifficultyMarkerClass(panel.difficulty)"
     :difficulty-marker-label="`${t('components.contentBlockDisplay.difficulty')}: ${panel.difficulty}`"

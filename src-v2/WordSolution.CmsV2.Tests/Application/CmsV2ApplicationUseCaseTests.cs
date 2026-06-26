@@ -426,11 +426,17 @@ public sealed class CmsV2ApplicationUseCaseTests
         Assert.Null(knowledgeItem.LockedContentBlockVersionId);
         Assert.Empty(versions);
         Assert.Equal(
-            [AtomicSectionTeachingRole.Knowledge, AtomicSectionTeachingRole.Example, AtomicSectionTeachingRole.Variant],
+            [
+                AtomicSectionTeachingRole.Knowledge,
+                AtomicSectionTeachingRole.Example,
+                AtomicSectionTeachingRole.Variant,
+                AtomicSectionTeachingRole.PreClassQuiz
+            ],
             panels.Select(panel => panel.TeachingRole));
         Assert.All(panels, panel => Assert.Equal("AS Alpha", panel.Title));
         Assert.All(panels, panel => Assert.Equal(Difficulty.Advanced, panel.Difficulty));
-        Assert.Equal([10, 20, 30], panels.Select(panel => panel.SortOrder));
+        Assert.Equal([10, 20, 30, 40], panels.Select(panel => panel.SortOrder));
+        Assert.DoesNotContain(items, item => item.TeachingRole == AtomicSectionTeachingRole.PreClassQuiz);
     }
 
     [Fact]
@@ -631,11 +637,18 @@ public sealed class CmsV2ApplicationUseCaseTests
         var atomicItems = await unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(result.AtomicSectionId);
 
         Assert.Equal(
-            [AtomicSectionTeachingRole.Knowledge, AtomicSectionTeachingRole.Example, AtomicSectionTeachingRole.Variant],
+            [
+                AtomicSectionTeachingRole.Knowledge,
+                AtomicSectionTeachingRole.Example,
+                AtomicSectionTeachingRole.Variant,
+                AtomicSectionTeachingRole.PreClassQuiz
+            ],
             panels.Select(panel => panel.TeachingRole));
         Assert.All(panels, panel => Assert.Equal("Wrapped AS", panel.Title));
         Assert.All(panels, panel => Assert.Equal(Difficulty.Medium, panel.Difficulty));
+        Assert.Equal([10, 20, 30, 40], panels.Select(panel => panel.SortOrder));
         Assert.All(atomicItems, item => Assert.Null(item.AtomicSectionPanelId));
+        Assert.DoesNotContain(atomicItems, item => item.TeachingRole == AtomicSectionTeachingRole.PreClassQuiz);
     }
 
     [Fact]

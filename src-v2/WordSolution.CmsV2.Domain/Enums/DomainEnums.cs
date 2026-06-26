@@ -89,7 +89,8 @@ public enum AtomicSectionTeachingRole
     Example = 2,
     Variant = 3,
     Practice = 4,
-    Homework = 5
+    Homework = 5,
+    PreClassQuiz = 6
 }
 
 public enum ContentBlockType

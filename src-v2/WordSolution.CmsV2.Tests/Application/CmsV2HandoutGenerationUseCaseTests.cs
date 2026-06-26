@@ -22,6 +22,7 @@ using AsposeStyleType = Aspose.Words.StyleType;
 
 namespace WordSolution.CmsV2.Tests.Application;
 
+[Collection("RuntimeDefaultTemplate")]
 public sealed class CmsV2HandoutGenerationUseCaseTests
 {
     private const string LegacyDefaultOutputTemplateDocxPath =
@@ -313,9 +314,300 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
         Assert.Equal(missingStemQuestion.Version.Id, issue.ContentBlockVersionId);
         Assert.Equal("例题", issue.RequiredStyleName);
         Assert.Equal(nameof(AtomicSectionTeachingRole.Example), issue.OccurrenceRole);
+        Assert.Equal(HandoutDocumentGenerationIssueSeverity.WarningSkip, issue.Severity);
         Assert.Contains("Valid section stem", outputText);
         Assert.DoesNotContain("Missing stem content", outputText);
         AssertParagraphUsesStyleName(outputDocxPath, "Valid section stem", "例题");
+        Assert.Empty(await unitOfWork.GeneratedFiles.ListAsync());
+    }
+
+    [Fact]
+    public async Task ValidateSectionWordGeneration_reports_missing_question_stem_as_warning_skip()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        CreateTemplateWithQuestionOutputStyles(GetRuntimeDefaultOutputTemplatePath(), "例题", "变式", "练习题");
+        var missingStemQuestion = await CreateQuestionContentBlockWithOnlyOtherVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Missing stem question",
+            "Missing stem content");
+        var topic = new TeachingTopic("Question validate topic");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+        var section = new Section(topic.Id, "Question validate section");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+        var atomicSection = new AtomicSection(section.Id, "Question validate AtomicSection");
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+        var examplePanel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "Example panel title",
+            AtomicSectionTeachingRole.Example,
+            Difficulty.Basic,
+            sortOrder: 10);
+        await unitOfWork.AtomicSectionPanels.AddAsync(examplePanel);
+        await unitOfWork.SaveChangesAsync();
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            missingStemQuestion.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10,
+            atomicSectionPanelId: examplePanel.Id));
+        await unitOfWork.SectionItems.AddAsync(new SectionItem(
+            section.Id,
+            SectionItemTargetType.AtomicSection,
+            atomicSection.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10));
+        await unitOfWork.SaveChangesAsync();
+
+        var validation = await CreateUseCases(unitOfWork).ValidateSectionWordGenerationAsync(
+            new ValidateSectionWordGenerationCommand(bankRootDirectory, section.Id));
+
+        var issue = Assert.Single(validation.Issues);
+        Assert.True(validation.IsValid);
+        Assert.Equal("MissingQuestionStem", issue.Code);
+        Assert.Equal(missingStemQuestion.ContentBlock.Id, issue.ContentBlockId);
+        Assert.Equal(missingStemQuestion.Version.Id, issue.ContentBlockVersionId);
+        Assert.Equal("例题", issue.RequiredStyleName);
+        Assert.Equal(nameof(AtomicSectionTeachingRole.Example), issue.OccurrenceRole);
+        Assert.Equal(HandoutDocumentGenerationIssueSeverity.WarningSkip, issue.Severity);
+        Assert.Empty(await unitOfWork.GeneratedFiles.ListAsync());
+    }
+
+    [Fact]
+    public async Task ValidateSectionWordGeneration_reports_missing_output_style_as_blocking()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        CreateTemplateWithQuestionOutputStyles(GetRuntimeDefaultOutputTemplatePath(), "例题", "练习题");
+        var variantQuestion = await CreateQuestionContentBlockWithStyledVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Variant question",
+            "Variant stem");
+        var topic = new TeachingTopic("Section missing style topic");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+        var section = new Section(topic.Id, "Section missing style");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+        var atomicSection = new AtomicSection(section.Id, "Section missing style AtomicSection");
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            variantQuestion.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10,
+            teachingRole: AtomicSectionTeachingRole.Variant));
+        await unitOfWork.SectionItems.AddAsync(new SectionItem(
+            section.Id,
+            SectionItemTargetType.AtomicSection,
+            atomicSection.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10));
+        await unitOfWork.SaveChangesAsync();
+
+        var validation = await CreateUseCases(unitOfWork).ValidateSectionWordGenerationAsync(
+            new ValidateSectionWordGenerationCommand(bankRootDirectory, section.Id));
+
+        var issue = Assert.Single(validation.Issues);
+        Assert.False(validation.IsValid);
+        Assert.Equal("MissingOutputStyle", issue.Code);
+        Assert.Equal("变式", issue.RequiredStyleName);
+        Assert.Equal(HandoutDocumentGenerationIssueSeverity.Blocking, issue.Severity);
+        Assert.Empty(await unitOfWork.GeneratedFiles.ListAsync());
+    }
+
+    [Fact]
+    public async Task ValidateSectionWordGeneration_reports_content_block_without_current_version_as_warning_skip()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        await CreateRuntimeDefaultOutputTemplateAsync("Section default template");
+        var block = await CreateContentBlockWithVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "No current version block",
+            "Draft body",
+            versionNumber: 1,
+            isCurrent: false);
+        var topic = new TeachingTopic("No current topic");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+        var section = new Section(topic.Id, "No current section");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+        await unitOfWork.SectionItems.AddAsync(new SectionItem(
+            section.Id,
+            SectionItemTargetType.ContentBlock,
+            block.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10));
+        await unitOfWork.SaveChangesAsync();
+
+        var validation = await CreateUseCases(unitOfWork).ValidateSectionWordGenerationAsync(
+            new ValidateSectionWordGenerationCommand(bankRootDirectory, section.Id));
+
+        var issue = Assert.Single(validation.Issues);
+        Assert.True(validation.IsValid);
+        Assert.Equal("MissingContentBlockCurrentVersion", issue.Code);
+        Assert.Equal(block.ContentBlock.Id, issue.ContentBlockId);
+        Assert.Null(issue.ContentBlockVersionId);
+        Assert.Equal(HandoutDocumentGenerationIssueSeverity.WarningSkip, issue.Severity);
+        Assert.Empty(await unitOfWork.GeneratedFiles.ListAsync());
+    }
+
+    [Fact]
+    public async Task ValidateSectionWordGeneration_reports_unreadable_source_docx_as_warning_skip()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        CreateTemplateWithQuestionOutputStyles(GetRuntimeDefaultOutputTemplatePath(), "练习题");
+        var question = await CreateQuestionContentBlockWithStyledVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Unreadable source question",
+            "Readable before corruption");
+        var topic = new TeachingTopic("Unreadable source topic");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+        var section = new Section(topic.Id, "Unreadable source section");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+        await unitOfWork.SectionItems.AddAsync(new SectionItem(
+            section.Id,
+            SectionItemTargetType.ContentBlock,
+            question.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10));
+        await unitOfWork.SaveChangesAsync();
+
+        await using var lockedSource = new FileStream(
+            question.Version.DocxPath,
+            FileMode.Open,
+            FileAccess.ReadWrite,
+            FileShare.None);
+        var validation = await CreateUseCases(unitOfWork).ValidateSectionWordGenerationAsync(
+            new ValidateSectionWordGenerationCommand(bankRootDirectory, section.Id));
+
+        var issue = Assert.Single(validation.Issues);
+        Assert.True(validation.IsValid);
+        Assert.Equal("UnreadableContentBlockDocx", issue.Code);
+        Assert.Equal(question.ContentBlock.Id, issue.ContentBlockId);
+        Assert.Equal(question.Version.Id, issue.ContentBlockVersionId);
+        Assert.Equal("练习题", issue.RequiredStyleName);
+        Assert.Equal(HandoutDocumentGenerationIssueSeverity.WarningSkip, issue.Severity);
+        Assert.Empty(await unitOfWork.GeneratedFiles.ListAsync());
+    }
+
+    [Fact]
+    public async Task GenerateSectionWord_skips_missing_source_docx_and_removes_empty_atomic_section_heading()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        await CreateRuntimeDefaultOutputTemplateAsync("Section default template");
+        var missingDocxBlock = await CreateContentBlockWithVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Missing docx block",
+            "Missing docx body",
+            versionNumber: 1,
+            isCurrent: true);
+        File.Delete(missingDocxBlock.Version.DocxPath);
+        var topic = new TeachingTopic("Missing docx topic");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+        var section = new Section(topic.Id, "Missing docx section");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+        var atomicSection = new AtomicSection(section.Id, "Heading should be removed");
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            missingDocxBlock.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10));
+        await unitOfWork.SectionItems.AddAsync(new SectionItem(
+            section.Id,
+            SectionItemTargetType.AtomicSection,
+            atomicSection.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10));
+        await unitOfWork.SaveChangesAsync();
+
+        var result = await CreateUseCases(unitOfWork).GenerateSectionWordAsync(
+            new GenerateSectionWordCommand(bankRootDirectory, section.Id));
+        var outputDocxPath = Path.Combine(bankRootDirectory, "missing-docx-section-output.docx");
+        await File.WriteAllBytesAsync(outputDocxPath, result.FileBytes);
+        var outputText = ReadDocxText(outputDocxPath);
+        var issue = Assert.Single(result.Issues);
+
+        Assert.Equal("MissingContentBlockDocx", issue.Code);
+        Assert.Equal(missingDocxBlock.ContentBlock.Id, issue.ContentBlockId);
+        Assert.Equal(missingDocxBlock.Version.Id, issue.ContentBlockVersionId);
+        Assert.Equal(HandoutDocumentGenerationIssueSeverity.WarningSkip, issue.Severity);
+        Assert.Contains("Missing docx section", outputText);
+        Assert.DoesNotContain("Heading should be removed", outputText);
+        Assert.DoesNotContain("Missing docx body", outputText);
+        Assert.Empty(await unitOfWork.GeneratedFiles.ListAsync());
+    }
+
+    [Fact]
+    public async Task ValidateSectionWordGeneration_reports_unreadable_runtime_template_as_blocking()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        var runtimeTemplatePath = GetRuntimeDefaultOutputTemplatePath();
+        Directory.CreateDirectory(Path.GetDirectoryName(runtimeTemplatePath)!);
+        CreateTemplateWithQuestionOutputStyles(runtimeTemplatePath, "例题", "变式", "练习题");
+        var topic = new TeachingTopic("Unreadable template topic");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+        var section = new Section(topic.Id, "Unreadable template section");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+        FileStream? lockedTemplate = null;
+
+        try
+        {
+            lockedTemplate = new FileStream(
+                runtimeTemplatePath,
+                FileMode.Open,
+                FileAccess.ReadWrite,
+                FileShare.None);
+            var validation = await CreateUseCases(unitOfWork).ValidateSectionWordGenerationAsync(
+                new ValidateSectionWordGenerationCommand(bankRootDirectory, section.Id));
+
+            var issue = Assert.Single(validation.Issues);
+            Assert.False(validation.IsValid);
+            Assert.Equal("UnreadableOutputTemplate", issue.Code);
+            Assert.Equal(HandoutDocumentGenerationIssueSeverity.Blocking, issue.Severity);
+        }
+        finally
+        {
+            lockedTemplate?.Dispose();
+            CreateTemplateWithQuestionOutputStyles(runtimeTemplatePath, "例题", "变式", "练习题");
+        }
+
         Assert.Empty(await unitOfWork.GeneratedFiles.ListAsync());
     }
 
@@ -667,6 +959,163 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
     }
 
     [Fact]
+    public async Task GenerateHandoutWord_skips_pre_class_quiz_atomic_section_items()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        var setup = await CreateOutputFormAsync(unitOfWork, bankRootDirectory);
+        CreateTemplateWithQuestionOutputStyles(
+            setup.OutputTemplate.TemplateDocxPath,
+            "例题",
+            "变式",
+            "练习题");
+        var practiceBlock = await CreateQuestionContentBlockWithStyledVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Practice question",
+            "Practice visible stem");
+        var quizBlock = await CreateQuestionContentBlockWithStyledVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Pre-class quiz question",
+            "Pre-class quiz hidden stem");
+        var topic = new TeachingTopic("PreClassQuiz Topic");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+        var section = new Section(topic.Id, "PreClassQuiz Section");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+        var atomicSection = new AtomicSection(section.Id, "PreClassQuiz AtomicSection");
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+        var practicePanel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "Practice panel",
+            AtomicSectionTeachingRole.Practice,
+            Difficulty.Basic,
+            sortOrder: 10);
+        var quizPanel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "PreClassQuiz panel",
+            AtomicSectionTeachingRole.PreClassQuiz,
+            Difficulty.Basic,
+            sortOrder: 20);
+        await unitOfWork.AtomicSectionPanels.AddAsync(practicePanel);
+        await unitOfWork.AtomicSectionPanels.AddAsync(quizPanel);
+        await unitOfWork.SaveChangesAsync();
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            practiceBlock.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10,
+            atomicSectionPanelId: practicePanel.Id,
+            teachingRole: AtomicSectionTeachingRole.Practice));
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            quizBlock.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10,
+            atomicSectionPanelId: quizPanel.Id,
+            teachingRole: AtomicSectionTeachingRole.PreClassQuiz));
+        await unitOfWork.HandoutVersionItems.AddAsync(new HandoutVersionItem(
+            setup.HandoutVersion.Id,
+            HandoutVersionItemTargetType.AtomicSection,
+            atomicSection.Id,
+            sortOrder: 1));
+        await unitOfWork.SaveChangesAsync();
+
+        var result = await CreateUseCases(unitOfWork).GenerateHandoutWordAsync(
+            new GenerateHandoutWordCommand(bankRootDirectory, setup.OutputForm.Id));
+        var outputText = ReadDocxText(result.FilePath);
+        using var manifest = JsonDocument.Parse(result.VersionManifestJson);
+        var sources = manifest.RootElement.GetProperty("sources").EnumerateArray().ToArray();
+
+        Assert.Contains("Practice visible stem", outputText);
+        Assert.DoesNotContain("Pre-class quiz hidden stem", outputText);
+        var source = Assert.Single(sources);
+        Assert.Equal(practiceBlock.ContentBlock.Id, source.GetProperty("contentBlockId").GetInt32());
+    }
+
+    [Fact]
+    public async Task GenerateSectionWord_skips_pre_class_quiz_atomic_section_items()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var bankRootDirectory = CreateTempRoot();
+        CreateTemplateWithQuestionOutputStyles(GetRuntimeDefaultOutputTemplatePath(), "例题", "变式", "练习题");
+        var practiceBlock = await CreateQuestionContentBlockWithStyledVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Section practice question",
+            "Section practice visible stem");
+        var quizBlock = await CreateQuestionContentBlockWithStyledVersionAsync(
+            unitOfWork,
+            bankRootDirectory,
+            "Section pre-class quiz question",
+            "Section pre-class quiz hidden stem");
+        var topic = new TeachingTopic("Section PreClassQuiz Topic");
+        await unitOfWork.TeachingTopics.AddAsync(topic);
+        await unitOfWork.SaveChangesAsync();
+        var section = new Section(topic.Id, "Section PreClassQuiz Export");
+        await unitOfWork.Sections.AddAsync(section);
+        await unitOfWork.SaveChangesAsync();
+        var atomicSection = new AtomicSection(section.Id, "Section PreClassQuiz AtomicSection");
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+        var practicePanel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "Practice panel",
+            AtomicSectionTeachingRole.Practice,
+            Difficulty.Basic,
+            sortOrder: 10);
+        var quizPanel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "PreClassQuiz panel",
+            AtomicSectionTeachingRole.PreClassQuiz,
+            Difficulty.Basic,
+            sortOrder: 20);
+        await unitOfWork.AtomicSectionPanels.AddAsync(practicePanel);
+        await unitOfWork.AtomicSectionPanels.AddAsync(quizPanel);
+        await unitOfWork.SaveChangesAsync();
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            practiceBlock.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10,
+            atomicSectionPanelId: practicePanel.Id,
+            teachingRole: AtomicSectionTeachingRole.Practice));
+        await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
+            atomicSection.Id,
+            quizBlock.ContentBlock.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 10,
+            atomicSectionPanelId: quizPanel.Id,
+            teachingRole: AtomicSectionTeachingRole.PreClassQuiz));
+        await unitOfWork.SectionItems.AddAsync(new SectionItem(
+            section.Id,
+            SectionItemTargetType.AtomicSection,
+            atomicSection.Id,
+            ReferenceMode.FollowLatest,
+            lockedContentBlockVersionId: null,
+            sortOrder: 1));
+        await unitOfWork.SaveChangesAsync();
+
+        var result = await CreateUseCases(unitOfWork).GenerateSectionWordAsync(
+            new GenerateSectionWordCommand(bankRootDirectory, section.Id));
+        var outputDocxPath = Path.Combine(bankRootDirectory, "section-pre-class-quiz-output.docx");
+        await File.WriteAllBytesAsync(outputDocxPath, result.FileBytes);
+        var outputText = ReadDocxText(outputDocxPath);
+
+        Assert.Contains("Section practice visible stem", outputText);
+        Assert.DoesNotContain("Section pre-class quiz hidden stem", outputText);
+    }
+
+    [Fact]
     public async Task GenerateHandoutWord_outputs_teaching_topic_section_and_atomic_section_structure_titles()
     {
         await using var context = await CreateMigratedContextAsync();
@@ -883,6 +1332,7 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
         Assert.Equal(skippedBlock.Version.Id, issue.ContentBlockVersionId);
         Assert.Equal("练习题", issue.RequiredStyleName);
         Assert.Equal("Practice", issue.OccurrenceRole);
+        Assert.Equal(HandoutDocumentGenerationIssueSeverity.WarningSkip, issue.Severity);
         Assert.Contains("Valid stem", outputText);
         Assert.DoesNotContain("Unknown style content", outputText);
         Assert.Single(generatedFiles);
@@ -1047,6 +1497,7 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
         Assert.Equal(setup.OutputForm.Id, issue.OutputFormId);
         Assert.Equal(setup.OutputTemplate.Id, issue.OutputTemplateId);
         Assert.Equal("变式", issue.RequiredStyleName);
+        Assert.Equal(HandoutDocumentGenerationIssueSeverity.Blocking, issue.Severity);
         Assert.Empty(await unitOfWork.GeneratedFiles.ListByOutputFormAsync(setup.OutputForm.Id));
     }
 
@@ -1068,7 +1519,7 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
     }
 
     [Fact]
-    public async Task GenerateHandoutWord_rejects_missing_template_or_source_file_without_generated_record()
+    public async Task GenerateHandoutWord_skips_missing_source_file_and_creates_generated_record()
     {
         await using var context = await CreateMigratedContextAsync();
         var unitOfWork = new EfCmsV2UnitOfWork(context);
@@ -1078,7 +1529,7 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
             unitOfWork,
             bankRootDirectory,
             "缺文件内容块",
-            "正文",
+            "缺失源文件正文",
             versionNumber: 1,
             isCurrent: true);
         File.Delete(block.Version.DocxPath);
@@ -1089,11 +1540,17 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
             sortOrder: 1));
         await unitOfWork.SaveChangesAsync();
 
-        await Assert.ThrowsAsync<CmsV2ApplicationException>(
-            () => CreateUseCases(unitOfWork).GenerateHandoutWordAsync(
-                new GenerateHandoutWordCommand(bankRootDirectory, setup.OutputForm.Id)));
+        var result = await CreateUseCases(unitOfWork).GenerateHandoutWordAsync(
+            new GenerateHandoutWordCommand(bankRootDirectory, setup.OutputForm.Id));
+        var generatedFiles = await unitOfWork.GeneratedFiles.ListByOutputFormAsync(setup.OutputForm.Id);
+        var outputText = ReadDocxText(result.FilePath);
+        using var manifest = JsonDocument.Parse(result.VersionManifestJson);
 
-        Assert.Empty(await unitOfWork.GeneratedFiles.ListByOutputFormAsync(setup.OutputForm.Id));
+        Assert.True(File.Exists(result.FilePath));
+        Assert.Single(generatedFiles);
+        Assert.Contains("No content.", outputText);
+        Assert.DoesNotContain("缺失源文件正文", outputText);
+        Assert.Empty(manifest.RootElement.GetProperty("sources").EnumerateArray());
     }
 
     [Fact]

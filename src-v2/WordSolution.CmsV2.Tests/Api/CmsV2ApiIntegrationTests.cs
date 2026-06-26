@@ -23,6 +23,7 @@ using WordSolution.CmsV2.Infrastructure.Persistence;
 
 namespace WordSolution.CmsV2.Tests.Api;
 
+[Collection("RuntimeDefaultTemplate")]
 public sealed class CmsV2ApiIntegrationTests
 {
     [Fact]
@@ -902,10 +903,10 @@ public sealed class CmsV2ApiIntegrationTests
         var knowledgeBlock = await client.GetFromJsonAsync<JsonElement>(
             $"/api/cms-v2/content-blocks/{knowledgeItem.GetProperty("contentBlockId").GetInt32()}");
 
-        Assert.Equal(["Knowledge", "Example", "Variant"], panels.Select(panel => panel.GetProperty("teachingRole").GetString()));
+        Assert.Equal(["Knowledge", "Example", "Variant", "PreClassQuiz"], panels.Select(panel => panel.GetProperty("teachingRole").GetString()));
         Assert.All(panels, panel => Assert.Equal("Default panel AS", panel.GetProperty("title").GetString()));
         Assert.All(panels, panel => Assert.Equal("Advanced", panel.GetProperty("difficulty").GetString()));
-        Assert.Equal([10, 20, 30], panels.Select(panel => panel.GetProperty("sortOrder").GetInt32()));
+        Assert.Equal([10, 20, 30, 40], panels.Select(panel => panel.GetProperty("sortOrder").GetInt32()));
         Assert.Equal(knowledgePanel.GetProperty("id").GetInt32(), knowledgeItem.GetProperty("atomicSectionPanelId").GetInt32());
         Assert.Equal("Knowledge", knowledgeItem.GetProperty("teachingRole").GetString());
         Assert.Equal("FollowLatest", knowledgeItem.GetProperty("referenceMode").GetString());
@@ -1350,6 +1351,151 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.Contains("API Section Word", ReadDocxText(bytes));
         Assert.Contains("API exported content", ReadDocxText(bytes));
         Assert.Empty(await unitOfWork.GeneratedFiles.ListAsync());
+    }
+
+    [Fact]
+    public async Task Section_validate_word_generation_endpoint_returns_warning_skip_issues_without_generating_file()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        CreateRuntimeDefaultTemplateWithQuestionOutputStyles("练习题");
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "API Section Validate Topic", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "API Section Validate", type = "NormalCourse", difficulty = "Medium", status = "Draft" });
+        var sectionId = section.GetProperty("id").GetInt32();
+        var contentBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks/blank-document",
+            new
+            {
+                sectionId,
+                title = "API missing stem question",
+                blockType = "Question",
+                questionType = "Unset",
+                status = "Draft"
+            });
+        var contentBlockId = contentBlock.GetProperty("contentBlockId").GetInt32();
+        var importDocxPath = Path.Combine(factory.BankRootDirectory, "imports", "api-section-missing-stem.docx");
+        CreateOnlyAnswerQuestionDocx(importDocxPath);
+        JsonElement imported;
+        await using (var importStream = File.OpenRead(importDocxPath))
+        using (var form = new MultipartFormDataContent
+        {
+            { new StreamContent(importStream), "file", "source.docx" },
+            { new StringContent("true"), "setAsCurrent" }
+        })
+        {
+            imported = await ReadSuccessJsonAsync(await client.PostAsync(
+                $"/api/cms-v2/content-blocks/{contentBlockId}/versions/import",
+                form));
+        }
+        await PostJsonAsync(
+            client,
+            $"/api/cms-v2/sections/{sectionId}/items",
+            new
+            {
+                targetType = "ContentBlock",
+                targetId = contentBlockId,
+                referenceMode = "FollowLatest",
+                sortOrder = 1
+            });
+
+        var validationResponse = await client.PostAsync(
+            $"/api/cms-v2/sections/{sectionId}/validate-word-generation",
+            content: null);
+        var validation = JsonDocument.Parse(await validationResponse.Content.ReadAsStringAsync()).RootElement.Clone();
+        using var scope = factory.Services.CreateScope();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<ICmsV2UnitOfWork>();
+
+        Assert.Equal(HttpStatusCode.OK, validationResponse.StatusCode);
+        Assert.True(validation.GetProperty("isValid").GetBoolean());
+        var issue = Assert.Single(validation.GetProperty("issues").EnumerateArray());
+        Assert.Equal("MissingQuestionStem", issue.GetProperty("code").GetString());
+        Assert.Equal("WarningSkip", issue.GetProperty("severity").GetString());
+        Assert.Equal(contentBlockId, issue.GetProperty("contentBlockId").GetInt32());
+        Assert.Equal(imported.GetProperty("contentBlockVersionId").GetInt32(), issue.GetProperty("contentBlockVersionId").GetInt32());
+        Assert.Equal("练习题", issue.GetProperty("requiredStyleName").GetString());
+        Assert.Empty(await unitOfWork.GeneratedFiles.ListAsync());
+    }
+
+    [Fact]
+    public async Task Section_generate_word_endpoint_reuses_validation_and_rejects_blocking_issues()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var runtimeTemplatePath = GetRuntimeDefaultTemplatePath();
+        File.Delete(runtimeTemplatePath);
+        await CreateMinimalDocxAsync(runtimeTemplatePath, "Template without question output styles");
+
+        try
+        {
+            var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = "API Section Blocking Topic", sortOrder = 1 });
+            var section = await PostJsonAsync(
+                client,
+                "/api/cms-v2/sections",
+                new { teachingTopicId = topic.GetProperty("id").GetInt32(), title = "API Section Blocking", type = "NormalCourse", difficulty = "Medium", status = "Draft" });
+            var sectionId = section.GetProperty("id").GetInt32();
+            var contentBlock = await PostJsonAsync(
+                client,
+                "/api/cms-v2/content-blocks/blank-document",
+                new
+                {
+                    sectionId,
+                    title = "API blocking question",
+                    blockType = "Question",
+                    questionType = "Unset",
+                    status = "Draft"
+                });
+            var contentBlockId = contentBlock.GetProperty("contentBlockId").GetInt32();
+            var importDocxPath = Path.Combine(factory.BankRootDirectory, "imports", "api-section-blocking-question.docx");
+            CreateStyledQuestionDocx(importDocxPath);
+            await using (var importStream = File.OpenRead(importDocxPath))
+            using (var form = new MultipartFormDataContent
+            {
+                { new StreamContent(importStream), "file", "source.docx" },
+                { new StringContent("true"), "setAsCurrent" }
+            })
+            {
+                await ReadSuccessJsonAsync(await client.PostAsync(
+                    $"/api/cms-v2/content-blocks/{contentBlockId}/versions/import",
+                    form));
+            }
+            await PostJsonAsync(
+                client,
+                $"/api/cms-v2/sections/{sectionId}/items",
+                new
+                {
+                    targetType = "ContentBlock",
+                    targetId = contentBlockId,
+                    referenceMode = "FollowLatest",
+                    sortOrder = 1
+                });
+
+            var validationResponse = await client.PostAsync(
+                $"/api/cms-v2/sections/{sectionId}/validate-word-generation",
+                content: null);
+            var validation = JsonDocument.Parse(await validationResponse.Content.ReadAsStringAsync()).RootElement.Clone();
+            var generateResponse = await client.PostAsync(
+                $"/api/cms-v2/sections/{sectionId}/generate-word",
+                content: null);
+            var generateBody = await generateResponse.Content.ReadAsStringAsync();
+
+            Assert.Equal(HttpStatusCode.OK, validationResponse.StatusCode);
+            Assert.False(validation.GetProperty("isValid").GetBoolean());
+            var issue = Assert.Single(validation.GetProperty("issues").EnumerateArray());
+            Assert.Equal("MissingOutputStyle", issue.GetProperty("code").GetString());
+            Assert.Equal("Blocking", issue.GetProperty("severity").GetString());
+            Assert.Equal("练习题", issue.GetProperty("requiredStyleName").GetString());
+            Assert.Equal(HttpStatusCode.BadRequest, generateResponse.StatusCode);
+            Assert.Contains("MissingOutputStyle", generateBody);
+            Assert.Contains("练习题", generateBody);
+        }
+        finally
+        {
+            CreateRuntimeDefaultTemplateWithQuestionOutputStyles("例题", "变式", "练习题");
+        }
     }
 
     [Fact]
@@ -1997,17 +2143,39 @@ public sealed class CmsV2ApiIntegrationTests
 
     private static async Task EnsureRuntimeDefaultTemplateAsync()
     {
-        var runtimeTemplatePath = Path.Combine(
-            AppContext.BaseDirectory,
-            "Documents",
-            "Templates",
-            "content-block-default.docx");
+        var runtimeTemplatePath = GetRuntimeDefaultTemplatePath();
         if (File.Exists(runtimeTemplatePath))
         {
             return;
         }
 
         await CreateMinimalDocxAsync(runtimeTemplatePath, "Runtime default template");
+    }
+
+    private static string GetRuntimeDefaultTemplatePath()
+    {
+        return Path.Combine(
+            AppContext.BaseDirectory,
+            "Documents",
+            "Templates",
+            "content-block-default.docx");
+    }
+
+    private static void CreateRuntimeDefaultTemplateWithQuestionOutputStyles(params string[] styleNames)
+    {
+        var runtimeTemplatePath = GetRuntimeDefaultTemplatePath();
+        Directory.CreateDirectory(Path.GetDirectoryName(runtimeTemplatePath)!);
+
+        var document = new Document();
+        var builder = new DocumentBuilder(document);
+        builder.Writeln("Runtime default template");
+
+        foreach (var styleName in styleNames)
+        {
+            EnsureParagraphStyle(document, styleName);
+        }
+
+        document.Save(runtimeTemplatePath);
     }
 
     private static string ReadDocxText(byte[] bytes)
@@ -2106,6 +2274,19 @@ public sealed class CmsV2ApiIntegrationTests
         AddStyledParagraph(document, body, "例题", "题干第一段");
         AddStyledParagraph(document, body, "答案", "答案第一段");
         AddStyledParagraph(document, body, "解析", "解析第一段");
+
+        document.Save(docxPath);
+    }
+
+    private static void CreateOnlyAnswerQuestionDocx(string docxPath)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(docxPath)!);
+
+        var document = new Document();
+        var body = document.FirstSection.Body;
+        body.RemoveAllChildren();
+
+        AddStyledParagraph(document, body, "答案", "只有答案，没有题干。");
 
         document.Save(docxPath);
     }

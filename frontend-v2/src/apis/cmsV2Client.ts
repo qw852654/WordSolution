@@ -1,4 +1,4 @@
-import type { AtomicSectionStatusValue } from '@/types'
+import type { AtomicSectionStatusValue, WordGenerationValidationResult } from '@/types'
 
 export const CMS_V2_API_BASE = '/api/cms-v2'
 
@@ -443,6 +443,7 @@ export type CmsV2AtomicSectionTeachingRole =
   | 'Variant'
   | 'Practice'
   | 'Homework'
+  | 'PreClassQuiz'
 
 export interface CmsV2AtomicSectionPanelDto {
   id: number
@@ -1043,6 +1044,11 @@ export const cmsV2Api = {
   getSection: (sectionId: number) => cmsV2FetchJson<CmsV2SectionDto>(`/sections/${sectionId}`),
   renameSection: (sectionId: number, request: CmsV2RenameSectionRequest) =>
     cmsV2PostJson<CmsV2SectionDto>(`/sections/${sectionId}/title`, request),
+  validateSectionWordGeneration: (sectionId: number) =>
+    cmsV2FetchJson<WordGenerationValidationResult>(
+      `/sections/${sectionId}/validate-word-generation`,
+      { method: 'POST' },
+    ),
   downloadSectionWord: (sectionId: number) =>
     cmsV2PostDownload(`/sections/${sectionId}/generate-word`, `section-${sectionId}.docx`),
   listSectionItems: (sectionId: number) =>

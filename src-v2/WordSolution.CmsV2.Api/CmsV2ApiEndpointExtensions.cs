@@ -686,6 +686,19 @@ public static class CmsV2ApiEndpointExtensions
             return Results.File(result.FileBytes, result.ContentType, result.FileName);
         });
 
+        group.MapPost("/sections/{sectionId:int}/validate-word-generation", async (
+            int sectionId,
+            HandoutGenerationUseCases useCases,
+            CmsV2CurrentBank currentBank,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.ValidateSectionWordGenerationAsync(
+                new ValidateSectionWordGenerationCommand(currentBank.RootDirectory, sectionId),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
         group.MapPost("/sections", async (
             CreateSectionRequest request,
             ICmsV2UnitOfWork unitOfWork,

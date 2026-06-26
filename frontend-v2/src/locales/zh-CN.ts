@@ -344,6 +344,7 @@ const zhCN = {
       Variant: '变式',
       Practice: '练习',
       Homework: '课后练习',
+      PreClassQuiz: '课前复习测验题',
     },
     atomicSectionPanelCreateOverlay: {
       dialogLabel: 'AtomicSectionPanelCreateOverlay',
@@ -1149,6 +1150,10 @@ const zhCN = {
       wordExport: {
         missingSection: '当前没有可导出的 Section。',
         failed: '导出 Word 失败，请稍后重试。',
+        blocked: '导出前检查发现 {count} 个阻断问题，已停止下载。',
+        blockedWithFirstIssue: '导出前检查发现 {count} 个阻断问题，已停止下载。首个问题：{message}',
+        completedWithSkipsTitle: 'Word 导出完成',
+        completedWithSkips: '已完成 Word 下载，跳过 {count} 个不可输出内容。',
       },
       emptyTitle: '插入第一个块',
       emptyDescription:

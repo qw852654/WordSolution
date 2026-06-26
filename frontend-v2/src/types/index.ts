@@ -430,6 +430,7 @@ export type AtomicSectionTeachingRole =
   | 'Variant'
   | 'Practice'
   | 'Homework'
+  | 'PreClassQuiz'
 
 export type StructuredBlockChildModel =
   | {
@@ -824,4 +825,23 @@ export interface GeneratedFileRowModel {
   generatedTime: string
   outputFormTitle: string
   manifestSummary: string
+}
+
+export type WordGenerationIssueSeverity = 'SilentSkip' | 'WarningSkip' | 'Blocking'
+
+export interface WordGenerationIssue {
+  code: string
+  message: string
+  severity: WordGenerationIssueSeverity
+  outputFormId?: number | null
+  contentBlockId?: number | null
+  contentBlockVersionId?: number | null
+  outputTemplateId?: number | null
+  requiredStyleName?: string | null
+  occurrenceRole?: string | null
+}
+
+export interface WordGenerationValidationResult {
+  isValid: boolean
+  issues: WordGenerationIssue[]
 }

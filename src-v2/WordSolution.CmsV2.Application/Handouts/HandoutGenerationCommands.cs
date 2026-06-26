@@ -13,6 +13,10 @@ public sealed record GenerateSectionWordCommand(
     string BankRootDirectory,
     int SectionId);
 
+public sealed record ValidateSectionWordGenerationCommand(
+    string BankRootDirectory,
+    int SectionId);
+
 public sealed record GeneratedHandoutFileResult(
     int GeneratedFileId,
     int OutputFormId,

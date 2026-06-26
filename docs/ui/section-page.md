@@ -1235,12 +1235,12 @@ AtomicSectionBlock
 
 其中：
 
-- `AtomicSectionPanelBlock` 表示知识点、例题、变式题、练习题、课后练习等教学板块。
+- `AtomicSectionPanelBlock` 表示知识点、例题、变式题、练习题、课后练习、课前复习测验题等教学板块。
 - `AtomicSectionUnassignedArea` 表示尚未归入任何 panel 的内容。
 - 空 panel 也必须显示，便于用户知道结构已经存在但内容还没补齐。
-- 新建 `AtomicSection` 时，后端自动创建 `Knowledge / Example / Variant` 三个空 panel。
-- 默认 panel 继承 `AtomicSection` 的标题和难度，不创建默认 `ContentBlock`。
-- 多个顶层块升级为 `AtomicSection` 时也创建这三个默认 panel；已有转换而来的 item 仍保持 `AtomicSectionPanelId = null`，显示在未归组区域。
+- 新建 `AtomicSection` 时，后端自动创建 `Knowledge / Example / Variant / PreClassQuiz` 四个默认 panel。
+- 默认 panel 继承 `AtomicSection` 的标题和难度；`Knowledge` panel 默认带一个同名同难度知识点 `ContentBlock`，`Example / Variant / PreClassQuiz` panel 初始为空。
+- 多个顶层块升级为 `AtomicSection` 时也创建这四个默认 panel；已有转换而来的 item 仍保持 `AtomicSectionPanelId = null`，显示在未归组区域。
 - `AtomicSectionBlock` 可根据派生状态显示轻量“待完善”标记；只有存在 panel 且至少一个 panel 为空时才标记，旧 AS 没有 panel 时不误标。
 
 ### 2. Panel 展示规则
@@ -1249,11 +1249,13 @@ AtomicSectionBlock
 
 - 难度短标记。
 - panel 标题。
-- 教学职责：知识点 / 例题 / 变式题 / 练习题 / 课后练习。
+- 教学职责：知识点 / 例题 / 变式题 / 练习题 / 课后练习 / 课前复习测验题。
 - 难度。
 - 操作入口。
 
 panel 内显示 `AtomicSectionItem` 对应的内容块展示。每个 item 仍然由 `SectionItemView` 外层容器承载。
+
+`Knowledge` panel 不显示“导入题目”按钮；它用于知识点内容，不容纳题目导入流程。`Example / Variant / Practice / Homework / PreClassQuiz` panel 可以显示“导入题目”入口，其中 `PreClassQuiz` 导入后的内容仍然是普通题目 `ContentBlock`，只是当前 occurrence 的教学角色为“课前复习测验题”。
 
 ### 3. 未归组区域
 
@@ -1417,6 +1419,7 @@ AtomicSectionPanel
   在 AtomicSection 内部具体 panel 中导入 ContentBlock。
   确认候选题后，由后端创建归属该 panel 的 AtomicSectionItem。
   默认 TeachingRole / Difficulty 来自 panel 本身。
+  当 panel 为 PreClassQuiz 时，确认导入后创建普通 Question ContentBlock，但 AtomicSectionItem.TeachingRole 为 PreClassQuiz。
 ```
 
 当前实现边界：
@@ -1440,6 +1443,12 @@ AtomicSectionPanel
 2. 已支持 `SectionTopLevel`：确认候选题后创建 `ContentBlock`，并插入当前 Section 顶层。
 3. 已支持 `AtomicSectionPanel` 上下文的前端入口和后端确认路径；确认后创建归属该 panel 的 `AtomicSectionItem`，默认使用 panel 的 `TeachingRole` / `Difficulty`。
 4. 如果后续支持其他导入目标，必须继续复用 `QuestionImportContext`，不得复制新的多题导入弹窗。
+
+当前补充：
+
+- `Knowledge` panel 不允许题目导入。
+- `PreClassQuiz` panel 允许题目导入，导入候选题的确认界面不新增逐题教学角色、难度、标签或题型编辑。
+- `PreClassQuiz` 导入不会创建新的 `ContentBlockType` 或 `QuestionType`。
 
 ### 题目结构化与输出样式校准结果
 
@@ -1750,6 +1759,7 @@ Phase 9 后置：
 - 不输出生成时间。
 - 不做难度筛选、选中项导出、折叠状态导出。
 - 题目题干样式继续使用现有输出样式重绑定规则，按 AtomicSectionItem 的教学角色决定输出样式。
+- `PreClassQuiz` 题目暂时跳过，不输出到 Section Word，也不按 `练习题` 样式兜底输出。
 - 默认模板缺少必需样式时生成失败并向前端返回错误。
 - 缺少有效 Stem 的题目沿用讲义生成的跳过策略，不插入 Word。
 
@@ -1758,12 +1768,48 @@ Phase 9 后置：
 - 放在 SectionPage 顶部页面级工具栏或当前 Section 主操作区。
 - 使用 FileDown 图标和“导出 Word”文案。
 - 不放在 Inspector。
-- 点击后直接下载一次性 `.docx` 文件。
+- 点击后导出一次性 `.docx` 文件；如后端返回可提示跳过问题，页面需要在不阻断下载的前提下提示用户。
 - 生成中按钮显示 loading / disabled 状态。
 - 失败时使用 SectionPage 现有错误反馈，不伪造成功状态。
 - API 调用封装在 cmsV2Client / 页面 action 中；展示组件只 emit。
 
-### 5. 明确不做
+### 5. 导出预检与跳过提示
+
+SectionPage 不在前端自行判断 Word 可导出性；页面只展示后端返回的结构化问题。推荐交互流程：
+
+```text
+点击“导出 Word”
+  -> 调用 Section 级 validate-word-generation
+  -> 如存在 Blocking issue，停止下载并显示错误列表
+  -> 如只有 WarningSkip / SilentSkip issue 或没有 issue，继续调用 generate-word 下载文件
+  -> 下载成功后如存在 WarningSkip，提示“已导出，跳过 N 个内容项”
+```
+
+静默跳过问题不提示：
+
+- 空 panel。
+- panel 标题。
+- `PreClassQuiz` occurrence。
+- 没有可输出内容的空 AtomicSection。
+
+提示跳过问题需要让用户知道：
+
+- 题目缺少有效 Stem。
+- 源 docx 缺失、损坏或无法读取。
+- ContentBlock 没有可读取的当前版本。
+- ContentBlock 版本存在但没有可输出正文。
+
+阻断问题必须停止下载：
+
+- 默认模板不存在或无法读取。
+- 模板缺少本次导出必需样式。
+- Section 不存在。
+- 内容关系循环或递归深度超限。
+- 锁定版本不匹配。
+
+第一版提示可以使用页面级 toast / inline alert，不需要新增复杂问题处理面板；但 issue 明细必须来自后端，不由前端硬编码推断。
+
+### 6. 明确不做
 
 - 不创建讲义相关对象。
 - 不写 GeneratedFile。
@@ -1772,9 +1818,88 @@ Phase 9 后置：
 - 不支持模板选择、变量替换、学生版 / 教师版过滤。
 - 不支持按难度或当前选中内容局部导出。
 
-### 6. 当前实现状态
+### 7. 当前实现状态
 
+- `cmsV2Client.validateSectionWordGeneration(sectionId)` 调用 `POST /api/cms-v2/sections/{sectionId}/validate-word-generation`，返回后端结构化 `isValid / issues`；`SectionPage` 点击导出时先预检，不在前端硬编码推断问题类型。
 - `cmsV2Client.downloadSectionWord(sectionId)` 调用 `POST /api/cms-v2/sections/{sectionId}/generate-word`，读取 `Content-Disposition` 文件名，并通过浏览器 Blob 下载一次性 `.docx` 文件。
 - 入口已放在当前 Section 主操作区，由 `SectionWorkspace` 显示 FileDown 图标和“导出 Word”按钮；组件只 emit `requestSectionWordExport`，由 `SectionPage` 负责 API 调用、loading / disabled 状态和错误反馈。
+- `Blocking` issue 会阻止下载并显示页面级错误；`WarningSkip` / `SilentSkip` 或无 issue 时继续下载，下载成功后仅对 `WarningSkip` 显示跳过数量，`SilentSkip` 静默处理。
 - 该入口不放入 Inspector，不提供模板选择、PDF、生成历史、manifest、重命名或删除能力。
 - Phase 4 浏览器 smoke 验证以页面可打开、按钮可见、点击链路无前端错误为准；Codex 内嵌浏览器当前不稳定暴露 Blob 下载落盘事件，因此下载文件响应以直连 API 的 `.docx` content type 与文件名作为补充证据。
+
+## 当前补充：新增 AS 后 Variant 同步提示
+
+本节记录 SectionPage 在新增顶层 AtomicSection 后，对已有 SectionVariant 提供“可同步候选”的第一版交互规则。该能力用于解决先创建讲义或 Variant、再继续补写 Section 时，后续新增 AS 不会自动进入已有 Variant 的问题。
+
+### 1. 产品定位
+
+- `SectionVariant` 仍然是用户显式选择的子版本，不改成自动跟随 Section 的实时镜像。
+- 新增 AS 后的同步是一次用户确认动作：系统计算候选 Variant，用户选择要同步的 Variant，再由后端批量写入 `SectionVariantItem`。
+- 不在用户无感知的情况下把新 AS 写入所有 Variant。
+- 不新增“刷新 Variant”动作；Variant 详情在用户后续进入 Variant 时自然读取最新数据。
+- 本能力在需求讨论中可能被简称为“自动更新 Variant”，但第一版落地形态不是自动实时更新，而是“新增 AS 后的用户确认同步提示”。
+
+### 2. 触发范围
+
+仅在以下动作成功后触发同步提示：
+
+- 在 Section 顶层新建 `AtomicSection` 并创建对应 `SectionItem`。
+- 在 Section 顶层插入已有 `AtomicSection` 并创建对应 `SectionItem`。
+- wrap-as-AS 后生成顶层 `AtomicSection SectionItem`。
+
+不触发同步提示的场景：
+
+- AS 内部新增 `ContentBlock`。
+- AS 内部新增、删除或移动 panel / item。
+- Section 顶层新增普通 `ContentBlock`。
+- 非顶层 `SectionItem` 变化。
+- 只创建 AS 资产但没有插入当前 Section。
+
+说明：Variant 选择的是顶层 `SectionItem`。当 Variant 已包含某个指向 AS 的 `SectionItem` 时，后续 AS 内部内容变化按 AS 当前结构展开，不需要再次同步 Variant。
+
+### 3. 候选 Variant 规则
+
+候选 Variant 必须全部满足：
+
+- 与新增 `SectionItem` 属于同一个 `Section`。
+- Variant 状态为 `Draft` 或 `Active`。
+- Variant 尚未包含该 `SectionItem`。
+- Variant 难度按现有 SectionVariant 难度包含规则覆盖 AS 难度。
+- `Archived` Variant 不进入候选。
+- 如果新增 AS 的难度为 `Unset`，第一版不展示候选同步提示，避免误同步到不确定难度的 Variant。
+
+候选列表必须由后端计算并返回；前端只展示候选，不在页面层重复实现难度、状态或已包含判断。
+
+### 4. 前端交互
+
+新增 AS 成功并刷新 Section 数据后：
+
+- 如果候选数量为 0，不显示同步提示。
+- 如果候选数量大于 0，在页面右下角显示轻提示：`已新增 AS，可同步到 X 个 Variant`。
+- 轻提示提供两个操作：`查看并同步`、`忽略`。
+- 点击 `查看并同步` 打开对话框，列出候选 Variant。
+- 候选 Variant 默认全部勾选，用户可以取消部分勾选。
+- 点击确认后调用批量同步 API。
+- 如果用户取消勾选到 0 个候选，确认按钮禁用；用户需要使用 `忽略` 或关闭对话框，不发送空同步请求。
+- 点击 `忽略` 只清除当前提示，不修改任何 Variant。
+
+同步成功后：
+
+- 显示成功反馈：`已同步到 X 个 Variant`。
+- 关闭对话框。
+- 清除当前 AS 的待同步提示状态。
+- 不刷新 Variant 列表，不切换视图，不自动进入 Variant。
+
+同步失败后：
+
+- 显示错误反馈：`同步失败，未修改任何 Variant`。
+- 保留对话框和勾选状态，允许用户重试。
+
+### 5. 明确不做
+
+- 不做全自动同步。
+- 不做运行时持续监听 Section 与 Variant 的差异。
+- 不做 AS 内部块级同步提示。
+- 不做 ContentBlock 顶层新增后的 Variant 同步提示。
+- 不新增复杂同步中心或问题抽屉。
+- 不把候选计算逻辑放到前端。

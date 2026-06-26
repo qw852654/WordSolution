@@ -2016,7 +2016,7 @@ Archived `Handout` or `HandoutVersion` entries must be rendered read-only in `Ha
 
 - 不直接调用 API。
 - 不直接修改 panel 或 item 数据。
-- 不在内部硬编码创建默认知识点 / 例题组 / 练习题组。
+- 不在内部硬编码创建默认 panel 列表；默认 panel 由后端和页面级数据决定。
 
 ### AtomicSectionPanelBlock
 
@@ -2026,7 +2026,13 @@ Archived `Handout` or `HandoutVersion` entries must be rendered read-only in `Ha
 - 显示 panel 标题、教学职责、难度和操作入口。
 - 承载该 panel 下的 `SectionItemView` 文档流。
 - 暴露 panel 内首位、中间、末尾的插入点。
-- 在 panel 操作区暴露 `导入题目` 事件入口；弹窗状态、API 调用、导入后刷新和定位仍由 `SectionPage` 持有。
+- 在允许容纳题目的 panel 操作区暴露 `导入题目` 事件入口；弹窗状态、API 调用、导入后刷新和定位仍由 `SectionPage` 持有。
+
+题目导入入口规则：
+
+- `Knowledge` panel 不显示 `导入题目`。
+- `Example / Variant / Practice / Homework / PreClassQuiz` panel 可以显示 `导入题目`。
+- `PreClassQuiz` panel 导入的仍是普通 `Question ContentBlock`；组件只传出 panel 上下文，不自行创建新的题型或内容类型。
 
 事件：
 
@@ -2298,6 +2304,7 @@ AtomicSectionPanel
   当前 AtomicSectionPanel 内部导入目标。
   确认候选题后，由后端创建归属该 panel 的 AtomicSectionItem。
   默认 TeachingRole / Difficulty 来自 panel 本身。
+  当 panel 的 TeachingRole 为 PreClassQuiz 时，导入结果仍是 Question ContentBlock，只是 occurrence 使用 PreClassQuiz。
 ```
 
 组件职责保持不变：
@@ -2704,3 +2711,46 @@ Phase 8 不做：
 - 标签管理页和真实工作台改色入口。
 - 主工作区评注数量轻提示。
 - 跨页面评注入口和复杂多对象绑定选择器。
+
+## 当前补充约定：SectionPage Word 导出反馈
+
+SectionPage Word 导出属于页面级异步动作，不属于内容展示组件自身职责。
+
+组件边界：
+
+- `SectionWorkspace` 或顶部工具栏只展示“导出 Word”按钮，并 emit `requestSectionWordExport`。
+- `SectionWorkspace` 不直接调用 `cmsV2Client`，不判断导出问题，不解析 Word issue。
+- `SectionPage` 持有导出 loading / disabled 状态，负责调用 Section 级预检和生成接口。
+- `SectionPage` 负责展示阻断错误和可提示跳过信息。
+- `ContentBlockDisplay`、`AtomicSectionBlock`、`AtomicSectionPanelBlock` 不为了导出场景新增 API 调用。
+
+反馈规则：
+
+- `Blocking` issue：不下载文件，页面显示错误。
+- `WarningSkip` issue：允许继续下载，下载成功后提示“已导出，跳过 N 个内容项”，并可显示明细。
+- `SilentSkip` issue：不提示用户。
+
+第一版不新增复杂导出问题抽屉；如需要展示明细，优先复用页面级 alert / toast / compact list。
+
+## 当前补充约定：Section 新增 AS 后 Variant 同步提示
+
+Section 新增 AS 后的 Variant 同步属于 SectionPage 页面级后续动作，不属于 `AtomicSectionBlock` 或 `SectionTree` 的展示职责。
+
+组件边界：
+
+- 新增 AS 的展示组件只 emit 创建或插入意图，不直接计算 Variant 候选。
+- `SectionPage` 在服务端确认新增顶层 AS 后，调用候选 API 并持有待同步提示状态。
+- 同步轻提示和同步对话框只展示后端候选结果，不在前端重复实现难度、状态或已包含判断。
+- 同步对话框 emit `submit(sectionVariantIds)` / `close`，不直接调用 `cmsV2Client`。
+- `SectionPage` 负责调用批量同步 API、处理 loading、成功 toast 与失败错误。
+- `SectionWorkspace`、`AtomicSectionBlock`、`AtomicSectionPanelBlock`、`ContentBlockDisplay` 不为了该同步场景新增 API 调用。
+- 当对话框中已选 Variant 数量为 0 时，确认按钮必须禁用；对话框不得 emit 空的 `submit([])`。
+
+反馈规则：
+
+- 候选数量为 0 时不提示。
+- 候选数量大于 0 时显示页面级轻提示：`已新增 AS，可同步到 X 个 Variant`。
+- 同步成功显示：`已同步到 X 个 Variant`。
+- 同步失败显示：`同步失败，未修改任何 Variant`，并保留对话框勾选状态。
+
+第一版不新增复杂同步中心；如需要列表展示，优先使用紧凑对话框和现有按钮、复选框、状态标签组件。

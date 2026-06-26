@@ -293,6 +293,98 @@ public sealed class CmsV2QuestionImportUseCaseTests
     }
 
     [Fact]
+    public async Task CreateSession_rejects_question_import_into_knowledge_panel()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var atomicSection = new AtomicSection(sectionId, "AS");
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+
+        var knowledgePanel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "知识点 panel",
+            AtomicSectionTeachingRole.Knowledge,
+            Difficulty.Basic,
+            sortOrder: 10);
+        await unitOfWork.AtomicSectionPanels.AddAsync(knowledgePanel);
+        await unitOfWork.SaveChangesAsync();
+
+        var bankRootDirectory = CreateTempRoot();
+        var useCases = CreateUseCases(unitOfWork, new FakeQuestionImportSessionLauncher(), new FakeQuestionImportDocumentCloseChecker());
+
+        var exception = await Assert.ThrowsAsync<CmsV2ApplicationException>(() => useCases.CreateSessionAsync(
+            new CreateQuestionImportSessionCommand(
+                bankRootDirectory,
+                new InsertQuestionContext(
+                    sectionId,
+                    AtomicSectionId: atomicSection.Id,
+                    AtomicSectionPanelId: knowledgePanel.Id,
+                    AfterAtomicSectionItemId: null,
+                    AfterSectionItemId: null,
+                    DefaultTeachingRole: AtomicSectionTeachingRole.Example,
+                    DefaultDifficulty: Difficulty.Advanced),
+                OpenWord: false)));
+
+        Assert.Contains("Knowledge panel", exception.Message);
+        Assert.Empty(await unitOfWork.ContentBlocks.ListAsync());
+        Assert.Empty(await unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(atomicSection.Id));
+    }
+
+    [Fact]
+    public async Task ConfirmImport_with_pre_class_quiz_panel_context_creates_normal_question_items()
+    {
+        await using var context = await CreateMigratedContextAsync();
+        var unitOfWork = new EfCmsV2UnitOfWork(context);
+        var sectionId = await CreateSectionAsync(unitOfWork);
+        var atomicSection = new AtomicSection(sectionId, "AS");
+        await unitOfWork.AtomicSections.AddAsync(atomicSection);
+        await unitOfWork.SaveChangesAsync();
+
+        var preClassQuizPanel = new AtomicSectionPanel(
+            atomicSection.Id,
+            "课前复习测验题",
+            AtomicSectionTeachingRole.PreClassQuiz,
+            Difficulty.Medium,
+            sortOrder: 40);
+        await unitOfWork.AtomicSectionPanels.AddAsync(preClassQuizPanel);
+        await unitOfWork.SaveChangesAsync();
+
+        var bankRootDirectory = CreateTempRoot();
+        var useCases = CreateUseCases(
+            unitOfWork,
+            new FakeQuestionImportSessionLauncher(),
+            new FakeQuestionImportDocumentCloseChecker { IsClosed = true });
+
+        var session = await CreateReadySessionAsync(
+            useCases,
+            bankRootDirectory,
+            sectionId,
+            atomicSection.Id,
+            AtomicSectionTeachingRole.Example,
+            Difficulty.Advanced,
+            atomicSectionPanelId: preClassQuizPanel.Id);
+
+        var result = await useCases.ConfirmAsync(
+            new ConfirmQuestionImportCommand(
+                bankRootDirectory,
+                session.SessionId,
+                [new ConfirmQuestionImportCandidateSelection(session.Candidates[0].CandidateId, Selected: true, Title: "课前题")]));
+
+        var item = (await unitOfWork.AtomicSectionItems.ListByAtomicSectionAsync(atomicSection.Id)).Single();
+        var block = await unitOfWork.ContentBlocks.GetByIdAsync(result.ContentBlockIds.Single());
+
+        Assert.Empty(result.SectionItemIds);
+        Assert.Single(result.AtomicSectionItemIds);
+        Assert.Equal(preClassQuizPanel.Id, item.AtomicSectionPanelId);
+        Assert.Equal(AtomicSectionTeachingRole.PreClassQuiz, item.TeachingRole);
+        Assert.Equal(ContentBlockType.Question, block!.BlockType);
+        Assert.Equal(QuestionType.Unset, block.QuestionType);
+        Assert.Equal(Difficulty.Medium, block.Difficulty);
+    }
+
+    [Fact]
     public async Task CreateSession_rejects_panel_context_when_after_item_is_outside_that_panel()
     {
         await using var context = await CreateMigratedContextAsync();

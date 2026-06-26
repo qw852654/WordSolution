@@ -464,7 +464,7 @@ function buildAtomicSectionPanelNode(
     id: createAtomicSectionPanelNodeId(panel.id),
     title: panel.title,
     kind: 'AtomicSectionPanel',
-    typeLabel: panel.teachingRole,
+    typeLabel: mapAtomicSectionTeachingRole(panel.teachingRole),
     atomicSectionId: panel.atomicSectionId,
     atomicSectionPanelId: panel.id,
     teachingRole: panel.teachingRole,
@@ -945,6 +945,20 @@ function mapAtomicSectionType(value?: string | null) {
   }
 
   return value ? labels[value] ?? value : 'AtomicSection'
+}
+
+function mapAtomicSectionTeachingRole(value?: string | null) {
+  const labels: Record<string, string> = {
+    Unclassified: '未归类',
+    Knowledge: '知识点',
+    Example: '例题',
+    Variant: '变式',
+    Practice: '练习',
+    Homework: '课后练习',
+    PreClassQuiz: '课前复习测验题',
+  }
+
+  return value ? labels[value] ?? value : '未归类'
 }
 
 function mapContentBlockType(value?: string | null) {

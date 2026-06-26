@@ -18,8 +18,21 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
         return Task.Run<IReadOnlyList<HandoutDocumentGenerationIssue>>(() =>
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var outputDocument = new Document(templateDocxPath);
-            return ValidateWordGeneration(outputDocument, elements);
+            try
+            {
+                var outputDocument = AsposeTemplateDocumentFactory.CreateDocumentCopy(templateDocxPath);
+                return ValidateWordGeneration(outputDocument, elements);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                return
+                [
+                    new HandoutDocumentGenerationIssue(
+                        "UnreadableOutputTemplate",
+                        $"OutputTemplate DOCX file could not be read: {templateDocxPath}",
+                        Severity: HandoutDocumentGenerationIssueSeverity.Blocking)
+                ];
+            }
         }, cancellationToken);
     }
 
@@ -85,7 +98,7 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
             cancellationToken.ThrowIfCancellationRequested();
             EnsureParentDirectory(outputDocxPath);
 
-            var outputDocument = new Document(templateDocxPath);
+            var outputDocument = AsposeTemplateDocumentFactory.CreateDocumentCopy(templateDocxPath);
             var issues = ValidateWordGeneration(outputDocument, elements);
             ThrowIfValidationIssues(issues);
             var builder = new DocumentBuilder(outputDocument);
@@ -175,6 +188,7 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
             .Select(styleName => new HandoutDocumentGenerationIssue(
                 "MissingOutputStyle",
                 $"OutputTemplate is missing required style '{styleName}' for question stem output.",
+                Severity: HandoutDocumentGenerationIssueSeverity.Blocking,
                 RequiredStyleName: styleName))
             .ToArray();
     }
@@ -188,8 +202,25 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
             element.Kind == HandoutDocumentElementKind.ContentBlock
             && !string.IsNullOrWhiteSpace(element.OutputStemStyleName)))
         {
-            ValidatePath(element.DocxPath ?? string.Empty, nameof(element.DocxPath));
-            var sourceDocument = new Document(element.DocxPath!);
+            Document sourceDocument;
+            try
+            {
+                ValidatePath(element.DocxPath ?? string.Empty, nameof(element.DocxPath));
+                sourceDocument = new Document(element.DocxPath!);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                issues.Add(new HandoutDocumentGenerationIssue(
+                    "UnreadableContentBlockDocx",
+                    $"ContentBlockVersion DOCX file could not be read: {element.DocxPath}",
+                    Severity: HandoutDocumentGenerationIssueSeverity.WarningSkip,
+                    ContentBlockId: element.ContentBlockId,
+                    ContentBlockVersionId: element.ContentBlockVersionId,
+                    RequiredStyleName: element.OutputStemStyleName,
+                    OccurrenceRole: element.OccurrenceRole));
+                continue;
+            }
+
             if (ContainsEffectiveStemParagraph(sourceDocument))
             {
                 continue;
@@ -198,6 +229,7 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
             issues.Add(new HandoutDocumentGenerationIssue(
                 "MissingQuestionStem",
                 $"Question ContentBlock {element.ContentBlockId?.ToString() ?? element.Title} does not contain an effective Stem paragraph.",
+                Severity: HandoutDocumentGenerationIssueSeverity.WarningSkip,
                 ContentBlockId: element.ContentBlockId,
                 ContentBlockVersionId: element.ContentBlockVersionId,
                 RequiredStyleName: element.OutputStemStyleName,

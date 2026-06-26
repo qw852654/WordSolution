@@ -84,6 +84,7 @@ import type {
   TeachingTopicTreeContextMenuModel,
   TeachingTopicTreeContextMenuPayload,
   TeachingTopicTreeNodeModel,
+  WordGenerationIssue,
 } from '@/types'
 
 const route = useRoute()
@@ -126,6 +127,7 @@ const teachingTopicDisplayRootNodeId = ref<string | null>(null)
 const isLoadingSectionPage = ref(false)
 const sectionPageError = ref('')
 const isExportingSectionWord = ref(false)
+const sectionWordExportFeedback = ref('')
 const isSubmittingInsertCreate = ref(false)
 const isCreatingAtomicSectionPanel = ref(false)
 const isDeletingContentBlockCascade = ref(false)
@@ -391,6 +393,7 @@ async function loadCurrentSectionPage() {
   const loadId = ++sectionPageLoadSequence
   isLoadingSectionPage.value = true
   sectionPageError.value = ''
+  sectionWordExportFeedback.value = ''
 
   try {
     const data = await loadSectionPageData(sectionId.value)
@@ -837,6 +840,25 @@ function getCurrentNumericSectionId() {
   return Number.isInteger(currentSectionId) && currentSectionId > 0 ? currentSectionId : undefined
 }
 
+function countWarningSkipContentItems(issues: WordGenerationIssue[]) {
+  const contentBlockIds = new Set<number>()
+  let issueFallbackCount = 0
+
+  for (const issue of issues) {
+    if (issue.severity !== 'WarningSkip') {
+      continue
+    }
+
+    if (typeof issue.contentBlockId === 'number') {
+      contentBlockIds.add(issue.contentBlockId)
+    } else {
+      issueFallbackCount += 1
+    }
+  }
+
+  return contentBlockIds.size + issueFallbackCount
+}
+
 async function requestSectionWordExport() {
   const currentSectionId = getCurrentNumericSectionId()
 
@@ -851,9 +873,34 @@ async function requestSectionWordExport() {
 
   isExportingSectionWord.value = true
   sectionPageError.value = ''
+  sectionWordExportFeedback.value = ''
 
   try {
+    const validation = await cmsV2Api.validateSectionWordGeneration(currentSectionId)
+    const blockingIssues = validation.issues.filter((issue) => issue.severity === 'Blocking')
+
+    if (!validation.isValid || blockingIssues.length > 0) {
+      const blockingIssueCount = blockingIssues.length || validation.issues.length
+      const firstBlockingIssueMessage = blockingIssues[0]?.message || validation.issues[0]?.message
+
+      sectionPageError.value = firstBlockingIssueMessage
+        ? t('sectionPage.workspace.wordExport.blockedWithFirstIssue', {
+            count: blockingIssueCount,
+            message: firstBlockingIssueMessage,
+          })
+        : t('sectionPage.workspace.wordExport.blocked', { count: blockingIssueCount })
+      return
+    }
+
+    const warningSkipCount = countWarningSkipContentItems(validation.issues)
+
     await cmsV2Api.downloadSectionWord(currentSectionId)
+
+    if (warningSkipCount > 0) {
+      sectionWordExportFeedback.value = t('sectionPage.workspace.wordExport.completedWithSkips', {
+        count: warningSkipCount,
+      })
+    }
   } catch (error) {
     sectionPageError.value =
       error instanceof Error ? error.message : t('sectionPage.workspace.wordExport.failed')
@@ -1305,6 +1352,7 @@ function getDefaultContentBlockTypeFromTeachingRole(
     Variant: '变式题',
     Practice: '练习题',
     Homework: '练习题',
+    PreClassQuiz: '练习题',
   }
 
   return teachingRole ? map[teachingRole] : undefined
@@ -3650,18 +3698,24 @@ watch(
     </Teleport>
 
     <div
-      v-if="isLoadingSectionPage || sectionPageError"
+      v-if="isLoadingSectionPage || sectionPageError || sectionWordExportFeedback"
       class="fixed bottom-3 left-3 z-50 max-w-md rounded-md border bg-card px-3 py-2 text-xs text-card-foreground"
       role="status"
     >
       <p v-if="isLoadingSectionPage" class="font-medium">
         {{ t('sectionPage.api.loadingMessage') }}
       </p>
-      <p v-else class="font-medium">
+      <p v-else-if="sectionPageError" class="font-medium">
         {{ t('sectionPage.api.errorTitle') }}
+      </p>
+      <p v-else class="font-medium">
+        {{ t('sectionPage.workspace.wordExport.completedWithSkipsTitle') }}
       </p>
       <p v-if="sectionPageError" class="mt-1 text-muted-foreground">
         {{ sectionPageError }}
+      </p>
+      <p v-else-if="sectionWordExportFeedback" class="mt-1 text-muted-foreground">
+        {{ sectionWordExportFeedback }}
       </p>
     </div>
   </main>

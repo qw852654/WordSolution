@@ -14,6 +14,7 @@ public sealed class AtomicSectionUseCases
         (AtomicSectionTeachingRole.Knowledge, 10),
         (AtomicSectionTeachingRole.Example, 20),
         (AtomicSectionTeachingRole.Variant, 30),
+        (AtomicSectionTeachingRole.PreClassQuiz, 40),
     ];
 
     public AtomicSectionUseCases(ICmsV2UnitOfWork unitOfWork)

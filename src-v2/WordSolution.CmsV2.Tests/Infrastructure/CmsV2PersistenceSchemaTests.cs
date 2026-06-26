@@ -1,5 +1,7 @@
 using System.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using WordSolution.CmsV2.Infrastructure.Persistence;
 
 namespace WordSolution.CmsV2.Tests.Infrastructure;
@@ -282,6 +284,53 @@ public sealed class CmsV2PersistenceSchemaTests
         Assert.DoesNotContain("\"TargetType\" IN (1, 2)", createTableSql, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task AddPreClassQuizPanels_migration_backfills_missing_empty_panels_without_duplicates()
+    {
+        var databasePath = Path.Combine(CreateTempDirectory(), "cms-v2.db");
+
+        await using var context = CmsV2DbContextFactory.CreateForDatabase(databasePath);
+        var migrator = context.GetService<IMigrator>();
+
+        await migrator.MigrateAsync("20260624171728_RebuildTeachingNotes");
+        await SeedAtomicSectionsForPreClassQuizBackfillAsync(context);
+
+        await migrator.MigrateAsync();
+
+        var panels = await ReadAtomicSectionPanelsAsync(context);
+
+        var firstQuizPanel = Assert.Single(panels, panel => panel.AtomicSectionId == 1 && panel.TeachingRole == 6);
+        Assert.Equal("AS Needs Quiz", firstQuizPanel.Title);
+        Assert.Equal(2, firstQuizPanel.Difficulty);
+        Assert.Equal(40, firstQuizPanel.SortOrder);
+
+        var noPanelQuizPanel = Assert.Single(panels, panel => panel.AtomicSectionId == 2 && panel.TeachingRole == 6);
+        Assert.Equal("AS Without Panels", noPanelQuizPanel.Title);
+        Assert.Equal(3, noPanelQuizPanel.Difficulty);
+        Assert.Equal(40, noPanelQuizPanel.SortOrder);
+
+        var existingQuizPanel = Assert.Single(panels, panel => panel.AtomicSectionId == 3 && panel.TeachingRole == 6);
+        Assert.Equal("Existing PreClassQuiz", existingQuizPanel.Title);
+        Assert.Equal(0, existingQuizPanel.Difficulty);
+        Assert.Equal(99, existingQuizPanel.SortOrder);
+
+        var duplicatedPreClassQuizPanels = await ReadScalarIntAsync(
+            context,
+            """
+            SELECT COUNT(*)
+            FROM (
+                SELECT AtomicSectionId
+                FROM AtomicSectionPanels
+                WHERE TeachingRole = 6
+                GROUP BY AtomicSectionId
+                HAVING COUNT(*) > 1
+            );
+            """);
+
+        Assert.Equal(0, duplicatedPreClassQuizPanels);
+        Assert.Equal(0, await ReadScalarIntAsync(context, "SELECT COUNT(*) FROM ContentBlocks;"));
+    }
+
     private static string CreateTempDirectory()
     {
         var path = Path.Combine(Path.GetTempPath(), "cms-v2-tests", Guid.NewGuid().ToString("N"));
@@ -428,7 +477,125 @@ public sealed class CmsV2PersistenceSchemaTests
         return Assert.IsType<string>(result);
     }
 
+    private static async Task SeedAtomicSectionsForPreClassQuizBackfillAsync(CmsV2DbContext context)
+    {
+        const string updatedTime = "2026-06-26T00:00:00.0000000+08:00";
+
+        await ExecuteNonQueryAsync(
+            context,
+            $"""
+            INSERT INTO TeachingTopics (Id, ParentId, Name, Description, SortOrder, Status, UpdatedTime)
+            VALUES
+                (1, NULL, 'Topic A', NULL, 10, 1, '{updatedTime}'),
+                (2, NULL, 'Topic B', NULL, 20, 1, '{updatedTime}'),
+                (3, NULL, 'Topic C', NULL, 30, 1, '{updatedTime}');
+            """);
+
+        await ExecuteNonQueryAsync(
+            context,
+            $"""
+            INSERT INTO Sections (Id, TeachingTopicId, Title, Description, Type, Difficulty, Status, SortOrder, UpdatedTime)
+            VALUES
+                (1, 1, 'Section A', NULL, 1, 2, 1, 10, '{updatedTime}'),
+                (2, 2, 'Section B', NULL, 1, 3, 1, 20, '{updatedTime}'),
+                (3, 3, 'Section C', NULL, 1, 1, 1, 30, '{updatedTime}');
+            """);
+
+        await ExecuteNonQueryAsync(
+            context,
+            $"""
+            INSERT INTO AtomicSections (Id, SectionId, Title, Description, Type, Difficulty, Status, UpdatedTime)
+            VALUES
+                (1, 1, 'AS Needs Quiz', NULL, 1, 2, 1, '{updatedTime}'),
+                (2, 2, 'AS Without Panels', NULL, 1, 3, 1, '{updatedTime}'),
+                (3, 3, 'AS Already Has Quiz', NULL, 1, 1, 1, '{updatedTime}');
+            """);
+
+        await ExecuteNonQueryAsync(
+            context,
+            $"""
+            INSERT INTO AtomicSectionPanels (Id, AtomicSectionId, Title, TeachingRole, Difficulty, SortOrder, UpdatedTime)
+            VALUES
+                (1, 1, 'Knowledge', 1, 2, 10, '{updatedTime}'),
+                (2, 1, 'Example', 2, 2, 20, '{updatedTime}'),
+                (3, 1, 'Variant', 3, 2, 30, '{updatedTime}'),
+                (4, 3, 'Existing PreClassQuiz', 6, 0, 99, '{updatedTime}');
+            """);
+    }
+
+    private static async Task ExecuteNonQueryAsync(CmsV2DbContext context, string sql)
+    {
+        var connection = context.Database.GetDbConnection();
+
+        if (connection.State != ConnectionState.Open)
+        {
+            await connection.OpenAsync();
+        }
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task<int> ReadScalarIntAsync(CmsV2DbContext context, string sql)
+    {
+        var connection = context.Database.GetDbConnection();
+
+        if (connection.State != ConnectionState.Open)
+        {
+            await connection.OpenAsync();
+        }
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+
+        var result = await command.ExecuteScalarAsync();
+
+        return Convert.ToInt32(result);
+    }
+
+    private static async Task<IReadOnlyList<AtomicSectionPanelRow>> ReadAtomicSectionPanelsAsync(CmsV2DbContext context)
+    {
+        var rows = new List<AtomicSectionPanelRow>();
+        var connection = context.Database.GetDbConnection();
+
+        if (connection.State != ConnectionState.Open)
+        {
+            await connection.OpenAsync();
+        }
+
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT Id, AtomicSectionId, Title, TeachingRole, Difficulty, SortOrder
+            FROM AtomicSectionPanels
+            ORDER BY AtomicSectionId, SortOrder, Id;
+            """;
+
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            rows.Add(new AtomicSectionPanelRow(
+                reader.GetInt32(0),
+                reader.GetInt32(1),
+                reader.GetString(2),
+                reader.GetInt32(3),
+                reader.GetInt32(4),
+                reader.GetInt32(5)));
+        }
+
+        return rows;
+    }
+
     private sealed record SqliteIndex(string Name, bool IsUnique, IReadOnlyList<string> Columns);
 
     private sealed record SqliteForeignKey(string Table, string From, string OnDelete);
+
+    private sealed record AtomicSectionPanelRow(
+        int Id,
+        int AtomicSectionId,
+        string Title,
+        int TeachingRole,
+        int Difficulty,
+        int SortOrder);
 }

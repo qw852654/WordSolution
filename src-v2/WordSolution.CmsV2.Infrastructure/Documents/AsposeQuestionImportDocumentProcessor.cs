@@ -7,15 +7,30 @@ namespace WordSolution.CmsV2.Infrastructure.Documents;
 public sealed class AsposeQuestionImportDocumentProcessor : IQuestionImportDocumentProcessor
 {
     private readonly QuestionImportStyleOptions _importStyleOptions;
+    private readonly string _templateDocxPath;
 
     public AsposeQuestionImportDocumentProcessor()
-        : this(QuestionImportStyleOptions.Default)
+        : this(QuestionImportStyleOptions.Default, AsposeTemplateDocumentFactory.ResolveDefaultTemplateDocxPath())
     {
     }
 
     public AsposeQuestionImportDocumentProcessor(QuestionImportStyleOptions importStyleOptions)
+        : this(importStyleOptions, AsposeTemplateDocumentFactory.ResolveDefaultTemplateDocxPath())
+    {
+    }
+
+    public AsposeQuestionImportDocumentProcessor(string templateDocxPath)
+        : this(QuestionImportStyleOptions.Default, templateDocxPath)
+    {
+    }
+
+    public AsposeQuestionImportDocumentProcessor(
+        QuestionImportStyleOptions importStyleOptions,
+        string templateDocxPath)
     {
         _importStyleOptions = importStyleOptions ?? throw new ArgumentNullException(nameof(importStyleOptions));
+        ValidatePath(templateDocxPath, nameof(templateDocxPath));
+        _templateDocxPath = Path.GetFullPath(templateDocxPath);
     }
 
     public Task<IReadOnlyList<QuestionImportCandidateDocumentResult>> SplitCandidatesAsync(
@@ -72,7 +87,7 @@ public sealed class AsposeQuestionImportDocumentProcessor : IQuestionImportDocum
             Directory.CreateDirectory(Path.GetDirectoryName(outputDocxPath)!);
 
             var document = new Document(candidateDocxPath);
-            EnsureParagraphStyle(document, "正文");
+            document.CopyStylesFromTemplate(_templateDocxPath);
             var stemParagraph = document
                 .GetChildNodes(NodeType.Paragraph, true)
                 .OfType<Paragraph>()
@@ -81,7 +96,7 @@ public sealed class AsposeQuestionImportDocumentProcessor : IQuestionImportDocum
             if (stemParagraph is not null)
             {
                 stemParagraph.ParagraphFormat.ClearFormatting();
-                stemParagraph.ParagraphFormat.StyleName = "正文";
+                stemParagraph.ParagraphFormat.StyleIdentifier = StyleIdentifier.Normal;
                 foreach (Run run in stemParagraph.GetChildNodes(NodeType.Run, true).OfType<Run>())
                 {
                     run.Font.ClearFormatting();
@@ -115,7 +130,7 @@ public sealed class AsposeQuestionImportDocumentProcessor : IQuestionImportDocum
             || stylePartType is ContentBlockPartType.Stem;
     }
 
-    private static void SaveCandidateIfAny(
+    private void SaveCandidateIfAny(
         Document sourceDocument,
         IReadOnlyList<Node> sourceNodes,
         string candidateDirectory,
@@ -142,22 +157,13 @@ public sealed class AsposeQuestionImportDocumentProcessor : IQuestionImportDocum
             body.AppendChild(importer.ImportNode(sourceNode, isImportChildren: true));
         }
 
+        candidateDocument.CopyStylesFromTemplate(_templateDocxPath);
         candidateDocument.Save(candidateDocxPath);
         results.Add(new QuestionImportCandidateDocumentResult(
             candidateId,
             sortOrder,
             candidateDocxPath,
             candidateHtmlPath));
-    }
-
-    private static void EnsureParagraphStyle(Document document, string styleName)
-    {
-        if (document.Styles[styleName] is not null)
-        {
-            return;
-        }
-
-        document.Styles.Add(StyleType.Paragraph, styleName);
     }
 
     private static void ValidatePath(string value, string parameterName)

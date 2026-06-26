@@ -31,6 +31,7 @@ public sealed class QuestionOutputStyleOptions
         {
             AtomicSectionTeachingRole.Example => ExampleStemStyleName,
             AtomicSectionTeachingRole.Variant => VariantStemStyleName,
+            AtomicSectionTeachingRole.PreClassQuiz => null,
             AtomicSectionTeachingRole.Practice
                 or AtomicSectionTeachingRole.Homework
                 or AtomicSectionTeachingRole.Unclassified => PracticeStemStyleName,

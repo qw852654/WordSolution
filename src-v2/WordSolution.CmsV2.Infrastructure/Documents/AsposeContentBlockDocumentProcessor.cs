@@ -17,17 +17,11 @@ public sealed class AsposeContentBlockDocumentProcessor : IContentBlockDocumentP
         ContentBlockPartType.Other
     ];
 
-    private static readonly string DefaultTemplateDocxPath = Path.Combine(
-        AppContext.BaseDirectory,
-        "Documents",
-        "Templates",
-        "content-block-default.docx");
-
     private readonly string _templateDocxPath;
     private readonly QuestionPartStyleOptions _questionPartStyleOptions;
 
     public AsposeContentBlockDocumentProcessor()
-        : this(DefaultTemplateDocxPath, QuestionPartStyleOptions.Default)
+        : this(AsposeTemplateDocumentFactory.ResolveDefaultTemplateDocxPath(), QuestionPartStyleOptions.Default)
     {
     }
 
@@ -57,14 +51,7 @@ public sealed class AsposeContentBlockDocumentProcessor : IContentBlockDocumentP
             cancellationToken.ThrowIfCancellationRequested();
             EnsureParentDirectory(docxPath);
 
-            if (!File.Exists(_templateDocxPath))
-            {
-                throw new FileNotFoundException(
-                    "Default ContentBlock DOCX template was not found.",
-                    _templateDocxPath);
-            }
-
-            File.Copy(_templateDocxPath, docxPath, overwrite: true);
+            AsposeTemplateDocumentFactory.CopyTemplateTo(_templateDocxPath, docxPath);
         }, cancellationToken);
     }
 
@@ -180,7 +167,10 @@ public sealed class AsposeContentBlockDocumentProcessor : IContentBlockDocumentP
                     sourceStyleNames,
                     string.IsNullOrWhiteSpace(warning) ? null : warning));
 
-                sectionHtml.Add(BuildQuestionPartSectionHtml(document, partType, nodes.Select(node => node.Node)));
+                sectionHtml.Add(BuildQuestionPartSectionHtml(
+                    partType,
+                    nodes.Select(node => node.Node),
+                    _templateDocxPath));
                 sortOrder++;
             }
 
@@ -326,17 +316,13 @@ public sealed class AsposeContentBlockDocumentProcessor : IContentBlockDocumentP
     }
 
     private static string BuildQuestionPartSectionHtml(
-        Document sourceDocument,
         ContentBlockPartType partType,
-        IEnumerable<Node> sourceNodes)
+        IEnumerable<Node> sourceNodes,
+        string templateDocxPath)
     {
-        var fragment = new Document();
-        fragment.RemoveAllChildren();
-
-        var section = new Section(fragment);
-        fragment.AppendChild(section);
-        var body = new Body(fragment);
-        section.AppendChild(body);
+        var fragment = AsposeTemplateDocumentFactory.CreateDocumentCopy(templateDocxPath);
+        var body = fragment.FirstSection.Body;
+        body.RemoveAllChildren();
 
         foreach (var sourceNode in sourceNodes)
         {

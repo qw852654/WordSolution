@@ -353,6 +353,7 @@ const en = {
       Variant: 'Variant',
       Practice: 'Practice',
       Homework: 'Homework',
+      PreClassQuiz: 'Pre-class quiz',
     },
     atomicSectionPanelCreateOverlay: {
       dialogLabel: 'AtomicSectionPanelCreateOverlay',
@@ -1169,6 +1170,11 @@ const en = {
       wordExport: {
         missingSection: 'No Section is available to export.',
         failed: 'Failed to export Word. Please try again later.',
+        blocked: 'The pre-export check found {count} blocking issue(s), so the download was stopped.',
+        blockedWithFirstIssue:
+          'The pre-export check found {count} blocking issue(s), so the download was stopped. First issue: {message}',
+        completedWithSkipsTitle: 'Word export complete',
+        completedWithSkips: 'The Word download completed and skipped {count} non-exportable content item(s).',
       },
       emptyTitle: 'Insert the first block',
       emptyDescription:

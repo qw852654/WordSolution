@@ -541,6 +541,11 @@ public sealed class QuestionImportUseCases
                     throw new CmsV2ApplicationException("AtomicSectionPanel import context must belong to the requested AtomicSection.");
                 }
 
+                if (panel.TeachingRole == AtomicSectionTeachingRole.Knowledge)
+                {
+                    throw new CmsV2ApplicationException("Knowledge panel does not allow question import.");
+                }
+
                 context = context with
                 {
                     DefaultTeachingRole = panel.TeachingRole,

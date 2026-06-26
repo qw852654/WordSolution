@@ -4,9 +4,17 @@ public sealed record HandoutDocumentSource(
     string Title,
     string DocxPath);
 
+public enum HandoutDocumentGenerationIssueSeverity
+{
+    SilentSkip = 1,
+    WarningSkip = 2,
+    Blocking = 3
+}
+
 public sealed record HandoutDocumentGenerationIssue(
     string Code,
     string Message,
+    HandoutDocumentGenerationIssueSeverity Severity = HandoutDocumentGenerationIssueSeverity.Blocking,
     int? OutputFormId = null,
     int? ContentBlockId = null,
     int? ContentBlockVersionId = null,
