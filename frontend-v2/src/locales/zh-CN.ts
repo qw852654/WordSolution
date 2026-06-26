@@ -237,6 +237,8 @@ const zhCN = {
       compositeBlock: 'CompositeBlock',
       collapse: '折叠',
       expand: '展开',
+      importQuestions: '导入题目',
+      importQuestionsToUnassignedAria: '导入题目到 {title} 的未归组',
       more: '更多',
       incomplete: '待完善',
       emptyTitle: '暂无子内容',
@@ -1010,6 +1012,7 @@ const zhCN = {
       description: '临时 Word 会话会写入当前 Section，当前 Section：',
       target: {
         sectionTopLevel: '导入目标：当前 Section 顶层。',
+        atomicSection: '导入目标：{sectionTitle} / {atomicSectionTitle} / 未归组。',
         atomicSectionPanel:
           '导入目标：{sectionTitle} / {atomicSectionTitle} / {panelTitle}。',
       },

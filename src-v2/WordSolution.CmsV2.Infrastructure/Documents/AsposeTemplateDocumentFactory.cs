@@ -13,6 +13,13 @@ internal static class AsposeTemplateDocumentFactory
 
     public static Document CreateDocumentCopy(string templateDocxPath)
     {
+        return CreateDocumentCopy(templateDocxPath, TemplateHeaderFooterMode.Remove);
+    }
+
+    public static Document CreateDocumentCopy(
+        string templateDocxPath,
+        TemplateHeaderFooterMode headerFooterMode)
+    {
         ValidatePath(templateDocxPath, nameof(templateDocxPath));
         if (!File.Exists(templateDocxPath))
         {
@@ -21,10 +28,21 @@ internal static class AsposeTemplateDocumentFactory
                 templateDocxPath);
         }
 
-        return new Document(templateDocxPath);
+        var document = new Document(templateDocxPath);
+        ApplyHeaderFooterMode(document, headerFooterMode);
+
+        return document;
     }
 
     public static void CopyTemplateTo(string templateDocxPath, string outputDocxPath)
+    {
+        CopyTemplateTo(templateDocxPath, outputDocxPath, TemplateHeaderFooterMode.Remove);
+    }
+
+    public static void CopyTemplateTo(
+        string templateDocxPath,
+        string outputDocxPath,
+        TemplateHeaderFooterMode headerFooterMode)
     {
         ValidatePath(templateDocxPath, nameof(templateDocxPath));
         ValidatePath(outputDocxPath, nameof(outputDocxPath));
@@ -36,7 +54,21 @@ internal static class AsposeTemplateDocumentFactory
         }
 
         EnsureParentDirectory(outputDocxPath);
-        File.Copy(templateDocxPath, outputDocxPath, overwrite: true);
+        var document = CreateDocumentCopy(templateDocxPath, headerFooterMode);
+        document.Save(outputDocxPath, SaveFormat.Docx);
+    }
+
+    private static void ApplyHeaderFooterMode(Document document, TemplateHeaderFooterMode mode)
+    {
+        if (mode == TemplateHeaderFooterMode.Preserve)
+        {
+            return;
+        }
+
+        foreach (Section section in document.Sections)
+        {
+            section.HeadersFooters.Clear();
+        }
     }
 
     private static void EnsureParentDirectory(string filePath)
@@ -55,4 +87,10 @@ internal static class AsposeTemplateDocumentFactory
             throw new ArgumentException("File path cannot be empty.", parameterName);
         }
     }
+}
+
+internal enum TemplateHeaderFooterMode
+{
+    Remove,
+    Preserve
 }

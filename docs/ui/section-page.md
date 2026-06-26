@@ -1450,6 +1450,40 @@ AtomicSectionPanel
 - `PreClassQuiz` panel 允许题目导入，导入候选题的确认界面不新增逐题教学角色、难度、标签或题型编辑。
 - `PreClassQuiz` 导入不会创建新的 `ContentBlockType` 或 `QuestionType`。
 
+### AS 级导入题目到未归组
+
+当前补充一个更细的入口：`AtomicSectionBlock` 自身可以显示“导入题目”按钮，用于把题目导入到该 AS 的未归组区域。
+
+产品语义：
+
+- 该入口不是新增一套导入流程，必须复用现有 `QuestionImportDialog`。
+- 该入口使用 `QuestionImportContext.target = AtomicSection`。
+- `SectionPage` 构造 API 上下文时必须传入当前 `sectionId` 与 `atomicSectionId`，并显式保持 `atomicSectionPanelId = null`。
+- 默认 `defaultTeachingRole = Unclassified`，默认 `defaultDifficulty = 当前 AS 难度`。
+- 批量确认后，后端创建普通 `ContentBlockType.Question`，并创建 `AtomicSectionItem`。
+- 新增 `AtomicSectionItem.AtomicSectionPanelId = null`，显示在该 AS 的 `AtomicSectionUnassignedArea`。
+- 新增 item 追加到未归组区域末尾，不插入任何已有 panel。
+- 导入成功后仍由 `SectionPage` 刷新当前 Section 数据，并定位首个新增题目。
+
+前端入口：
+
+- 按钮放在 `AtomicSectionBlock` 标题操作区，与折叠、更多等 AS 级操作同层。
+- 按钮文案使用 i18n，例如“导入题目”或“导入到未归组”。
+- 按钮在只读模式、Variant 选择模式、wrap 选择模式下隐藏或禁用，不能触发导入。
+- `AtomicSectionBlock` 只 emit AS 级导入事件，不直接调用 API，不持有导入弹窗状态。
+- `SectionWorkspace` 只透传事件。
+- `SectionPage` 负责打开 `QuestionImportDialog`、启动 session、轮询、确认、刷新和错误反馈。
+
+明确不做：
+
+- 不新增后端 API。
+- 不新增新的导入弹窗或上传式导入入口。
+- 不把 AS 级导入写成 panel 导入；不得伪造 `atomicSectionPanelId`。
+- 不自动归入 Example / Variant / Practice / Homework / PreClassQuiz panel。
+- 不在导入确认界面新增逐题 TeachingRole、Difficulty、标签或题型编辑。
+- 不修改 `Knowledge` panel 禁止导入题目的规则。
+- 不修改 Word 导出、SectionVariant 同步、标签、教学评注或 AS 删除逻辑。
+
 ### 题目结构化与输出样式校准结果
 
 `SectionPage` 当前与原始规格的关系如下：

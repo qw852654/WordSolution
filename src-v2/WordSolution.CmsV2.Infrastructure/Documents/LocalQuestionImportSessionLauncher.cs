@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using WordSolution.CmsV2.Domain.Documents;
 
 namespace WordSolution.CmsV2.Infrastructure.Documents;
@@ -22,11 +21,7 @@ public sealed class LocalQuestionImportSessionLauncher : IQuestionImportSessionL
             throw new FileNotFoundException("The question import source DOCX file was not found.", request.SourceDocxPath);
         }
 
-        Process.Start(new ProcessStartInfo
-        {
-            FileName = request.SourceDocxPath,
-            UseShellExecute = true
-        });
+        LocalWordDocumentOpener.Open(request.SourceDocxPath);
 
         return Task.CompletedTask;
     }

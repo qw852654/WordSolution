@@ -20,7 +20,9 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                var outputDocument = AsposeTemplateDocumentFactory.CreateDocumentCopy(templateDocxPath);
+                var outputDocument = AsposeTemplateDocumentFactory.CreateDocumentCopy(
+                    templateDocxPath,
+                    TemplateHeaderFooterMode.Preserve);
                 return ValidateWordGeneration(outputDocument, elements);
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
@@ -98,7 +100,9 @@ public sealed class AsposeHandoutDocumentGenerator : IHandoutDocumentGenerator
             cancellationToken.ThrowIfCancellationRequested();
             EnsureParentDirectory(outputDocxPath);
 
-            var outputDocument = AsposeTemplateDocumentFactory.CreateDocumentCopy(templateDocxPath);
+            var outputDocument = AsposeTemplateDocumentFactory.CreateDocumentCopy(
+                templateDocxPath,
+                TemplateHeaderFooterMode.Preserve);
             var issues = ValidateWordGeneration(outputDocument, elements);
             ThrowIfValidationIssues(issues);
             var builder = new DocumentBuilder(outputDocument);

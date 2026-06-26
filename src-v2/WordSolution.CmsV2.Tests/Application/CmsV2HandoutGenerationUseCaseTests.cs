@@ -159,9 +159,23 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
             AtomicSectionTeachingRole.Practice,
             Difficulty.Basic,
             sortOrder: 20);
+        var emptyAtomicExamplePanel = new AtomicSectionPanel(
+            emptyAtomicSection.Id,
+            "Empty Atomic Example Panel Title",
+            AtomicSectionTeachingRole.Example,
+            Difficulty.Basic,
+            sortOrder: 10);
+        var emptyAtomicPracticePanel = new AtomicSectionPanel(
+            emptyAtomicSection.Id,
+            "Empty Atomic Practice Panel Title",
+            AtomicSectionTeachingRole.Practice,
+            Difficulty.Basic,
+            sortOrder: 20);
         await unitOfWork.AtomicSectionPanels.AddAsync(emptyPanel);
         await unitOfWork.AtomicSectionPanels.AddAsync(earlyPanel);
         await unitOfWork.AtomicSectionPanels.AddAsync(latePanel);
+        await unitOfWork.AtomicSectionPanels.AddAsync(emptyAtomicExamplePanel);
+        await unitOfWork.AtomicSectionPanels.AddAsync(emptyAtomicPracticePanel);
         await unitOfWork.SaveChangesAsync();
         await unitOfWork.AtomicSectionItems.AddAsync(new AtomicSectionItem(
             atomicSection.Id,
@@ -231,6 +245,9 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
         Assert.DoesNotContain("Empty Panel Title", outputText);
         Assert.DoesNotContain("Early Panel Title", outputText);
         Assert.DoesNotContain("Late Panel Title", outputText);
+        Assert.DoesNotContain("Empty Atomic Example Panel Title", outputText);
+        Assert.DoesNotContain("Empty Atomic Practice Panel Title", outputText);
+        Assert.DoesNotContain("Empty Atomic Word Title", outputText);
         AssertTextOrder(
             outputText,
             "Atomic Word Title",
@@ -239,8 +256,7 @@ public sealed class CmsV2HandoutGenerationUseCaseTests
             "Unassigned content",
             "Locked old content",
             "Relation child content",
-            "Tie second content",
-            "Empty Atomic Word Title");
+            "Tie second content");
         AssertHeadingUsesTemplateStyleWithoutDirectRunFormatting(outputDocxPath, "Section Word 导出", "Heading2");
         AssertHeadingUsesTemplateStyleWithoutDirectRunFormatting(outputDocxPath, "Atomic Word Title", "Heading3");
         Assert.Empty(await unitOfWork.GeneratedFiles.ListAsync());

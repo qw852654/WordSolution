@@ -329,19 +329,22 @@ public sealed class HandoutGenerationUseCases
                 && !issue.ContentBlockVersionId.HasValue)
             .Select(issue => issue.ContentBlockId!.Value)
             .ToHashSet();
-        if (skippedBlockVersions.Count == 0 && skippedContentBlocks.Count == 0)
+        var hasSkippedContent = skippedBlockVersions.Count > 0 || skippedContentBlocks.Count > 0;
+        var sources = hasSkippedContent
+            ? content.Sources
+                .Where(source => !skippedBlockVersions.Contains((source.ContentBlockId, source.ContentBlockVersionId)))
+                .Select((source, index) => source with { Sequence = index + 1 })
+                .ToArray()
+            : content.Sources;
+        var keepElements = content.Elements
+            .Select(element => !hasSkippedContent || !IsSkippedContentBlock(element, skippedContentBlocks, skippedBlockVersions))
+            .ToArray();
+        RemoveEmptyAtomicSectionHeadings(content.Elements, keepElements);
+        if (!keepElements.Contains(false))
         {
             return content;
         }
 
-        var sources = content.Sources
-            .Where(source => !skippedBlockVersions.Contains((source.ContentBlockId, source.ContentBlockVersionId)))
-            .Select((source, index) => source with { Sequence = index + 1 })
-            .ToArray();
-        var keepElements = content.Elements
-            .Select(element => !IsSkippedContentBlock(element, skippedContentBlocks, skippedBlockVersions))
-            .ToArray();
-        RemoveAtomicSectionHeadingsMadeEmptyByWarningSkips(content.Elements, keepElements);
         var elements = content.Elements
             .Where((_, index) => keepElements[index])
             .ToArray();
@@ -364,7 +367,7 @@ public sealed class HandoutGenerationUseCases
                 && skippedBlockVersions.Contains((element.ContentBlockId.Value, element.ContentBlockVersionId.Value)));
     }
 
-    private static void RemoveAtomicSectionHeadingsMadeEmptyByWarningSkips(
+    private static void RemoveEmptyAtomicSectionHeadings(
         IReadOnlyList<HandoutDocumentElement> elements,
         bool[] keepElements)
     {
@@ -376,7 +379,6 @@ public sealed class HandoutGenerationUseCases
                 continue;
             }
 
-            var hasSkippedContent = false;
             var hasRemainingContent = false;
             for (var cursor = index + 1; cursor < elements.Count; cursor++)
             {
@@ -396,11 +398,9 @@ public sealed class HandoutGenerationUseCases
                     hasRemainingContent = true;
                     break;
                 }
-
-                hasSkippedContent = true;
             }
 
-            if (hasSkippedContent && !hasRemainingContent)
+            if (!hasRemainingContent)
             {
                 keepElements[index] = false;
             }

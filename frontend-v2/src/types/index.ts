@@ -172,7 +172,7 @@ export interface SectionVariantSelectionCandidateModel {
 
 export type WorkspaceItemSelectionState = 'none' | 'selectable' | 'selected' | 'unavailable'
 
-export type QuestionImportTarget = 'SectionTopLevel' | 'AtomicSectionPanel'
+export type QuestionImportTarget = 'SectionTopLevel' | 'AtomicSection' | 'AtomicSectionPanel'
 
 export type QuestionImportContext =
   | {
@@ -181,6 +181,15 @@ export type QuestionImportContext =
       sectionTitle: string
       afterSectionItemId?: number | null
       defaultDifficulty?: string
+    }
+  | {
+      target: 'AtomicSection'
+      sectionId: number
+      sectionTitle: string
+      atomicSectionId: number
+      atomicSectionTitle: string
+      afterAtomicSectionItemId?: number | null
+      difficulty: string
     }
   | {
       target: 'AtomicSectionPanel'
@@ -481,6 +490,14 @@ export interface AtomicSectionPanelModel {
   disabled?: boolean
 }
 
+export interface AtomicSectionActionPayload {
+  nodeId: string
+  atomicSectionId: number
+  title: string
+  difficulty: string
+  difficultyValue?: string
+}
+
 export interface AtomicSectionPanelActionPayload {
   nodeId: string
   atomicSectionId: number
@@ -549,6 +566,7 @@ export interface StructuredBlockModel {
   selfContent?: ContentBlockDisplayModel
   status: string
   difficulty: string
+  difficultyValue?: string
   summary: string
   children: StructuredBlockChildModel[]
   panels?: AtomicSectionPanelModel[]

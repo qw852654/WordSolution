@@ -249,6 +249,8 @@ const en = {
       compositeBlock: 'CompositeBlock',
       collapse: 'Collapse',
       expand: 'Expand',
+      importQuestions: 'Import questions',
+      importQuestionsToUnassignedAria: 'Import questions into {title} unassigned area',
       more: 'More',
       incomplete: 'Incomplete',
       emptyTitle: 'No child content',
@@ -1026,6 +1028,7 @@ const en = {
       description: 'The temporary Word session writes into the current Section: ',
       target: {
         sectionTopLevel: 'Import target: current Section top level.',
+        atomicSection: 'Import target: {sectionTitle} / {atomicSectionTitle} / Unassigned.',
         atomicSectionPanel:
           'Import target: {sectionTitle} / {atomicSectionTitle} / {panelTitle}.',
       },

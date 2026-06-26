@@ -46,6 +46,7 @@ import {
   findTeachingTopicTreeNodePath,
 } from '@/utils/teachingStructureTree'
 import type {
+  AtomicSectionActionPayload,
   InsertCreateContentBlockType,
   InsertCreateDifficulty,
   InsertCreatePanelModel,
@@ -923,6 +924,15 @@ const questionImportContext = computed<QuestionImportContext>(
 )
 
 function getQuestionImportContextKey(context: QuestionImportContext) {
+  if (context.target === 'AtomicSection') {
+    return [
+      context.target,
+      context.sectionId,
+      context.atomicSectionId,
+      context.afterAtomicSectionItemId ?? 'end',
+    ].join(':')
+  }
+
   if (context.target === 'AtomicSectionPanel') {
     return [
       context.target,
@@ -965,6 +975,18 @@ function buildQuestionImportApiContext(): CmsV2InsertQuestionContext | undefined
       afterAtomicSectionItemId: null,
       afterSectionItemId: null,
       defaultTeachingRole: context.teachingRole,
+      defaultDifficulty: normalizeCmsV2Difficulty(context.difficulty),
+    }
+  }
+
+  if (context.target === 'AtomicSection') {
+    return {
+      sectionId: context.sectionId,
+      atomicSectionId: context.atomicSectionId,
+      atomicSectionPanelId: null,
+      afterAtomicSectionItemId: null,
+      afterSectionItemId: null,
+      defaultTeachingRole: 'Unclassified',
       defaultDifficulty: normalizeCmsV2Difficulty(context.difficulty),
     }
   }
@@ -1625,6 +1647,28 @@ function requestAtomicSectionPanelQuestionImport(payload: AtomicSectionPanelActi
     teachingRole: payload.teachingRole,
     difficulty: getAtomicSectionPanelDifficultyForApi(payload),
   })
+}
+
+function requestAtomicSectionQuestionImport(payload: AtomicSectionActionPayload) {
+  const currentSectionId = getCurrentNumericSectionId()
+  if (!currentSectionId) {
+    questionImportError.value = t('sectionPage.questionImport.missingSection')
+    return
+  }
+
+  openQuestionImportDialog({
+    target: 'AtomicSection',
+    sectionId: currentSectionId,
+    sectionTitle: sectionShell.value.title,
+    atomicSectionId: payload.atomicSectionId,
+    atomicSectionTitle: getAtomicSectionTitleById(payload.atomicSectionId) ?? payload.title,
+    afterAtomicSectionItemId: null,
+    difficulty: getAtomicSectionDifficultyForApi(payload),
+  })
+}
+
+function getAtomicSectionDifficultyForApi(payload: AtomicSectionActionPayload) {
+  return payload.difficultyValue ?? mapInsertDifficulty(payload.difficulty as InsertCreateDifficulty)
 }
 
 function getAtomicSectionPanelDifficultyForApi(payload: AtomicSectionPanelActionPayload) {
@@ -3440,6 +3484,7 @@ watch(
         @request-atomic-move="requestAtomicMove"
         @request-atomic-rename="requestAtomicRename"
         @request-atomic-remove="requestAtomicRemove"
+        @request-atomic-section-question-import="requestAtomicSectionQuestionImport"
         @request-atomic-section-item-open-word="requestAtomicSectionItemOpenWord"
         @request-atomic-section-item-move="requestAtomicSectionItemMove"
         @request-atomic-section-item-remove="requestAtomicSectionItemRemove"

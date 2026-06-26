@@ -1166,3 +1166,135 @@ git diff --check
 - 同步成功后不刷新 Variant 列表、不切换视图、不打开 Variant。
 - 同步失败时没有部分写入，前端提示“同步失败，未修改任何 Variant”。
 - AS 内部新增块不会触发 Variant 同步提示；已包含该 AS 的 Variant 后续能自然展示 AS 内部最新内容。
+
+---
+
+## 2026-06-26 AS 级导入题目到未归组
+
+> **执行要求**：本计划是一个窄范围前端接线任务。实现阶段必须使用单独执行线程推进；不 stage、commit、push、reset、checkout；不修改 V1、VSTO、Word 本地文件操作核心库、题库本地服务/wwwroot；不顺手修复 Word 导出、SectionVariant 同步、AS 删除、标签或教学评注问题。
+
+### 目标
+
+在 `SectionPage` 的 `AtomicSectionBlock` 标题操作区增加一个 AS 级“导入题目”入口。该入口复用现有 `QuestionImportDialog` 与临时 Word session 流程，但导入结果必须进入当前 AS 的未归组区域，也就是创建 `AtomicSectionPanelId = null` 的 `AtomicSectionItem`，并追加到未归组末尾。
+
+### 规格来源
+
+- `docs/ui/section-page.md` 中“AS 级导入题目到未归组”。
+- `docs/ui/component-rules.md` 中 `AtomicSectionBlock` 与 `QuestionImportDialog 可复用上下文`。
+- `docs/cms-v2/backend/题目结构化预览-输出样式重绑定-多题导入开发文档.md` 中现有临时 Word 多题导入、`InsertQuestionContext` 与 panel 导入约束。
+
+### 当前已确认实现基础
+
+- 后端 `InsertQuestionContext` 已支持 `AtomicSectionId`。
+- 当 `AtomicSectionId` 有值且 `AtomicSectionPanelId = null` 时，确认导入会创建 `AtomicSectionItem`。
+- `InsertAtomicSectionItemsAsync` 会按 `AtomicSectionPanelId` 作用域插入；`null` 作用域即未归组区域。
+- 当前缺口是前端只暴露了 Section 顶层入口和 AtomicSectionPanel 入口，尚未在 `AtomicSectionBlock` 暴露 `AtomicSection` 入口。
+
+### 预计修改范围
+
+前端类型：
+
+- 修改：`frontend-v2/src/types/index.ts`
+  - 将 `QuestionImportTarget` 扩展为 `SectionTopLevel | AtomicSection | AtomicSectionPanel`。
+  - 为 `QuestionImportContext` 增加 `AtomicSection` 分支，字段包括 `sectionId`、`sectionTitle`、`atomicSectionId`、`atomicSectionTitle`、可选 `afterAtomicSectionItemId`。
+
+前端组件接线：
+
+- 修改：`frontend-v2/src/components/business/AtomicSectionBlock.vue`
+  - 在 AS 标题操作区增加 AS 级导入按钮。
+  - 只 emit AS 级导入事件，不调用 API。
+  - 不向该事件传 `atomicSectionPanelId`。
+- 修改：`frontend-v2/src/components/containers/SectionWorkspace.vue`
+  - 透传 `AtomicSectionBlock` 的 AS 级导入事件给页面。
+- 修改：`frontend-v2/src/pages/SectionPage.vue`
+  - 增加 AS 级导入事件处理函数。
+  - 打开 `QuestionImportDialog` 时使用 `QuestionImportContext.target = AtomicSection`。
+  - `buildQuestionImportApiContext` 识别 `AtomicSection` 分支，并构造：
+    - `sectionId = 当前 Section`
+    - `atomicSectionId = 当前 AS`
+    - `atomicSectionPanelId = null`
+    - `afterAtomicSectionItemId = null`
+    - `afterSectionItemId = null`
+    - `defaultTeachingRole = Unclassified`
+    - `defaultDifficulty = 当前 AS 难度`
+  - 批量确认后沿用现有刷新和定位逻辑。
+
+前端文案：
+
+- 修改：`frontend-v2/src/locales/zh-CN.ts`
+- 修改：`frontend-v2/src/locales/en.ts`
+- 文案必须使用 i18n，不在 Vue 模板中硬编码中文或英文。
+
+文档：
+
+- 必要时只收口上述规格来源文档，不新增新文档文件。
+
+### 明确不做
+
+- 不修改后端 Application / API / Domain / Infrastructure，除非实现中发现现有 AtomicSection import context 已损坏；如果损坏，停止并报告，不自行扩展需求。
+- 不新增 API endpoint。
+- 不新增新的导入弹窗。
+- 不恢复 `.docx` 文件上传式导入。
+- 不新增逐候选确认 API。
+- 不在 `QuestionImportDialog` 里直接调用 API。
+- 不在 `AtomicSectionBlock`、`SectionWorkspace` 中调用 API。
+- 不把 AS 级导入写成 panel 导入。
+- 不传递、伪造或推断 `atomicSectionPanelId`。
+- 不自动归入 Example / Variant / Practice / Homework / PreClassQuiz panel。
+- 不修改 `Knowledge` panel 隐藏导入题目入口的现有规则。
+- 不新增 ContentBlockType、QuestionType、TeachingRole 或 Difficulty。
+- 不修改 Word 导出跳过逻辑。
+- 不修改 SectionVariant 自动同步计划。
+- 不修改标签、教学评注、AS 删除或内容清理逻辑。
+
+### 单阶段执行计划
+
+本任务只设置一个实现阶段，避免把小功能拆成多个执行线程。
+
+#### Phase 1：前端 AS 级导入入口接入
+
+目标：在 `AtomicSectionBlock` 上增加 AS 级导入按钮，并复用现有 `QuestionImportDialog` 把题目导入当前 AS 未归组末尾。
+
+实施步骤：
+
+- [ ] 读取必读文档与本计划，确认当前分支不是 `master`。
+- [ ] 检查 `QuestionImportContext`、`SectionPage`、`SectionWorkspace`、`AtomicSectionBlock`、`AtomicSectionPanelBlock` 现有导入链路。
+- [ ] 扩展前端 `QuestionImportTarget` / `QuestionImportContext`，增加 `AtomicSection` 分支。
+- [ ] 在 `SectionPage.getQuestionImportContextKey` 中加入 `AtomicSection` 上下文 key，避免 AS 间切换时复用旧 session。
+- [ ] 在 `SectionPage.buildQuestionImportApiContext` 中加入 `AtomicSection` 分支，确保 `atomicSectionPanelId = null` 且 `defaultTeachingRole = Unclassified`、`defaultDifficulty = 当前 AS 难度`。
+- [ ] 在 `AtomicSectionBlock` 增加按钮和 emit，按钮只在非只读状态可用。
+- [ ] 在 `SectionWorkspace` 透传 AS 级导入事件。
+- [ ] 在 `SectionPage` 增加 AS 级导入处理函数，打开 `QuestionImportDialog`。
+- [ ] 补充 `zh-CN.ts` 与 `en.ts` 文案。
+- [ ] 运行前端 typecheck 与 build。
+- [ ] 运行 `git diff --check`。
+
+推荐验证命令：
+
+```powershell
+npm --prefix .\frontend-v2 run typecheck
+npm --prefix .\frontend-v2 run build
+git diff --check
+```
+
+阶段完成标准：
+
+- `AtomicSectionBlock` 标题操作区出现 AS 级导入题目入口。
+- 点击后打开现有 `QuestionImportDialog`，目标语义为当前 AS。
+- API 请求中的 `atomicSectionId` 为当前 AS，`atomicSectionPanelId = null`。
+- 导入确认后题目进入未归组区域末尾。
+- 现有 Section 顶层导入保持原行为。
+- 现有 panel 导入保持原行为。
+- `Knowledge` panel 仍无导入题目入口。
+- 前端 typecheck、build、`git diff --check` 通过。
+
+### 人工验收清单
+
+- 在 SectionPage 中找到某个 AS，AS 标题操作区可见“导入题目”入口。
+- 点击 AS 级入口后打开现有多题导入弹窗，而不是新弹窗。
+- 完成临时 Word 导入并确认候选题后，新题目出现在该 AS 的未归组区域末尾。
+- 新题目不进入 Example / Variant / Practice / Homework / PreClassQuiz 任一 panel。
+- panel 内原“导入题目”入口仍把题目导入对应 panel。
+- `Knowledge` panel 仍不显示“导入题目”。
+- Section 顶部“导入题目”仍导入为 Section 顶层内容。
+- 只读模式、Variant 选择模式、wrap 选择模式下不能触发 AS 级导入。

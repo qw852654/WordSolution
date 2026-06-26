@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using WordSolution.CmsV2.Domain.Documents;
 
 namespace WordSolution.CmsV2.Infrastructure.Documents;
@@ -22,11 +21,7 @@ public sealed class LocalContentBlockEditSessionLauncher : IContentBlockEditSess
             throw new FileNotFoundException("The edit session DOCX file was not found.", session.EditableDocxPath);
         }
 
-        Process.Start(new ProcessStartInfo
-        {
-            FileName = session.EditableDocxPath,
-            UseShellExecute = true
-        });
+        LocalWordDocumentOpener.Open(session.EditableDocxPath);
 
         return Task.FromResult(new ContentBlockEditLaunchResult(
             ContentBlockEditLaunchMode.LocalShell,

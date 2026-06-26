@@ -2011,12 +2011,23 @@ Archived `Handout` or `HandoutVersion` entries must be rendered read-only in `Ha
 - 作为一个 `AtomicSection` 在 Workspace 中的外层展示组件。
 - 装配 `AtomicSectionPanelBlock[]` 和 `AtomicSectionUnassignedArea`。
 - 展示 `AtomicSection` 标题、难度、状态和外层操作入口。
+- 在可编辑状态下可以暴露 AS 级 `导入题目` 入口，用于把题目导入到该 AS 的未归组区域。
+- AS 级导入入口只 emit 当前 `AtomicSection` 上下文；弹窗状态、API 调用、导入后刷新和定位仍由 `SectionPage` 持有。
 
 禁止：
 
 - 不直接调用 API。
 - 不直接修改 panel 或 item 数据。
 - 不在内部硬编码创建默认 panel 列表；默认 panel 由后端和页面级数据决定。
+- 不把 AS 级导入伪装成 panel 导入；不得在组件内生成或传递 `atomicSectionPanelId`。
+- 不自行决定导入结果的排序、归组或默认教学职责。
+
+AS 级导入规则：
+
+- 导入目标为 `QuestionImportContext.target = AtomicSection`。
+- API context 必须由页面级逻辑构造为：`atomicSectionId = 当前 AS`、`atomicSectionPanelId = null`、`defaultTeachingRole = Unclassified`、`defaultDifficulty = 当前 AS 难度`。
+- 批量确认后的题目显示在 `AtomicSectionUnassignedArea` 末尾。
+- 该入口不影响 `AtomicSectionPanelBlock` 内部的 panel 级导入入口。
 
 ### AtomicSectionPanelBlock
 
@@ -2299,6 +2310,8 @@ SectionTopLevel
 AtomicSection
   当前 AtomicSection 内部导入。
   后续确认候选题后，由后端创建 AtomicSectionItem。
+  该入口用于 AS 未归组区域，页面级 API context 必须保持 atomicSectionPanelId = null。
+  默认 TeachingRole 为 Unclassified，默认 Difficulty 继承当前 AS 难度。
 
 AtomicSectionPanel
   当前 AtomicSectionPanel 内部导入目标。

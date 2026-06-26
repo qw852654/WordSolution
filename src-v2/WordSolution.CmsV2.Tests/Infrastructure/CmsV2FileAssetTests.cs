@@ -128,6 +128,23 @@ public sealed class CmsV2FileAssetTests
         Assert.Contains("默认内容块模板", await processor.ExtractPlainTextAsync(initialDocxPath));
     }
 
+    [Fact]
+    public async Task AsposeContentBlockDocumentProcessor_removes_headers_and_footers_from_blank_docx()
+    {
+        var rootDirectory = CreateTempRoot();
+        var templateDocxPath = Path.Combine(rootDirectory, "template-with-header-footer.docx");
+        var blankDocxPath = Path.Combine(rootDirectory, "blank.docx");
+        CreateTemplateWithHeaderFooter(templateDocxPath);
+        var processor = new AsposeContentBlockDocumentProcessor(templateDocxPath);
+
+        await processor.CreateBlankDocxAsync(blankDocxPath);
+
+        var document = new Document(blankDocxPath);
+        Assert.DoesNotContain("妯℃澘椤电湁", document.ToString(SaveFormat.Text));
+        Assert.DoesNotContain("妯℃澘椤佃剼", document.ToString(SaveFormat.Text));
+        Assert.Contains("妯℃澘姝ｆ枃", await processor.ExtractPlainTextAsync(blankDocxPath));
+    }
+
     private static string CreateTempRoot()
     {
         return Path.Combine(
@@ -146,6 +163,21 @@ public sealed class CmsV2FileAssetTests
         builder.Writeln("第一条");
         builder.Writeln("第二条");
         builder.ListFormat.RemoveNumbers();
+        document.Save(docxPath);
+    }
+
+    private static void CreateTemplateWithHeaderFooter(string docxPath)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(docxPath)!);
+
+        var document = new Document();
+        var builder = new DocumentBuilder(document);
+        builder.MoveToHeaderFooter(HeaderFooterType.HeaderPrimary);
+        builder.Write("妯℃澘椤电湁");
+        builder.MoveToHeaderFooter(HeaderFooterType.FooterPrimary);
+        builder.Write("妯℃澘椤佃剼");
+        builder.MoveToDocumentEnd();
+        builder.Writeln("妯℃澘姝ｆ枃");
         document.Save(docxPath);
     }
 

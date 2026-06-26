@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { MoreHorizontal } from 'lucide-vue-next'
+import { FileUp, MoreHorizontal } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import AtomicSectionPanelBlock from '@/components/business/AtomicSectionPanelBlock.vue'
 import AtomicSectionUnassignedArea from '@/components/business/AtomicSectionUnassignedArea.vue'
@@ -12,6 +12,7 @@ import InsertPoint from '@/components/presentation/InsertPoint.vue'
 import StructuredContainer from '@/components/presentation/StructuredContainer.vue'
 import { Button } from '@/components/ui/button'
 import type {
+  AtomicSectionActionPayload,
   AtomicSectionItemActionPayload,
   AtomicSectionItemMovePayload,
   AtomicSectionPanelActionPayload,
@@ -46,6 +47,7 @@ const emit = defineEmits<{
   renameAtomicSectionPanel: [payload: AtomicSectionPanelActionPayload]
   moveAtomicSectionPanel: [payload: AtomicSectionPanelMovePayload]
   removeAtomicSectionPanel: [payload: AtomicSectionPanelActionPayload]
+  requestAtomicSectionQuestionImport: [payload: AtomicSectionActionPayload]
   requestAtomicSectionPanelQuestionImport: [payload: AtomicSectionPanelActionPayload]
   openAtomicSectionItemWord: [payload: AtomicSectionItemActionPayload]
   moveAtomicSectionItem: [payload: AtomicSectionItemMovePayload]
@@ -93,6 +95,28 @@ function emitCreatePanel(beforePanel?: AtomicSectionPanelModel, afterPanel?: Ato
   const payload = createPanelCreatePayload(beforePanel, afterPanel)
   if (payload) {
     emit('createAtomicSectionPanel', payload)
+  }
+}
+
+function createAtomicSectionPayload(): AtomicSectionActionPayload | undefined {
+  if (!props.block.atomicSectionId) {
+    return undefined
+  }
+
+  return {
+    nodeId: props.block.id,
+    atomicSectionId: props.block.atomicSectionId,
+    title: props.block.title,
+    difficulty: props.block.difficulty,
+    difficultyValue: props.block.difficultyValue,
+  }
+}
+
+function emitAtomicSectionQuestionImport() {
+  const payload = createAtomicSectionPayload()
+
+  if (payload) {
+    emit('requestAtomicSectionQuestionImport', payload)
   }
 }
 
@@ -227,6 +251,18 @@ function handlePanelInsert(request: InsertRequestModel) {
     </template>
 
     <template #actions>
+      <Button
+        v-if="!readOnly"
+        type="button"
+        size="sm"
+        variant="ghost"
+        :aria-label="t('components.structuredBlock.importQuestionsToUnassignedAria', { title: block.title })"
+        :disabled="block.disabled || !block.atomicSectionId"
+        @click.stop="emitAtomicSectionQuestionImport"
+      >
+        <FileUp class="size-3.5" aria-hidden="true" />
+        {{ t('components.structuredBlock.importQuestions') }}
+      </Button>
       <Button
         type="button"
         size="sm"

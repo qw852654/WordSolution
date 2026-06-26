@@ -74,6 +74,10 @@ const canConfirmCandidates = computed(
   () => isReviewReady.value && !props.busy && !props.candidatesLoading && selectedCount.value > 0,
 )
 const importTargetTitle = computed(() => {
+  if (props.importContext.target === 'AtomicSection') {
+    return props.importContext.atomicSectionTitle
+  }
+
   if (props.importContext.target === 'AtomicSectionPanel') {
     return props.importContext.atomicSectionPanelTitle
   }
@@ -81,6 +85,13 @@ const importTargetTitle = computed(() => {
   return props.importContext.sectionTitle
 })
 const importTargetDescription = computed(() => {
+  if (props.importContext.target === 'AtomicSection') {
+    return t('sectionPage.questionImport.target.atomicSection', {
+      sectionTitle: props.importContext.sectionTitle,
+      atomicSectionTitle: props.importContext.atomicSectionTitle,
+    })
+  }
+
   if (props.importContext.target === 'AtomicSectionPanel') {
     return t('sectionPage.questionImport.target.atomicSectionPanel', {
       sectionTitle: props.importContext.sectionTitle,

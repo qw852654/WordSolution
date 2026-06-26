@@ -12,6 +12,7 @@ import WeakScrollArea from '@/components/presentation/WeakScrollArea.vue'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import type {
+  AtomicSectionActionPayload,
   AtomicSectionItemActionPayload,
   AtomicSectionItemMovePayload,
   AtomicSectionPanelActionPayload,
@@ -103,6 +104,7 @@ const emit = defineEmits<{
   requestSectionWordExport: []
   requestQuestionImport: []
   requestAtomicChildContentBlock: [request: AtomicSectionWorkspaceActionPayload]
+  requestAtomicSectionQuestionImport: [request: AtomicSectionActionPayload]
   requestAtomicMove: [request: AtomicSectionWorkspaceMovePayload]
   requestAtomicRename: [request: AtomicSectionWorkspaceActionPayload]
   requestAtomicRemove: [request: AtomicSectionWorkspaceActionPayload]
@@ -840,6 +842,7 @@ watch(
                 @select-content-block="handleNestedWorkspaceSelection"
                 @toggle-collapse="emit('toggleWorkspaceNodeCollapse', $event)"
                 @request-insert="emitInsertRequest"
+                @request-atomic-section-question-import="emit('requestAtomicSectionQuestionImport', $event)"
                 @create-atomic-section-panel="emit('requestAtomicSectionPanelCreate', $event)"
                 @select-atomic-section-panel="emit('requestAtomicSectionPanelSelect', $event)"
                 @rename-atomic-section-panel="emit('requestAtomicSectionPanelRename', $event)"
