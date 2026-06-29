@@ -59,6 +59,7 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ContentBlockDocumentUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ContentBlockEditSessionUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ContentBlockDeletionUseCases>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<ContentAssetDeletionUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ContentBlockRelationUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<SectionUseCases>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<AtomicSectionUseCases>());
@@ -550,6 +551,155 @@ public sealed class CmsV2ApiIntegrationTests
         Assert.True(deleteResult.GetProperty("deletedAssetCount").GetInt32() > 0);
         Assert.Equal(HttpStatusCode.NotFound, deletedBlock.StatusCode);
         Assert.Empty(variantItems);
+    }
+
+    [Fact]
+    public async Task Section_item_content_asset_delete_endpoint_removes_reference_and_asset()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var context = await CreateSectionContentAssetAsync(client, "Section asset delete");
+
+        var response = await client.DeleteAsync(
+            $"/api/cms-v2/sections/{context.SectionId}/items/{context.SectionItemId}/content-asset");
+        var result = await ReadSuccessJsonAsync(response);
+        var sectionItems = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/sections/{context.SectionId}/items")
+            ?? [];
+        var deletedBlock = await client.GetAsync($"/api/cms-v2/content-blocks/{context.ContentBlockId}");
+
+        Assert.Equal(context.ContentBlockId, result.GetProperty("rootContentBlockId").GetInt32());
+        Assert.True(result.GetProperty("removedCurrentReference").GetBoolean());
+        Assert.True(result.GetProperty("deletedRootAsset").GetBoolean());
+        Assert.Equal(1, result.GetProperty("removedSectionItemCount").GetInt32());
+        Assert.Equal(1, result.GetProperty("deletedContentBlockCount").GetInt32());
+        Assert.Empty(result.GetProperty("retainReasons").EnumerateArray());
+        Assert.DoesNotContain(sectionItems, item => item.GetProperty("id").GetInt32() == context.SectionItemId);
+        Assert.Equal(HttpStatusCode.NotFound, deletedBlock.StatusCode);
+    }
+
+    [Fact]
+    public async Task Atomic_section_item_content_asset_delete_endpoint_removes_reference_and_asset()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var sectionId = await CreateSectionAsync(client, "Atomic asset delete");
+        var atomicSection = await PostJsonAsync(
+            client,
+            "/api/cms-v2/atomic-sections",
+            new { sectionId, title = "Atomic asset delete", type = "Custom", difficulty = "Basic", status = "Draft" });
+        var atomicSectionId = atomicSection.GetProperty("id").GetInt32();
+        var contentBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks",
+            new { sectionId, title = "Atomic owned block", blockType = "KnowledgePoint", difficulty = "Basic", status = "Draft" });
+        var contentBlockId = contentBlock.GetProperty("id").GetInt32();
+        var atomicItem = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/atomic-sections/{atomicSectionId}/items",
+            new
+            {
+                contentBlockId,
+                referenceMode = "FollowLatest",
+                lockedContentBlockVersionId = (int?)null,
+                sortOrder = 10
+            });
+        var atomicItemId = atomicItem.GetProperty("id").GetInt32();
+
+        var response = await client.DeleteAsync(
+            $"/api/cms-v2/atomic-sections/{atomicSectionId}/items/{atomicItemId}/content-asset");
+        var result = await ReadSuccessJsonAsync(response);
+        var atomicItems = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/atomic-sections/{atomicSectionId}/items")
+            ?? [];
+        var deletedBlock = await client.GetAsync($"/api/cms-v2/content-blocks/{contentBlockId}");
+
+        Assert.Equal(contentBlockId, result.GetProperty("rootContentBlockId").GetInt32());
+        Assert.True(result.GetProperty("removedCurrentReference").GetBoolean());
+        Assert.True(result.GetProperty("deletedRootAsset").GetBoolean());
+        Assert.Equal(1, result.GetProperty("removedAtomicSectionItemCount").GetInt32());
+        Assert.Equal(1, result.GetProperty("deletedContentBlockCount").GetInt32());
+        Assert.DoesNotContain(atomicItems, item => item.GetProperty("id").GetInt32() == atomicItemId);
+        Assert.Equal(HttpStatusCode.NotFound, deletedBlock.StatusCode);
+    }
+
+    [Fact]
+    public async Task Section_item_content_asset_delete_endpoint_rejects_item_from_other_section()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var context = await CreateSectionContentAssetAsync(client, "Wrong parent asset delete");
+        var otherSectionId = await CreateSectionAsync(client, "Wrong parent other section");
+
+        var response = await client.DeleteAsync(
+            $"/api/cms-v2/sections/{otherSectionId}/items/{context.SectionItemId}/content-asset");
+        var sectionItems = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/sections/{context.SectionId}/items")
+            ?? [];
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains(sectionItems, item => item.GetProperty("id").GetInt32() == context.SectionItemId);
+    }
+
+    [Fact]
+    public async Task Section_item_content_asset_delete_endpoint_rejects_atomic_section_target()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var sectionId = await CreateSectionAsync(client, "Unsupported atomic target");
+        var atomicSection = await PostJsonAsync(
+            client,
+            "/api/cms-v2/atomic-sections",
+            new { sectionId, title = "Unsupported target", type = "Custom", difficulty = "Basic", status = "Draft" });
+        var sectionItem = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/sections/{sectionId}/items",
+            new
+            {
+                targetType = "AtomicSection",
+                targetId = atomicSection.GetProperty("id").GetInt32(),
+                referenceMode = "FollowLatest",
+                lockedContentBlockVersionId = (int?)null,
+                sortOrder = 10,
+                status = "Draft"
+            });
+
+        var response = await client.DeleteAsync(
+            $"/api/cms-v2/sections/{sectionId}/items/{sectionItem.GetProperty("id").GetInt32()}/content-asset");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("AtomicSection", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Section_item_content_asset_delete_endpoint_retains_asset_when_protected_by_handout()
+    {
+        await using var factory = new CmsV2ApiFactory();
+        var client = factory.CreateClient();
+        var context = await CreateSectionContentAssetAsync(client, "Handout protected asset");
+        var handout = await PostJsonAsync(client, "/api/cms-v2/handouts", new { title = "Protected handout", status = "Draft" });
+        var handoutVersion = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/handouts/{handout.GetProperty("id").GetInt32()}/versions",
+            new { title = "Protected version", type = "Normal", status = "Draft" });
+        await PostJsonAsync(
+            client,
+            $"/api/cms-v2/handout-versions/{handoutVersion.GetProperty("id").GetInt32()}/items",
+            new { targetType = "ContentBlock", targetId = context.ContentBlockId, sortOrder = 10 });
+
+        var response = await client.DeleteAsync(
+            $"/api/cms-v2/sections/{context.SectionId}/items/{context.SectionItemId}/content-asset");
+        var result = await ReadSuccessJsonAsync(response);
+        var retainedBlock = await client.GetAsync($"/api/cms-v2/content-blocks/{context.ContentBlockId}");
+        var sectionItems = await client.GetFromJsonAsync<JsonElement[]>($"/api/cms-v2/sections/{context.SectionId}/items")
+            ?? [];
+        var retainReasons = result.GetProperty("retainReasons").EnumerateArray().ToArray();
+
+        Assert.True(result.GetProperty("removedCurrentReference").GetBoolean());
+        Assert.False(result.GetProperty("deletedRootAsset").GetBoolean());
+        Assert.Equal(1, result.GetProperty("removedSectionItemCount").GetInt32());
+        Assert.NotEmpty(retainReasons);
+        Assert.Contains(retainReasons, reason => reason.GetProperty("reasonCode").GetString() == "ReferencedByHandout");
+        Assert.Equal(HttpStatusCode.OK, retainedBlock.StatusCode);
+        Assert.DoesNotContain(sectionItems, item => item.GetProperty("id").GetInt32() == context.SectionItemId);
     }
 
     [Fact]
@@ -2183,6 +2333,57 @@ public sealed class CmsV2ApiIntegrationTests
         using var stream = new MemoryStream(bytes);
         var document = new Document(stream);
         return document.ToString(SaveFormat.Text);
+    }
+
+    private sealed record SectionContentAssetContext(int SectionId, int ContentBlockId, int SectionItemId);
+
+    private static async Task<int> CreateSectionAsync(HttpClient client, string title)
+    {
+        var topic = await PostJsonAsync(client, "/api/cms-v2/teaching-topics", new { name = $"{title} topic", sortOrder = 1 });
+        var section = await PostJsonAsync(
+            client,
+            "/api/cms-v2/sections",
+            new
+            {
+                teachingTopicId = topic.GetProperty("id").GetInt32(),
+                title,
+                type = "NormalCourse",
+                difficulty = "Medium",
+                status = "Draft"
+            });
+
+        return section.GetProperty("id").GetInt32();
+    }
+
+    private static async Task<SectionContentAssetContext> CreateSectionContentAssetAsync(HttpClient client, string title)
+    {
+        var sectionId = await CreateSectionAsync(client, title);
+        var contentBlock = await PostJsonAsync(
+            client,
+            "/api/cms-v2/content-blocks",
+            new
+            {
+                sectionId,
+                title = $"{title} block",
+                blockType = "KnowledgePoint",
+                difficulty = "Basic",
+                status = "Draft"
+            });
+        var contentBlockId = contentBlock.GetProperty("id").GetInt32();
+        var sectionItem = await PostJsonAsync(
+            client,
+            $"/api/cms-v2/sections/{sectionId}/items",
+            new
+            {
+                targetType = "ContentBlock",
+                targetId = contentBlockId,
+                referenceMode = "FollowLatest",
+                lockedContentBlockVersionId = (int?)null,
+                sortOrder = 10,
+                status = "Draft"
+            });
+
+        return new SectionContentAssetContext(sectionId, contentBlockId, sectionItem.GetProperty("id").GetInt32());
     }
 
     private static async Task<JsonElement> PostJsonAsync(HttpClient client, string uri, object value)

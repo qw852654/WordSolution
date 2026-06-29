@@ -796,6 +796,20 @@ public static class CmsV2ApiEndpointExtensions
             return Results.Ok(new { sectionId = id, sectionItemId = itemId, direction = direction.ToString() });
         });
 
+        group.MapDelete("/sections/{id:int}/items/{itemId:int}/content-asset", async (
+            int id,
+            int itemId,
+            ContentAssetDeletionUseCases useCases,
+            CmsV2CurrentBank currentBank,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.DeleteSectionItemContentAssetAsync(
+                new DeleteSectionItemContentAssetCommand(currentBank.RootDirectory, id, itemId),
+                cancellationToken);
+
+            return Results.Ok(result);
+        });
+
         group.MapDelete("/sections/{id:int}/items/{itemId:int}", async (
             int id,
             int itemId,
@@ -1010,6 +1024,20 @@ public static class CmsV2ApiEndpointExtensions
                 cancellationToken);
 
             return Results.Ok(new { atomicSectionId = id, atomicSectionItemId = itemId, direction = direction.ToString() });
+        });
+
+        group.MapDelete("/atomic-sections/{id:int}/items/{itemId:int}/content-asset", async (
+            int id,
+            int itemId,
+            ContentAssetDeletionUseCases useCases,
+            CmsV2CurrentBank currentBank,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await useCases.DeleteAtomicSectionItemContentAssetAsync(
+                new DeleteAtomicSectionItemContentAssetCommand(currentBank.RootDirectory, id, itemId),
+                cancellationToken);
+
+            return Results.Ok(result);
         });
 
         group.MapDelete("/atomic-sections/{id:int}/items/{itemId:int}", async (

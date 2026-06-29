@@ -428,6 +428,26 @@ export interface CmsV2DeleteContentBlockCascadeResultDto {
   deletedAssetCount: number
 }
 
+export interface CmsV2ContentAssetRetainReasonDto {
+  contentBlockId: number
+  reasonCode: string
+  message: string
+}
+
+export interface CmsV2ContentAssetDeleteResultDto {
+  rootContentBlockId: number
+  removedCurrentReference: boolean
+  deletedRootAsset: boolean
+  removedSectionItemCount: number
+  removedSectionVariantItemCount: number
+  removedAtomicSectionItemCount: number
+  removedContentBlockRelationCount: number
+  deletedContentBlockCount: number
+  deletedContentBlockVersionCount: number
+  deletedFileCount: number
+  retainReasons: CmsV2ContentAssetRetainReasonDto[]
+}
+
 export interface CmsV2HandoutDto {
   id: number
   title: string
@@ -886,6 +906,12 @@ export async function cmsV2Delete(path: string): Promise<void> {
   }
 }
 
+export async function cmsV2DeleteJson<T>(path: string): Promise<T> {
+  return await cmsV2FetchJson<T>(path, {
+    method: 'DELETE',
+  })
+}
+
 export async function cmsV2FetchText(path: string, init?: RequestInit): Promise<string> {
   const response = await cmsV2Fetch(path, init)
 
@@ -1070,6 +1096,10 @@ export const cmsV2Api = {
     ),
   removeSectionItem: (sectionId: number, sectionItemId: number) =>
     cmsV2Delete(`/sections/${sectionId}/items/${sectionItemId}`),
+  deleteSectionItemContentAsset: (sectionId: number, sectionItemId: number) =>
+    cmsV2DeleteJson<CmsV2ContentAssetDeleteResultDto>(
+      `/sections/${sectionId}/items/${sectionItemId}/content-asset`,
+    ),
   getAtomicSection: (atomicSectionId: number) =>
     cmsV2FetchJson<CmsV2AtomicSectionDto>(`/atomic-sections/${atomicSectionId}`),
   listAtomicSections: () => cmsV2FetchJson<CmsV2AtomicSectionDto[]>('/atomic-sections'),
@@ -1142,6 +1172,13 @@ export const cmsV2Api = {
     ),
   removeAtomicSectionItem: (atomicSectionId: number, atomicSectionItemId: number) =>
     cmsV2Delete(`/atomic-sections/${atomicSectionId}/items/${atomicSectionItemId}`),
+  deleteAtomicSectionItemContentAsset: (
+    atomicSectionId: number,
+    atomicSectionItemId: number,
+  ) =>
+    cmsV2DeleteJson<CmsV2ContentAssetDeleteResultDto>(
+      `/atomic-sections/${atomicSectionId}/items/${atomicSectionItemId}/content-asset`,
+    ),
   changeAtomicSectionItemClassification: (
     atomicSectionId: number,
     atomicSectionItemId: number,

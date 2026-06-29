@@ -1,5 +1,6 @@
 import {
   cmsV2Api,
+  type CmsV2ContentAssetDeleteResultDto,
   type CmsV2MoveSectionItemRequest,
   type CmsV2WrapSectionItemsAsAtomicSectionRequest,
 } from '@/apis/cmsV2Client'
@@ -31,6 +32,15 @@ export function useSectionItemActions(options: SectionItemActionsOptions) {
     await options.refreshSection()
   }
 
+  async function deleteSectionItemContentAsset(
+    sectionId: number,
+    sectionItemId: number,
+  ): Promise<CmsV2ContentAssetDeleteResultDto> {
+    const result = await cmsV2Api.deleteSectionItemContentAsset(sectionId, sectionItemId)
+    await options.refreshSection()
+    return result
+  }
+
   async function wrapSectionItemsAsAtomicSection(
     sectionId: number,
     request: CmsV2WrapSectionItemsAsAtomicSectionRequest,
@@ -46,6 +56,7 @@ export function useSectionItemActions(options: SectionItemActionsOptions) {
     moveSectionItemUp,
     moveSectionItemDown,
     removeSectionItemReference,
+    deleteSectionItemContentAsset,
     wrapSectionItemsAsAtomicSection,
   }
 }

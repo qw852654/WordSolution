@@ -1,6 +1,7 @@
 import {
   cmsV2Api,
   type CmsV2AtomicSectionTeachingRole,
+  type CmsV2ContentAssetDeleteResultDto,
   type CmsV2MoveAtomicSectionItemRequest,
   type CmsV2MoveAtomicSectionPanelRequest,
 } from '@/apis/cmsV2Client'
@@ -85,6 +86,18 @@ export function useAtomicSectionActions(options: AtomicSectionActionsOptions) {
     await options.refreshSection()
   }
 
+  async function deleteAtomicSectionItemContentAsset(
+    atomicSectionId: number,
+    atomicSectionItemId: number,
+  ): Promise<CmsV2ContentAssetDeleteResultDto> {
+    const result = await cmsV2Api.deleteAtomicSectionItemContentAsset(
+      atomicSectionId,
+      atomicSectionItemId,
+    )
+    await options.refreshSection()
+    return result
+  }
+
   async function createAtomicSectionPanel(
     atomicSectionId: number,
     title: string,
@@ -162,6 +175,7 @@ export function useAtomicSectionActions(options: AtomicSectionActionsOptions) {
     moveAtomicSectionItemUp,
     moveAtomicSectionItemDown,
     removeAtomicSectionItem,
+    deleteAtomicSectionItemContentAsset,
     renameAtomicSectionPanel,
     moveAtomicSectionPanel,
     removeAtomicSectionPanel,

@@ -336,6 +336,10 @@ const en = {
       preview: 'Preview',
       openWord: 'Word edit',
       dangerZone: 'Danger zone',
+      deleteContentAsset: 'Delete current content asset',
+      deleteContentAssetBusy: 'Deleting content asset',
+      deleteContentAssetDescription:
+        'Remove this content from the current position. If there are no other independent references, the ContentBlock asset and version files will also be deleted.',
       deleteContentBlockCascade: 'Delete ContentBlock permanently',
       deleteContentBlockCascadeBusy: 'Deleting ContentBlock',
       deleteContentBlockCascadeDescription:
@@ -1294,6 +1298,29 @@ const en = {
         failed: 'Permanent ContentBlock deletion failed. Please try again.',
         deletedFeedback:
           'Deleted ContentBlock permanently: {title}. Removed {removedSectionItemCount} SectionItems, {removedAtomicSectionItemCount} AtomicSectionItems, and {removedContentBlockRelationCount} CompositeBlock relations.',
+      },
+      contentAssetDelete: {
+        confirm:
+          'Delete this ContentBlock from the current position: {title}? This will remove it from the current position. If it has no other independent references, the ContentBlock asset and version files will also be deleted. If it is still referenced elsewhere, the asset will be retained.',
+        targetMissing:
+          'Could not resolve the ContentBlock asset delete target for the current position. Refresh and try again.',
+        failed: 'ContentBlock asset deletion failed. Please try again.',
+        deletedAssetFeedback:
+          'Removed {title} from the current position and deleted the ContentBlock asset. Deleted {deletedContentBlockCount} ContentBlocks, {deletedContentBlockVersionCount} versions, and {deletedFileCount} files.',
+        retainedAssetFeedback:
+          'Removed {title} from the current position, but the asset was retained because other independent references still exist. Retain reasons: {reasons}',
+        retainedReasonFallback: 'The backend confirmed another independent reference still exists',
+        retainReasonSeparator: '; ',
+        retainReasons: {
+          ReferencedBySection: 'ContentBlock {contentBlockId} is still referenced by another Section',
+          ReferencedByAtomicSection:
+            'ContentBlock {contentBlockId} is still referenced by another AtomicSection',
+          ReferencedByHandout:
+            'ContentBlock {contentBlockId} is still referenced directly by a Handout',
+          ReferencedByRelation:
+            'ContentBlock {contentBlockId} is still referenced by an external ContentBlock relation',
+          ActiveEditSession: 'ContentBlock {contentBlockId} has an active Word edit session',
+        },
       },
       mock: {
         contentBlockPlaceholderTitle: 'ContentBlockDisplay placeholder',

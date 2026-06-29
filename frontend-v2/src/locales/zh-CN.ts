@@ -327,6 +327,10 @@ const zhCN = {
       preview: '预览',
       openWord: 'Word 编辑',
       dangerZone: '危险操作',
+      deleteContentAsset: '删除当前位置内容资产',
+      deleteContentAssetBusy: '正在删除内容资产',
+      deleteContentAssetDescription:
+        '从当前位置移除该内容；如果没有其他独立引用，将同时删除内容块资产和版本文件。',
       deleteContentBlockCascade: '彻底删除 ContentBlock',
       deleteContentBlockCascadeBusy: '正在删除 ContentBlock',
       deleteContentBlockCascadeDescription:
@@ -1267,6 +1271,27 @@ const zhCN = {
         failed: 'ContentBlock 彻底删除失败，请稍后重试。',
         deletedFeedback:
           '已彻底删除 ContentBlock：{title}。清理 SectionItem {removedSectionItemCount} 个、AtomicSectionItem {removedAtomicSectionItemCount} 个、CompositeBlock 关系 {removedContentBlockRelationCount} 个。',
+      },
+      contentAssetDelete: {
+        confirm:
+          '确认删除当前位置的 ContentBlock：{title}？会从当前位置移除该内容；若没有其他独立引用，会同时删除内容块资产和版本文件；若仍被其他位置引用，资产会保留。',
+        targetMissing: '没有找到当前位置对应的 ContentBlock 删除目标，请刷新后重试。',
+        failed: 'ContentBlock 内容资产删除失败，请稍后重试。',
+        deletedAssetFeedback:
+          '已从当前位置移除 {title}，并删除内容块资产。已删除 ContentBlock {deletedContentBlockCount} 个、版本 {deletedContentBlockVersionCount} 个、文件 {deletedFileCount} 个。',
+        retainedAssetFeedback:
+          '已从当前位置移除 {title}，但资产因其他独立引用保留。保留原因：{reasons}',
+        retainedReasonFallback: '后端确认仍存在其他独立引用',
+        retainReasonSeparator: '；',
+        retainReasons: {
+          ReferencedBySection: 'ContentBlock {contentBlockId} 仍被其他 Section 引用',
+          ReferencedByAtomicSection:
+            'ContentBlock {contentBlockId} 仍被其他 AtomicSection 引用',
+          ReferencedByHandout: 'ContentBlock {contentBlockId} 仍被 Handout 直接引用',
+          ReferencedByRelation:
+            'ContentBlock {contentBlockId} 仍被外部 ContentBlock 关系引用',
+          ActiveEditSession: 'ContentBlock {contentBlockId} 存在活跃 Word 编辑会话',
+        },
       },
       mock: {
         contentBlockPlaceholderTitle: 'ContentBlockDisplay 占位',

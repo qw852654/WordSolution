@@ -35,7 +35,7 @@ const props = defineProps<{
   node?: SectionTreeNodeModel
   section?: SectionPageShellModel
   variantItemCount?: number
-  deletingContentBlockCascade?: boolean
+  deletingContentAsset?: boolean
   updatingAtomicSectionItemClassification?: boolean
   updatingNodeDifficulty?: boolean
   updatingAtomicSectionStatus?: boolean
@@ -64,7 +64,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  deleteContentBlockCascade: []
+  deleteContentAsset: []
   changeAtomicSectionItemClassification: [payload: {
     atomicSectionId: number
     atomicSectionItemId: number
@@ -130,8 +130,11 @@ const kindLabel = computed(() => {
   return t(`components.sectionTree.kind.${props.node.kind}`)
 })
 
-const showContentBlockCascadeDelete = computed(() =>
-  props.node?.kind === 'ContentBlock' || props.node?.kind === 'CompositeBlock',
+const showContentAssetDelete = computed(() =>
+  (props.node?.kind === 'ContentBlock' || props.node?.kind === 'CompositeBlock') &&
+  (typeof props.node.sectionItemId === 'number' ||
+    (typeof props.node.atomicSectionId === 'number' &&
+      typeof props.node.atomicSectionItemId === 'number')),
 )
 const showAtomicSectionItemClassification = computed(() =>
   (props.node?.kind === 'ContentBlock' || props.node?.kind === 'CompositeBlock') &&
@@ -577,27 +580,27 @@ const detailRows = computed(() => {
       </div>
     </div>
 
-    <div v-if="showContentBlockCascadeDelete" class="border-t px-3 py-2">
+    <div v-if="showContentAssetDelete" class="border-t px-3 py-2">
       <div class="grid gap-2">
         <p class="text-xs font-medium text-destructive">
           {{ t('components.sectionInspector.dangerZone') }}
         </p>
         <p class="text-xs text-muted-foreground">
-          {{ t('components.sectionInspector.deleteContentBlockCascadeDescription') }}
+          {{ t('components.sectionInspector.deleteContentAssetDescription') }}
         </p>
         <Button
           type="button"
           variant="destructive"
           size="sm"
           class="w-full"
-          :disabled="deletingContentBlockCascade"
-          @click="emit('deleteContentBlockCascade')"
+          :disabled="deletingContentAsset"
+          @click="emit('deleteContentAsset')"
         >
           <Trash2 class="size-4" aria-hidden="true" />
           {{
-            deletingContentBlockCascade
-              ? t('components.sectionInspector.deleteContentBlockCascadeBusy')
-              : t('components.sectionInspector.deleteContentBlockCascade')
+            deletingContentAsset
+              ? t('components.sectionInspector.deleteContentAssetBusy')
+              : t('components.sectionInspector.deleteContentAsset')
           }}
         </Button>
       </div>

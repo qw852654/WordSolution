@@ -16,6 +16,8 @@ import SectionWorkspace from '@/components/containers/SectionWorkspace.vue'
 import {
   cmsV2Api,
   type CmsV2AtomicSectionStatus,
+  type CmsV2ContentAssetDeleteResultDto,
+  type CmsV2ContentAssetRetainReasonDto,
   type CmsV2Difficulty,
   type CmsV2InsertQuestionContext,
   type CmsV2QuestionImportCandidateDto,
@@ -131,7 +133,7 @@ const isExportingSectionWord = ref(false)
 const sectionWordExportFeedback = ref('')
 const isSubmittingInsertCreate = ref(false)
 const isCreatingAtomicSectionPanel = ref(false)
-const isDeletingContentBlockCascade = ref(false)
+const isDeletingContentAsset = ref(false)
 const isUpdatingAtomicSectionItemClassification = ref(false)
 const isUpdatingNodeDifficulty = ref(false)
 const isUpdatingAtomicSectionStatus = ref(false)
@@ -175,6 +177,46 @@ function resolveSectionItemRemoveError(error: unknown, fallback: string) {
   }
 
   return message || fallback
+}
+
+function translateContentAssetRetainReason(reason: CmsV2ContentAssetRetainReasonDto) {
+  const key = `sectionPage.workspace.contentAssetDelete.retainReasons.${reason.reasonCode}`
+  const translated = t(key, { contentBlockId: reason.contentBlockId })
+  return translated === key ? reason.message : translated
+}
+
+function summarizeContentAssetRetainReasons(result: CmsV2ContentAssetDeleteResultDto) {
+  const reasons = result.retainReasons.map(translateContentAssetRetainReason)
+  return reasons.length
+    ? reasons.join(t('sectionPage.workspace.contentAssetDelete.retainReasonSeparator'))
+    : t('sectionPage.workspace.contentAssetDelete.retainedReasonFallback')
+}
+
+function buildContentAssetDeleteFeedback(
+  result: CmsV2ContentAssetDeleteResultDto,
+  title: string,
+) {
+  if (result.deletedRootAsset) {
+    return t('sectionPage.workspace.contentAssetDelete.deletedAssetFeedback', {
+      title,
+      deletedContentBlockCount: result.deletedContentBlockCount,
+      deletedContentBlockVersionCount: result.deletedContentBlockVersionCount,
+      deletedFileCount: result.deletedFileCount,
+    })
+  }
+
+  return t('sectionPage.workspace.contentAssetDelete.retainedAssetFeedback', {
+    title,
+    reasons: summarizeContentAssetRetainReasons(result),
+  })
+}
+
+function confirmContentAssetDelete(title: string) {
+  return window.confirm(
+    t('sectionPage.workspace.contentAssetDelete.confirm', {
+      title,
+    }),
+  )
 }
 let teachingTopicDrawerTimer: number | undefined
 let questionImportPollTimer: number | undefined
@@ -1935,27 +1977,30 @@ async function requestAtomicSectionItemMove(payload: AtomicSectionItemMovePayloa
 }
 
 async function requestAtomicSectionItemRemove(payload: AtomicSectionItemActionPayload) {
-  const confirmed = window.confirm(
-    t('sectionPage.workspace.atomicSectionItemActions.removeConfirm', {
-      title: payload.title || 'ContentBlock',
-    }),
-  )
+  const title = payload.title || 'ContentBlock'
+  const confirmed = confirmContentAssetDelete(title)
 
   if (!confirmed) {
     return
   }
 
+  isDeletingContentAsset.value = true
+  sectionPageError.value = ''
+
   try {
-    await atomicSectionActions.removeAtomicSectionItem(
+    const result = await atomicSectionActions.deleteAtomicSectionItemContentAsset(
       payload.atomicSectionId,
       payload.atomicSectionItemId,
     )
+    insertFeedback.value = buildContentAssetDeleteFeedback(result, title)
     selectedStructureNodeId.value = undefined
   } catch (error) {
     sectionPageError.value =
       error instanceof Error
         ? error.message
-        : t('sectionPage.workspace.atomicSectionItemActions.operationFailed')
+        : t('sectionPage.workspace.contentAssetDelete.failed')
+  } finally {
+    isDeletingContentAsset.value = false
   }
 }
 
@@ -1999,26 +2044,30 @@ async function requestContentBlockRemove(payload: ContentBlockWorkspaceActionPay
     return
   }
 
-  const confirmed = window.confirm(
-    t('sectionPage.workspace.contentBlockActions.removeConfirm', {
-      title: payload.title || 'ContentBlock',
-    }),
-  )
+  const title = payload.title || 'ContentBlock'
+  const confirmed = confirmContentAssetDelete(title)
 
   if (!confirmed) {
     return
   }
 
+  isDeletingContentAsset.value = true
+  sectionPageError.value = ''
+
   try {
-    await sectionItemActions.removeSectionItemReference(currentSectionId, payload.sectionItemId)
+    const result = await sectionItemActions.deleteSectionItemContentAsset(
+      currentSectionId,
+      payload.sectionItemId,
+    )
+    insertFeedback.value = buildContentAssetDeleteFeedback(result, title)
     selectedStructureNodeId.value = undefined
     workspaceScrollTargetNodeId.value = selectedStructureNodeId.value
     workspaceScrollRequestKey.value += 1
   } catch (error) {
-    sectionPageError.value = resolveSectionItemRemoveError(
-      error,
-      t('sectionPage.workspace.contentBlockActions.operationFailed'),
-    )
+    sectionPageError.value =
+      error instanceof Error ? error.message : t('sectionPage.workspace.contentAssetDelete.failed')
+  } finally {
+    isDeletingContentAsset.value = false
   }
 }
 
@@ -2638,51 +2687,55 @@ function getSectionRootNodeId() {
   return sectionTreeNodes.value.find((node) => node.kind === 'Section')?.id
 }
 
-async function requestDeleteContentBlockCascade() {
+async function requestSelectedContentAssetDelete() {
   const node = selectedStructureNode.value
   if (!node || (node.kind !== 'ContentBlock' && node.kind !== 'CompositeBlock')) {
     return
   }
 
-  const contentBlockId = findContentBlockIdForWorkspaceNode(node.id)
-  if (typeof contentBlockId !== 'number') {
-    sectionPageError.value = t('sectionPage.workspace.contentBlockCascadeDelete.targetMissing')
-    return
-  }
-
   const title = node.title || node.typeLabel || 'ContentBlock'
-  const confirmMessage = [
-    t('sectionPage.workspace.contentBlockCascadeDelete.confirm', { title }),
-    node.kind === 'CompositeBlock'
-      ? t('sectionPage.workspace.contentBlockCascadeDelete.compositeConfirmExtra')
-      : '',
-  ]
-    .filter(Boolean)
-    .join('\n\n')
-
-  if (!window.confirm(confirmMessage)) {
+  if (!confirmContentAssetDelete(title)) {
     return
   }
 
-  isDeletingContentBlockCascade.value = true
+  isDeletingContentAsset.value = true
   sectionPageError.value = ''
 
   try {
-    const result = await cmsV2Api.deleteContentBlockCascade(contentBlockId)
-    insertFeedback.value = t('sectionPage.workspace.contentBlockCascadeDelete.deletedFeedback', {
-      title,
-      removedSectionItemCount: result.removedSectionItemCount,
-      removedAtomicSectionItemCount: result.removedAtomicSectionItemCount,
-      removedContentBlockRelationCount: result.removedContentBlockRelationCount,
-    })
+    let result: CmsV2ContentAssetDeleteResultDto
+
+    if (typeof node.sectionItemId === 'number') {
+      const currentSectionId = getCurrentNumericSectionId()
+      if (!currentSectionId) {
+        throw new Error(t('sectionPage.workspace.contentAssetDelete.targetMissing'))
+      }
+
+      result = await sectionItemActions.deleteSectionItemContentAsset(
+        currentSectionId,
+        node.sectionItemId,
+      )
+    } else if (
+      typeof node.atomicSectionId === 'number' &&
+      typeof node.atomicSectionItemId === 'number'
+    ) {
+      result = await atomicSectionActions.deleteAtomicSectionItemContentAsset(
+        node.atomicSectionId,
+        node.atomicSectionItemId,
+      )
+    } else {
+      throw new Error(t('sectionPage.workspace.contentAssetDelete.targetMissing'))
+    }
+
+    insertFeedback.value = buildContentAssetDeleteFeedback(result, title)
     selectedStructureNodeId.value = getSectionRootNodeId()
+    workspaceScrollTargetNodeId.value = selectedStructureNodeId.value
+    workspaceScrollRequestKey.value += 1
     clearSectionVariantView()
-    await loadCurrentSectionPage()
   } catch (error) {
     sectionPageError.value =
-      error instanceof Error ? error.message : t('sectionPage.workspace.contentBlockCascadeDelete.failed')
+      error instanceof Error ? error.message : t('sectionPage.workspace.contentAssetDelete.failed')
   } finally {
-    isDeletingContentBlockCascade.value = false
+    isDeletingContentAsset.value = false
   }
 }
 
@@ -2730,6 +2783,35 @@ async function removeTopLevelSectionItemFromTreeNode(node: SectionTreeNodeModel)
 
   if (!currentSectionId || !sectionItemId) {
     sectionPageError.value = t('sectionPage.workspace.sectionItemActions.removeTargetMissing')
+    return
+  }
+
+  if (node.kind === 'ContentBlock' || node.kind === 'CompositeBlock') {
+    const title = node.title || node.typeLabel || 'ContentBlock'
+    if (!confirmContentAssetDelete(title)) {
+      return
+    }
+
+    isDeletingContentAsset.value = true
+    sectionPageError.value = ''
+
+    try {
+      const result = await sectionItemActions.deleteSectionItemContentAsset(
+        currentSectionId,
+        sectionItemId,
+      )
+      insertFeedback.value = buildContentAssetDeleteFeedback(result, title)
+      selectedStructureNodeId.value = undefined
+      workspaceScrollTargetNodeId.value = selectedStructureNodeId.value
+      workspaceScrollRequestKey.value += 1
+      clearSectionVariantView()
+    } catch (error) {
+      sectionPageError.value =
+        error instanceof Error ? error.message : t('sectionPage.workspace.contentAssetDelete.failed')
+    } finally {
+      isDeletingContentAsset.value = false
+    }
+
     return
   }
 
@@ -3509,7 +3591,7 @@ watch(
           :node="selectedStructureNode"
           :section="sectionShell"
           :variant-item-count="sectionVariantItemCount"
-          :deleting-content-block-cascade="isDeletingContentBlockCascade"
+          :deleting-content-asset="isDeletingContentAsset"
           :updating-atomic-section-item-classification="isUpdatingAtomicSectionItemClassification"
           :updating-node-difficulty="isUpdatingNodeDifficulty"
           :updating-atomic-section-status="isUpdatingAtomicSectionStatus"
@@ -3535,7 +3617,7 @@ watch(
           :teaching-note-deleting-id="teachingNoteDeletingId"
           :teaching-note-delete-target="teachingNoteDeleteTarget"
           :teaching-note-delete-error="teachingNoteDeleteError"
-          @delete-content-block-cascade="requestDeleteContentBlockCascade"
+          @delete-content-asset="requestSelectedContentAssetDelete"
           @change-atomic-section-item-classification="requestAtomicSectionItemClassificationChange"
           @change-node-difficulty="requestNodeDifficultyChange"
           @change-atomic-section-status="requestAtomicSectionStatusChange"
